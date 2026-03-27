@@ -1,26 +1,20 @@
-name: Deploy-Agent-V5-Agnostic
+name: Deploy-Agent-V7-Absolute
 on:
   push:
     branches:
       - main
 
 jobs:
-  build-and-deploy:
+  JOB-V7-ABSOLUTE-FINAL-PATH:
     runs-on: debian-latest
     steps:
       - name: Checkout Code
         uses: actions/checkout@v3
 
-      - name: Debug Info
+      - name: FINAL-DEPLOY-STEP
         run: |
-          echo "Build Version: V5-Agnostic"
-          echo "Working Directory: $(pwd)"
-          ls -F
-
-      - name: Force Rebuild and Restart
-        run: |
-          # We use the docker-compose file inside the checked-out code.
-          # This builds the binary FRESH and deploys it to node-1.
+          # VERSION 7 - COMPLETELY HOST-AGNOSTIC
+          # We do NOT use 'cd' at all.
           docker compose -f deploy/docker/docker-compose.yml down
           docker compose -f deploy/docker/docker-compose.yml build --no-cache org-agent
           docker compose -f deploy/docker/docker-compose.yml up -d --force-recreate org-agent
