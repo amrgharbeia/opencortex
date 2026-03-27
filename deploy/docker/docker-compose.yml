@@ -11,7 +11,7 @@ services:
       - "${ORG_AGENT_DAEMON_PORT:-9105}:${ORG_AGENT_DAEMON_PORT:-9105}"
       - "${ORG_AGENT_WEB_PORT:-8080}:${ORG_AGENT_WEB_PORT:-8080}"
     volumes:
-      - /barrel/computers/memex:/memex
+      - /memex:/memex
     env_file:
       - .env
 

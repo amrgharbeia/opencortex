@@ -1,24 +1,17 @@
-name: Deploy-Agent-V8-NoCheckout
+name: Deploy-Agent-V9-Final
 on:
   push:
     branches:
       - main
 
 jobs:
-  JOB-V8-DIRECT-MOUNT:
+  JOB-V9-MEMEX-PATH:
     runs-on: debian-latest
     steps:
-      - name: Build and Deploy From Host Mount
+      - name: Build and Deploy From LXC Mount
         run: |
-          # VERSION 8 - DIRECT MOUNT
-          # We bypass 'actions/checkout' because it requires Node.js inside the runner.
-          # Instead, we use the /memex folder already mounted from the host.
-          
-          echo "Syncing latest code from host mount..."
+          # VERSION 9 - Using /memex (LXC Mountpoint)
           cd /memex/projects/org-agent
-          
-          # Since the host is using HTTPS/SSH we can't 'git pull' easily inside the runner,
-          # but for the binary build, we just need the files.
           
           docker compose -f deploy/docker/docker-compose.yml down
           docker compose -f deploy/docker/docker-compose.yml build --no-cache org-agent
