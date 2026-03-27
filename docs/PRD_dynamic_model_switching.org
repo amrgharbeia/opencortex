@@ -1,0 +1,23 @@
+#+TITLE: PRD: Skill-Based Dynamic Model Switching
+#+AUTHOR: PSF Requirements Definer
+#+DATE: 2026-03-24
+#+STARTUP: content
+
+* Overview
+The `org-agent` currently relies on hardcoded LLM model strings within its pluggable provider skills. To match the flexibility of the legacy Openclaw system while maintaining a **Minimalist Core**, we will implement a "Homoiconic Configuration" model using the **Skill Graph**. Configuration settings will live as standard Org-mode properties in the user's memex, and a dedicated configuration skill will provide lookup services to other skills.
+
+* Mandates
+- **The Org Mandate:** Configuration MUST be human-editable and machine-readable within `.org` files.
+- **Minimalist Core:** No new global variables or state-management registries shall be added to the kernel (`src/*.lisp`).
+- **Skill Graph Sovereignty:** Capabilities MUST build upon one another via dependencies.
+
+* Requirements
+1. **Property-Based Configuration:** The system MUST allow defining LLM models via Org-mode properties (e.g., `:LLM_MODEL_OPENAI: gpt-4o`) anywhere in the loaded memex files.
+2. **Configuration Skill:** A new skill (`skill-environment-config.org`) MUST be created to handle property lookups within the persistent `*object-store*`.
+3. **Skill Integration:** Provider skills (OpenAI, Anthropic, OpenRouter) MUST declare a dependency on `skill-environment-config` and query it for their model string at runtime.
+4. **Late-Binding Updates:** Because the kernel updates the `*object-store*` on every buffer save, changing a model string in an Org file results in an immediate, hot-swapped change to the agent's behavior.
+
+* Acceptance Criteria
+- A user can add `:LLM_MODEL_OPENAI: gpt-4o` to a "Settings" headline in their memex.
+- The OpenAI provider skill successfully fetches this value via the configuration skill.
+- No modifications are made to the core Lisp daemon files.

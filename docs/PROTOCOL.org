@@ -1,0 +1,137 @@
+#+TITLE: org-agent Communication Protocol (OACP)
+#+AUTHOR: Agent
+#+DATE: 2026-03-22
+#+ID: org-agent-protocol
+#+STARTUP: content
+
+* Core Mandates
+The OACP and the `org-agent` project MUST adhere to these foundational mandates:
+- **Mandate 1: Strict Homoiconic Memory.** All documentation, planning, and system logic MUST be authored in Org-mode (.org) and Common Lisp. Markdown (.md) and JSON are strictly prohibited for internal use.
+- **Mandate 2: Minimalist Microkernel.** The core daemon MUST remain minimalist, handling only the cognitive loop, the persistent Object-Store, and the communication protocol. All domain-specific features and LLM provider logic MUST be implemented as hot-reloadable **Skills** living in the user's Memex.
+
+* Overview
+
+OACP (org-agent Communication Protocol) defines the "nervous system" of the Neurosymbolic Lisp Machine. It facilitates bidirectional, asynchronous communication between the **Common Lisp Core** (The Soul/Daemon) and the **Emacs Interface** (The Actuator/Terminal).
+
+The protocol is designed to be:
+- **Homoiconic:** Messages are native Lisp S-expressions (plists).
+- **Asynchronous:** Neither side should block waiting for the other.
+- **Extensible:** New sensors and actuators can be added by defining new plist keys.
+
+* Framing & Transport
+
+- **Transport:** TCP Socket (default port: 9105).
+- **Framing:** Each message is prefixed by a 6-character hexadecimal length string (e.g., `00002a` for a 42-byte message), followed by the S-expression string encoded in UTF-8.
+
+* Message Structure
+
+A standard message is a flat property list (plist):
+
+#+begin_src lisp
+(:type TYPE :id ID :payload PAYLOAD)
+#+end_src
+
+- **:type:** One of `:EVENT`, `:REQUEST`, `:RESPONSE`, or `:LOG`.
+- **:id:** A unique integer or string for correlation (mandatory for `:REQUEST` and `:RESPONSE`).
+- **:payload:** A nested plist containing the specific data or command.
+
+* Perception (Emacs -> Core)
+
+Emacs acts as the sensor array, pushing events to the Core daemon.
+
+** :BUFFER-MODIFIED
+Sent when an Org buffer is changed or saved.
+#+begin_src lisp
+(:type :EVENT :payload (:sensor :buffer-update :file "/home/amr/org/todo.org" :state :saved))
+#+end_src
+
+** :USER-INPUT
+Sent when the user explicitly triggers an agent action (e.g., `M-x org-agent-ask`).
+#+begin_src lisp
+(:type :EVENT :payload (:sensor :user-prompt :text "Refactor this subtree" :context :current-subtree))
+#+end_src
+
+** :CURSOR-MOVED
+Sent when the agent needs to track the user's focus.
+#+begin_src lisp
+(:type :EVENT :payload (:sensor :focus :buffer "init.el" :line 42 :column 0))
+#+end_src
+
+* Action (Core -> Emacs)
+
+The Core daemon sends requests to Emacs to perform physical actions in the environment.
+
+** :EXECUTE-ELISP
+The primary "actuator."
+#+begin_src lisp
+(:type :REQUEST :id 101 :payload (:action :eval :code "(org-todo \"NEXT\")"))
+#+end_src
+
+** :UI-NOTIFY
+Display info to the user without interrupting focus.
+#+begin_src lisp
+(:type :REQUEST :id 102 :payload (:action :message :text "I have identified a contradiction in your GTD.org" :level :warning))
+#+end_src
+
+** :PROVIDE-COMPLETION
+Provide LLM-driven completions for the current point.
+#+begin_src lisp
+(:type :REQUEST :id 103 :payload (:action :complete :prefix "defun" :suggestions ("defun-agent" "defun-percieve")))
+#+end_src
+
+** :ORG-DELIVERY
+Enqueue external messages.
+#+begin_src lisp
+(:type :REQUEST :target :delivery :payload (:channel :signal :to "+1..." :text "Hello"))
+#+end_src
+
+** :PROJECT-SCAFFOLD
+Create new project folders and headings.
+#+begin_src lisp
+(:type :REQUEST :target :foundry :payload (:action :scaffold :name "Project-X" :type "Lisp"))
+#+end_src
+
+** :SYSTEM-SELF-EDIT
+Kernel-level self-modification.
+#+begin_src lisp
+(:type :REQUEST :target :system :payload (:action :create-skill :filename "skill-x.org" :content "..."))
+#+end_src
+
+* Metadata & Handshake
+
+** :HELLO
+Sent by both sides upon connection.
+#+begin_src lisp
+(:type :EVENT :payload (:action :handshake :version "0.1.0" :capabilities (:auth :swank :org-ast)))
+#+end_src
+
+* Cognitive Loop Internal API (Foundry Standard)
+
+To ensure neurosymbolic sovereignty, the Core Daemon must strictly separate stages.
+
+** 1. Perceive
+- **Signature:** `(perceive raw-stimulus) -> context-plist`
+- **Responsibility:** Protocol decoding, Object-Store synchronization, context augmentation.
+
+** 2. Think (System 1)
+- **Signature:** `(think context-plist) -> proposed-action-plist`
+- **Responsibility:** Neural pattern matching, associative retrieval, unverified proposal generation.
+
+** 3. Decide (System 2)
+- **Signature:** `(decide proposed-action context) -> approved-action-plist`
+- **Responsibility:** Symbolic verification, safety gating, deterministic rule application (e.g., GTD logic).
+
+** 4. Act (Dispatch)
+- **Signature:** `(act stream approved-action)` / `(dispatch-action approved-action)`
+- **Responsibility:** Actuator lookup and transmission. Targets: `:emacs`, `:delivery`, `:system`, `:shell`.
+
+** 5. Context API (System 1 Peripheral Vision)
+- **(context-list-all-skills):** Introspect the brain hierarchy.
+- **(context-get-skill-source name):** Read the logic graph.
+- **(context-resolve-path path):** Environment-relative path expansion.
+- **(context-get-system-logs limit):** Perception of kernel failures.
+
+* Success Metrics
+- Latency between `:EVENT` and `:RESPONSE` < 100ms for UI actions.
+- 100% fidelity in Org AST preservation across the bridge.
+- Zero UI blocking in Emacs during heavy CL reasoning loops.

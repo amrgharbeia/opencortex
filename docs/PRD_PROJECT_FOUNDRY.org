@@ -1,0 +1,17 @@
+#+TITLE: PRD: Project Foundry (Scaffolding)
+#+AUTHOR: PSF Requirements Definer
+#+STATUS: FROZEN
+
+* 1. Purpose
+Act as a senior engineer by autonomously scaffolding new project directories, git repos, and documentation templates.
+
+* 2. Functional Requirements
+- **Directory Creation:** The system MUST be able to create new folders within the `$PROJECTS_DIR`.
+- **Git Integration:** The foundry MUST initialize a new git repository for every scaffolded project.
+- **Boilerplate Generation:** The system MUST write a customized `README.org` for new projects.
+- **GTD Connection:** The foundry MUST automatically add a `PROJ` headline to `gtd.org` with a dynamic `:PROJECT_PATH:`.
+
+* 3. Success Criteria
+ - DONE New projects appear in the physical filesystem and the GTD plan simultaneously.
+ - DONE Path resolution handles environment variables (`$PROJECTS_DIR`) correctly.
+ - DONE System 2 prevents overwriting existing project directories.

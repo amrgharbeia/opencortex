@@ -1,0 +1,16 @@
+#+TITLE: PRD: LLM Failover Cascade & Multi-Provider Support
+#+AUTHOR: PSF Requirements Definer
+#+STATUS: FROZEN
+
+* 1. Purpose
+Ensure 100% availability of System 1 (Neural) reasoning via an ordered list of providers and automatic fallbacks.
+
+* 2. Functional Requirements
+- **Backend Registry:** The core MUST allow Skills to register new AI providers (Gemini, OpenAI, Claude, etc.).
+- **Automatic Failover:** The `ask-neuro` function MUST iterate through a `*provider-cascade*` list, automatically trying the next provider if the previous one fails.
+- **Interactive Re-Ordering:** The system MUST allow the user to update the cascade order in real-time from Emacs.
+
+* 3. Success Criteria
+ - DONE Daemon correctly falls back from a failing API key to a working one.
+ - DONE `M-x org-agent-set-model-cascade` successfully updates the live Lisp hierarchy.
+ - DONE Support for 5+ providers (Gemini, OpenAI, Anthropic, OpenRouter, Ollama).

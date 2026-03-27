@@ -1,0 +1,22 @@
+#+TITLE: PRD: Model Discovery
+#+AUTHOR: PSF Requirements Definer
+#+DATE: 2026-03-24
+#+STARTUP: content
+
+* Overview
+Users currently lack visibility into the LLM models available via the registered provider skills (OpenAI, Anthropic, OpenRouter). To match Openclaw's UX while preserving a Minimalist Core, the system needs an intra-skill discovery protocol.
+
+* Mandates
+- **The Org Mandate:** Outputs must be rendered natively in Org-mode buffers.
+- **Minimalist Core:** No state or new capabilities shall be added to the Lisp Daemon. All discovery logic must be localized to the Skill Graph.
+
+* Requirements
+1. **Dynamic Provider Introspection:** The system MUST be able to query loaded skills dynamically to find which ones act as LLM providers.
+2. **Model Listing API:** Every provider skill MUST export a function that returns a list of its available models (e.g., ID, Context Window).
+3. **The Explorer Skill:** A new skill (`skill-model-explorer.org`) MUST intercept the command `@agent list models` and aggregate the results from all providers.
+4. **Org-Table Output:** The Explorer Skill MUST output the aggregated list back to the Emacs buffer formatted as an `org-table` for immediate human readability.
+
+* Acceptance Criteria
+- Writing `@agent list models` in an Org buffer and saving triggers the Explorer Skill.
+- An Org-mode table is inserted below the command containing columns for `Provider`, `Model`, and `Context`.
+- Adding a new provider skill automatically includes its models in future queries without modifying the Explorer Skill.

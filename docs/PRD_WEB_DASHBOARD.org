@@ -1,0 +1,17 @@
+#+TITLE: PRD: Kernel Web Dashboard
+#+AUTHOR: PSF Requirements Definer
+#+STATUS: FROZEN
+
+* 1. Purpose
+Provide a read-only visual interface for monitoring the Lisp Machine's internal state and execution logs.
+
+* 2. Functional Requirements
+- **Web Server:** A lightweight HTTP server (Hunchentoot) MUST run inside the kernel.
+- **Skill Visualization:** The dashboard MUST display the current Skill Graph, priorities, and jailing status.
+- **Log Monitoring:** The dashboard MUST display the most recent 20-50 system log entries.
+- **Remote Access:** The dashboard MUST be accessible from other computers on the local network (binding to 0.0.0.0).
+
+* 3. Success Criteria
+ - DONE Dashboard loads at `http://<ip>:8081`.
+ - DONE Skill list updates dynamically as new skills are hot-loaded.
+ - DONE Kernel errors are visible in the web UI.

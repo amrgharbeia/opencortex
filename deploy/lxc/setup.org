@@ -1,0 +1,33 @@
+#+TITLE: LXC / Systemd-nspawn Deployment Guide
+#+AUTHOR: org-agent
+
+* Overview
+For users who prefer containerization without the overhead or dependency on the Docker daemon, `org-agent` can be run within a standard Linux Container (LXC) or a systemd-nspawn container.
+
+* Systemd-nspawn Setup (Fastest for Linux users)
+
+1. **Create the container root:**
+   #+begin_src bash
+   sudo debootstrap --arch=amd64 bookworm /var/lib/machines/org-agent
+   #+end_src
+
+2. **Start and enter the container:**
+   #+begin_src bash
+   sudo systemd-nspawn -D /var/lib/machines/org-agent
+   #+end_src
+
+3. **Install dependencies (inside container):**
+   #+begin_src bash
+   apt-get update && apt-get install -y sbcl curl git ripgrep libsqlite3-dev build-essential
+   #+end_src
+
+4. **Bind mount the Memex directory:**
+   Add this to your container startup or use the `--bind` flag:
+   #+begin_src bash
+   sudo systemd-nspawn -D /var/lib/machines/org-agent --bind /home/amr/.openclaw/workspace/memex
+   #+end_src
+
+* Proxmox LXC Setup
+1. Create a new LXC container using the Debian 12 template.
+2. Ensure the network is bridged so Emacs can reach it.
+3. Run the `deploy/bare-metal/install.sh` script inside the container.

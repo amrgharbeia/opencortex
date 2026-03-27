@@ -1,0 +1,39 @@
+#+TITLE: Phase 2: The Delegator (Roadmap)
+#+AUTHOR: org-agent
+#+DATE: [2026-03-23 Mon]
+
+* Overview
+Phase 2 shifts focus from kernel architecture to capability expansion. Because the kernel (Phase 1) is a generalized Event Bus, **all Phase 2 features are implemented entirely as Org-Native Skills**. No modifications to the Lisp Core (`core.lisp`, `neuro.lisp`, `symbolic.lisp`) are required.
+
+* The Phase 2 Skill Roster
+
+** 1. The LLM Router
+- **Skill File:** `skills/skill-router.org`
+- **Role:** Meta-cognition. Replaces complex Lisp trigger logic with LLM intent classification.
+- **Trigger:** Catches general `:user-command` or ambiguous `:buffer-update` events.
+- **Action:** Instead of editing a file, it emits an internal Lisp event `(:type :EVENT :payload (:sensor :delegation :target-skill <skill-name>))`, forcing the engine to re-loop and trigger the specific skill.
+
+** 2. Deep Memory (Vector/Semantic Search)
+- **Skill File:** `skills/skill-atomic-notes.org`
+- **Role:** Context augmentation beyond the live RAM `*object-store*`.
+- **System 2 (Lisp):** Wraps a local search tool (like `ripgrep` or a lightweight Lisp vector db).
+- **System 1 (LLM):** Formats the retrieved text into the Context API so downstream skills can read it before making decisions.
+
+** 3. The Shell Actuator
+- **Skill File:** `skills/skill-shell-actuator.org`
+- **Role:** Gives the agent hands outside of Emacs.
+- **Registration:** Uses `(org-agent:register-actuator :shell #'execute-shell-safely)`.
+- **System 2 (Gatekeeper):** A massive, paranoid Lisp function that whitelist-checks commands (e.g., allows `git status`, blocks `rm`).
+
+** 4. The Cron Scheduler
+- **Skill File:** `skills/skill-cron.org`
+- **Role:** Autonomous temporal action.
+- **Trigger:** `(eq sensor :heartbeat)`
+- **System 2 (Lisp):** Queries the `*object-store*` for deadlines. If a deadline has passed, it creates an action.
+- **System 1 (LLM):** Drafts a polite, contextual warning message to send to the user.
+
+** 5. Web Research
+- **Skill File:** `skills/skill-web-research.org`
+- **Role:** Internet connectivity via headless text browsing.
+- **System 2 (Lisp):** Wraps `lynx` and `curl` to fetch webpage content.
+- **System 1 (LLM):** Parses the raw HTML/text and synthesizes a summary for the user.

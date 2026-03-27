@@ -1,0 +1,17 @@
+#+TITLE: PRD: Org-Native Multi-Modal Delivery
+#+AUTHOR: PSF Requirements Definer
+#+STATUS: FROZEN
+
+* 1. Purpose
+Enable the agent to communicate outside of Emacs while maintaining all outbound records in a human-readable, homoiconic format.
+
+* 2. Functional Requirements
+- **Org-Native Outbox:** The system MUST use a central Org file (`9_system/delivery.org`) as its outbound message queue.
+- **Actuator API:** A `:delivery` actuator MUST be registered to handle external messaging intents.
+- **Channel Support:** The system MUST support Signal, Telegram, and Discord metadata.
+- **Proactive Alerts:** The Cron skill MUST be able to route alerts to the delivery actuator based on Org properties.
+
+* 3. Success Criteria
+ - DONE New messages appear as structured headlines in `delivery.org`.
+ - DONE Metadata (channel, target) is stored in native Org property drawers.
+ - DONE No hidden JSON or external database required for queueing.
