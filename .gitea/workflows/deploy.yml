@@ -1,0 +1,18 @@
+name: Deploy org-agent
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: debian-latest
+    steps:
+      - name: Build and Deploy
+        run: |
+          # Use the host's docker.sock to manage the deployment
+          cd /barrel/computers/memex-2/projects/org-agent
+          git pull --rebase
+          docker compose -f deploy/docker/docker-compose.yml down
+          docker compose -f deploy/docker/docker-compose.yml build --no-cache org-agent
+          docker compose -f deploy/docker/docker-compose.yml up -d org-agent
