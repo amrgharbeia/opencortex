@@ -1,20 +1,25 @@
-name: Deploy-Agent-V7-Absolute
+name: Deploy-Agent-V8-NoCheckout
 on:
   push:
     branches:
       - main
 
 jobs:
-  JOB-V7-ABSOLUTE-FINAL-PATH:
+  JOB-V8-DIRECT-MOUNT:
     runs-on: debian-latest
     steps:
-      - name: Checkout Code
-        uses: actions/checkout@v3
-
-      - name: FINAL-DEPLOY-STEP
+      - name: Build and Deploy From Host Mount
         run: |
-          # VERSION 7 - COMPLETELY HOST-AGNOSTIC
-          # We do NOT use 'cd' at all.
+          # VERSION 8 - DIRECT MOUNT
+          # We bypass 'actions/checkout' because it requires Node.js inside the runner.
+          # Instead, we use the /memex folder already mounted from the host.
+          
+          echo "Syncing latest code from host mount..."
+          cd /memex/projects/org-agent
+          
+          # Since the host is using HTTPS/SSH we can't 'git pull' easily inside the runner,
+          # but for the binary build, we just need the files.
+          
           docker compose -f deploy/docker/docker-compose.yml down
           docker compose -f deploy/docker/docker-compose.yml build --no-cache org-agent
           docker compose -f deploy/docker/docker-compose.yml up -d --force-recreate org-agent
