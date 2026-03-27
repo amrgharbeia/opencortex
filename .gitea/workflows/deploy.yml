@@ -1,23 +1,24 @@
-name: Deploy-Agent-V11-HostSocket
+name: Deploy-Agent-V12-InstallDocker
 on:
   push:
     branches:
       - main
 
 jobs:
-  JOB-V11-HOST-DAEMON:
+  JOB-V12-DOCKER-CLI:
     runs-on: debian-latest
     steps:
+      - name: Install Docker CLI
+        run: |
+          echo "Installing Docker CLI..."
+          apt-get update
+          apt-get install -y docker.io docker-compose-v2
+
       - name: Deploy via Host Docker Socket
         run: |
-          # VERSION 11 - THE HOST-SOCKET STRATEGY
-          # We don't 'cd' inside the runner because the runner doesn't have the mount.
-          # Instead, we tell the HOST'S Docker to build using the HOST'S paths.
-          
           echo "Sending build command to host Docker daemon..."
           
-          # We use -f for the config and --project-directory to set the build context
-          # to the real path on your LXC (/memex).
+          # We use the absolute path /memex which both the runner and host understand
           
           docker compose \
             -f /memex/projects/org-agent/deploy/docker/docker-compose.yml \
