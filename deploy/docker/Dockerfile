@@ -21,6 +21,9 @@ WORKDIR /app
 COPY org-agent.asd /app/
 COPY src/ /app/src/
 
+# Ensure we aren't using a stale binary from the host
+RUN rm -f /app/org-agent-server
+
 # Build the standalone binary natively inside the container
 # This ensures GLIBC compatibility with the runtime environment.
 RUN sbcl --non-interactive \
