@@ -13,10 +13,8 @@ jobs:
 
       - name: Build and Deploy
         run: |
-          # We are now in the runner's workspace containing the checked-out code.
-          # The host's docker.sock allows us to manage containers on node-1.
-          
+          # The runner has /memex mounted, so we cd to the project root
+          cd /memex/projects/org-agent
           docker compose -f deploy/docker/docker-compose.yml down
           docker compose -f deploy/docker/docker-compose.yml build --no-cache org-agent
           docker compose -f deploy/docker/docker-compose.yml up -d org-agent
-# Final CI/CD sync
