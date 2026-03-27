@@ -1,24 +1,25 @@
-name: Deploy-Agent-V12-InstallDocker
+name: Deploy-Agent-V13-FixDockerPkg
 on:
   push:
     branches:
       - main
 
 jobs:
-  JOB-V12-DOCKER-CLI:
+  JOB-V13-DOCKER-CLI:
     runs-on: debian-latest
     steps:
       - name: Install Docker CLI
         run: |
           echo "Installing Docker CLI..."
           apt-get update
-          apt-get install -y docker.io docker-compose-v2
+          # Use docker-compose instead of docker-compose-v2 for standard Debian
+          apt-get install -y docker.io docker-compose
 
       - name: Deploy via Host Docker Socket
         run: |
           echo "Sending build command to host Docker daemon..."
           
-          # We use the absolute path /memex which both the runner and host understand
+          # Use the absolute path /memex which both the runner and host understand
           
           docker compose \
             -f /memex/projects/org-agent/deploy/docker/docker-compose.yml \
