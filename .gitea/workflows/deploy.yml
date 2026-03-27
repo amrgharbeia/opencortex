@@ -1,36 +1,44 @@
-name: Deploy-Agent-V14-FixComposeCmd
+name: Deploy-Agent-V15-Stdin
 on:
   push:
     branches:
       - main
 
 jobs:
-  JOB-V14-DOCKER-CLI:
+  JOB-V15-STDIN:
     runs-on: debian-latest
     steps:
+      - name: Checkout Code
+        uses: actions/checkout@v3
+
       - name: Install Docker CLI
         run: |
           echo "Installing Docker CLI..."
           apt-get update
           apt-get install -y docker.io docker-compose
 
-      - name: Deploy via Host Docker Socket
+      - name: Deploy via Host Docker Socket (Stdin Method)
         run: |
-          echo "Sending build command to host Docker daemon..."
+          echo "Piping local compose file to host Docker daemon..."
           
-          # Using docker-compose (hyphenated) for better compatibility with standard apt packages
+          # We read the compose file from the checked-out code in the runner,
+          # but we tell the host Docker daemon that the "project directory" is /memex/projects/org-agent.
+          # The host daemon will use its own /memex files to build the image.
           
-          docker-compose \
-            -f /memex/projects/org-agent/deploy/docker/docker-compose.yml \
+          cat deploy/docker/docker-compose.yml | docker-compose \
+            -p org-agent \
             --project-directory /memex/projects/org-agent \
+            -f - \
             down
             
-          docker-compose \
-            -f /memex/projects/org-agent/deploy/docker/docker-compose.yml \
+          cat deploy/docker/docker-compose.yml | docker-compose \
+            -p org-agent \
             --project-directory /memex/projects/org-agent \
+            -f - \
             build --no-cache org-agent
             
-          docker-compose \
-            -f /memex/projects/org-agent/deploy/docker/docker-compose.yml \
+          cat deploy/docker/docker-compose.yml | docker-compose \
+            -p org-agent \
             --project-directory /memex/projects/org-agent \
+            -f - \
             up -d --force-recreate org-agent
