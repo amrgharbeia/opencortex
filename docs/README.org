@@ -1,133 +1,183 @@
 #+TITLE: org-agent: The Neurosymbolic Kernel
 #+AUTHOR: User
 #+CREATED: [2026-03-17 Tue]
-#+UPDATED: [2026-03-31 Tue]
+#+UPDATED: [2026-03-24 Tue]
 
 A hyper-minimalist, self-editing, proactive AI agent framework. `org-agent` acts as the "executive soul" of a personal OS, using Org-mode as its native memory and Common Lisp as its deterministic reasoning engine.
 
-* The Philosophy: The PSF Mandates
+* The Philosophy
 
-The system is governed by three non-negotiable mandates from the **Personal Software Foundry (PSF)** that ensure long-term sustainability and human-agent alignment:
+** Mandate 1: Strictly Org-mode and Common Lisp
+The system is built on a "No Legacy" policy. Markdown (.md) and JSON are strictly prohibited for internal system logic, planning, and memory. Org-mode is the native Abstract Syntax Tree (AST) for both human and machine, and Common Lisp (SBCL) is the deterministic reasoning engine.
 
-** 1. Lisp Machine Sovereignty
-The agent is a living Lisp image (SBCL). Code is updated via late-binding, hot-reloading into the active image. Manual "restarts" are considered a failure of architectural integrity. The system is a "Living Organism" rather than a static script.
+** Mandate 2: Minimalist Core, Skill-Based Extension
+The `org-agent` kernel (the Daemon) MUST remain a minimalist microkernel. It handles only the cognitive loop, the persistent Object-Store, and the communication protocol. All business logic, LLM provider connectors, and task-management rules MUST be implemented as hot-reloadable **Skills** living in the user's Memex.
 
-** 2. Homoiconic Memory (The Org Mandate)
-Every document, plan, PRD, and skill in the system MUST be written in **Org-mode**. Markdown (.md) and JSON/YAML/XML are strictly prohibited for internal system logic. Org-mode provides a rigorous, hierarchical AST for both machine and human, ensuring they share the exact same mental model.
+** Why Org-mode? (Homoiconic Memory)
+Most agent frameworks rely on a messy combination of Python scripts, JSON states, and Markdown prompts. This breaks the human-agent interface. JSON is for machines; Markdown is for humans. 
 
-** 3. Literate Programming (Knuth-Sovereign Principle)
-The PSF treats code not as instructions for a computer, but as a "work of literature" for humans that happens to be executable. All system logic is implemented as **Literate Org files**. Documentation (the "Why") and Implementation (the "How") are unified, ensuring the system's **Institutional Memory** is preserved.
+*Org-mode is for both.* It provides a rigorous, hierarchical Abstract Syntax Tree (AST) that a machine can navigate deterministically, while remaining a perfectly ergonomic, human-readable text document. In this system, your notes, your tasks, your prompts, and your agent's code all live in the exact same format.
 
-* The Architecture: The Neurosymbolic Cognitive Loop
+** Why Common Lisp? (The Kernel vs. The Actuators)
+The `org-agent` kernel is built in Common Lisp to provide a persistent, high-performance background process (SBCL) that maintains a live, threaded Object Store in RAM. It performs heavy neurosymbolic reasoning asynchronously, decoupled from any single user interface.
 
-The kernel operates on a deterministic pipeline (OODA) that bridges intuitive "Neural" thinking with rigorous "Symbolic" logic.
+This architecture treats all interfaces as external **Actuators** and **Sensors**:
+- **Editor Actuator (Emacs):** A sensor array that detects file changes and executes structural refactoring.
+- **Messaging Actuator (Signal/Telegram/Discord):** A delivery channel for proactive alerts and human-in-the-loop decisions.
+- **Web Actuator (Dashboard):** A visual telemetry interface for monitoring the live kernel state.
 
-#+begin_src mermaid
-graph TD
-    subgraph Sensors
-        Emacs[Emacs Bridge]
-        Cron[Cron Heartbeat]
-        Signal[Signal Inbound]
-    end
+* The Architecture: The Cognitive Loop
 
-    subgraph Kernel [The Neurosymbolic Kernel]
-        Perceive[Perceive: Update Object Store]
-        Think[Think: System 1 Neural Proposal]
-        Decide[Decide: System 2 Symbolic Gate]
-        Act[Act: Dispatch to Actuators]
-    end
+The core engine is agnostic to both business logic and communication channels. It routes data through a strict four-stage cognitive pipeline:
 
-    subgraph Actuators
-        Refactor[Org Buffer Refactor]
-        Shell[Shell/Sandbox Actuator]
-        Notify[External Delivery]
-    end
+1. **Perceive:** Sensors (Emacs, Webhooks, CRON) send updates over the Org-Agent Communication Protocol (OACP). The kernel updates its live Object Store.
+2. **Think (System 1):** The `neuro.lisp` module queries an LLM (e.g., Gemini, OpenAI, or local models) based on the context, asking for an intuitive, pattern-matched suggestion. It returns an *unverified* proposed action.
+3. **Decide (System 2):** The `symbolic.lisp` module is the absolute gatekeeper. It takes the LLM's proposal and runs it through strict Lisp constraints (e.g., "A parent task cannot be marked DONE if it has active TODO children"). If the logic fails, the LLM is overruled.
+4. **Act:** Verified commands are dispatched to the appropriate Actuators (refactoring a buffer, sending a Signal message, or updating a database).
 
-    Sensors --> Perceive
-    Perceive --> Think
-    Think --> Decide
-    Decide --> Act
-    Act --> Actuators
-    
-    %% Feedback Loop
-    Actuators -.-> Sensors
-#+end_src
+* Extensibility: The Org-Native Skill Standard
 
-- **System 1 (Neural):** Uses LLMs (Gemini, Ollama) for pattern matching and creative problem-solving. It is fast but unreliable.
-- **System 2 (Symbolic):** Uses Common Lisp and formal logic to verify LLM proposals against security invariants and structural rules. It is the absolute gatekeeper.
+To keep the core microkernel minimal, all capabilities (API connectors, GTD logic, Atomic Notes (Zettelkasten) memory management) are abstracted into **Skills**.
 
-* Extensibility: The Skill Graph
+Adhering to the Lisp Machine Mandate (Code is Data), a skill is not a Python folder. A skill is a single `.org` file located in the Atomic Notes (Zettelkasten) directory.
 
-Capabilities are not hardcoded. They live as nodes in a **Skill Graph**. Each skill is an Org file that can declare dependencies on others, forming a network of recursive, networked intelligence.
-
-#+begin_src mermaid
-graph LR
-    Kernel[Daemon Core] --> Router[:skill-router]
-    Router --> AtomicNotes[:skill-atomic-notes]
-    Router --> WebResearch[:skill-web-research]
-    
-    ProjectFoundry[:skill-project-foundry] --> Shell[:skill-shell-actuator]
-    ProjectFoundry --> GTD[:skill-gtd]
-    
-    Groomer[:skill-groomer] --> TDD[:skill-tdd-runner]
-    Groomer --> Scientist[:skill-scientist]
-    
-    Scientist --> SelfFix[:skill-self-fix]
-    SelfFix --> Shell
-    
-    %% Capabilities
-    AtomicNotes --> OS[CLOSOS Object Store]
-    Shell --> Hardware[Hardware / Sandbox]
-#+end_src
+The kernel parses these `.org` files at startup, extracts the `#+begin_src lisp` blocks, and hot-loads them into the live system. You can define a System 1 Prompt and a System 2 Verification Rule entirely within your personal notes.
 
 * Security & Isolation
 
-`org-agent` implements strict defense-in-depth to safely handle LLM-generated code:
+Using `eval` on text generated by LLMs or extracted from text files is fundamentally dangerous. `org-agent` implements strict defense-in-depth:
 
 ** Layer 1: Lisp-Level Sandboxing
-- **Reader Safety:** `*read-eval*` is strictly disabled during AST parsing.
-- **Package Jailing:** Every Org-Native skill is dynamically compiled into its own isolated Lisp package (`:org-agent.skills.<name>`).
-- **Formal Verification Gate:** System 2 uses an SMT-based gate to prove that proposed shell commands do not violate security invariants.
+- **Reader Safety:** `*read-eval*` is strictly disabled during AST parsing, completely neutralizing reader macro injection attacks (`#.(uiop:run-program ...)`).
+- **Package Jailing:** Every Org-Native skill is dynamically compiled into its own isolated Lisp package (`:org-agent.skills.<name>`). Skills cannot accidentally (or maliciously) overwrite the core System 2 gatekeeper or collide with other skills.
 
-** Layer 2: Hardware Compartmentalization
-The entire kernel can be isolated within a "Hardware Compartment" (Docker, MicroVM, or Bare Metal) to protect the host OS.
-
-* The Evolution: Path to Order 5
-
-The development of `org-agent` follows five orders of autonomy:
-
-1. **Order 1: Intelligent Assistant:** Manages notes, code, and daily ingress drudgery.
-2. **Order 2: Sovereign Architect (Current):** Achieves **Recursive Self-Maintenance** (Grooming, Self-Repair, Hardware Inhabitation).
-3. **Order 3: Federated Swarm:** Multi-agent coordination across distributed hardware.
-4. **Order 4: Physical Actuator:** Orchestrating the material world (Home automation, SDR, Energy).
-5. **Order 5: The 100-Year Memex:** Absolute convergence where Agent and Hardware dissolve into a single, sovereign persistent ancestor.
-
-* Installation & Setup Guide
-
-** Step 1: Server Setup (Global Docker Compose)
-`org-agent` fits into a professional multi-app Docker environment.
-
-1. **Clone the repository on your server:**
-   #+begin_src bash
-   git clone http://<gitea-ip>:3000/amr/memex-amero.git /home/amr/memex
-   #+end_src
-
-2. **Configure your Environment (.env):**
-   Place your `.env` file in `/docker/compose/` with your keys.
-
-3. **Start the Service:**
-   #+begin_src bash
-   docker-compose up -d org-agent
-   #+end_src
-
-** Step 2: Local Emacs Setup
-1. Load `org-agent.el` in your local Emacs.
-2. Configure `org-agent-host` and `org-agent-port`.
-3. Run `M-x org-agent-connect` to establish the OACP socket.
+** Layer 2: OS-Level Containerization
+The entire Common Lisp kernel can be isolated within a "Hardware Compartment" to protect the host OS.
 
 * Documentation
 
+Detailed specifications and planning documents are located in the [[file:docs/][docs/]] directory:
+- [[file:docs/PRD.org][Product Requirements Document (PRD)]]
+- [[file:docs/PROTOCOL.org][Communication Protocol (OACP)]]
 - [[file:docs/PHASE_2_ROADMAP.org][Phase 2 Roadmap]]
-- [[file:docs/PRD_PROJECT_FOUNDRY.org][PRD: Project Foundry]]
-- [[file:docs/PROTOCOL_model_discovery.org][Protocol: Model Discovery]]
-- [[file:docs/reports/grooming-report-2026-03-31.org][Latest Grooming Report]]
+- Specialized PRDs for [[file:docs/PRD_PROJECT_FOUNDRY.org][Project Foundry]], [[file:docs/PRD_ORG_DELIVERY.org][Org Delivery]], [[file:docs/PRD_LLM_CASCADE.org][LLM Cascade]], and more.
+
+* Hardware Compartments (Deployment)
+
+`org-agent` supports multiple levels of isolation. Choose the compartment that fits your security and performance needs. See the `deploy/` directory for templates.
+
+** 1. Bare Metal
+Run directly on your host CPU for maximum performance. Best for development.
+
+** 2. Docker (Standard)
+The default containerized experience.
+
+** 3. LXC / Systemd-nspawn
+Lightweight Linux containers with lower overhead than Docker.
+
+** 4. Virtual Machines (Debian / Fedora)
+Strong isolation using Vagrant/VirtualBox. Ensures zero-leakage from the Lisp machine.
+
+** 5. Functional Deployment (Guix)
+Reproducible, declarative environment management.
+
+* Installation & Setup Guide
+
+This guide covers the standard distributed deployment: running the `org-agent` daemon on a remote Docker server, connecting to it from your local Emacs instance, and configuring dynamic LLMs (like OpenRouter).
+
+** Step 1: Server Setup (Global Docker Compose)
+`org-agent` is designed to fit into a professional multi-app Docker environment.
+
+1. **Clone the repository on your server:**
+   #+begin_src bash
+   git clone http://10.10.10.43:3000/amr/memex-amero.git /home/amr/memex
+   #+end_src
+
+2. **Configure your Environment (.env):**
+   Place your `.env` file in `/docker/compose/` alongside your master `docker-compose.yml`.
+   #+begin_src bash
+   # Create /docker/compose/.env with your keys:
+   # OPENROUTER_API_KEY=your_key_here
+   # ORG_AGENT_DAEMON_PORT=9105
+   # ORG_AGENT_WEB_PORT=8080
+   # MEMEX_DIR=/memex
+   #+end_src
+
+3. **Integrate into Global Compose:**
+   Add the following service fragment to your master file at `/docker/compose/docker-compose.yml`:
+   #+begin_src yaml
+   services:
+     org-agent:
+       build:
+         context: /home/amr/memex/projects/org-agent
+         dockerfile: deploy/docker/Dockerfile
+       container_name: org-agent
+       restart: unless-stopped
+       ports:
+         - "9105:9105"
+         - "8080:8080"
+       volumes:
+         - /docker/memex:/memex
+       env_file:
+         - .env
+   #+end_src
+
+4. **Start the Service:**
+   #+begin_src bash
+   cd /docker/compose
+   docker-compose up -d org-agent
+   #+end_src
+
+** Step 2: Local Emacs Setup (The Actuator)
+Your laptop acts as the sensor/actuator array.
+
+1. **Load the Emacs Package:**
+   Evaluate the `org-agent.el` file in your local Emacs.
+   #+begin_src elisp
+   (add-to-list 'load-path "/path/to/local/org-agent/src")
+   (require 'org-agent)
+   #+end_src
+
+2. **Configure the Connection:**
+   Tell Emacs where your Docker server is located.
+   #+begin_src elisp
+   (setq org-agent-host "10.0.0.5") ;; Replace with your server's IP
+   (setq org-agent-port 9105)
+   #+end_src
+
+3. **Connect to the Brain:**
+   Run the interactive command to establish the OACP socket.
+   `M-x org-agent-connect`
+
+** Step 3: Dynamic Model Configuration (Homoiconic Setup)
+`org-agent` does not use external JSON config files for its behavior. You configure the agent directly within your Org-mode Memex.
+
+1. Open any `.org` file in your Memex (e.g., `settings.org`).
+2. Add the following property to define your preferred model:
+   #+begin_src org
+   * Agent Settings
+   :PROPERTIES:
+   :LLM_MODEL_OPENROUTER: google/gemini-pro-1.5
+   :END:
+   #+end_src
+3. **Save the buffer.** The agent instantly detects the change via Emacs, updates its internal Object Store, and routes all future neural thoughts through the selected model.
+
+To see all available models, simply type `@agent list models` in any Org buffer and save.
+
+* Current State: Phase 3 (The Self-Editing Kernel) Achieved
+
+- DONE Core Lisp microkernel (Cognitive Loop: Perceive -> Think -> Decide -> Act)
+- DONE OACP (Swank/Socket communication protocol) implemented
+- DONE Org AST-to-Lisp conversion logic & Object Store integration
+- DONE System 2 Safety Gating (The Harness) established
+- DONE Org-Native Skill parsing and loading
+- DONE Secure Docker containerization
+- DONE Skill Graph & Recursive Dependencies (Ars Contexta)
+- DONE Multi-Provider LLM Failover Cascade
+- DONE Context API (Peripheral Vision)
+- DONE Heartbeat Loop (Proactive Awareness)
+- DONE Immune System (Autonomous Self-Repair)
+- DONE Web Dashboard (Visual Telemetry)
+- DONE Org-Native Multi-modal Delivery (Signal/Telegram/Discord)
+- DONE Project Foundry (Autonomous Scaffolding & Git Stewardship)
+- DONE Strictly Org-mode Mandate (.md purge)
