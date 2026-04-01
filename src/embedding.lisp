@@ -4,15 +4,32 @@
 ;;; Vector Embedding and Math
 ;;; ============================================================================
 
+(defvar *embedding-registry* (make-hash-table :test 'equal)
+  "Registry of embedding provider functions.")
+
+(defvar *embedding-provider* :gemini
+  "The active embedding provider.")
+
+(defun register-embedding-provider (name fn)
+  "Registers a function to handle vector embedding requests."
+  (setf (gethash name *embedding-registry*) fn))
+
 (defun get-embedding (text)
-  "Fetches the vector embedding for a given text string from Gemini's embedding-004 model."
+  "Fetches the vector embedding for a given text string using the active provider."
+  (let ((provider-fn (gethash *embedding-provider* *embedding-registry*)))
+    (if provider-fn
+        (funcall provider-fn text)
+        (progn
+          (kernel-log "EMBEDDING ERROR: No provider registered for ~a" *embedding-provider*)
+          nil))))
+
+;;; --- Default Provider: Gemini ---
+
+(defun embed-gemini (text)
   (let* ((auth (get-provider-auth :gemini))
          (api-key (getf auth :api-key))
          (endpoint "https://generativelanguage.googleapis.com/v1beta/models/text-embedding-004:embedContent"))
-    
-    (unless api-key
-      (return-from get-embedding nil))
-    
+    (unless api-key (return-from embed-gemini nil))
     (let* ((url (format nil "~a?key=~a" endpoint api-key))
            (headers `(("Content-Type" . "application/json")))
            (body (cl-json:encode-json-to-string
@@ -21,11 +38,14 @@
       (handler-case
           (let* ((response (dex:post url :headers headers :content body))
                  (json (cl-json:decode-json-from-string response)))
-            ;; Path: embedding.values
             (cdr (assoc :values (cdr (assoc :embedding json)))))
         (error (c)
-          (kernel-log "EMBEDDING FAILURE: ~a" c)
+          (kernel-log "EMBEDDING FAILURE [Gemini]: ~a" c)
           nil)))))
+
+(register-embedding-provider :gemini #'embed-gemini)
+
+;;; --- Math Utilities ---
 
 (defun dot-product (v1 v2)
   (reduce #'+ (mapcar #'* v1 v2)))

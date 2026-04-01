@@ -1,0 +1,50 @@
+#+TITLE: Technical Debt Report: org-agent Kernel Grooming (2026-03-31)
+#+AUTHOR: Gemini CLI (Autonomous Groomer Agent)
+#+FILETAGS: :grooming:audit:technical-debt:psf:
+
+* 1. Executive Summary
+The `org-agent` kernel is largely aligned with the "Neurosymbolic" and "Org-Native" mandates. However, several "just-in-case" features and hardcoded dependencies on non-sovereign LLM providers have been identified. Redundant function definitions in the core event bus indicate a need for surgical consolidation.
+
+* 2. Audit Findings
+
+** A. Redundancy in `core.lisp`
+`dispatch-action` is defined twice (lines 92 and 159). The second definition references an undefined variable `*actuators*`, which likely causes runtime errors if triggered.
+
+** B. Hardcoded Proprietary Dependencies
+`embedding.lisp` is tightly coupled to Google's Gemini API (`text-embedding-004`). This violates the **Sovereignty Above All** invariant.
+
+** C. Business Logic Leakage
+The `:auth-google-code` handler in `execute-system-action` (kernel core) is specific to a single skill/provider. This breaks the microkernel abstraction.
+
+** D. Semantic Bloat (Just-in-case Computing)
+Every ingested Org element triggers a synchronous embedding call in `object-store.lisp`. This is inefficient and introduces high latency/cost for large files, violating the **Zero-Bloat Mandate**.
+
+** E. Aspirational Code
+The "Distillation Loop" and "Swarm" logic are present in the kernel but appear incomplete or unused in the primary cognitive loop.
+
+* 3. Proposed Surgical Refactors
+
+** Refactor 1: Consolidate the Actuator Registry
+- **Action**: Remove the duplicate `dispatch-action` in `core.lisp`.
+- **Action**: Standardize on `*actuator-registry*`.
+- **Action**: Move the `:auth-google-code` logic out of the kernel and into a dedicated `auth` skill hook.
+- **Alignment**: **Zero-Bloat Mandate** (Invariant 3).
+
+** Refactor 2: Pluggable & Lazy Embeddings
+- **Action**: Abstract the embedding logic into a provider-agnostic interface similar to `ask-neuro`.
+- **Action**: Allow the user to specify a local (e.g., Llama.cpp or Ollama) embedding model.
+- **Action**: Make embedding generation **lazy** or **opt-in** via Org properties (e.g., `:EMBED: t`) to avoid "Semantic Bloat".
+- **Alignment**: **Sovereignty Above All** (Invariant 1) & **Zero-Bloat** (Invariant 3).
+
+** Refactor 3: Decouple "Peripheral Vision" (Context API)
+- **Action**: Move `context-query-store` and other search helpers from `object-store.lisp` into a `context-utils.lisp` or a core skill.
+- **Action**: Simplify the `org-object` struct to remove the `vector` field by default, storing vectors in a separate side-car hash table only when needed.
+- **Alignment**: **Minimalist Core Mandate** (Philosophy Mandate 2).
+
+* 4. Verification (SOUL.org Alignment)
+
+| Refactor | Invariant Alignment | Rationale |
+|----------+---------------------+-----------|
+| 1        | Radical Transparency | Removes confusing duplicate logic and prevents runtime panics. |
+| 2        | Sovereignty / Sustainability | Enables offline-first operation and reduces cloud dependency/cost. |
+| 3        | Zero-Bloat Mandate | Keeps the microkernel focused strictly on the cognitive OODA loop. |

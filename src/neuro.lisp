@@ -104,6 +104,10 @@
                        ;; Read the LLM string back into a native Lisp data structure.
                        (suggestion (ignore-errors (read-from-string thought))))
                   (kernel-log "SYSTEM 1 Suggestion: ~a~%" thought)
+                  ;; SOTA: Store the successful prompt/result for future distillation
+                  (when (and suggestion (not (eq suggestion :rejected)))
+                    (setf (getf (gethash (skill-name active-skill) *skill-telemetry*) :last-successful-thought)
+                          (list :prompt prompt :result thought)))
                   suggestion)
                 ;; If the skill has no neuro-prompt, it's a 'Deterministic Skill' (Symbolic-only).
                 '(:type :LOG :payload (:text "Skill triggered (Deterministic only)")))))
@@ -124,8 +128,12 @@
 (defun distillation-loop ()
   "Periodically reviews internal logs and distills prompts for active skills.
    This is an autonomous self-improvement cycle."
-  (let ((logs (context-get-system-logs 50)))
-    (dolist (log logs)
-      (when (search "Verified by skill" log)
-        ;; Extract the skill name and attempt distillation
-        (kernel-log "NEURO - Triggering prompt distillation cycle...")))))
+  (maphash (lambda (name telemetry)
+             (let ((thought (getf telemetry :last-successful-thought)))
+               (when thought
+                 (kernel-log "NEURO [Evolution] - Distilling prompt for skill '~a'..." name)
+                 (let ((distilled (distill-prompt (getf thought :prompt) (getf thought :result))))
+                   ;; In a full Order 2 implementation, we would now surgically update 
+                   ;; the .org file with the #+DISTILLED_PROMPT: property.
+                   (kernel-log "NEURO [Evolution] - Distilled prompt for ~a: ~a" name distilled)))))
+           *skill-telemetry*))

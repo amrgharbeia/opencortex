@@ -106,9 +106,8 @@
 
 (defun dispatch-action (action)
   "Routes an approved action intent to the correct physical actuator."
-  (when action
+  (when (and action (not (eq action :rejected)))
     (let* ((payload (getf action :payload))
-           ;; We default to :emacs for backward compatibility.
            (target (or (getf action :target) :emacs))
            (actuator-fn (gethash target *actuator-registry*)))
       (if actuator-fn
@@ -148,15 +147,8 @@
                (setf (skill-priority skill) val)
                (kernel-log "ACTUATOR [System] - Set priority of ~a to ~a" name val))
              (kernel-log "ACTUATOR [System] ERROR - Skill ~a not found" name))))
-      (:auth-google-code
-       (let ((code (getf payload :code)))
-         (kernel-log "ACTUATOR [System] - Received Google OAuth code. Exchanging...")
-         ;; We call the function in the skill package. 
-         ;; Note: In a production kernel, we would use a more robust hook system.
-         (if (uiop:symbol-call :org-agent.skills.org-skill-auth-google-oauth :auth-google-receive-code code)
-             (kernel-log "ACTUATOR [System] - Google OAuth exchange successful.")
-             (kernel-log "ACTUATOR [System] - Google OAuth exchange FAILED."))))
       (t (kernel-log "ACTUATOR [System] - Unknown command ~a" cmd)))))
+
 
 ;;; ============================================================================
 ;;; The Cognitive Loop (OODA)
@@ -186,42 +178,7 @@
       
       (dispatch-action approved-action))))
 
-(defun perceive (raw-message)
-  "Updates the Object Store based on incoming stimulus and returns the context."
-  (let ((type (getf raw-message :type))
-        (payload (getf raw-message :payload)))
-    (kernel-log "PERCEIVE: ~a (~a)" type (or (getf payload :sensor) "no-sensor"))
-    (cond
-     ((eq type :EVENT)
-      (let ((sensor (getf payload :sensor)))
-        (case sensor
-          (:buffer-update
-           (let ((ast (getf payload :ast)))
-             (when ast (ingest-ast ast))))
-          (:point-update
-           (let ((element (getf payload :element)))
-             (when element (ingest-ast element))))
-          ;; Ensure we don't return NIL for these
-          (:user-command t)
-          (:heartbeat t)
-          (:chat-message t))))
-     ((eq type :RESPONSE)
-      (kernel-log "ACT RESULT: ~a" (getf payload :status))))
-    
-    ;; ALWAYS return the raw message as the context base
-    raw-message))
-
-(defun dispatch-action (action)
-  "Sends an approved action to the appropriate actuator."
-  (when (and action (not (eq action :rejected)))
-    (let ((target (getf action :target)))
-      (kernel-log "DISPATCH: Target ~a" target)
-      (let ((actuator (gethash target *actuators*)))
-        (if actuator
-            (funcall actuator action)
-            (kernel-log "ERROR: No actuator registered for ~a" target))))))
-
-;;; ============================================================================
+;;; ================= ===========================================================
 ;;; Daemon Lifecycle Management
 ;;; ============================================================================
 
