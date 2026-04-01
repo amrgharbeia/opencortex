@@ -18,13 +18,21 @@
   "Helper: Fetches an environment variable with a fallback default."
   (or (uiop:getenv var) default))
 
-(defvar *llm-api-key* (get-env "LLM_API_KEY")
-  "The API key for the neural engine (LLM Provider).")
+;;; --- Pluggable Authentication Backends ---
 
-(defvar *llm-endpoint* (get-env "LLM_ENDPOINT" "https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent")
-  "The default neural endpoint (currently defaulting to Gemini).")
+(defvar *auth-providers* (make-hash-table :test 'equal)
+  "Registry of authentication provider skills. Key is provider keyword (e.g., :gemini).")
 
-;;; --- Pluggable Neuro Backends ---
+(defun register-auth-provider (name fn)
+  "Register a function that returns the required auth headers for a provider."
+  (setf (gethash name *auth-providers*) fn))
+
+(defun get-provider-auth (provider)
+  "Queries the registered auth skill for the necessary headers."
+  (let ((auth-fn (gethash provider *auth-providers*)))
+    (if auth-fn
+        (funcall auth-fn)
+        nil)))
 
 (defvar *neuro-backends* (make-hash-table :test 'equal)
   "Registry of neural provider backends.")
@@ -52,21 +60,27 @@
     "(:type :LOG :payload (:text \"Neural Cascade Failure - All providers exhausted.\"))")
 
 (defun execute-gemini-request (prompt system-prompt)
-  "The default System 1 backend (Gemini)."
-  (unless *llm-api-key*
-    (return-from execute-gemini-request "(:type :LOG :payload (:text \"Neural key missing, using mock System 1\"))"))
-  
-  (let* ((url (format nil "~a?key=~a" *llm-endpoint* *llm-api-key*))
-         (body (cl-json:encode-json-to-string
-                `((contents . ((parts . ((text . ,(format nil "~a~%~%Prompt: ~a" system-prompt prompt))))))))))
-    (handler-case
-        (let* ((response (dex:post url
-                                   :headers '(("Content-Type" . "application/json"))
-                                   :content body))
-               (json (cl-json:decode-json-from-string response)))
-          (cdr (assoc :text (cdr (assoc :parts (car (cdr (assoc :parts (car (cdr (assoc :candidates json)))))))))))
-      (error (c)
-        (format nil "(:type :LOG :payload (:text \"Neural Engine Failure: ~a\"))" c)))))
+  "The default System 1 backend (Gemini). Authentication is now pluggable."
+  (let* ((auth (get-provider-auth :gemini))
+         (api-key (getf auth :api-key))
+         (bearer-token (getf auth :bearer-token))
+         (endpoint (or (getf auth :endpoint) 
+                       "https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent")))
+    
+    (unless (or api-key bearer-token)
+      (return-from execute-gemini-request "(:type :LOG :payload (:text \"Authentication missing for Gemini\"))"))
+    
+    (let* ((url (if api-key (format nil "~a?key=~a" endpoint api-key) endpoint))
+           (headers `(("Content-Type" . "application/json")
+                      ,@(when bearer-token `(("Authorization" . ,(format nil "Bearer ~a" bearer-token))))))
+           (body (cl-json:encode-json-to-string
+                  `((contents . ((parts . ((text . ,(format nil "~a~%~%Prompt: ~a" system-prompt prompt))))))))))
+      (handler-case
+          (let* ((response (dex:post url :headers headers :content body))
+                 (json (cl-json:decode-json-from-string response)))
+            (cdr (assoc :text (cdr (assoc :parts (car (cdr (assoc :parts (car (cdr (assoc :candidates json)))))))))))
+        (error (c)
+          (format nil "(:type :LOG :payload (:text \"Neural Engine Failure: ~a\"))" c))))))
 
 ;; Initialize the default backend
 (register-neuro-backend :gemini #'execute-gemini-request)
@@ -95,3 +109,23 @@
                 '(:type :LOG :payload (:text "Skill triggered (Deterministic only)")))))
         ;; If no skills trigger, the agent remains silent.
         nil)))
+
+;;; ============================================================================
+;;; Prompt Distillation (Self-Evolution)
+;;; ============================================================================
+
+(defun distill-prompt (full-prompt successful-output)
+  "Neural distillation: Summarizes a complex prompt and its success into a denser format.
+   Used for 'Self-Evolving prompts' that reduce token usage over time."
+  (let ((system-instr "You are a Meta-Cognitive Prompt Architect. Your task is to DISTILL the following prompt and its successful result into a SHORTER, HIGH-SIGNAL template that would yield the same result."))
+    (ask-neuro (format nil "PROMPT: ~a~%RESULT: ~a~%~%Create a distilled version." full-prompt successful-output)
+               :system-prompt system-instr)))
+
+(defun distillation-loop ()
+  "Periodically reviews internal logs and distills prompts for active skills.
+   This is an autonomous self-improvement cycle."
+  (let ((logs (context-get-system-logs 50)))
+    (dolist (log logs)
+      (when (search "Verified by skill" log)
+        ;; Extract the skill name and attempt distillation
+        (kernel-log "NEURO - Triggering prompt distillation cycle...")))))

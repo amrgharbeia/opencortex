@@ -236,6 +236,18 @@ will assume you have started it manually (e.g., via SBCL)."
                  :state :saved
                  :ast ,(org-agent--buffer-to-sexp))))))
 
+(defun org-agent-notify-point ()
+  "Sensor: Notify daemon of the element currently at point (Incremental Perception).
+This is much faster than parsing the entire buffer and allows for real-time
+responsiveness to the user's cursor position."
+  (when (and org-agent--network-process (derived-mode-p 'org-mode))
+    (let ((element (org-element-at-point)))
+      (org-agent-send
+       `(:type :EVENT
+         :payload (:sensor :point-update
+                   :file ,(buffer-file-name)
+                   :element ,(org-agent--clean-element element)))))))
+
 ;;; Interaction Commands
 
 (defun org-agent-set-model-cascade (cascade-string)
@@ -264,7 +276,6 @@ e.g., ':gemini,:openai,:ollama'."
         (insert "#+TITLE: org-agent Chat\n#+STARTUP: showall\n\n* Welcome to the Neurosymbolic Lisp Machine\n\nType your message below and press `C-c C-c` to send.\n\n")))
     (switch-to-buffer buf)
     (goto-char (point-max))))
-
 (defun org-agent-chat-send ()
   "Send the current chat buffer content to the agent."
   (interactive)
@@ -280,7 +291,20 @@ e.g., ':gemini,:openai,:ollama'."
       (insert "\n\n** Thinking...\n"))
     (message "org-agent: Message sent.")))
 
+(defun org-agent-auth-google (code)
+  "Submit the Google OAuth authorization CODE to the daemon."
+  (interactive "sEnter Google Authorization Code: ")
+  (unless org-agent--network-process
+    (org-agent-connect))
+  (org-agent-send 
+   `(:type :REQUEST 
+     :id ,(truncate (float-time))
+     :target :system
+     :payload (:action :auth-google-code :code ,code)))
+  (message "org-agent: Authorization code sent to daemon."))
+
 (defun org-agent-organize-subtree ()
+...
   "Command: Ask the agent to organize the current Org subtree."
   (interactive)
   (org-agent-run-command :organize-subtree))
@@ -314,9 +338,11 @@ Org-mode sensing."
   (if org-agent-mode
       (progn
         (add-hook 'after-save-hook #'org-agent-notify-save)
+        (add-hook 'post-command-hook #'org-agent-notify-point)
         (add-hook 'kill-emacs-hook #'org-agent-disconnect)
         (org-agent-connect))
     (remove-hook 'after-save-hook #'org-agent-notify-save)
+    (remove-hook 'post-command-hook #'org-agent-notify-point)
     (remove-hook 'kill-emacs-hook #'org-agent-disconnect)
     (org-agent-disconnect)))
 

@@ -20,6 +20,7 @@
   type       ; The Org element type (e.g., :HEADLINE, :PARAGRAPH, :PLAIN-LIST)
   attributes ; A property list of metadata (e.g., :TITLE, :TAGS, :TODO-STATE)
   content    ; The raw text or non-element data within the node
+  vector     ; The semantic embedding vector (System 1 memory)
   parent-id  ; A pointer to the parent object's ID for tree traversal
   children   ; A list of IDs for all immediate child nodes
   version    ; A timestamp or counter used for cache invalidation
@@ -41,6 +42,11 @@
          (id (or (getf props :ID) 
                  (format nil "temp-~a" (get-universal-time))))
          (contents (getf ast :contents))
+         ;; Extract raw text for embedding if it's a headline
+         (raw-content (when (eq type :HEADLINE)
+                        (format nil "~a~%~a" 
+                                (getf props :TITLE)
+                                (or (cl:getf ast :raw-content) ""))))
          (child-ids nil))
     
     ;; Depth-first ingestion: Recurse into children first to gather their IDs.
@@ -54,12 +60,53 @@
                 :id id
                 :type type
                 :attributes props
+                :content raw-content
+                :vector (when raw-content (get-embedding raw-content))
                 :parent-id parent-id
                 :children (nreverse child-ids) ; Maintain document order
                 :version (get-universal-time)
                 :last-sync (get-universal-time))))
       (setf (gethash id *object-store*) obj)
       id)))
+
+(defvar *object-store-snapshots* nil
+  "A history of previous *object-store* states for rollback/time-travel.")
+
+(defun copy-org-object (obj)
+  "Creates a shallow copy of an org-object struct.
+   Used during snapshotting."
+  (make-org-object 
+   :id (org-object-id obj)
+   :type (org-object-type obj)
+   :attributes (copy-list (org-object-attributes obj))
+   :content (org-object-content obj)
+   :vector (org-object-vector obj)
+   :parent-id (org-object-parent-id obj)
+   :children (copy-list (org-object-children obj))
+   :version (org-object-version obj)
+   :last-sync (org-object-last-sync obj)))
+
+(defun snapshot-object-store ()
+  "Creates a deep-copy of the current object store hash table.
+   Allows for 'Interactive Steering' and state rollback."
+  (let ((snapshot (make-hash-table :test 'equal)))
+    (maphash (lambda (id obj)
+               (setf (gethash id snapshot) (copy-org-object obj)))
+             *object-store*)
+    (push (list :timestamp (get-universal-time) :data snapshot) *object-store-snapshots*)
+    ;; Keep only the last 20 snapshots to prevent memory leaks
+    (when (> (length *object-store-snapshots*) 20)
+      (setf *object-store-snapshots* (subseq *object-store-snapshots* 0 20)))
+    (kernel-log "MEMORY - Object Store snapshot created.")))
+
+(defun rollback-object-store (&optional (index 0))
+  "Restores the Object Store to a previous state."
+  (let ((snapshot (nth index *object-store-snapshots*)))
+    (if snapshot
+        (progn
+          (setf *object-store* (getf snapshot :data))
+          (kernel-log "MEMORY - Object Store rolled back to snapshot ~a" index))
+        (kernel-log "MEMORY ERROR - Snapshot ~a not found." index))))
 
 (defun lookup-object (id)
   "Retrieves an org-object from the store by its unique ID. Returns NIL if not found."

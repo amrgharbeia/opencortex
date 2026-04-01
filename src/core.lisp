@@ -65,14 +65,44 @@
    
    It implements 'Fault-Tolerant Reasoning' using Lisp restarts. If a 
    skill crashes, the daemon survives and moves to the next event."
-  (restart-case
-      (handler-bind ((error (lambda (c)
-                              (kernel-log "SYSTEM ERROR (inject-stimulus): ~a~%" c)
-                              ;; Log the error and invoke the skip-event restart
-                              (invoke-restart 'skip-event))))
-        (cognitive-loop raw-message))
-    (skip-event ()
-      (kernel-log "SYSTEM RECOVERY: Stimulus dropped to prevent kernel panic.~%"))))
+  (let* ((payload (getf raw-message :payload))
+         (async-p (getf payload :async-p)))
+    (if async-p
+        (bt:make-thread (lambda () 
+                          (restart-case
+                              (handler-bind ((error (lambda (c)
+                                                      (kernel-log "ASYNC SYSTEM ERROR: ~a~%" c)
+                                                      (invoke-restart 'skip-event))))
+                                (cognitive-loop raw-message))
+                            (skip-event () nil)))
+                        :name "org-agent-async-task")
+        (restart-case
+            (handler-bind ((error (lambda (c)
+                                    (kernel-log "SYSTEM ERROR (inject-stimulus): ~a~%" c)
+                                    ;; Log the error and invoke the skip-event restart
+                                    (invoke-restart 'skip-event))))
+              (cognitive-loop raw-message))
+          (skip-event ()
+            (kernel-log "SYSTEM RECOVERY: Stimulus dropped to prevent kernel panic.~%"))))))
+
+(defun spawn-task (task-description &key (async-p t))
+  "A programmatic way for skills to delegate sub-tasks to the kernel.
+   If ASYNC-P is true, it spawns a new thread, enabling 'Swarm' orchestration."
+  (let ((msg `(:type :EVENT :payload (:sensor :delegation :query ,task-description :async-p ,async-p))))
+    (inject-stimulus msg)))
+
+(defun send-swarm-packet (target-url payload)
+  "Serializes a cognitive context and dispatches it to a remote org-agent.
+   Enables federated, cross-machine swarming."
+  (let* ((json-payload (cl-json:encode-json-to-string payload))
+         (headers '(("Content-Type" . "application/json"))))
+    (kernel-log "SWARM - Dispatching packet to ~a..." target-url)
+    (handler-case
+        (dex:post target-url :headers headers :content json-payload)
+      (error (c)
+        (kernel-log "SWARM ERROR - Failed to reach remote instance: ~a" c)
+        nil))))
+
 
 (defun dispatch-action (action)
   "Routes an approved action intent to the correct physical actuator."
@@ -118,6 +148,14 @@
                (setf (skill-priority skill) val)
                (kernel-log "ACTUATOR [System] - Set priority of ~a to ~a" name val))
              (kernel-log "ACTUATOR [System] ERROR - Skill ~a not found" name))))
+      (:auth-google-code
+       (let ((code (getf payload :code)))
+         (kernel-log "ACTUATOR [System] - Received Google OAuth code. Exchanging...")
+         ;; We call the function in the skill package. 
+         ;; Note: In a production kernel, we would use a more robust hook system.
+         (if (uiop:symbol-call :org-agent.skills.org-skill-auth-google-oauth :auth-google-receive-code code)
+             (kernel-log "ACTUATOR [System] - Google OAuth exchange successful.")
+             (kernel-log "ACTUATOR [System] - Google OAuth exchange FAILED."))))
       (t (kernel-log "ACTUATOR [System] - Unknown command ~a" cmd)))))
 
 ;;; ============================================================================
@@ -132,6 +170,9 @@
          (context    (perceive raw-message))
          (skill      (find-triggered-skill context))
          (skill-name (when skill (skill-name skill))))
+    
+    ;; SOTA: Snapshot the memory state BEFORE thinking to enable rollback
+    (snapshot-object-store)
     
     (let* ((proposed-action (think context))
            (approved-action (decide proposed-action context))
@@ -157,6 +198,9 @@
           (:buffer-update
            (let ((ast (getf payload :ast)))
              (when ast (ingest-ast ast))))
+          (:point-update
+           (let ((element (getf payload :element)))
+             (when element (ingest-ast element))))
           ;; Ensure we don't return NIL for these
           (:user-command t)
           (:heartbeat t)
@@ -208,15 +252,20 @@
   "Scans the directory defined by SKILLS_DIR (defaults to notes) and hot-loads all skills.
    This is where the daemon acquires its intelligence, now unified with the Atomic Notes (Zettelkasten)."
   (let* ((env-path (uiop:getenv "SKILLS_DIR"))
-         (skills-dir (if env-path 
-                         (uiop:ensure-directory-pathname env-path)
-                         (merge-pathnames "notes/" (uiop:ensure-directory-pathname (uiop:getenv "MEMEX_DIR"))))))
+         (memex-dir (uiop:getenv "MEMEX_DIR"))
+         (skills-dir (cond
+                       (env-path (uiop:ensure-directory-pathname env-path))
+                       (memex-dir (merge-pathnames "notes/" (uiop:ensure-directory-pathname memex-dir)))
+                       (t (merge-pathnames "notes/" (uiop:ensure-directory-pathname (uiop:native-namestring "~/memex/")))))))
     (if (uiop:directory-exists-p skills-dir)
         (progn
-          (kernel-log "KERNEL: Loading skills from consolidated Atomic Notes (Zettelkasten): ~a" skills-dir)
-          (dolist (file (uiop:directory-files skills-dir "skill-*.org"))
-            (load-skill-from-org file)))
-        (kernel-log "KERNEL ERROR: Skills directory not found at ~a" skills-dir))))
+          (kernel-log "KERNEL: Loading skills from consolidated Atomic Notes (Zettelkasten): ~a" (uiop:native-namestring skills-dir))
+          (let ((files (uiop:directory-files skills-dir "org-skill-*.org")))
+            (if files
+                (dolist (file files)
+                  (load-skill-from-org file))
+                (kernel-log "KERNEL: No skills found matching 'org-skill-*.org' in ~a" (uiop:native-namestring skills-dir)))))
+        (kernel-log "KERNEL ERROR: Skills directory not found at ~a" (uiop:native-namestring skills-dir)))))
 
 (defun start-daemon (&key (port 9105))
   "Boots the Neurosymbolic Kernel.

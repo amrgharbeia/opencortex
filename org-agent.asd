@@ -10,6 +10,7 @@
                 :components ((:file "package")
                              (:file "protocol")
                              (:file "object-store")
+                             (:file "embedding")
                              (:file "skills")
                              (:file "neuro")
                              (:file "symbolic")

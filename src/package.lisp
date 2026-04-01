@@ -21,6 +21,10 @@
    #:org-object-type
    #:org-object-attributes
    #:org-object-children
+   #:org-object-vector
+   #:snapshot-object-store
+   #:rollback-object-store
+   #:send-swarm-packet
    
    ;; --- Context API (Peripheral Vision) ---
    #:context-query-store
@@ -59,6 +63,11 @@
    ;; --- Neuro (System 1) ---
    #:ask-neuro
    #:register-neuro-backend
+   #:register-auth-provider
+   #:distill-prompt
+   #:get-embedding
+   #:cosine-similarity
+   #:find-most-similar
    
    ;; --- AST Helpers ---
    #:find-headline-missing-id))
