@@ -26,6 +26,63 @@ This architecture treats all interfaces as external **Actuators** and **Sensors*
 - **Messaging Actuator (Signal/Telegram/Discord):** A delivery channel for proactive alerts and human-in-the-loop decisions.
 - **Web Actuator (Dashboard):** A visual telemetry interface for monitoring the live kernel state.
 
+* The Paradigm: Skills vs. Sub-Agents
+
+Modern AI frameworks heavily rely on "Sub-agents" (e.g., passing text between isolated Python scripts). `org-agent` fundamentally rejects this in favor of **Org-Native Skills**.
+
+** The Performance Advantage (Single Address Space)
+Following CLOSOS principles, the Lisp Machine architecture uses a **Single Address Space**. All applications (Skills) and the kernel share one unified memory space. We completely eliminate standard Inter-Process Communication (IPC) overhead. Objects are shared via direct pointers, meaning zero serialization/deserialization latency when moving from perception to thought.
+
+** Specialization (System 1 Prompt Injection)
+Instead of spinning up separate sub-agent processes with static prompts, the kernel dynamically injects the `:neuro-prompt` of the active skill into the LLM context. The LLM is temporarily "re-programmed" at runtime per task.
+
+** Context Length & Memory (Peripheral Vision)
+Multi-agent systems struggle with context bloat. `org-agent` solves this via its **Peripheral Vision API**. The Lisp Kernel uses `context-filter-sparse-tree` to surgically prune the Org AST, passing only the relevant hierarchical nodes to the LLM and preventing context-window overload.
+
+** Responsiveness (Dual-Process Advantage)
+The system employs a Dual-Process Architecture:
+- **System 1 (Neural):** Probabilistic, slow, creative (LLM).
+- **System 2 (Symbolic):** Deterministic, instant, rigorous (Lisp).
+Because Skills are compiled Lisp code, System 2 intercepts deterministic tasks (like assigning an ID) and executes them in milliseconds, bypassing the LLM entirely.
+
+* Architecture Diagrams
+
+** The Single Address Space
+#+begin_src mermaid
+graph TD
+    subgraph Lisp Machine (Single Address Space)
+        K[Kernel Core] --> OS[(Object Store)]
+        S1[Skill: Architect] --> OS
+        S2[Skill: Analyst] --> OS
+        S3[Skill: GTD] --> OS
+        K -- Pointers --> S1
+        K -- Pointers --> S2
+    end
+    subgraph IPC (Slow)
+        E[Emacs Actuator] -. JSON .-> K
+    end
+#+end_src
+
+** The Cognitive Loop (OODA)
+#+begin_src mermaid
+sequenceDiagram
+    participant Sensor
+    participant Kernel
+    participant System1 as System 1 (LLM)
+    participant System2 as System 2 (Lisp)
+    participant Actuator
+    
+    Sensor->>Kernel: Perceive (Stimulus)
+    Kernel->>System1: Think (Inject Prompt)
+    System1-->>Kernel: Proposed Action
+    Kernel->>System2: Decide (Safety Gate)
+    alt Validation Failed
+        System2-->>Kernel: Reject / Log Error
+    else Validation Passed
+        System2->>Actuator: Act (Dispatch)
+    end
+#+end_src
+
 * The Architecture: The Cognitive Loop
 
 The core engine is agnostic to both business logic and communication channels. It routes data through a strict four-stage cognitive pipeline:
@@ -164,7 +221,20 @@ Your laptop acts as the sensor/actuator array.
 
 To see all available models, simply type `@agent list models` in any Org buffer and save.
 
-* Current State: Phase 3 (The Self-Editing Kernel) Achieved
+* The Long-Term Vision: Orders of Autonomy
+
+The development of `org-agent` follows distinct orders of autonomy, progressing from a basic assistant to a fully sovereign entity.
+
+** Order 1: The Reactive Kernel (Phase 1 & 2)
+The agent acts as a strict "Delegator." It requires human stimulus to trigger the Cognitive Loop. Capabilities (Skills) are expanded, but the agent only speaks when spoken to.
+
+** Order 2: The Self-Editing Kernel (Phase 3 - Current)
+The agent achieves introspection. It can "perceive pain" (errors) via system logs and trigger a `skill-self-fix` loop to rewrite its own source code, hot-reloading the changes. It proactively maintains the system.
+
+** Order 3: The Sovereign Architect (Phase 4+)
+The agent transitions to full autonomy. It maintains the Consensus Loop entirely, identifying structural decay in the Memex, drafting its own PRDs, writing code, executing Chaos testing, and committing the final result without human intervention (unless authorization gates are explicitly set).
+
+* Current State: Order 2 Achieved
 
 - DONE Core Lisp microkernel (Cognitive Loop: Perceive -> Think -> Decide -> Act)
 - DONE OACP (Swank/Socket communication protocol) implemented
