@@ -16,12 +16,14 @@
    #:ingest-ast
    #:lookup-object
    #:list-objects-by-type
+   #:*object-store*
    #:org-object
    #:org-object-id
    #:org-object-type
    #:org-object-attributes
    #:org-object-children
    #:org-object-vector
+   #:org-object-content
    #:snapshot-object-store
    #:rollback-object-store
    #:send-swarm-packet
@@ -46,6 +48,7 @@
    #:inject-stimulus
    #:dispatch-action
    #:register-actuator
+   #:spawn-task
    
    ;; --- Skill Engine ---
    #:load-skill-from-org
@@ -64,10 +67,18 @@
    #:ask-neuro
    #:register-neuro-backend
    #:register-auth-provider
+   #:get-provider-auth
    #:distill-prompt
    #:get-embedding
    #:cosine-similarity
    #:find-most-similar
+   #:openrouter-get-available-models
+   #:*provider-cascade*
+   #:economist-route-task
+   
+   ;; --- Symbolic Logic ---
+   #:list-objects-with-attribute
+   #:org-id-new
    
    ;; --- AST Helpers ---
    #:find-headline-missing-id))

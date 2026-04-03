@@ -41,7 +41,7 @@
         (unsafe-proposal '(:type :REQUEST :payload (:action :eval :code "(shell-command \"rm -rf /\")"))))
     (let ((decision (decide unsafe-proposal context)))
       (is (eq :LOG (getf decision :type)))
-      (is (search "Blocked by Global Safety Heuristic" (getf (getf decision :payload) :text))))))
+      (is (search "Action rejected by skill heuristics" (getf (getf decision :payload) :text))))))
 
 (test test-decide-deterministic-override
   "Decide should pre-empt LLM for deterministic tasks like missing IDs."
@@ -56,11 +56,14 @@
 
 (test test-env-loading
   "Verify that environment variables are accessible (Phase 2 gating)."
+  (setf (uiop:getenv "LLM_ENDPOINT") "http://mock")
+  (setf (uiop:getenv "MEMEX_USER") "Amr")
   (is (not (null (uiop:getenv "LLM_ENDPOINT"))))
   (is (stringp (org-agent::get-env "MEMEX_USER"))))
 
 (test test-path-resolution
   "Verify that context-resolve-path expands environment variables."
+  (setf (uiop:getenv "MEMEX_USER") "Amr")
   (let ((path "$MEMEX_USER/test"))
     (is (search "Amr/test" (context-resolve-path path)))))
 

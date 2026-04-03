@@ -126,57 +126,70 @@ will assume you have started it manually (e.g., via SBCL)."
           (goto-char (point-max))
           (setq msg-len 1000000)))))) ; Break loop
 
+(defun org-agent--plist-get (plist prop)
+  "Case-insensitive keyword lookup for OACP compatibility."
+  (or (plist-get plist prop)
+      (plist-get plist (intern (upcase (symbol-name prop))))
+      (plist-get plist (intern (downcase (symbol-name prop))))))
+
 (defun org-agent--handle-message (proc plist)
   "Route and execute incoming OACP messages from PROC using PLIST."
-  (let ((type (plist-get plist :type))
-        (id (plist-get plist :id))
-        (payload (plist-get plist :payload)))
+  (let ((type (org-agent--plist-get plist :type))
+        (id (org-agent--plist-get plist :id))
+        (payload (org-agent--plist-get plist :payload)))
     (cond
-     ((eq type :REQUEST)
+     ((member type '(:request :REQUEST))
       (org-agent--execute-request proc id payload))
-     ((eq type :RESPONSE)
+     ((member type '(:response :RESPONSE))
       (message "org-agent: Received response for ID %s" id))
      (t (message "org-agent: Received unknown message type %s" type)))))
 
 (defun org-agent--execute-request (proc id payload)
   "Execute an actuator request from the daemon via PROC with ID and PAYLOAD."
-  (let ((action (plist-get payload :action)))
-    (pcase action
-      (:eval
-       (let ((code (plist-get payload :code)))
-         (condition-case err
-             (let ((result (eval (read code))))
-               (org-agent-send 
-                `(:type :RESPONSE :id ,id :payload (:status :success :result ,(format "%s" result)))))
-           (error
-            (org-agent-send 
-             `(:type :RESPONSE :id ,id :payload (:status :error :message ,(error-message-string err))))))))
-      (:message
-       (message "org-agent [DAEMON]: %s" (plist-get payload :text))
-       (org-agent-send `(:type :RESPONSE :id ,id :payload (:status :success))))
-      (:insert-at-end
-       (let ((buf-name (plist-get payload :buffer))
-             (text (plist-get payload :text)))
-         (save-excursion
-           (with-current-buffer (get-buffer-create buf-name)
-             (goto-char (point-max))
-             (insert text)
-             (org-agent-send `(:type :RESPONSE :id ,id :payload (:status :success)))))))
-      (:refactor-subtree
-       (let ((target-id (plist-get payload :target-id))
-             (properties (plist-get payload :properties)))
-         (condition-case err
-             (save-excursion
-               (when target-id (org-id-goto target-id))
-               (dolist (prop properties)
-                 (org-set-property (car prop) (cdr prop)))
-               (org-agent-send `(:type :RESPONSE :id ,id :payload (:status :success))))
-           (error
-            (org-agent-send 
-             `(:type :RESPONSE :id ,id :payload (:status :error :message ,(error-message-string err))))))))
-      (_
-       (message "org-agent: Unknown action %s" action)
-       (org-agent-send `(:type :RESPONSE :id ,id :payload (:status :unsupported)))))))
+  (let ((action (org-agent--plist-get payload :action)))
+    (cond
+     ((member action '(:eval :EVAL))
+      (let ((code (org-agent--plist-get payload :code)))
+        (condition-case err
+            (let ((result (eval (read code))))
+              (org-agent-send 
+               `(:type :RESPONSE :id ,id :payload (:status :success :result ,(format "%s" result)))))
+          (error
+           (org-agent-send 
+            `(:type :RESPONSE :id ,id :payload (:status :error :message ,(error-message-string err))))))))
+     ((member action '(:message :MESSAGE))
+      (message "org-agent [DAEMON]: %s" (org-agent--plist-get payload :text))
+      (org-agent-send `(:type :RESPONSE :id ,id :payload (:status :success))))
+     ((member action '(:insert-at-end :INSERT-AT-END))
+      (let ((buf-name (org-agent--plist-get payload :buffer))
+            (text (org-agent--plist-get payload :text)))
+        (save-excursion
+          (with-current-buffer (get-buffer-create buf-name)
+            (goto-char (point-max))
+            ;; If there is a "Thinking..." status from the client, remove it.
+            (when (search-backward "** Thinking..." nil t)
+              (delete-region (point) (point-max))
+              ;; Remove the preceding newline if it exists
+              (when (eq (char-before) ?\n)
+                (backward-delete-char 1)))
+            (goto-char (point-max))
+            (insert "\n" text "\n")
+            (org-agent-send `(:type :RESPONSE :id ,id :payload (:status :success)))))))
+     ((member action '(:refactor-subtree :REFACTOR-SUBTREE))
+      (let ((target-id (org-agent--plist-get payload :target-id))
+            (properties (org-agent--plist-get payload :properties)))
+        (condition-case err
+            (save-excursion
+              (when target-id (org-id-goto target-id))
+              (dolist (prop properties)
+                (org-set-property (car prop) (cdr prop)))
+              (org-agent-send `(:type :RESPONSE :id ,id :payload (:status :success))))
+          (error
+           (org-agent-send 
+            `(:type :RESPONSE :id ,id :payload (:status :error :message ,(error-message-string err))))))))
+     (t
+      (message "org-agent: Unknown action %s" action)
+      (org-agent-send `(:type :RESPONSE :id ,id :payload (:status :unsupported)))))))
 
 (defun org-agent--sentinel (proc event)
   "Handle network process PROC lifecycle EVENT."

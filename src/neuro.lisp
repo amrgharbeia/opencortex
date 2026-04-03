@@ -1,131 +1,133 @@
 (in-package :org-agent)
 
-;;; ============================================================================
-;;; System 1: The Neural Engine
-;;; ============================================================================
-;;; This module manages the connection to the LLM (Large Language Model).
-;;; System 1 is responsible for 'Associative Thinking'—pattern matching over
-;;; the user's notes and proposing intuitive actions. It is fast but unreliable,
-;;; and its output must ALWAYS be verified by System 2.
+(defun get-env (var &optional default) (or (uiop:getenv var) default))
 
-;; Initialize environment from .env file at project root
-(eval-when (:compile-toplevel :load-toplevel :execute)
-  (let ((env-file (merge-pathnames ".env" (asdf:system-source-directory :org-agent))))
-    (when (uiop:file-exists-p env-file)
-      (cl-dotenv:load-env env-file))))
+(defvar *auth-providers* (make-hash-table :test 'equal))
+(defun register-auth-provider (name fn) (setf (gethash name *auth-providers*) fn))
+(defun get-provider-auth (provider) (let ((auth-fn (gethash provider *auth-providers*))) (if auth-fn (funcall auth-fn) nil)))
 
-(defun get-env (var &optional default)
-  "Helper: Fetches an environment variable with a fallback default."
-  (or (uiop:getenv var) default))
+(defvar *neuro-backends* (make-hash-table :test 'equal))
+(defvar *provider-cascade* '(:gemini))
+(defun register-neuro-backend (name fn) (setf (gethash name *neuro-backends*) fn))
 
-;;; --- Pluggable Authentication Backends ---
-
-(defvar *auth-providers* (make-hash-table :test 'equal)
-  "Registry of authentication provider skills. Key is provider keyword (e.g., :gemini).")
-
-(defun register-auth-provider (name fn)
-  "Register a function that returns the required auth headers for a provider."
-  (setf (gethash name *auth-providers*) fn))
-
-(defun get-provider-auth (provider)
-  "Queries the registered auth skill for the necessary headers."
-  (let ((auth-fn (gethash provider *auth-providers*)))
-    (if auth-fn
-        (funcall auth-fn)
-        nil)))
-
-(defvar *neuro-backends* (make-hash-table :test 'equal)
-  "Registry of neural provider backends.")
-
-(defvar *provider-cascade* '(:gemini)
-  "Ordered list of backends to try for each request.")
-
-(defun register-neuro-backend (name fn)
-  "Register a function to handle LLM requests for a specific backend."
-  (setf (gethash name *neuro-backends*) fn))
-
-(defun ask-neuro (prompt &key (system-prompt "You are the System 1 (Neural) engine of a Neurosymbolic Lisp Machine. Provide concise, high-fidelity suggestions in Lisp plist format.") (cascade nil))
-  "Dispatches a prompt to the registered neural backends in order of preference."
+(defun ask-neuro (prompt &key (system-prompt "You are the System 1 engine of a Neurosymbolic Lisp Machine.") (cascade nil))
   (let ((backends (or cascade *provider-cascade*)))
     (dolist (backend backends)
       (let ((backend-fn (gethash backend *neuro-backends*)))
         (when backend-fn
           (kernel-log "SYSTEM 1: Attempting backend ~a..." backend)
           (let ((result (funcall backend-fn prompt system-prompt)))
-            ;; Check if the result indicates failure
             (if (and (stringp result) (search ":LOG" result) (search "Failure" result))
                 (kernel-log "SYSTEM 1: Backend ~a failed. Falling back..." backend)
-                (return-from ask-neuro result)))))))
-    ;; If we fall through, the entire cascade failed
-    "(:type :LOG :payload (:text \"Neural Cascade Failure - All providers exhausted.\"))")
+                (return-from ask-neuro result))))))
+    "(:type :LOG :payload (:text \"Neural Cascade Failure\"))"))
 
 (defun execute-gemini-request (prompt system-prompt)
-  "The default System 1 backend (Gemini). Authentication is now pluggable."
-  (let* ((auth (get-provider-auth :gemini))
-         (api-key (getf auth :api-key))
-         (bearer-token (getf auth :bearer-token))
-         (endpoint (or (getf auth :endpoint) 
-                       "https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent")))
-    
-    (unless (or api-key bearer-token)
-      (return-from execute-gemini-request "(:type :LOG :payload (:text \"Authentication missing for Gemini\"))"))
-    
+  (let* ((auth (get-provider-auth :gemini)) (api-key (getf auth :api-key)) (bearer-token (getf auth :bearer-token))
+         (endpoint (or (getf auth :endpoint) "https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent")))
+    (unless (or api-key bearer-token) (return-from execute-gemini-request "(:type :LOG :payload (:text \"Authentication missing\"))"))
     (let* ((url (if api-key (format nil "~a?key=~a" endpoint api-key) endpoint))
-           (headers `(("Content-Type" . "application/json")
-                      ,@(when bearer-token `(("Authorization" . ,(format nil "Bearer ~a" bearer-token))))))
-           (body (cl-json:encode-json-to-string
-                  `((contents . ((parts . ((text . ,(format nil "~a~%~%Prompt: ~a" system-prompt prompt))))))))))
-      (handler-case
-          (let* ((response (dex:post url :headers headers :content body))
-                 (json (cl-json:decode-json-from-string response)))
-            (cdr (assoc :text (cdr (assoc :parts (car (cdr (assoc :parts (car (cdr (assoc :candidates json)))))))))))
-        (error (c)
-          (format nil "(:type :LOG :payload (:text \"Neural Engine Failure: ~a\"))" c))))))
+           (headers `(("Content-Type" . "application/json") ,@(when bearer-token `(("Authorization" . ,(format nil "Bearer ~a" bearer-token))))))
+           (body (cl-json:encode-json-to-string `((contents . ((parts . ((text . ,(format nil "~a~%~%Prompt: ~a" system-prompt prompt))))))))))
+      (handler-case (let* ((response (dex:post url :headers headers :content body :connect-timeout 10 :read-timeout 30)) (json (cl-json:decode-json-from-string response)))
+                      (cdr (assoc :text (cdr (assoc :parts (car (cdr (assoc :parts (car (cdr (assoc :candidates json)))))))))))
+        (error (c) (format nil "(:type :LOG :payload (:text \"Neural Engine Failure: ~a\"))" c))))))
 
-;; Initialize the default backend
+(defun execute-openrouter-request (prompt system-prompt)
+  (let ((api-key (uiop:getenv "OPENROUTER_API_KEY"))
+        (endpoint "https://openrouter.ai/api/v1/chat/completions")
+        (model "google/gemini-flash-1.5")) ; default fallback
+    ;; Dynamically read user's preferred model from the Object Store
+    (maphash (lambda (id obj)
+               (declare (ignore id))
+               (let ((val (getf (org-object-attributes obj) :LLM_MODEL_OPENROUTER)))
+                 (when val (setf model val))))
+             *object-store*)
+    (unless api-key (return-from execute-openrouter-request "(:type :LOG :payload (:text \"OpenRouter API Key missing\"))"))
+    (let* ((headers `(("Content-Type" . "application/json")
+                      ("Authorization" . ,(format nil "Bearer ~a" api-key))
+                      ("HTTP-Referer" . "https://github.com/amr/org-agent")))
+           (body (cl-json:encode-json-to-string
+                  `((model . ,model)
+                    (messages . (( (role . "system") (content . ,system-prompt) )
+                                 ( (role . "user") (content . ,prompt) )))))))
+      (handler-case (let* ((response (dex:post endpoint :headers headers :content body :connect-timeout 10 :read-timeout 30))
+                           (json (cl-json:decode-json-from-string response)))
+                      (cdr (assoc :content (cdr (assoc :message (car (cdr (assoc :choices json))))))))
+        (error (c) (format nil "(:type :LOG :payload (:text \"OpenRouter Failure: ~a\"))" c))))))
+
+(defun openrouter-get-available-models ()
+  "Fetches available models from OpenRouter."
+  (let ((api-key (uiop:getenv "OPENROUTER_API_KEY")))
+    (unless api-key (return-from openrouter-get-available-models nil))
+    (let ((headers `(("Authorization" . ,(format nil "Bearer ~a" api-key)))))
+      (handler-case
+          (let* ((response (dex:get "https://openrouter.ai/api/v1/models" 
+                                   :headers headers 
+                                   :connect-timeout 60 
+                                   :read-timeout 60))
+                 (json (cl-json:decode-json-from-string response))
+                 (data (cdr (assoc :data json)))
+                 (results nil))
+            (dolist (item data)
+              (let ((id (cdr (assoc :id item)))
+                    (context-len (cdr (assoc :context--length item))))
+                (when id
+                  (push (list :id id :context (format nil "~a" (or context-len "unknown"))) results))))
+            (nreverse results))
+        (error (c) 
+          (kernel-log "Model Discovery Error: ~a" c)
+          nil)))))
+
+;; --- Sovereign Service Stubs ---
+;; These are implemented in specialized skills but registered in the kernel namespace.
+
+(defun economist-route-task (complexity)
+  "Stub for Neuro-Economic routing. Overridden by skill-economist."
+  (declare (ignore complexity))
+  :gemini) ; Default fallback
+
+(defun org-id-new ()
+  "Stub for Sovereign ID generation. Overridden by skill-ast-normalization."
+  (format nil "node-~a" (get-universal-time)))
+
 (register-neuro-backend :gemini #'execute-gemini-request)
+(register-neuro-backend :openrouter #'execute-openrouter-request)
+(setf *provider-cascade* '(:openrouter :gemini))
 
 (defun think (context)
-  "The System 1 Thinking Stage. 
-   
-   It dispatches to the Skill Registry to find an active skill. If found, 
-   it executes that skill's neuro-prompt generator and queries the LLM.
-   
-   Returns a proposed action plist (unverified)."
   (let ((active-skill (find-triggered-skill context)))
     (if active-skill
         (progn
           (kernel-log "SYSTEM 1: Engaging skill '~a'~%" (skill-name active-skill))
-          (let* ((prompt-generator (skill-neuro-prompt active-skill))
-                 ;; Execute the skill's Lisp code to build the LLM prompt.
+          (let* ((prompt-generator (skill-neuro-prompt active-skill)) 
                  (prompt (when prompt-generator (funcall prompt-generator context))))
-            (if prompt
+            (if prompt 
                 (let* ((thought (ask-neuro prompt))
-                       ;; Read the LLM string back into a native Lisp data structure.
-                       (suggestion (ignore-errors (read-from-string thought))))
-                  (kernel-log "SYSTEM 1 Suggestion: ~a~%" thought)
-                  suggestion)
-                ;; If the skill has no neuro-prompt, it's a 'Deterministic Skill' (Symbolic-only).
+                       ;; Strip markdown code blocks
+                       (cleaned-thought (cl-ppcre:regex-replace-all "(?s)^```(?:lisp)?\\n?(.*?)\\n?```$" (string-trim '(#\Space #\Newline #\Tab) thought) "\\1"))
+                       (suggestion (ignore-errors (read-from-string cleaned-thought))))
+                  (kernel-log "SYSTEM 1 Suggestion: ~a~%" cleaned-thought)
+                  (cond
+                    ((and suggestion (listp suggestion)) suggestion)
+                    ;; SALVAGE: If LLM returned plain text or a non-list symbol
+                    ((and (let ((p (getf context :payload))) (eq (getf p :sensor) :chat-message))
+                          (> (length cleaned-thought) 0))
+                     (kernel-log "SYSTEM 1: SALVAGING plain-text response.~%")
+                     ;; Heuristic: If it looks like meta-commentary with quoted text, extract the quote
+                     (let* ((quote-match (cl-ppcre:scan-to-strings "\"((?:\\\\.|[^\"\\\\])*)\"" cleaned-thought))
+                            (payload-text (if (and quote-match (> (length quote-match) 0)) 
+                                              (elt (nth-value 1 (cl-ppcre:scan-to-strings "\"((?:\\\\.|[^\"\\\\])*)\"" cleaned-thought)) 0)
+                                              cleaned-thought)))
+                       `(:type :request :target :emacs :payload (:action :insert-at-end :buffer "*org-agent-chat*" :text ,payload-text))))
+                    (t (kernel-log "SYSTEM 1 ERROR: Could not parse response as Lisp plist.~%") nil)))
                 '(:type :LOG :payload (:text "Skill triggered (Deterministic only)")))))
-        ;; If no skills trigger, the agent remains silent.
         nil)))
 
-;;; ============================================================================
-;;; Prompt Distillation (Self-Evolution)
-;;; ============================================================================
-
 (defun distill-prompt (full-prompt successful-output)
-  "Neural distillation: Summarizes a complex prompt and its success into a denser format.
-   Used for 'Self-Evolving prompts' that reduce token usage over time."
-  (let ((system-instr "You are a Meta-Cognitive Prompt Architect. Your task is to DISTILL the following prompt and its successful result into a SHORTER, HIGH-SIGNAL template that would yield the same result."))
-    (ask-neuro (format nil "PROMPT: ~a~%RESULT: ~a~%~%Create a distilled version." full-prompt successful-output)
-               :system-prompt system-instr)))
+  (let ((system-instr "You are a Meta-Cognitive Prompt Architect. DISTILL into template."))
+    (ask-neuro (format nil "PROMPT: ~a~%RESULT: ~a" full-prompt successful-output) :system-prompt system-instr)))
 
 (defun distillation-loop ()
-  "Periodically reviews internal logs and distills prompts for active skills.
-   This is an autonomous self-improvement cycle."
-  (let ((logs (context-get-system-logs 50)))
-    (dolist (log logs)
-      (when (search "Verified by skill" log)
-        ;; Extract the skill name and attempt distillation
-        (kernel-log "NEURO - Triggering prompt distillation cycle...")))))
+  "Autonomous distillation cycle (Skeletal)."
+  (kernel-log "NEURO [Evolution] - Distillation cycle triggered."))
