@@ -142,6 +142,18 @@ will assume you have started it manually (e.g., via SBCL)."
       (org-agent--execute-request proc id payload))
      ((member type '(:response :RESPONSE))
       (message "org-agent: Received response for ID %s" id))
+     ((member type '(:log :LOG))
+      (let ((text (org-agent--plist-get payload :text)))
+        (save-excursion
+          (with-current-buffer (get-buffer-create "*org-agent-chat*")
+            (goto-char (point-max))
+            ;; Clean up Thinking... if it exists
+            (save-excursion
+              (when (search-backward "** Thinking..." nil t)
+                (delete-region (point) (point-max))
+                (when (eq (char-before) ?\n) (backward-delete-char 1))))
+            (goto-char (point-max))
+            (insert "\n*SYSTEM LOG*: " text "\n")))))
      (t (message "org-agent: Received unknown message type %s" type)))))
 
 (defun org-agent--execute-request (proc id payload)
@@ -173,7 +185,7 @@ will assume you have started it manually (e.g., via SBCL)."
               (when (eq (char-before) ?\n)
                 (backward-delete-char 1)))
             (goto-char (point-max))
-            (insert "\n" text "\n")
+            (insert text "\n")
             (org-agent-send `(:type :RESPONSE :id ,id :payload (:status :success)))))))
      ((member action '(:refactor-subtree :REFACTOR-SUBTREE))
       (let ((target-id (org-agent--plist-get payload :target-id))

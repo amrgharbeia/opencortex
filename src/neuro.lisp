@@ -4,7 +4,17 @@
 
 (defvar *auth-providers* (make-hash-table :test 'equal))
 (defun register-auth-provider (name fn) (setf (gethash name *auth-providers*) fn))
-(defun get-provider-auth (provider) (let ((auth-fn (gethash provider *auth-providers*))) (if auth-fn (funcall auth-fn) nil)))
+(defun get-provider-auth (provider)
+  "Retrieves authentication credentials for a provider. 
+   Supports direct plists, functions, or environment variable fallbacks."
+  (let ((auth (gethash provider *auth-providers*)))
+    (cond
+      ((functionp auth) (funcall auth))
+      ((listp auth) auth)
+      (t (case provider
+           (:gemini (list :api-key (uiop:getenv "GEMINI_API_KEY")))
+           (:openrouter (list :api-key (uiop:getenv "OPENROUTER_API_KEY")))
+           (t nil))))))
 
 (defvar *neuro-backends* (make-hash-table :test 'equal))
 (defvar *provider-cascade* '(:gemini))
@@ -114,14 +124,12 @@
                     ((and (let ((p (getf context :payload))) (eq (getf p :sensor) :chat-message))
                           (> (length cleaned-thought) 0))
                      (kernel-log "SYSTEM 1: SALVAGING plain-text response.~%")
-                     ;; Heuristic: If it looks like meta-commentary with quoted text, extract the quote
-                     (let* ((quote-match (cl-ppcre:scan-to-strings "\"((?:\\\\.|[^\"\\\\])*)\"" cleaned-thought))
-                            (payload-text (if (and quote-match (> (length quote-match) 0)) 
-                                              (elt (nth-value 1 (cl-ppcre:scan-to-strings "\"((?:\\\\.|[^\"\\\\])*)\"" cleaned-thought)) 0)
-                                              cleaned-thought)))
+                     ;; Remove common AI conversational filler at the start or end of the response
+                     (let* ((no-prefix (cl-ppcre:regex-replace "(?i)^(okay,? |sure,? |i will |i've |i have |here is |got it\\.? |understood\\.? |done\\.? |yes,? )+" cleaned-thought ""))
+                            (no-suffix (cl-ppcre:regex-replace "(?i)(\\s+okay,?|\\s+sure,?|\\s+got it\\.?|\\s+understood\\.?)$" no-prefix ""))
+                            (payload-text (string-trim '(#\Space #\Newline #\Tab #\") no-suffix)))
                        `(:type :request :target :emacs :payload (:action :insert-at-end :buffer "*org-agent-chat*" :text ,payload-text))))
-                    (t (kernel-log "SYSTEM 1 ERROR: Could not parse response as Lisp plist.~%") nil)))
-                '(:type :LOG :payload (:text "Skill triggered (Deterministic only)")))))
+                    (t (kernel-log "SYSTEM 1 ERROR: Could not parse response as Lisp plist.~%") nil)))                '(:type :LOG :payload (:text "Skill triggered (Deterministic only)")))))
         nil)))
 
 (defun distill-prompt (full-prompt successful-output)

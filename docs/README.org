@@ -413,7 +413,17 @@ The physical implementation of the daemon, tangled from this Org document into =
 
 (defvar *auth-providers* (make-hash-table :test 'equal))
 (defun register-auth-provider (name fn) (setf (gethash name *auth-providers*) fn))
-(defun get-provider-auth (provider) (let ((auth-fn (gethash provider *auth-providers*))) (if auth-fn (funcall auth-fn) nil)))
+(defun get-provider-auth (provider)
+  "Retrieves authentication credentials for a provider. 
+   Supports direct plists, functions, or environment variable fallbacks."
+  (let ((auth (gethash provider *auth-providers*)))
+    (cond
+      ((functionp auth) (funcall auth))
+      ((listp auth) auth)
+      (t (case provider
+           (:gemini (list :api-key (uiop:getenv "GEMINI_API_KEY")))
+           (:openrouter (list :api-key (uiop:getenv "OPENROUTER_API_KEY")))
+           (t nil))))))
 
 (defvar *neuro-backends* (make-hash-table :test 'equal))
 (defvar *provider-cascade* '(:gemini))
