@@ -5,66 +5,87 @@
 (defvar *auth-providers* (make-hash-table :test 'equal))
 (defun register-auth-provider (name fn) (setf (gethash name *auth-providers*) fn))
 (defun get-provider-auth (provider)
-  "Retrieves authentication credentials for a provider. 
-   Supports direct plists, functions, or environment variable fallbacks."
+  "Retrieves authentication credentials for a provider.
+   Supports direct plists, functions, or specific environment variable fallbacks."
   (let ((auth (gethash provider *auth-providers*)))
     (cond
       ((functionp auth) (funcall auth))
       ((listp auth) auth)
-      (t (case provider
-           (:gemini (list :api-key (uiop:getenv "GEMINI_API_KEY")))
-           (:openrouter (list :api-key (uiop:getenv "OPENROUTER_API_KEY")))
-           (t nil))))))
+      (t 
+       (let ((specific-key (case provider
+                             (:gemini (uiop:getenv "GEMINI_API_KEY"))
+                             (:openrouter (uiop:getenv "OPENROUTER_API_KEY"))
+                             (:anthropic (uiop:getenv "ANTHROPIC_API_KEY"))
+                             (:openai (uiop:getenv "OPENAI_API_KEY"))
+                             (t nil))))
+         (if (and specific-key (> (length specific-key) 0))
+             (list :api-key specific-key)
+             ;; Final fallback to the legacy generic key
+             (let ((legacy (uiop:getenv "LLM_API_KEY")))
+               (when (and legacy (> (length legacy) 0))
+                 (list :api-key legacy)))))))))
 
 (defvar *neuro-backends* (make-hash-table :test 'equal))
-(defvar *provider-cascade* '(:gemini))
+(defvar *provider-cascade* '(:openrouter :gemini))
 (defun register-neuro-backend (name fn) (setf (gethash name *neuro-backends*) fn))
 
-(defun ask-neuro (prompt &key (system-prompt "You are the System 1 engine of a Neurosymbolic Lisp Machine.") (cascade nil))
-  (let ((backends (or cascade *provider-cascade*)))
+(defun ask-neuro (prompt &key (system-prompt "You are the System 1 engine of a Neurosymbolic Lisp Machine.") (cascade nil) (context nil))
+  "Dispatches a neural request through the provider cascade.
+   If CASCADE is a function, it is called with CONTEXT to determine backends."
+  (let ((backends (cond
+                    ((and cascade (listp cascade)) cascade)
+                    ((functionp cascade) (funcall cascade context))
+                    ((functionp *provider-cascade*) (funcall *provider-cascade* context))
+                    (t *provider-cascade*))))
     (dolist (backend backends)
       (let ((backend-fn (gethash backend *neuro-backends*)))
         (when backend-fn
           (kernel-log "SYSTEM 1: Attempting backend ~a..." backend)
-          (let ((result (funcall backend-fn prompt system-prompt)))
-            (if (and (stringp result) (search ":LOG" result) (search "Failure" result))
+          (let* (;; Consult the Economist for the model ID if available
+                 (model (ignore-errors 
+                         (uiop:symbol-call :org-agent.skills.org-skill-economist :economist-get-model-for-provider backend)))
+                 (result (if model 
+                             (funcall backend-fn prompt system-prompt :model model)
+                             (funcall backend-fn prompt system-prompt))))
+            (if (and (stringp result) (search ":LOG" result) (or (search "Failure" result) (search "missing" result)))
                 (kernel-log "SYSTEM 1: Backend ~a failed. Falling back..." backend)
                 (return-from ask-neuro result))))))
     "(:type :LOG :payload (:text \"Neural Cascade Failure\"))"))
 
-(defun execute-gemini-request (prompt system-prompt)
+(defun execute-gemini-request (prompt system-prompt &key model)
   (let* ((auth (get-provider-auth :gemini)) (api-key (getf auth :api-key)) (bearer-token (getf auth :bearer-token))
-         (endpoint (or (getf auth :endpoint) "https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent")))
+         (endpoint-base (if model (format nil "https://generativelanguage.googleapis.com/v1/models/~a:generateContent" model)
+                            "https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent")))
     (unless (or api-key bearer-token) (return-from execute-gemini-request "(:type :LOG :payload (:text \"Authentication missing\"))"))
-    (let* ((url (if api-key (format nil "~a?key=~a" endpoint api-key) endpoint))
+    (let* ((url (if api-key (format nil "~a?key=~a" endpoint-base api-key) endpoint-base))
            (headers `(("Content-Type" . "application/json") ,@(when bearer-token `(("Authorization" . ,(format nil "Bearer ~a" bearer-token))))))
            (body (cl-json:encode-json-to-string `((contents . ((parts . ((text . ,(format nil "~a~%~%Prompt: ~a" system-prompt prompt))))))))))
       (handler-case (let* ((response (dex:post url :headers headers :content body :connect-timeout 10 :read-timeout 30)) (json (cl-json:decode-json-from-string response)))
                       (cdr (assoc :text (cdr (assoc :parts (car (cdr (assoc :parts (car (cdr (assoc :candidates json)))))))))))
         (error (c) (format nil "(:type :LOG :payload (:text \"Neural Engine Failure: ~a\"))" c))))))
 
-(defun execute-openrouter-request (prompt system-prompt)
+(defun execute-openrouter-request (prompt system-prompt &key model)
   (let ((api-key (uiop:getenv "OPENROUTER_API_KEY"))
         (endpoint "https://openrouter.ai/api/v1/chat/completions")
-        (model "google/gemini-flash-1.5")) ; default fallback
-    ;; Dynamically read user's preferred model from the Object Store
-    (maphash (lambda (id obj)
-               (declare (ignore id))
-               (let ((val (getf (org-object-attributes obj) :LLM_MODEL_OPENROUTER)))
-                 (when val (setf model val))))
-             *object-store*)
+        (model-id (or model "google/gemini-2.0-flash-001")))
     (unless api-key (return-from execute-openrouter-request "(:type :LOG :payload (:text \"OpenRouter API Key missing\"))"))
     (let* ((headers `(("Content-Type" . "application/json")
                       ("Authorization" . ,(format nil "Bearer ~a" api-key))
                       ("HTTP-Referer" . "https://github.com/amr/org-agent")))
-           (body (cl-json:encode-json-to-string
-                  `((model . ,model)
-                    (messages . (( (role . "system") (content . ,system-prompt) )
-                                 ( (role . "user") (content . ,prompt) )))))))
-      (handler-case (let* ((response (dex:post endpoint :headers headers :content body :connect-timeout 10 :read-timeout 30))
-                           (json (cl-json:decode-json-from-string response)))
-                      (cdr (assoc :content (cdr (assoc :message (car (cdr (assoc :choices json))))))))
-        (error (c) (format nil "(:type :LOG :payload (:text \"OpenRouter Failure: ~a\"))" c))))))
+           (body (cl-ppcre:regex-replace-all "\\\\/" 
+                                             (cl-json:encode-json-to-string
+                                              `((model . ,model-id)
+                                                (messages . (( (role . "system") (content . ,system-prompt) )
+                                                             ( (role . "user") (content . ,prompt) )))))
+                                             "/")))
+      (kernel-log "OPENROUTER DEBUG - Body: ~a" body)
+      (handler-case (let* ((response (dex:post endpoint :headers headers :content body :connect-timeout 10 :read-timeout 30)))
+                      (kernel-log "OPENROUTER DEBUG - Raw Response: ~a" response)
+                      (let ((json (cl-json:decode-json-from-string response)))
+                        (cdr (assoc :content (cdr (assoc :message (car (cdr (assoc :choices json)))))))))
+        (error (c) 
+          (kernel-log "OPENROUTER ERROR: ~a" c)
+          (format nil "(:type :LOG :payload (:text \"OpenRouter Failure: ~a\"))" c))))))
 
 (defun openrouter-get-available-models ()
   "Fetches available models from OpenRouter."
@@ -113,9 +134,14 @@
           (let* ((prompt-generator (skill-neuro-prompt active-skill)) 
                  (prompt (when prompt-generator (funcall prompt-generator context))))
             (if prompt 
-                (let* ((thought (ask-neuro prompt))
-                       ;; Strip markdown code blocks
-                       (cleaned-thought (cl-ppcre:regex-replace-all "(?s)^```(?:lisp)?\\n?(.*?)\\n?```$" (string-trim '(#\Space #\Newline #\Tab) thought) "\\1"))
+                (let* ((thought (ask-neuro prompt :context context))
+                       ;; Improved cleaning: Extract content between ``` blocks if they exist
+                       (cleaned-thought 
+                        (let ((match (cl-ppcre:scan-to-strings "(?s)```(?:lisp)?\\n?(.*?)\\n?```" thought)))
+                          (if match
+                              (let ((regs (nth-value 1 (cl-ppcre:scan-to-strings "(?s)```(?:lisp)?\\n?(.*?)\\n?```" thought))))
+                                (if (and regs (> (length regs) 0)) (elt regs 0) thought))
+                              (string-trim '(#\Space #\Newline #\Tab) thought))))
                        (suggestion (ignore-errors (read-from-string cleaned-thought))))
                   (kernel-log "SYSTEM 1 Suggestion: ~a~%" cleaned-thought)
                   (cond
@@ -124,12 +150,12 @@
                     ((and (let ((p (getf context :payload))) (eq (getf p :sensor) :chat-message))
                           (> (length cleaned-thought) 0))
                      (kernel-log "SYSTEM 1: SALVAGING plain-text response.~%")
-                     ;; Remove common AI conversational filler at the start or end of the response
-                     (let* ((no-prefix (cl-ppcre:regex-replace "(?i)^(okay,? |sure,? |i will |i've |i have |here is |got it\\.? |understood\\.? |done\\.? |yes,? )+" cleaned-thought ""))
-                            (no-suffix (cl-ppcre:regex-replace "(?i)(\\s+okay,?|\\s+sure,?|\\s+got it\\.?|\\s+understood\\.?)$" no-prefix ""))
-                            (payload-text (string-trim '(#\Space #\Newline #\Tab #\") no-suffix)))
-                       `(:type :request :target :emacs :payload (:action :insert-at-end :buffer "*org-agent-chat*" :text ,payload-text))))
-                    (t (kernel-log "SYSTEM 1 ERROR: Could not parse response as Lisp plist.~%") nil)))                '(:type :LOG :payload (:text "Skill triggered (Deterministic only)")))))
+                     (let* ((no-prefix (cl-ppcre:regex-replace "(?i)^(okay,? |sure,? |i will |i've |i have |here is |got it\\.? |understood\\.? |done\\.? |yes,? )+" cleaned-thought "")))
+                       `(:target :emacs :payload (:action :insert-at-end :buffer "*org-agent-chat*" :text ,no-prefix))))
+                    (t 
+                     (kernel-log "SYSTEM 1 ERROR: Could not parse response as Lisp plist.~%")
+                     nil)))
+                '(:type :LOG :payload (:text "Skill triggered (Deterministic only)")))))
         nil)))
 
 (defun distill-prompt (full-prompt successful-output)

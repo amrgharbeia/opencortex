@@ -81,4 +81,8 @@
    #:org-id-new
    
    ;; --- AST Helpers ---
-   #:find-headline-missing-id))
+   #:find-headline-missing-id
+   
+   ;; --- Environment Config ---
+   #:set-llm-model
+   #:get-llm-model))
