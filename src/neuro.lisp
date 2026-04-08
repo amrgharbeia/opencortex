@@ -54,8 +54,8 @@
 
 ;; --- Sovereign Service Fallbacks ---
 
-(defun economist-route-task (context)
-  "Generic fallback for routing. Overridden by skill-economist."
+(defun token-accountant-route-task (context)
+  "Generic fallback for routing. Overridden by skill-token-accountant."
   (declare (ignore context))
   '(:openrouter :gemini))
 

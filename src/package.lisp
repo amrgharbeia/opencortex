@@ -62,8 +62,25 @@
    #:skill-trigger-fn
    #:skill-neuro-prompt
    #:skill-symbolic-fn
-   
+
+   ;; --- Tool Registry ---
+   #:def-cognitive-tool
+   #:*cognitive-tools*
+   #:cognitive-tool
+   #:cognitive-tool-name
+   #:cognitive-tool-description
+   #:cognitive-tool-parameters
+   #:cognitive-tool-guard
+   #:cognitive-tool-body
+
+   ;; --- Emacs Client Registry ---
+   #:*emacs-clients*
+   #:*clients-lock*
+   #:register-emacs-client
+   #:unregister-emacs-client
+
    ;; --- Neuro (System 1) ---
+
    #:ask-neuro
    #:register-neuro-backend
    #:register-auth-provider
@@ -74,7 +91,7 @@
    #:find-most-similar
    #:openrouter-get-available-models
    #:*provider-cascade*
-   #:economist-route-task
+   #:token-accountant-route-task
    
    ;; --- Symbolic Logic ---
    #:list-objects-with-attribute
