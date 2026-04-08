@@ -28,6 +28,19 @@ This architecture treats all interfaces as external **Actuators** and **Sensors*
 - **Messaging Actuator (Signal/Telegram/Discord):** A delivery channel for proactive alerts and human-in-the-loop decisions.
 - **Web Actuator (Dashboard):** A visual telemetry interface for monitoring the live kernel state.
 
+** The Neurosymbolic Split (System 1 vs. System 2)
+Relying entirely on LLMs (System 1) for agentic workflows is notoriously fragile due to hallucinations and context limits. By using the LLM only for "intuition" (The `Think` phase) and using Common Lisp for deterministic gating and execution (The `Decide` and `Act` phases), the system is creative but strictly bound by mathematical logic. It's safe by design.
+
+** Literate Programming as Institutional Memory
+The decision to force all system logic and rules into Literate Org files ensures that the "Why" (the PRD and philosophy) never drifts from the "How" (the Lisp implementation). The system documents itself simply by existing.
+
+** Anti-Fragility and Trade-offs
+While the architecture is beautiful, it comes with specific engineering trade-offs that we manage:
+
+- **The Parsing Bottleneck:** Org-mode is a complex, plain-text format. While it is homoiconic, parsing massive Org files into Lisp structs every time the kernel starts could become a bottleneck. The `memory-image.lisp` state-dumping mechanism solves this by allowing the system to bypass text parsing and load directly from memory.
+- **Web/Mobile Accessibility:** Optimizing for Lisp and Emacs (structural integrity via `org-id`) often breaks standard web rendering (like Gitea's parsers). A dedicated "Web Actuator" skill is needed to translate the raw Org AST into a consumable format on those platforms.
+- **The "Zero-Bloat" Discipline:** Maintaining the "Lisp Machine Sovereignty" rule (no external dependencies unless strictly necessary) requires constant vigilance as new skills are added.
+
 * The Paradigm: Skills vs. Sub-Agents
 
 Modern AI frameworks heavily rely on "Sub-agents" (e.g., passing text between isolated Python scripts). `org-agent` fundamentally rejects this in favor of **Org-Native Skills**.
@@ -89,7 +102,7 @@ sequenceDiagram
 
 This section defines the ASDF system, its dependencies, and the loading order of the modules.
 
-#+begin_src lisp :tangle ../org-agent.asd
+#+begin_src lisp :tangle org-agent.asd
 (defsystem :org-agent
   :name "org-agent"
   :author "Amr"
@@ -128,7 +141,7 @@ This section defines the ASDF system, its dependencies, and the loading order of
 The physical implementation of the daemon, tangled from this Org document into =src/=.
 
 ** Namespace & API
-#+begin_src lisp :tangle ../src/package.lisp
+#+begin_src lisp :tangle src/package.lisp
 (defpackage :org-agent
   (:use :cl)
   (:export 
@@ -193,8 +206,25 @@ The physical implementation of the daemon, tangled from this Org document into =
    #:skill-trigger-fn
    #:skill-neuro-prompt
    #:skill-symbolic-fn
-   
+
+   ;; --- Tool Registry ---
+   #:def-cognitive-tool
+   #:*cognitive-tools*
+   #:cognitive-tool
+   #:cognitive-tool-name
+   #:cognitive-tool-description
+   #:cognitive-tool-parameters
+   #:cognitive-tool-guard
+   #:cognitive-tool-body
+
+   ;; --- Emacs Client Registry ---
+   #:*emacs-clients*
+   #:*clients-lock*
+   #:register-emacs-client
+   #:unregister-emacs-client
+
    ;; --- Neuro (System 1) ---
+
    #:ask-neuro
    #:register-neuro-backend
    #:register-auth-provider
@@ -220,7 +250,7 @@ The physical implementation of the daemon, tangled from this Org document into =
 #+end_src
 
 ** Communication (OACP)
-#+begin_src lisp :tangle ../src/protocol.lisp
+#+begin_src lisp :tangle src/protocol.lisp
 (in-package :org-agent)
 
 (defun frame-message (msg-string)
@@ -250,7 +280,7 @@ The physical implementation of the daemon, tangled from this Org document into =
 #+end_src
 
 ** Perceptual Memory (Object Store)
-#+begin_src lisp :tangle ../src/object-store.lisp
+#+begin_src lisp :tangle src/object-store.lisp
 (in-package :org-agent)
 
 (defvar *object-store* (make-hash-table :test 'equal))
@@ -320,7 +350,7 @@ The physical implementation of the daemon, tangled from this Org document into =
 #+end_src
 
 ** Peripheral Vision (Context API)
-#+begin_src lisp :tangle ../src/context.lisp
+#+begin_src lisp :tangle src/context.lisp
 (in-package :org-agent)
 
 (defun context-query-store (&key tag todo-state type)
@@ -384,7 +414,7 @@ The physical implementation of the daemon, tangled from this Org document into =
 
 * System 1 (Neural Engine)
 ** Embedding Logic
-#+begin_src lisp :tangle ../src/embedding.lisp
+#+begin_src lisp :tangle src/embedding.lisp
 (in-package :org-agent)
 
 (defun get-embedding (text)
@@ -410,7 +440,7 @@ The physical implementation of the daemon, tangled from this Org document into =
 #+end_src
 
 ** Neural Logic
-#+begin_src lisp :tangle ../src/neuro.lisp
+#+begin_src lisp :tangle src/neuro.lisp
 (in-package :org-agent)
 
 (defun get-env (var &optional default) (or (uiop:getenv var) default))
@@ -442,6 +472,8 @@ The physical implementation of the daemon, tangled from this Org document into =
 (defvar *provider-cascade* '(:openrouter :gemini))
 (defun register-neuro-backend (name fn) (setf (gethash name *neuro-backends*) fn))
 
+(defvar *model-selector-fn* nil "A function called with (provider context) to return a model ID.")
+
 (defun ask-neuro (prompt &key (system-prompt "You are the System 1 engine of a Neurosymbolic Lisp Machine.") (cascade nil) (context nil))
   "Dispatches a neural request through the provider cascade.
    If CASCADE is a function, it is called with CONTEXT to determine backends."
@@ -454,9 +486,7 @@ The physical implementation of the daemon, tangled from this Org document into =
       (let ((backend-fn (gethash backend *neuro-backends*)))
         (when backend-fn
           (kernel-log "SYSTEM 1: Attempting backend ~a..." backend)
-          (let* (;; Consult the Economist for the model ID if available
-                 (model (ignore-errors 
-                         (uiop:symbol-call :org-agent.skills.org-skill-economist :economist-get-model-for-provider backend)))
+          (let* ((model (when *model-selector-fn* (funcall *model-selector-fn* backend context)))
                  (result (if model 
                              (funcall backend-fn prompt system-prompt :model model)
                              (funcall backend-fn prompt system-prompt))))
@@ -468,7 +498,7 @@ The physical implementation of the daemon, tangled from this Org document into =
 (defun execute-gemini-request (prompt system-prompt &key model)
   (let* ((auth (get-provider-auth :gemini)) (api-key (getf auth :api-key)) (bearer-token (getf auth :bearer-token))
          (endpoint-base (if model (format nil "https://generativelanguage.googleapis.com/v1/models/~a:generateContent" model)
-                            "https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent")))
+                            (return-from execute-gemini-request "(:type :LOG :payload (:text \"Error: Gemini Model ID missing.\"))"))))
     (unless (or api-key bearer-token) (return-from execute-gemini-request "(:type :LOG :payload (:text \"Authentication missing\"))"))
     (let* ((url (if api-key (format nil "~a?key=~a" endpoint-base api-key) endpoint-base))
            (headers `(("Content-Type" . "application/json") ,@(when bearer-token `(("Authorization" . ,(format nil "Bearer ~a" bearer-token))))))
@@ -477,17 +507,33 @@ The physical implementation of the daemon, tangled from this Org document into =
                       (cdr (assoc :text (cdr (assoc :parts (car (cdr (assoc :parts (car (cdr (assoc :candidates json)))))))))))
         (error (c) (format nil "(:type :LOG :payload (:text \"Neural Engine Failure: ~a\"))" c))))))
 
+(defun execute-groq-request (prompt system-prompt &key model)
+  (let ((api-key (uiop:getenv "GROQ_API_KEY"))
+        (endpoint "https://api.groq.com/openai/v1/chat/completions"))
+    (unless model (return-from execute-groq-request "(:type :LOG :payload (:text \"Error: Groq Model ID missing.\"))"))
+    (unless api-key (return-from execute-groq-request "(:type :LOG :payload (:text \"Groq API Key missing\"))"))
+    (let* ((headers `(("Content-Type" . "application/json")
+                      ("Authorization" . ,(format nil "Bearer ~a" api-key))))
+           (body (cl-json:encode-json-to-string
+                  `((model . ,model)
+                    (messages . (( (role . "system") (content . ,system-prompt) )
+                                 ( (role . "user") (content . ,prompt) )))))))
+      (handler-case (let* ((response (dex:post endpoint :headers headers :content body :connect-timeout 5 :read-timeout 10))
+                           (json (cl-json:decode-json-from-string response)))
+                      (cdr (assoc :content (cdr (assoc :message (car (cdr (assoc :choices json))))))))
+        (error (c) (format nil "(:type :LOG :payload (:text \"Groq Failure: ~a\"))" c))))))
+
 (defun execute-openrouter-request (prompt system-prompt &key model)
   (let ((api-key (uiop:getenv "OPENROUTER_API_KEY"))
-        (endpoint "https://openrouter.ai/api/v1/chat/completions")
-        (model-id (or model "google/gemini-2.0-flash-001")))
+        (endpoint "https://openrouter.ai/api/v1/chat/completions"))
+    (unless model (return-from execute-openrouter-request "(:type :LOG :payload (:text \"Error: Model ID missing. Accountant must provide a model.\"))"))
     (unless api-key (return-from execute-openrouter-request "(:type :LOG :payload (:text \"OpenRouter API Key missing\"))"))
     (let* ((headers `(("Content-Type" . "application/json")
                       ("Authorization" . ,(format nil "Bearer ~a" api-key))
                       ("HTTP-Referer" . "https://github.com/amr/org-agent")))
            (body (cl-ppcre:regex-replace-all "\\\\/" 
                                              (cl-json:encode-json-to-string
-                                              `((model . ,model-id)
+                                              `((model . ,model)
                                                 (messages . (( (role . "system") (content . ,system-prompt) )
                                                              ( (role . "user") (content . ,prompt) )))))
                                              "/")))
@@ -498,6 +544,8 @@ The physical implementation of the daemon, tangled from this Org document into =
                         (cdr (assoc :content (cdr (assoc :message (car (cdr (assoc :choices json)))))))))
         (error (c) 
           (kernel-log "OPENROUTER ERROR: ~a" c)
+          (if (typep c 'dex:http-request-failed)
+              (kernel-log "OPENROUTER ERROR BODY: ~a" (dex:response-body c)))
           (format nil "(:type :LOG :payload (:text \"OpenRouter Failure: ~a\"))" c))))))
 
 (defun openrouter-get-available-models ()
@@ -537,37 +585,78 @@ The physical implementation of the daemon, tangled from this Org document into =
 
 (register-neuro-backend :gemini #'execute-gemini-request)
 (register-neuro-backend :openrouter #'execute-openrouter-request)
-(setf *provider-cascade* '(:openrouter :gemini))
+(register-neuro-backend :groq #'execute-groq-request)
+(defvar *provider-cascade* '(:openrouter :gemini)) ; Default fallback only
+
+(defun get-org-timestamp ()
+  "Returns a current Org-mode active timestamp."
+  (multiple-value-bind (sec min hour day month year day-of-week) (decode-universal-time (get-universal-time))
+    (declare (ignore sec))
+    (let ((day-names '("Mon" "Tue" "Wed" "Thu" "Fri" "Sat" "Sun")))
+      (format nil "[~4,'0d-~2,'0d-~2,'0d ~a ~2,'0d:~2,'0d]" 
+              year month day (nth day-of-week day-names) hour min))))
+
+(defun update-note-metadata (filepath)
+  "Ensures a :PROPERTIES: drawer exists and updates the :EDITED: timestamp."
+  (let ((content (uiop:read-file-string filepath))
+        (now (get-org-timestamp)))
+    (if (search ":PROPERTIES:" content)
+        ;; Update existing EDITED or add it
+        (let ((new-content (if (search ":EDITED:" content)
+                               (cl-ppcre:regex-replace ":EDITED:   \\[.*?\\]" content (format nil ":EDITED:   ~a" now))
+                               (cl-ppcre:regex-replace ":PROPERTIES:\\n" content (format nil ":PROPERTIES:~%:EDITED:   ~a~%" now)))))
+          (with-open-file (out filepath :direction :output :if-exists :supersede)
+            (write-string new-content out)))
+        ;; Create new drawer
+        (let ((new-content (format nil ":PROPERTIES:~%:CREATED:  ~a~%:EDITED:   ~a~%:END:~%~a" now now content)))
+          (with-open-file (out filepath :direction :output :if-exists :supersede)
+            (write-string new-content out))))))
 
 (defun think (context)
-  (let ((active-skill (find-triggered-skill context)))
+  (let ((active-skill (find-triggered-skill context))
+        (tool-belt (generate-tool-belt-prompt)))
     (if active-skill
         (progn
           (kernel-log "SYSTEM 1: Engaging skill '~a'~%" (skill-name active-skill))
           (let* ((prompt-generator (skill-neuro-prompt active-skill)) 
-                 (prompt (when prompt-generator (funcall prompt-generator context))))
-            (if prompt 
-                (let* ((thought (ask-neuro prompt :context context))
-                       ;; Improved cleaning: Extract content between ``` blocks if they exist
-                       (cleaned-thought 
-                        (let ((match (cl-ppcre:scan-to-strings "(?s)```(?:lisp)?\\n?(.*?)\\n?```" thought)))
-                          (if match
-                              (let ((regs (nth-value 1 (cl-ppcre:scan-to-strings "(?s)```(?:lisp)?\\n?(.*?)\\n?```" thought))))
-                                (if (and regs (> (length regs) 0)) (elt regs 0) thought))
-                              (string-trim '(#\Space #\Newline #\Tab) thought))))
-                       (suggestion (ignore-errors (read-from-string cleaned-thought))))
-                  (kernel-log "SYSTEM 1 Suggestion: ~a~%" cleaned-thought)
-                  (cond
-                    ((and suggestion (listp suggestion)) suggestion)
-                    ;; SALVAGE: If LLM returned plain text or a non-list symbol
-                    ((and (let ((p (getf context :payload))) (eq (getf p :sensor) :chat-message))
-                          (> (length cleaned-thought) 0))
-                     (kernel-log "SYSTEM 1: SALVAGING plain-text response.~%")
-                     (let* ((no-prefix (cl-ppcre:regex-replace "(?i)^(okay,? |sure,? |i will |i've |i have |here is |got it\\.? |understood\\.? |done\\.? |yes,? )+" cleaned-thought "")))
-                       `(:target :emacs :payload (:action :insert-at-end :buffer "*org-agent-chat*" :text ,no-prefix))))
-                    (t 
-                     (kernel-log "SYSTEM 1 ERROR: Could not parse response as Lisp plist.~%")
-                     nil)))
+                 (raw-prompt (when prompt-generator (funcall prompt-generator context)))
+                 (full-system-prompt (concatenate 'string 
+                                                 "ACTUATOR IDENTITY: You are the pure Lisp actuator for the org-agent kernel.
+MANDATE: Output EXACTLY ONE Common Lisp property list starting with (:type :REQUEST).
+ZERO CONVERSATION: Do not explain. Do not say 'Okay'. Do not use markdown blocks.
+STRICT RULE: Do not output multiple lists. Do not chain multiple requests. 
+DO NOT embed tool calls inside text strings.
+If you need to do multiple things or need information from a tool, you MUST:
+1. Call the tool FIRST.
+2. Wait for the result in the next recursive turn.
+3. Only then reply to the user or call the next tool.
+
+"
+                                                 tool-belt
+                                                 "
+IMPORTANT: To reply to the user, you MUST use:
+(:type :REQUEST :target :emacs :action :insert-at-end :buffer \"*org-agent-chat*\" :text \"* <Response Text>\")
+
+To call a tool, you MUST use:
+(:type :REQUEST :target :tool :action :call :tool \"<name>\" :args (:arg1 \"val\"))
+
+")))
+            (if (and raw-prompt (> (length raw-prompt) 1))
+                (let* ((thought (ask-neuro raw-prompt :system-prompt full-system-prompt :context context)))
+                  (kernel-log "SYSTEM 1 RAW: ~a~%" thought)
+                  (let* ((cleaned-thought 
+                          (let ((match (cl-ppcre:scan-to-strings "(?s)```(?:lisp)?\\n?(.*?)\\n?```" thought)))
+                            (if match
+                                (let ((regs (nth-value 1 (cl-ppcre:scan-to-strings "(?s)```(?:lisp)?\\n?(.*?)\\n?```" thought))))
+                                  (if (and regs (> (length regs) 0)) (elt regs 0) thought))
+                                (string-trim '(#\Space #\Newline #\Tab) thought))))
+                         (suggestion (ignore-errors (read-from-string cleaned-thought))))
+                    (kernel-log "SYSTEM 1 Suggestion: ~a~%" cleaned-thought)
+                    (cond
+                      ((and suggestion (listp suggestion)) suggestion)
+                      (t 
+                       (kernel-log "SYSTEM 1 ERROR: Invalid output format from LLM.~%")
+                       nil))))
                 '(:type :LOG :payload (:text "Skill triggered (Deterministic only)")))))
         nil)))
 
@@ -582,25 +671,33 @@ The physical implementation of the daemon, tangled from this Org document into =
 
 * System 2 (Symbolic Gating)
 ** Symbolic Logic
-#+begin_src lisp :tangle ../src/symbolic.lisp
+#+begin_src lisp :tangle src/symbolic.lisp
 (in-package :org-agent)
 
 (defun decide (proposed-action context)
   (let ((active-skill (find-triggered-skill context)))
-    (if active-skill
-        (let ((symbolic-gate (skill-symbolic-fn active-skill)))
-          (when (and proposed-action (listp proposed-action) (eq (getf proposed-action :type) :REQUEST) (eq (getf (getf proposed-action :payload) :action) :eval))
-            (let ((code (getf (getf proposed-action :payload) :code)) (harness-pkg (find-package :org-agent.skills.org-skill-safety-harness)))
-              (when harness-pkg (unless (ignore-errors (uiop:symbol-call :org-agent.skills.org-skill-safety-harness :safety-harness-validate code))
-                                  (kernel-log "SYSTEM 2 [GLOBAL]: Security violation blocked.~%")
-                                  (return-from decide '(:type :LOG :payload (:text "Blocked by Global Safety Harness")))))))
+    (if (and proposed-action (listp proposed-action) active-skill)
+        (let* ((symbolic-gate (skill-symbolic-fn active-skill))
+               (payload (getf proposed-action :payload))
+               (action (or (getf payload :action) (getf proposed-action :action)))
+               (code (or (getf payload :code) (getf proposed-action :code))))
+          ;; Global safety harness for EVAL
+          (when (and (member (getf proposed-action :type) '(:request :REQUEST))
+                     (member action '(:eval :EVAL)))
+            (let ((harness-pkg (find-package :org-agent.skills.org-skill-safety-harness)))
+              (when (and code harness-pkg)
+                (unless (ignore-errors (uiop:symbol-call :org-agent.skills.org-skill-safety-harness :safety-harness-validate code))
+                  (kernel-log "SYSTEM 2 [GLOBAL]: Security violation blocked.~%")
+                  (return-from decide '(:type :LOG :payload (:text "Blocked by Global Safety Harness")))))))
+          ;; Skill-specific verification
           (if symbolic-gate
               (let ((decision (funcall symbolic-gate proposed-action context)))
-                (if decision (progn (kernel-log "SYSTEM 2: Verified by skill '~a'.~%" (skill-name active-skill)) decision)
+                (if decision 
+                    (progn (kernel-log "SYSTEM 2: Verified by skill '~a'.~%" (skill-name active-skill)) decision)
                     (progn (kernel-log "SYSTEM 2: REJECTED by skill '~a'.~%" (skill-name active-skill))
                            '(:type :LOG :payload (:text "Action rejected by skill heuristics")))))
               (progn (kernel-log "SYSTEM 2: Verified (Implicitly safe for skill '~a').~%" (skill-name active-skill)) proposed-action)))
-        nil)))
+        proposed-action)))
 
 (defun list-objects-with-attribute (attr-key attr-val)
   (let ((results nil))
@@ -610,12 +707,44 @@ The physical implementation of the daemon, tangled from this Org document into =
 
 * Skill Engine
 ** Skill Logic
-#+begin_src lisp :tangle ../src/skills.lisp
+#+begin_src lisp :tangle src/skills.lisp
 (in-package :org-agent)
 
 (defvar *skills-registry* (make-hash-table :test 'equal))
 
 (defstruct skill name priority dependencies trigger-fn neuro-prompt symbolic-fn)
+
+(defvar *cognitive-tools* (make-hash-table :test 'equal))
+
+(defstruct cognitive-tool name description parameters guard body)
+
+(defmacro def-cognitive-tool (name description &key parameters guard body)
+  `(setf (gethash (string-downcase (string ,name)) *cognitive-tools*)
+         (make-cognitive-tool :name (string-downcase (string ,name))
+                             :description ,description
+                             :parameters ',parameters
+                             :guard ,guard
+                             :body ,body)))
+
+(defun generate-tool-belt-prompt ()
+  (let ((output (format nil "AVAILABLE TOOLS:
+You can call tools by returning a Lisp plist: (:target :tool :action :call :tool <name> :args (...))
+
+EXAMPLES:
+(:target :tool :action :call :tool \"eval\" :args (:code \"(+ 1 1)\"))
+(:target :tool :action :call :tool \"grep-search\" :args (:pattern \"sovereignty\"))
+(:target :tool :action :call :tool \"shell\" :args (:cmd \"ls -la\"))
+
+---
+")))
+    (maphash (lambda (name tool)
+               (setf output (concatenate 'string output
+                                         (format nil "- ~a: ~a~%  Parameters: ~s~%~%"
+                                                 name
+                                                 (cognitive-tool-description tool)
+                                                 (cognitive-tool-parameters tool)))))
+             *cognitive-tools*)
+    output))
 
 (defmacro defskill (name &key priority dependencies trigger neuro symbolic)
   `(setf (gethash ,(string-downcase (string name)) *skills-registry*)
@@ -662,16 +791,57 @@ The physical implementation of the daemon, tangled from this Org document into =
   (handler-case (let ((*read-eval* nil)) (with-input-from-string (stream (format nil "(progn ~a)" code-string))
                                           (loop for form = (read stream nil :eof) until (eq form :eof)) (values t nil)))
     (error (c) (values nil (format nil "~a" c)))))
+
+(def-cognitive-tool :eval "Evaluates raw Common Lisp code in the kernel image. Use this for complex calculations or internal state inspection."
+  :parameters ((:code :type :string :description "The Lisp code to evaluate"))
+  :guard (lambda (args context)
+           (declare (ignore context))
+           (let ((code (getf args :code)))
+             ;; Reuse the global safety harness if it exists
+             (let ((harness-pkg (find-package :org-agent.skills.org-skill-safety-harness)))
+               (if harness-pkg 
+                   (uiop:symbol-call :org-agent.skills.org-skill-safety-harness :safety-harness-validate code)
+                   t)))) ; Implicitly safe if harness not loaded
+  :body (lambda (args)
+          (let ((code (getf args :code)))
+            (handler-case (let ((result (eval (read-from-string code))))
+                            (format nil "~s" result))
+              (error (c) (format nil "ERROR: ~a" c))))))
+
+(def-cognitive-tool :grep-search "Searches for a pattern in the project files."
+  :parameters ((:pattern :type :string :description "The regex pattern to search for")
+               (:dir :type :string :description "Directory to search in (default is project root)"))
+  :body (lambda (args)
+          (let ((pattern (getf args :pattern))
+                (dir (or (getf args :dir) (uiop:getenv "MEMEX_DIR"))))
+            (uiop:run-program (list "grep" "-r" "-n" "--exclude-dir=node_modules" pattern dir) 
+                              :output :string :ignore-error-status t))))
+
+(def-cognitive-tool :shell "Executes a shell command on the local machine. Use this for file operations, system checks, or running tests."
+  :parameters ((:cmd :type :string :description "The full bash command to execute"))
+  :guard (lambda (args context)
+           (declare (ignore context))
+           ;; Global safety: prohibit destructive commands
+           (let ((cmd (getf args :cmd)))
+             (not (or (search "rm -rf /" cmd) (search ":(){ :|:& };:" cmd)))))
+  :body (lambda (args)
+          (let ((cmd (getf args :cmd)))
+            (multiple-value-bind (out err code)
+                (uiop:run-program (list "bash" "-c" cmd) :output :string :error-output :string :ignore-error-status t)
+              (format nil "EXIT-CODE: ~a~%~%STDOUT:~%~a~%~%STDERR:~%~a" code out err)))))
+
 #+end_src
 
 * Daemon Runtime
 ** Lifecycle & Loop
-#+begin_src lisp :tangle ../src/core.lisp
+#+begin_src lisp :tangle src/core.lisp
 (in-package :org-agent)
 
 (defvar *system-logs* nil)
 (defvar *logs-lock* (bt:make-lock "kernel-logs-lock"))
 (defvar *max-log-history* 100)
+(defvar *interrupt-flag* nil)
+(defvar *interrupt-lock* (bt:make-lock "kernel-interrupt-lock"))
 (defvar *skill-telemetry* (make-hash-table :test 'equal))
 (defvar *telemetry-lock* (bt:make-lock "kernel-telemetry-lock"))
 
@@ -734,22 +904,62 @@ The physical implementation of the daemon, tangled from this Org document into =
       (:message (kernel-log "ACTUATOR [System] - ~a" (getf payload :text)))
       (t (kernel-log "ACTUATOR [System] - Unknown command ~s" cmd)))))
 
-(defun cognitive-loop (raw-message)
-  (let* ((start-time (get-internal-real-time))
-         (type (getf raw-message :type))
-         (perceive-fn (find-symbol "PERCEIVE" :org-agent))
-         (context (if perceive-fn (funcall perceive-fn raw-message) raw-message)))
-    (snapshot-object-store)
-    (if (eq type :REQUEST)
-        (dispatch-action raw-message context)
-        (let* ((skill (find-triggered-skill context))
-               (skill-name (when skill (skill-name skill)))
-               (proposed-action (think context))
-               (approved-action (decide proposed-action context))
-               (status (if (and proposed-action (null approved-action)) :rejected :success))
-               (duration (- (get-internal-real-time) start-time)))
-          (when skill-name (kernel-track-telemetry skill-name duration status))
-          (dispatch-action approved-action context)))))
+(defun cognitive-loop (raw-message &optional (depth 0))
+  (when (> depth 10)
+    (kernel-log "SYSTEM ERROR: Maximum cognitive depth reached.")
+    (return-from cognitive-loop nil))
+  (when (bt:with-lock-held (*interrupt-lock*) *interrupt-flag*)
+    (kernel-log "SYSTEM: Loop interrupted.")
+    (bt:with-lock-held (*interrupt-lock*) (setf *interrupt-flag* nil))
+    (return-from cognitive-loop nil))
+
+  (handler-case
+      (let* ((start-time (get-internal-real-time))
+             (type (getf raw-message :type))
+             (perceive-fn (find-symbol "PERCEIVE" :org-agent))
+             (context (if perceive-fn (funcall perceive-fn raw-message) raw-message)))
+        (snapshot-object-store)
+        (if (eq type :REQUEST)
+            (dispatch-action raw-message context)
+            (let* ((skill (find-triggered-skill context))
+                   (skill-name (when skill (skill-name skill)))
+                   (proposed-action (think context))
+                   (approved-action (decide proposed-action context))
+                   (status (if (and proposed-action (null approved-action)) :rejected :success))
+                   (duration (- (get-internal-real-time) start-time)))
+              (when skill-name (kernel-track-telemetry skill-name duration status))
+
+              (let* ((payload (getf approved-action :payload))
+                     (target (getf approved-action :target))
+                     (action (or (getf payload :action) (getf approved-action :action)))
+                     (tool-name (or (getf payload :tool) (getf approved-action :tool)))
+                     (tool-args (or (getf payload :args) (getf approved-action :args))))
+                (if (and approved-action (eq target :tool) (eq action :call))
+                    ;; Internal Tool Execution
+                    (let* ((tool (gethash (string-downcase (string tool-name)) *cognitive-tools*)))
+                      (if tool
+                          (progn
+                            (kernel-log "SYSTEM 2: Executing tool '~a'..." tool-name)
+                            (let* ((clean-args (if (and (listp tool-args) (listp (car tool-args))) (car tool-args) tool-args))
+                                   (tool-result (funcall (cognitive-tool-body tool) clean-args))
+                                   (next-stimulus `(:type :EVENT :payload (:sensor :tool-output :result ,tool-result :tool ,tool-name))))
+                              (when (getf raw-message :reply-stream) (setf (getf next-stimulus :reply-stream) (getf raw-message :reply-stream)))
+                              (cognitive-loop next-stimulus (1+ depth))))
+                          (progn
+                            (kernel-log "SYSTEM ERROR: Tool '~a' not found in registry." tool-name)
+                            (let ((err-stimulus `(:type :EVENT :payload (:sensor :tool-error :message "Tool not found"))))
+                              (when (getf raw-message :reply-stream) (setf (getf err-stimulus :reply-stream) (getf raw-message :reply-stream)))
+                              (cognitive-loop err-stimulus (1+ depth))))))
+
+                    ;; Physical Actuation (Emacs, Shell, etc.)
+                    (let ((result (dispatch-action approved-action context)))
+                      (when (and result (not (member target '(:emacs :system-message))))
+                        (let ((fallback-stimulus `(:type :EVENT :payload (:sensor :tool-output :result ,result :tool ,approved-action))))
+                          (when (getf raw-message :reply-stream) (setf (getf fallback-stimulus :reply-stream) (getf raw-message :reply-stream)))
+                          (cognitive-loop fallback-stimulus (1+ depth))))))))))
+    (error (c)
+      (kernel-log "LOOP CRASH - Error in recursive turn: ~a~%" c)
+      nil)))
 
 (defun perceive (raw-message)
   (let ((type (getf raw-message :type)) (payload (getf raw-message :payload)))
@@ -757,8 +967,10 @@ The physical implementation of the daemon, tangled from this Org document into =
     (cond ((eq type :EVENT) (let ((sensor (getf payload :sensor)))
                               (case sensor
                                 (:buffer-update (let ((ast (getf payload :ast))) (when ast (ingest-ast ast))))
-                                (:point-update (let ((element (getf payload :element))) (when element (ingest-ast element)))))))
-          ((eq type :RESPONSE) (kernel-log "ACT RESULT: ~a" (getf payload :status))))
+                                (:point-update (let ((element (getf payload :element))) (when element (ingest-ast element))))
+                                (:interrupt (bt:with-lock-held (*interrupt-lock*) (setf *interrupt-flag* t))))))
+          ((eq type :RESPONSE) 
+           (kernel-log "ACT RESULT: ~a~%PAYLOAD: ~s~%" (getf payload :status) payload)))
     raw-message))
 
 (defun start-heartbeat (&optional (interval 60))
@@ -788,9 +1000,21 @@ The physical implementation of the daemon, tangled from this Org document into =
         (kernel-log "KERNEL ERROR: Skills directory not found or invalid path: ~a" skills-dir-str))))
 
 (defvar *daemon-thread* nil) (defvar *daemon-socket* nil)
+(defvar *emacs-clients* nil)
+(defvar *clients-lock* (bt:make-lock "emacs-clients-lock"))
+
+(defun register-emacs-client (stream)
+  (bt:with-lock-held (*clients-lock*)
+    (pushnew stream *emacs-clients*)))
+
+(defun unregister-emacs-client (stream)
+  (bt:with-lock-held (*clients-lock*)
+    (setf *emacs-clients* (remove stream *emacs-clients*))))
+
 (defun handle-client (stream)
   "Main loop for a single OACP client connection."
   (kernel-log "DAEMON: New client connected.~%")
+  (register-emacs-client stream)
   (unwind-protect
        (loop
          (handler-case
@@ -819,6 +1043,7 @@ The physical implementation of the daemon, tangled from this Org document into =
              (kernel-log "DAEMON CLIENT ERROR: ~a~%" c)
              (return))))
     (kernel-log "DAEMON: Client disconnected.~%")
+    (unregister-emacs-client stream)
     (ignore-errors (close stream))))
 
 (defun start-daemon (&key port interval)
