@@ -28,6 +28,13 @@ This architecture treats all interfaces as external **Actuators** and **Sensors*
 - **Messaging Actuator (Signal/Telegram/Discord):** A delivery channel for proactive alerts and human-in-the-loop decisions.
 - **Web Actuator (Dashboard):** A visual telemetry interface for monitoring the live kernel state.
 
+** The Actuator-Agnostic Vision (Towards a True Lisp Machine)
+While Emacs currently serves as the primary editor actuator, the `org-agent` core is fundamentally **actuator-agnostic**. Emacs is not a privileged citizen. The OACP (Org-Agent Communication Protocol) expects a serialized Org AST, but it does not care who generates it.
+
+The long-term design trajectory moves toward a "True Lisp Machine" where external editors and browsers are written out of existence:
+1. **Actuators as Dumb Terminals:** In the near term, Emacs, bash scripts, and web clients merely render views and pass stimuli to the kernel. All "truth" and state management live securely within the Lisp image.
+2. **The Sovereign GUI:** Eventually, the interface itself (the editor, the browser, the system prompt) must be built in Common Lisp (e.g., using McCLIM or Nyxt technologies), running in the *exact same address space* as the agent. This will completely eliminate the OACP IPC socket for local interaction, creating a unified, zero-latency cognitive environment.
+
 ** The Neurosymbolic Split (System 1 vs. System 2)
 Relying entirely on LLMs (System 1) for agentic workflows is notoriously fragile due to hallucinations and context limits. By using the LLM only for "intuition" (The `Think` phase) and using Common Lisp for deterministic gating and execution (The `Decide` and `Act` phases), the system is creative but strictly bound by mathematical logic. It's safe by design.
 
