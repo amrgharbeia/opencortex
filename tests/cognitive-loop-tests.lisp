@@ -86,3 +86,16 @@
   (kernel-log "PSF TEST LOG")
   (let ((logs (context-get-system-logs 5)))
     (is (cl:some (lambda (line) (search "PSF TEST LOG" line)) logs))))
+
+(test test-global-awareness-assembly
+  "Verify that context-assemble-global-awareness reports active projects."
+  (clrhash org-agent::*object-store*)
+  ;; Ingest a project node
+  (ingest-ast '(:type :HEADLINE :properties (:ID "proj-1" :TITLE "Project Alpha" :TAGS "project") :contents nil))
+  ;; Ingest a non-project node
+  (ingest-ast '(:type :HEADLINE :properties (:ID "note-1" :TITLE "Random Note") :contents nil))
+  
+  (let ((awareness (context-assemble-global-awareness)))
+    (is (search "Project Alpha" awareness))
+    (is (search "proj-1" awareness))
+    (is (not (search "Random Note" awareness)))))

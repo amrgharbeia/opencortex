@@ -57,3 +57,17 @@
                       (format nil "~a/~a" (string-right-trim "/" clean-val) remaining))
             path-string))
       path-string))
+
+(defun context-assemble-global-awareness ()
+  "Produces a high-level skeletal outline of the current Object Store for the LLM."
+  (let ((projects (context-get-active-projects))
+        (output "GLOBAL MEMEX AWARENESS (Peripheral Vision):
+"))
+    (if projects
+        (dolist (project projects)
+          (setf output (concatenate 'string output
+                                    (format nil "- PROJECT: ~a (ID: ~a)~%" 
+                                            (getf (org-object-attributes project) :TITLE)
+                                            (org-object-id project)))))
+        (setf output (concatenate 'string output "No active projects found.~%")))
+    output))

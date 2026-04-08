@@ -38,6 +38,124 @@ The kernel is fundamentally **actuator-agnostic**. While it currently uses Emacs
 
 The microkernel is divided into six primary subsystems, each solving a fundamental problem of agentic autonomy.
 
+** System Interface (package.lisp)
+The `package.lisp` file defines the public API of the `org-agent` kernel. It exports all necessary symbols for skills and actuators to interact with the core.
+
+#+begin_src lisp :tangle src/package.lisp
+(defpackage :org-agent
+  (:use :cl)
+  (:export 
+   ;; --- OACP Protocol ---
+   #:frame-message
+   #:parse-message
+   #:make-hello-message
+   
+   ;; --- Daemon Lifecycle ---
+   #:start-daemon
+   #:stop-daemon
+   #:kernel-log
+   #:main
+   
+   ;; --- Object Store (CLOSOS) ---
+   #:ingest-ast
+   #:lookup-object
+   #:list-objects-by-type
+   #:*object-store*
+   #:org-object
+   #:org-object-id
+   #:org-object-type
+   #:org-object-attributes
+   #:org-object-parent-id
+   #:org-object-children
+   #:org-object-version
+   #:org-object-last-sync
+   #:org-object-vector
+   #:org-object-content
+   #:org-object-hash
+   #:snapshot-object-store
+   #:rollback-object-store
+   #:send-swarm-packet
+   
+   ;; --- Context API (Peripheral Vision) ---
+   #:context-query-store
+   #:context-get-active-projects
+   #:context-get-recent-completed-tasks
+   #:context-list-all-skills
+   #:context-get-skill-source
+   #:context-get-system-logs
+   #:context-filter-sparse-tree
+   #:context-resolve-path
+   #:context-get-skill-telemetry
+   #:context-assemble-global-awareness
+   
+   ;; --- Cognitive Loop & Event Bus ---
+   #:perceive
+   #:think
+   #:decide
+   #:act
+   #:cognitive-loop
+   #:inject-stimulus
+   #:dispatch-action
+   #:register-actuator
+   #:spawn-task
+   
+   ;; --- Skill Engine ---
+   #:load-skill-from-org
+   #:load-skill-with-timeout
+   #:topological-sort-skills
+   #:validate-lisp-syntax
+   #:find-triggered-skill
+   #:defskill
+   #:*skills-registry*
+   #:skill
+   #:skill-name
+   #:skill-priority
+   #:skill-trigger-fn
+   #:skill-neuro-prompt
+   #:skill-symbolic-fn
+
+   ;; --- Tool Registry ---
+   #:def-cognitive-tool
+   #:*cognitive-tools*
+   #:cognitive-tool
+   #:cognitive-tool-name
+   #:cognitive-tool-description
+   #:cognitive-tool-parameters
+   #:cognitive-tool-guard
+   #:cognitive-tool-body
+
+   ;; --- Emacs Client Registry ---
+   #:*emacs-clients*
+   #:*clients-lock*
+   #:register-emacs-client
+   #:unregister-emacs-client
+
+   ;; --- Neuro (System 1) ---
+
+   #:ask-neuro
+   #:register-neuro-backend
+   #:register-auth-provider
+   #:get-provider-auth
+   #:distill-prompt
+   #:get-embedding
+   #:cosine-similarity
+   #:find-most-similar
+   #:openrouter-get-available-models
+   #:*provider-cascade*
+   #:token-accountant-route-task
+   
+   ;; --- Symbolic Logic ---
+   #:list-objects-with-attribute
+   #:org-id-new
+   
+   ;; --- AST Helpers ---
+   #:find-headline-missing-id
+   
+   ;; --- Environment Config ---
+   #:set-llm-model
+   #:get-llm-model))
+#+end_src
+
 ** The Cognitive Loop (core.lisp)
 *** Deep Reasoning: Why Asynchronous Recursion?
 Most AI agents are linear "chatbots" that block the interface while waiting for an LLM response. In a Sovereign OS, this is unacceptable.
@@ -96,15 +214,15 @@ sequenceDiagram
   "Registers an actuator function. Actuators receive two arguments: (ACTION CONTEXT)."
   (setf (gethash name *actuator-registry*) fn))
 
-(defun inject-stimulus (raw-message &key stream)
+(defun inject-stimulus (raw-message &key stream (depth 0))
   (let* ((payload (getf raw-message :payload)) 
          (sensor (getf payload :sensor))
          ;; Force Chat and Delegation to be async
          (async-p (or (getf payload :async-p) (member sensor '(:chat-message :delegation :user-command)))))
     (when stream (setf (getf raw-message :reply-stream) stream))
     (if async-p (bt:make-thread (lambda () (restart-case (handler-bind ((error (lambda (c) (kernel-log "ASYNC ERROR: ~a" c) (invoke-restart 'skip-event))))
-                                                           (cognitive-loop raw-message)) (skip-event () nil))) :name "org-agent-async-task")
-        (restart-case (handler-bind ((error (lambda (c) (kernel-log "SYSTEM ERROR: ~a" c) (invoke-restart 'skip-event)))) (cognitive-loop raw-message))
+                                                           (cognitive-loop raw-message depth)) (skip-event () nil))) :name "org-agent-async-task")
+        (restart-case (handler-bind ((error (lambda (c) (kernel-log "SYSTEM ERROR: ~a" c) (invoke-restart 'skip-event)))) (cognitive-loop raw-message depth))
           (skip-event () (kernel-log "SYSTEM RECOVERY: Stimulus dropped.~%"))))))
 
 (defun spawn-task (task-description &key (async-p t))
@@ -174,11 +292,17 @@ sequenceDiagram
                       (if tool
                           (progn
                             (kernel-log "SYSTEM 2: Executing tool '~a'..." tool-name)
-                            (let* ((clean-args (if (and (listp tool-args) (listp (car tool-args))) (car tool-args) tool-args))
-                                   (tool-result (funcall (cognitive-tool-body tool) clean-args))
-                                   (next-stimulus `(:type :EVENT :payload (:sensor :tool-output :result ,tool-result :tool ,tool-name))))
-                              (when (getf raw-message :reply-stream) (setf (getf next-stimulus :reply-stream) (getf raw-message :reply-stream)))
-                              (cognitive-loop next-stimulus (1+ depth))))
+                            (handler-case
+                                (let* ((clean-args (if (and (listp tool-args) (listp (car tool-args))) (car tool-args) tool-args))
+                                       (tool-result (funcall (cognitive-tool-body tool) clean-args))
+                                       (next-stimulus `(:type :EVENT :payload (:sensor :tool-output :result ,tool-result :tool ,tool-name))))
+                                  (when (getf raw-message :reply-stream) (setf (getf next-stimulus :reply-stream) (getf raw-message :reply-stream)))
+                                  (cognitive-loop next-stimulus (1+ depth)))
+                              (error (c)
+                                (kernel-log "SYSTEM ERROR: Tool '~a' failed: ~a" tool-name c)
+                                (let ((err-stimulus `(:type :EVENT :payload (:sensor :tool-error :tool ,tool-name :message ,(format nil "~a" c)))))
+                                  (when (getf raw-message :reply-stream) (setf (getf err-stimulus :reply-stream) (getf raw-message :reply-stream)))
+                                  (cognitive-loop err-stimulus (1+ depth))))))
                           (progn
                             (kernel-log "SYSTEM ERROR: Tool '~a' not found in registry." tool-name)
                             (let ((err-stimulus `(:type :EVENT :payload (:sensor :tool-error :message "Tool not found"))))
@@ -193,6 +317,13 @@ sequenceDiagram
                           (cognitive-loop fallback-stimulus (1+ depth))))))))))
     (error (c)
       (kernel-log "LOOP CRASH - Error in recursive turn: ~a~%" c)
+      ;; IMMUNE SYSTEM: Inject loop failure as a new stimulus if not too deep
+      ;; And ensure we are not already handling an error to prevent infinite recursion
+      (let ((sensor (ignore-errors (getf (getf raw-message :payload) :sensor))))
+        (unless (or (> depth 2) (member sensor '(:loop-error :tool-error)))
+          (inject-stimulus `(:type :EVENT :payload (:sensor :loop-error :message ,(format nil "~a" c) :depth ,depth))
+                           :stream (getf raw-message :reply-stream)
+                           :depth (1+ depth))))
       nil)))
 
 (defun perceive (raw-message)
@@ -214,24 +345,20 @@ sequenceDiagram
 (defun stop-heartbeat () (when (and *heartbeat-thread* (bt:thread-alive-p *heartbeat-thread*)) (bt:destroy-thread *heartbeat-thread*) (setf *heartbeat-thread* nil)))
 
 (defun load-all-skills ()
-  "Scans the directory defined by SKILLS_DIR and hot-loads skills.
-   Supports selective loading via SKILLS_WHITELIST environment variable."
+  "Scans the directory defined by SKILLS_DIR and hot-loads skills using topological order."
   (let* ((env-path (uiop:getenv "SKILLS_DIR"))
-         (whitelist-raw (uiop:getenv "SKILLS_WHITELIST"))
-         (whitelist (when whitelist-raw (uiop:split-string whitelist-raw :separator '(#\,))))
          (skills-dir-str (or env-path (namestring (merge-pathnames "notes/" (user-homedir-pathname)))))
          (resolved-path (context-resolve-path skills-dir-str))
          (skills-dir (if resolved-path (uiop:ensure-directory-pathname resolved-path) nil)))
     (if (and skills-dir (uiop:directory-exists-p skills-dir))
-        (let ((files (uiop:directory-files skills-dir "org-skill-*.org")))
-          (if files
-              (dolist (file files)
-                (let ((skill-name (pathname-name file)))
-                  (if (or (null whitelist) (member skill-name whitelist :test #'string-equal))
-                      (load-skill-from-org file)
-                      (kernel-log "KERNEL: Skipping skill ~a (Not in whitelist)" skill-name))))
-              (kernel-log "KERNEL: No skills found in ~a" resolved-path)))
-        (kernel-log "KERNEL ERROR: Skills directory not found or invalid path: ~a" skills-dir-str))))
+        (let ((sorted-files (topological-sort-skills skills-dir)))
+          ;; GATEWAY ENFORCEMENT: Kernel cannot function without the Executive Soul
+          (unless (member "org-skill-agent" sorted-files :key #'pathname-name :test #'string-equal)
+            (error "GATEWAY FAILURE: org-skill-agent.org not found in skills directory."))
+          (dolist (file sorted-files)
+            (kernel-log "KERNEL: Loading skill ~a..." (pathname-name file))
+            (load-skill-with-timeout file 5)))
+        (kernel-log "KERNEL ERROR: Skills directory not found: ~a" skills-dir-str))))
 
 (defvar *daemon-thread* nil) (defvar *daemon-socket* nil)
 (defvar *emacs-clients* nil)
@@ -359,6 +486,7 @@ Streaming raw JSON over a socket is fragile. If a 5MB Org AST is fragmented by t
 Industry-standard "Vector Databases" or "SQLite Backends" add external complexity and I/O latency.
 - **Pointer-Based Reasoning:** By loading the entire Memex into a live Lisp hash table, we achieve microsecond recollection. The agent doesn't "search a file"; it traverses a memory pointer.
 - **Memory Imaging:** The `memory-image.lisp` snapshot allows the agent to wake up with its entire context already parsed. This solves the "Cold Start" problem of massive Org files.
+- **Merkle-Tree Integrity:** Every node in the Object Store is cryptographically hashed. By hashing the content and the hashes of its children, the root hash provides a single, immutable fingerprint of the entire Memex state.
 
 *** The Single Address Space
 #+begin_src mermaid
@@ -377,7 +505,7 @@ graph TD
 #+end_src
 
 **Problem:** Reading text files for every "memory" is slow; external databases add bloat.
-**Solution:** **CLOSOS Single Address Space**. A persistent in-memory hash table that stores native Lisp `org-objects`. Includes memory-imaging to skip boot-time parsing.
+**Solution:** **CLOSOS Single Address Space**. A persistent in-memory hash table that stores native Lisp `org-objects`. Includes memory-imaging to skip boot-time parsing and Merkle-Tree hashing for state verification.
 
 #+begin_src lisp :tangle src/object-store.lisp
 (in-package :org-agent)
@@ -385,7 +513,19 @@ graph TD
 (defvar *object-store* (make-hash-table :test 'equal))
 
 (defstruct org-object
-  id type attributes content vector parent-id children version last-sync)
+  id type attributes content vector parent-id children version last-sync hash)
+
+(defun compute-merkle-hash (id type attributes content child-hashes)
+  "Computes a SHA-256 Merkle hash for a node based on its core properties and children's hashes."
+  (let* ((alist (loop for (k v) on attributes by #'cddr collect (cons k v)))
+         (sorted-alist (sort alist #'string< :key (lambda (x) (format nil "~a" (car x)))))
+         (attr-string (format nil "~s" sorted-alist))
+         (children-string (format nil "~{~a~}" child-hashes))
+         (data-string (format nil "ID:~a|TYPE:~s|ATTRS:~a|CONTENT:~a|CHILDREN:~a"
+                              id type attr-string (or content "") children-string))
+         (digester (ironclad:make-digest :sha256)))
+    (ironclad:update-digest digester (ironclad:ascii-string-to-byte-array data-string))
+    (ironclad:byte-array-to-hex-string (ironclad:produce-digest digester))))
 
 (defun ingest-ast (ast &optional parent-id)
   (let* ((type (getf ast :type))
@@ -395,14 +535,23 @@ graph TD
          (raw-content (when (eq type :HEADLINE)
                         (format nil "~a~%~a" (getf props :TITLE) (or (cl:getf ast :raw-content) ""))))
          (should-embed (and raw-content (equal (getf props :EMBED) "t")))
-         (child-ids nil))
+         (child-ids nil)
+         (child-hashes nil))
     (dolist (child contents)
-      (when (listp child) (push (ingest-ast child id) child-ids)))
-    (let ((obj (make-org-object 
-                :id id :type type :attributes props :content raw-content
-                :vector (when should-embed (get-embedding raw-content))
-                :parent-id parent-id :children (nreverse child-ids)
-                :version (get-universal-time) :last-sync (get-universal-time))))
+      (when (listp child)
+        (let ((child-id (ingest-ast child id)))
+          (push child-id child-ids)
+          (let ((child-obj (lookup-object child-id)))
+            (when child-obj (push (org-object-hash child-obj) child-hashes))))))
+    (setf child-ids (nreverse child-ids))
+    (setf child-hashes (nreverse child-hashes))
+    (let* ((hash (compute-merkle-hash id type props raw-content child-hashes))
+           (obj (make-org-object 
+                 :id id :type type :attributes props :content raw-content
+                 :vector (when should-embed (get-embedding raw-content))
+                 :parent-id parent-id :children child-ids
+                 :version (get-universal-time) :last-sync (get-universal-time)
+                 :hash hash)))
       (setf (gethash id *object-store*) obj)
       id)))
 
@@ -414,7 +563,8 @@ graph TD
    :attributes (copy-list (org-object-attributes obj))
    :content (org-object-content obj) :vector (org-object-vector obj)
    :parent-id (org-object-parent-id obj) :children (copy-list (org-object-children obj))
-   :version (org-object-version obj) :last-sync (org-object-last-sync obj)))
+   :version (org-object-version obj) :last-sync (org-object-last-sync obj)
+   :hash (org-object-hash obj)))
 
 (defun snapshot-object-store ()
   (let ((snapshot (make-hash-table :test 'equal)))
@@ -517,6 +667,22 @@ LLMs lose precision when context windows are bloated with irrelevant data.
             path-string))
       path-string))
 
+(defun context-assemble-global-awareness ()
+  "Produces a high-level skeletal outline of the current Object Store for the LLM."
+  (let ((projects (context-get-active-projects))
+        (output "GLOBAL MEMEX AWARENESS (Peripheral Vision):
+"))
+    (if projects
+        (dolist (project projects)
+          (setf output (concatenate 'string output
+                                    (format nil "- PROJECT: ~a (ID: ~a)~%" 
+                                            (getf (org-object-attributes project) :TITLE)
+                                            (org-object-id project)))))
+        (setf output (concatenate 'string output "No active projects found.~%")))
+    output))
+#+end_src
+
+#+begin_src lisp :tangle src/embedding.lisp
 (in-package :org-agent)
 
 (defun get-embedding (text)
@@ -606,6 +772,92 @@ EXAMPLES:
                                (when skill (dolist (dep (skill-dependencies skill)) (visit dep))))
                              (push name resolved))))
       (visit skill-name) (nreverse resolved))))
+
+;; --- Boot Sequence & Micro-Loader ---
+
+(defun parse-skill-metadata (filepath)
+  "Extracts ID and DEPENDS_ON tags using robust line-scanning."
+  (let ((dependencies nil)
+        (id nil))
+    (with-open-file (stream filepath)
+      (loop for line = (read-line stream nil :eof)
+            until (eq line :eof)
+            do (let ((clean (string-trim '(#\Space #\Tab #\Return #\Newline) line)))
+                 (cond
+                   ((uiop:string-prefix-p "#+DEPENDS_ON:" (string-upcase clean))
+                    (let* ((deps-part (string-trim " " (subseq clean 13))))
+                      (setf dependencies (append dependencies 
+                                                 (mapcar (lambda (s) (string-trim "[] " s))
+                                                         (uiop:split-string deps-part :separator '(#\Space #\Tab)))))))
+                   ((uiop:string-prefix-p ":ID:" (string-upcase clean))
+                    (setf id (string-trim '(#\Space #\Tab) (subseq clean 4))))))))
+    (values id (remove-if (lambda (s) (= 0 (length s))) dependencies))))
+
+(defun topological-sort-skills (skills-dir)
+  "Returns a list of skill filepaths sorted by dependency (dependencies first)."
+  (let ((files (uiop:directory-files skills-dir "org-skill-*.org"))
+        (adj (make-hash-table :test 'equal))
+        (id-to-file (make-hash-table :test 'equal))
+        (result nil)
+        (visited (make-hash-table :test 'equal))
+        (stack (make-hash-table :test 'equal)))
+    ;; First pass: Build ID-to-File mapping and store raw dependencies
+    (dolist (file files)
+      (let ((filename (pathname-name file)))
+        (multiple-value-bind (id deps) (parse-skill-metadata file)
+          (setf (gethash (string-downcase filename) id-to-file) file)
+          (when id (setf (gethash (string-downcase id) id-to-file) file))
+          (setf (gethash (string-downcase filename) adj) deps))))
+    
+    (labels ((visit (file)
+               (let* ((filename (pathname-name file))
+                      (node-key (string-downcase filename)))
+                 (unless (gethash node-key visited)
+                   (setf (gethash node-key stack) t)
+                   (dolist (dep (gethash node-key adj))
+                     (let* ((dep-id (if (and (> (length dep) 3) (uiop:string-prefix-p "id:" (string-downcase dep)))
+                                        (subseq dep 3)
+                                        dep))
+                            (dep-file (gethash (string-downcase dep-id) id-to-file)))
+                       (when dep-file
+                         (let ((dep-filename (pathname-name dep-file)))
+                           (if (gethash (string-downcase dep-filename) stack)
+                               (error "Circular dependency detected: ~a -> ~a" filename dep-filename)
+                               (visit dep-file))))))
+                   (setf (gethash node-key stack) nil)
+                   (setf (gethash node-key visited) t)
+                   (push file result)))))
+      
+      (let ((filenames (sort (mapcar #'pathname-name files) #'string<)))
+        (dolist (name filenames)
+          (let ((file (gethash (string-downcase name) id-to-file)))
+            (when file (visit file)))))
+      result)))
+
+(defun load-skill-with-timeout (filepath timeout-seconds)
+  "Loads a skill Org file with a hard execution timeout."
+  (let* ((finished nil)
+         (thread (bt:make-thread (lambda () 
+                                   (handler-case
+                                       (progn
+                                         (load-skill-from-org filepath)
+                                         (setf finished t))
+                                     (error (c) 
+                                       (kernel-log "THREAD ERROR: ~a" c)
+                                       (setf finished :error))))
+                                 :name (format nil "loader-~a" (pathname-name filepath))))
+         (start-time (get-internal-real-time))
+         (timeout-units (* timeout-seconds internal-time-units-per-second)))
+    (loop 
+      (when (eq finished t) (return :success))
+      (when (eq finished :error) (return :error))
+      (unless (bt:thread-alive-p thread) (return :error))
+      (when (> (- (get-internal-real-time) start-time) timeout-units)
+        #+sbcl (sb-thread:terminate-thread thread)
+        #-sbcl (bt:destroy-thread thread)
+        (kernel-log "KERNEL ERROR: Timeout loading skill ~a" (pathname-name filepath))
+        (return :timeout))
+      (sleep 0.1))))
 
 (defun load-skill-from-org (filepath)
   (when (uiop:file-exists-p filepath)
@@ -756,7 +1008,8 @@ System 1 (LLM) is creative but hallucination-prone. System 2 (Lisp) is rigid but
 
 (defun think (context)
   (let ((active-skill (find-triggered-skill context))
-        (tool-belt (generate-tool-belt-prompt)))
+        (tool-belt (generate-tool-belt-prompt))
+        (global-context (context-assemble-global-awareness)))
     (if active-skill
         (progn
           (kernel-log "SYSTEM 1: Engaging skill '~a'~%" (skill-name active-skill))
@@ -768,11 +1021,10 @@ MANDATE: Output EXACTLY ONE Common Lisp property list starting with (:type :REQU
 ZERO CONVERSATION: Do not explain. Do not say 'Okay'. Do not use markdown blocks.
 STRICT RULE: Do not output multiple lists. Do not chain multiple requests. 
 DO NOT embed tool calls inside text strings.
-If you need to do multiple things or need information from a tool, you MUST:
-1. Call the tool FIRST.
-2. Wait for the result in the next recursive turn.
-3. Only then reply to the user or call the next tool.
 
+"
+                                                 global-context
+                                                 "
 "
                                                  tool-belt
                                                  "
@@ -807,6 +1059,39 @@ To call a tool, you MUST use:
     (ask-neuro (format nil "PROMPT: ~a~%RESULT: ~a" full-prompt successful-output) :system-prompt system-instr)))
 #+end_src
 
+#+begin_src lisp :tangle src/symbolic.lisp
+(in-package :org-agent)
+
+(defun decide (proposed-action context)
+  (let ((active-skill (find-triggered-skill context)))
+    (if (and proposed-action (listp proposed-action) active-skill)
+        (let* ((symbolic-gate (skill-symbolic-fn active-skill))
+               (payload (getf proposed-action :payload))
+               (action (or (getf payload :action) (getf proposed-action :action)))
+               (code (or (getf payload :code) (getf proposed-action :code))))
+          ;; Global safety harness for EVAL
+          (when (and (member (getf proposed-action :type) '(:request :REQUEST))
+                     (member action '(:eval :EVAL)))
+            (let ((harness-pkg (find-package :org-agent.skills.org-skill-safety-harness)))
+              (when (and code harness-pkg)
+                (unless (ignore-errors (uiop:symbol-call :org-agent.skills.org-skill-safety-harness :safety-harness-validate code))
+                  (kernel-log "SYSTEM 2 [GLOBAL]: Security violation blocked.~%")
+                  (return-from decide '(:type :LOG :payload (:text "Blocked by Global Safety Harness")))))))
+          ;; Skill-specific verification
+          (if symbolic-gate
+              (let ((decision (funcall symbolic-gate proposed-action context)))
+                (if decision 
+                    (progn (kernel-log "SYSTEM 2: Verified by skill '~a'.~%" (skill-name active-skill)) decision)
+                    (progn (kernel-log "SYSTEM 2: REJECTED by skill '~a'.~%" (skill-name active-skill))
+                           '(:type :LOG :payload (:text "Action rejected by skill heuristics")))))
+              (progn (kernel-log "SYSTEM 2: Verified (Implicitly safe for skill '~a').~%" (skill-name active-skill)) proposed-action)))
+        proposed-action)))
+
+(defun list-objects-with-attribute (attr-key attr-val)
+  (let ((results nil))
+    (maphash (lambda (id obj) (declare (ignore id)) (when (equal (getf (org-object-attributes obj) attr-key) attr-val) (push obj results))) *object-store*)
+    results))
+#+end_src
 * System Definition
 #+begin_src lisp :tangle org-agent.asd
 (defsystem :org-agent
@@ -815,7 +1100,7 @@ To call a tool, you MUST use:
   :version "0.1.0"
   :license "MIT"
   :description "The Neurosymbolic Lisp Machine Kernel"
-  :depends-on (:usocket :cl-json :bordeaux-threads :dexador :uiop :cl-dotenv :cl-ppcre :hunchentoot)
+  :depends-on (:usocket :cl-json :bordeaux-threads :dexador :uiop :cl-dotenv :cl-ppcre :hunchentoot :ironclad)
   :serial t
   :components ((:module "src"
                 :components ((:file "package")
@@ -831,4 +1116,21 @@ To call a tool, you MUST use:
   :build-pathname "org-agent-server"
   :entry-point "org-agent:main"
   :in-order-to ((test-op (test-op :org-agent/tests))))
+
+(defsystem :org-agent/tests
+  :depends-on (:org-agent :fiveam)
+  :components ((:module "tests"
+                :components ((:file "oacp-tests")
+                             (:file "cognitive-loop-tests")
+                             (:file "boot-sequence-tests")
+                             (:file "object-store-tests")
+                             (:file "immune-system-tests")
+                             (:file "chaos-qa"))))
+  :perform (test-op (o s) 
+             (uiop:symbol-call :fiveam :run! (uiop:find-symbol* :oacp-suite :org-agent-tests))
+             (uiop:symbol-call :fiveam :run! (uiop:find-symbol* :cognitive-suite :org-agent-cognitive-tests))
+             (uiop:symbol-call :fiveam :run! (uiop:find-symbol* :boot-suite :org-agent-boot-tests))
+             (uiop:symbol-call :fiveam :run! (uiop:find-symbol* :object-store-suite :org-agent-object-store-tests))
+             (uiop:symbol-call :fiveam :run! (uiop:find-symbol* :immune-suite :org-agent-immune-system-tests))
+             (uiop:symbol-call :fiveam :run! (uiop:find-symbol* :chaos-suite :org-agent-chaos-qa))))
 #+end_src

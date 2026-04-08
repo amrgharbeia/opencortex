@@ -25,15 +25,15 @@
   "Registers an actuator function. Actuators receive two arguments: (ACTION CONTEXT)."
   (setf (gethash name *actuator-registry*) fn))
 
-(defun inject-stimulus (raw-message &key stream)
+(defun inject-stimulus (raw-message &key stream (depth 0))
   (let* ((payload (getf raw-message :payload)) 
          (sensor (getf payload :sensor))
          ;; Force Chat and Delegation to be async
          (async-p (or (getf payload :async-p) (member sensor '(:chat-message :delegation :user-command)))))
     (when stream (setf (getf raw-message :reply-stream) stream))
     (if async-p (bt:make-thread (lambda () (restart-case (handler-bind ((error (lambda (c) (kernel-log "ASYNC ERROR: ~a" c) (invoke-restart 'skip-event))))
-                                                           (cognitive-loop raw-message)) (skip-event () nil))) :name "org-agent-async-task")
-        (restart-case (handler-bind ((error (lambda (c) (kernel-log "SYSTEM ERROR: ~a" c) (invoke-restart 'skip-event)))) (cognitive-loop raw-message))
+                                                           (cognitive-loop raw-message depth)) (skip-event () nil))) :name "org-agent-async-task")
+        (restart-case (handler-bind ((error (lambda (c) (kernel-log "SYSTEM ERROR: ~a" c) (invoke-restart 'skip-event)))) (cognitive-loop raw-message depth))
           (skip-event () (kernel-log "SYSTEM RECOVERY: Stimulus dropped.~%"))))))
 
 (defun spawn-task (task-description &key (async-p t))
@@ -103,11 +103,17 @@
                       (if tool
                           (progn
                             (kernel-log "SYSTEM 2: Executing tool '~a'..." tool-name)
-                            (let* ((clean-args (if (and (listp tool-args) (listp (car tool-args))) (car tool-args) tool-args))
-                                   (tool-result (funcall (cognitive-tool-body tool) clean-args))
-                                   (next-stimulus `(:type :EVENT :payload (:sensor :tool-output :result ,tool-result :tool ,tool-name))))
-                              (when (getf raw-message :reply-stream) (setf (getf next-stimulus :reply-stream) (getf raw-message :reply-stream)))
-                              (cognitive-loop next-stimulus (1+ depth))))
+                            (handler-case
+                                (let* ((clean-args (if (and (listp tool-args) (listp (car tool-args))) (car tool-args) tool-args))
+                                       (tool-result (funcall (cognitive-tool-body tool) clean-args))
+                                       (next-stimulus `(:type :EVENT :payload (:sensor :tool-output :result ,tool-result :tool ,tool-name))))
+                                  (when (getf raw-message :reply-stream) (setf (getf next-stimulus :reply-stream) (getf raw-message :reply-stream)))
+                                  (cognitive-loop next-stimulus (1+ depth)))
+                              (error (c)
+                                (kernel-log "SYSTEM ERROR: Tool '~a' failed: ~a" tool-name c)
+                                (let ((err-stimulus `(:type :EVENT :payload (:sensor :tool-error :tool ,tool-name :message ,(format nil "~a" c)))))
+                                  (when (getf raw-message :reply-stream) (setf (getf err-stimulus :reply-stream) (getf raw-message :reply-stream)))
+                                  (cognitive-loop err-stimulus (1+ depth))))))
                           (progn
                             (kernel-log "SYSTEM ERROR: Tool '~a' not found in registry." tool-name)
                             (let ((err-stimulus `(:type :EVENT :payload (:sensor :tool-error :message "Tool not found"))))
@@ -122,6 +128,13 @@
                           (cognitive-loop fallback-stimulus (1+ depth))))))))))
     (error (c)
       (kernel-log "LOOP CRASH - Error in recursive turn: ~a~%" c)
+      ;; IMMUNE SYSTEM: Inject loop failure as a new stimulus if not too deep
+      ;; And ensure we are not already handling an error to prevent infinite recursion
+      (let ((sensor (ignore-errors (getf (getf raw-message :payload) :sensor))))
+        (unless (or (> depth 2) (member sensor '(:loop-error :tool-error)))
+          (inject-stimulus `(:type :EVENT :payload (:sensor :loop-error :message ,(format nil "~a" c) :depth ,depth))
+                           :stream (getf raw-message :reply-stream)
+                           :depth (1+ depth))))
       nil)))
 
 (defun perceive (raw-message)
@@ -143,39 +156,20 @@
 (defun stop-heartbeat () (when (and *heartbeat-thread* (bt:thread-alive-p *heartbeat-thread*)) (bt:destroy-thread *heartbeat-thread*) (setf *heartbeat-thread* nil)))
 
 (defun load-all-skills ()
-  "Performs a topological boot sequence.
-   1. Loads the Gateway Skill (org-skill-agent) first.
-   2. Performs topological sort of all other skills in SKILLS_DIR.
-   3. Loads the Minimal Boot Set followed by others."
+  "Scans the directory defined by SKILLS_DIR and hot-loads skills using topological order."
   (let* ((env-path (uiop:getenv "SKILLS_DIR"))
-         (whitelist-raw (uiop:getenv "SKILLS_WHITELIST"))
-         (whitelist (when whitelist-raw (uiop:split-string whitelist-raw :separator '(#\,))))
          (skills-dir-str (or env-path (namestring (merge-pathnames "notes/" (user-homedir-pathname)))))
          (resolved-path (context-resolve-path skills-dir-str))
-         (skills-dir (if resolved-path (uiop:ensure-directory-pathname resolved-path) nil))
-         (timeout (or (ignore-errors (parse-integer (uiop:getenv "SKILL_LOAD_TIMEOUT"))) 5)))
-    
-    (unless (and skills-dir (uiop:directory-exists-p skills-dir))
-      (error "KERNEL FATAL: Skills directory not found: ~a" skills-dir-str))
-
-    ;; 1. The Gateway Handshake
-    (let ((gateway-file (merge-pathnames "org-skill-agent.org" skills-dir)))
-      (unless (uiop:file-exists-p gateway-file)
-        (error "KERNEL FATAL: Gateway Skill (org-skill-agent.org) missing from ~a" resolved-path))
-      (kernel-log "KERNEL: Instantiating Gateway (The Soul)...")
-      (load-skill-with-timeout gateway-file timeout))
-
-    ;; 2. Topological Sort
-    (let ((sorted-files (topological-sort-skills skills-dir)))
-      (dolist (file sorted-files)
-        (let ((skill-name (pathname-name file)))
-          ;; Skip the gateway as it's already loaded
-          (unless (string= skill-name "org-skill-agent")
-            (if (or (null whitelist) (member skill-name whitelist :test #'string-equal))
-                (progn
-                  (kernel-log "KERNEL: Loading skill ~a..." skill-name)
-                  (load-skill-with-timeout file timeout))
-                (kernel-log "KERNEL: Skipping skill ~a (Not in whitelist)" skill-name))))))))
+         (skills-dir (if resolved-path (uiop:ensure-directory-pathname resolved-path) nil)))
+    (if (and skills-dir (uiop:directory-exists-p skills-dir))
+        (let ((sorted-files (topological-sort-skills skills-dir)))
+          ;; GATEWAY ENFORCEMENT: Kernel cannot function without the Executive Soul
+          (unless (member "org-skill-agent" sorted-files :key #'pathname-name :test #'string-equal)
+            (error "GATEWAY FAILURE: org-skill-agent.org not found in skills directory."))
+          (dolist (file sorted-files)
+            (kernel-log "KERNEL: Loading skill ~a..." (pathname-name file))
+            (load-skill-with-timeout file 5)))
+        (kernel-log "KERNEL ERROR: Skills directory not found: ~a" skills-dir-str))))
 
 (defvar *daemon-thread* nil) (defvar *daemon-socket* nil)
 (defvar *emacs-clients* nil)

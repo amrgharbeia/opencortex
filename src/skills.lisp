@@ -20,6 +20,11 @@
   (let ((output (format nil "AVAILABLE TOOLS:
 You can call tools by returning a Lisp plist: (:target :tool :action :call :tool <name> :args (...))
 
+EXAMPLES:
+(:target :tool :action :call :tool \"eval\" :args (:code \"(+ 1 1)\"))
+(:target :tool :action :call :tool \"grep-search\" :args (:pattern \"sovereignty\"))
+(:target :tool :action :call :tool \"shell\" :args (:cmd \"ls -la\"))
+
 ---
 ")))
     (maphash (lambda (name tool)
@@ -73,46 +78,60 @@ You can call tools by returning a Lisp plist: (:target :tool :action :call :tool
   "Returns a list of skill filepaths sorted by dependency (dependencies first)."
   (let ((files (uiop:directory-files skills-dir "org-skill-*.org"))
         (adj (make-hash-table :test 'equal))
-        (path-map (make-hash-table :test 'equal))
+        (id-to-file (make-hash-table :test 'equal))
         (result nil)
         (visited (make-hash-table :test 'equal))
         (stack (make-hash-table :test 'equal)))
+    ;; First pass: Build ID-to-File mapping and store raw dependencies
     (dolist (file files)
-      (let ((name (pathname-name file)))
-        (setf (gethash name path-map) file)
+      (let ((filename (pathname-name file)))
         (multiple-value-bind (id deps) (parse-skill-metadata file)
-          (declare (ignore id))
-          (let ((clean-deps (mapcar (lambda (d) (if (uiop:string-prefix-p "id:" (string-downcase d)) (subseq d 3) d)) deps)))
-            (setf (gethash name adj) clean-deps)))))
+          (setf (gethash (string-downcase filename) id-to-file) file)
+          (when id (setf (gethash (string-downcase id) id-to-file) file))
+          (setf (gethash (string-downcase filename) adj) deps))))
     
-    (labels ((visit (node)
-               (let ((node-name (string-downcase node)))
-                 (when (gethash node-name stack) (error "Circular dependency detected: ~a" node-name))
-                 (unless (gethash node-name visited)
-                   (setf (gethash node-name stack) t)
-                   (dolist (dep (gethash node-name adj))
-                     (when (gethash (string-downcase dep) path-map)
-                       (visit (string-downcase dep))))
-                   (setf (gethash node-name stack) nil)
-                   (setf (gethash node-name visited) t)
-                   (push (gethash node-name path-map) result)))))
-      (let ((names nil))
-        (maphash (lambda (k v) (declare (ignore v)) (push k names)) path-map)
-        (dolist (name (sort names #'string<))
-          (visit name)))
-      (nreverse result))))
+    (labels ((visit (file)
+               (let* ((filename (pathname-name file))
+                      (node-key (string-downcase filename)))
+                 (unless (gethash node-key visited)
+                   (setf (gethash node-key stack) t)
+                   (dolist (dep (gethash node-key adj))
+                     (let* ((dep-id (if (and (> (length dep) 3) (uiop:string-prefix-p "id:" (string-downcase dep)))
+                                        (subseq dep 3)
+                                        dep))
+                            (dep-file (gethash (string-downcase dep-id) id-to-file)))
+                       (when dep-file
+                         (let ((dep-filename (pathname-name dep-file)))
+                           (if (gethash (string-downcase dep-filename) stack)
+                               (error "Circular dependency detected: ~a -> ~a" filename dep-filename)
+                               (visit dep-file))))))
+                   (setf (gethash node-key stack) nil)
+                   (setf (gethash node-key visited) t)
+                   (push file result)))))
+      
+      (let ((filenames (sort (mapcar #'pathname-name files) #'string<)))
+        (dolist (name filenames)
+          (let ((file (gethash (string-downcase name) id-to-file)))
+            (when file (visit file)))))
+      result)))
 
 (defun load-skill-with-timeout (filepath timeout-seconds)
   "Loads a skill Org file with a hard execution timeout."
   (let* ((finished nil)
          (thread (bt:make-thread (lambda () 
-                                   (load-skill-from-org filepath)
-                                   (setf finished t)) 
+                                   (handler-case
+                                       (progn
+                                         (load-skill-from-org filepath)
+                                         (setf finished t))
+                                     (error (c) 
+                                       (kernel-log "THREAD ERROR: ~a" c)
+                                       (setf finished :error))))
                                  :name (format nil "loader-~a" (pathname-name filepath))))
          (start-time (get-internal-real-time))
          (timeout-units (* timeout-seconds internal-time-units-per-second)))
     (loop 
-      (when finished (return :success))
+      (when (eq finished t) (return :success))
+      (when (eq finished :error) (return :error))
       (unless (bt:thread-alive-p thread) (return :error))
       (when (> (- (get-internal-real-time) start-time) timeout-units)
         #+sbcl (sb-thread:terminate-thread thread)
@@ -124,8 +143,12 @@ You can call tools by returning a Lisp plist: (:target :tool :action :call :tool
 (defun load-skill-from-org (filepath)
   (when (uiop:file-exists-p filepath)
     (let* ((content (uiop:read-file-string filepath)) (lines (uiop:split-string content :separator '(#\Newline)))
-           (in-lisp-block nil) (lisp-code "") (skill-base-name (pathname-name filepath))
+           (in-lisp-block nil) (lisp-code "") (dependencies nil) (skill-base-name (pathname-name filepath))
            (pkg-name (intern (string-upcase (format nil "ORG-AGENT.SKILLS.~a" skill-base-name)) :keyword)))
+      (dolist (line lines)
+        (let ((clean-line (string-trim '(#\Space #\Tab #\Return) line)))
+          (when (uiop:string-prefix-p "#+DEPENDS_ON:" (string-upcase clean-line))
+            (setf dependencies (mapcar (lambda (s) (string-trim "[] " s)) (uiop:split-string (subseq clean-line 13) :separator '(#\Space)))))))
       (dolist (line lines)
         (let ((clean-line (string-trim '(#\Space #\Tab #\Return) line)))
           (cond ((uiop:string-prefix-p "#+begin_src lisp" (string-downcase clean-line)) (setf in-lisp-block t))
@@ -138,24 +161,23 @@ You can call tools by returning a Lisp plist: (:target :tool :action :call :tool
             (do-external-symbols (sym (find-package :org-agent)) (shadowing-import sym new-pkg))))
         (let ((*read-eval* nil) (*package* (find-package pkg-name)))
           (handler-case (eval (read-from-string (format nil "(progn ~a)" lisp-code)))
-            (error (c) 
-              (kernel-log "READER ERROR in skill '~a': ~a~%" skill-base-name c)
-              (error c))))))))
+            (error (c) (kernel-log "READER ERROR in skill '~a': ~a~%" skill-base-name c))))))))
 
 (defun validate-lisp-syntax (code-string)
   (handler-case (let ((*read-eval* nil)) (with-input-from-string (stream (format nil "(progn ~a)" code-string))
                                           (loop for form = (read stream nil :eof) until (eq form :eof)) (values t nil)))
     (error (c) (values nil (format nil "~a" c)))))
 
-(def-cognitive-tool :eval "Evaluates raw Common Lisp code in the kernel image."
+(def-cognitive-tool :eval "Evaluates raw Common Lisp code in the kernel image. Use this for complex calculations or internal state inspection."
   :parameters ((:code :type :string :description "The Lisp code to evaluate"))
   :guard (lambda (args context)
            (declare (ignore context))
            (let ((code (getf args :code)))
+             ;; Reuse the global safety harness if it exists
              (let ((harness-pkg (find-package :org-agent.skills.org-skill-safety-harness)))
                (if harness-pkg 
                    (uiop:symbol-call :org-agent.skills.org-skill-safety-harness :safety-harness-validate code)
-                   t))))
+                   t)))) ; Implicitly safe if harness not loaded
   :body (lambda (args)
           (let ((code (getf args :code)))
             (handler-case (let ((result (eval (read-from-string code))))
@@ -171,10 +193,11 @@ You can call tools by returning a Lisp plist: (:target :tool :action :call :tool
             (uiop:run-program (list "grep" "-r" "-n" "--exclude-dir=node_modules" pattern dir) 
                               :output :string :ignore-error-status t))))
 
-(def-cognitive-tool :shell "Executes a shell command on the local machine."
+(def-cognitive-tool :shell "Executes a shell command on the local machine. Use this for file operations, system checks, or running tests."
   :parameters ((:cmd :type :string :description "The full bash command to execute"))
   :guard (lambda (args context)
            (declare (ignore context))
+           ;; Global safety: prohibit destructive commands
            (let ((cmd (getf args :cmd)))
              (not (or (search "rm -rf /" cmd) (search ":(){ :|:& };:" cmd)))))
   :body (lambda (args)

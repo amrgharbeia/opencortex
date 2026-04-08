@@ -21,9 +21,13 @@
    #:org-object-id
    #:org-object-type
    #:org-object-attributes
+   #:org-object-parent-id
    #:org-object-children
+   #:org-object-version
+   #:org-object-last-sync
    #:org-object-vector
    #:org-object-content
+   #:org-object-hash
    #:snapshot-object-store
    #:rollback-object-store
    #:send-swarm-packet
@@ -38,6 +42,7 @@
    #:context-filter-sparse-tree
    #:context-resolve-path
    #:context-get-skill-telemetry
+   #:context-assemble-global-awareness
    
    ;; --- Cognitive Loop & Event Bus ---
    #:perceive
@@ -52,6 +57,8 @@
    
    ;; --- Skill Engine ---
    #:load-skill-from-org
+   #:load-skill-with-timeout
+   #:topological-sort-skills
    #:validate-lisp-syntax
    #:find-triggered-skill
    #:defskill

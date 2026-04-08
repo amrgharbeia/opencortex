@@ -136,7 +136,7 @@ will assume you have started it manually (e.g., via SBCL)."
   "Route and execute incoming OACP messages from PROC using PLIST."
   (let ((type (org-agent--plist-get plist :type))
         (id (org-agent--plist-get plist :id))
-        (payload (org-agent--plist-get plist :payload)))
+        (payload (or (org-agent--plist-get plist :payload) plist)))
     (cond
      ((member type '(:request :REQUEST))
       (org-agent--execute-request proc id payload))
@@ -144,16 +144,7 @@ will assume you have started it manually (e.g., via SBCL)."
       (message "org-agent: Received response for ID %s" id))
      ((member type '(:log :LOG))
       (let ((text (org-agent--plist-get payload :text)))
-        (save-excursion
-          (with-current-buffer (get-buffer-create "*org-agent-chat*")
-            (goto-char (point-max))
-            ;; Clean up Thinking... if it exists
-            (save-excursion
-              (when (search-backward "** Thinking..." nil t)
-                (delete-region (point) (point-max))
-                (when (eq (char-before) ?\n) (backward-delete-char 1))))
-            (goto-char (point-max))
-            (insert "\n*SYSTEM LOG*: " text "\n")))))
+        (org-agent--insert-to-history (concat "[reasoning] " text "\n") 'org-agent-system-face)))
      (t (message "org-agent: Received unknown message type %s" type)))))
 
 (defun org-agent--execute-request (proc id payload)
@@ -173,20 +164,9 @@ will assume you have started it manually (e.g., via SBCL)."
       (message "org-agent [DAEMON]: %s" (org-agent--plist-get payload :text))
       (org-agent-send `(:type :RESPONSE :id ,id :payload (:status :success))))
      ((member action '(:insert-at-end :INSERT-AT-END))
-      (let ((buf-name (org-agent--plist-get payload :buffer))
-            (text (org-agent--plist-get payload :text)))
-        (save-excursion
-          (with-current-buffer (get-buffer-create buf-name)
-            (goto-char (point-max))
-            ;; If there is a "Thinking..." status from the client, remove it.
-            (when (search-backward "** Thinking..." nil t)
-              (delete-region (point) (point-max))
-              ;; Remove the preceding newline if it exists
-              (when (eq (char-before) ?\n)
-                (backward-delete-char 1)))
-            (goto-char (point-max))
-            (insert text "\n")
-            (org-agent-send `(:type :RESPONSE :id ,id :payload (:status :success)))))))
+      (let ((text (org-agent--plist-get payload :text)))
+        (org-agent--insert-to-history (concat "\nAGENT: " text "\n\n"))
+        (org-agent-send `(:type :RESPONSE :id ,id :payload (:status :success)))))
      ((member action '(:refactor-subtree :REFACTOR-SUBTREE))
       (let ((target-id (org-agent--plist-get payload :target-id))
             (properties (org-agent--plist-get payload :properties)))
@@ -289,32 +269,99 @@ e.g., ':gemini,:openai,:ollama'."
        :target :system
        :payload (:action :set-cascade :cascade ,cascade)))
     (message "org-agent: Requesting model cascade update to %s" cascade)))
+(defgroup org-agent-faces nil
+  "Faces for the org-agent chat interface."
+  :group 'org-agent)
+
+(defface org-agent-user-face
+  '((((class color) (background dark)) :foreground "LightSkyBlue" :weight bold)
+    (((class color) (background light)) :foreground "blue" :weight bold)
+    (t :weight bold :underline t))
+  "Face for user messages in chat history."
+  :group 'org-agent-faces)
+
+(defface org-agent-system-face
+  '((t :slant italic :foreground "gray50"))
+  "Face for system and reasoning logs."
+  :group 'org-agent-faces)
 
 (defun org-agent-chat ()
-  "Switch to the org-agent chat buffer, creating it if necessary."
+  "Modern chat interface for the org-agent kernel.
+Opens a history buffer and a dedicated input area."
   (interactive)
-  (let ((buf (get-buffer-create "*org-agent-chat*")))
-    (with-current-buffer buf
+  (let ((chat-buf (get-buffer-create "*org-agent-chat*"))
+        (input-buf (get-buffer-create "*org-agent-input*")))
+    ;; History Buffer Setup
+    (with-current-buffer chat-buf
+      (unless (eq major-mode 'special-mode)
+        (special-mode)
+        (let ((inhibit-read-only t))
+          (erase-buffer)
+          (insert "--- org-agent History ---\n\n"))))
+    
+    ;; Input Buffer Setup
+    (with-current-buffer input-buf
       (unless (eq major-mode 'org-mode)
         (org-mode)
         (local-set-key (kbd "C-c C-c") #'org-agent-chat-send)
-        (insert "#+TITLE: org-agent Chat\n#+STARTUP: showall\n\n* Welcome to the Neurosymbolic Lisp Machine\n\nType your message below and press `C-c C-c` to send.\n\n")))
-    (switch-to-buffer buf)
-    (goto-char (point-max))))
+        (local-set-key (kbd "C-c C-k") #'org-agent-interrupt))
+      (let ((inhibit-read-only t))
+        (delete-region (point-min) (point-max))
+        (insert "# Type your message and press C-c C-c to send.\n")))
+
+    ;; Layout: Chat History (Top), Input Area (Bottom)
+    (delete-other-windows)
+    (switch-to-buffer chat-buf)
+    (let ((win (split-window-below -6))) ; 6 lines for input
+      (set-window-buffer win input-buf)
+      (select-window win))))
+(defun org-agent-interrupt ()
+  "Interrupt the org-agent reasoning loop."
+  (interactive)
+  (unless org-agent--network-process
+    (org-agent-connect))
+  (org-agent-send 
+   `(:type :EVENT 
+     :payload (:sensor :interrupt)))
+  (message "org-agent: Interrupt signal sent."))
+
+(defun org-agent--insert-to-history (text &optional face)
+  "Insert TEXT into the chat history buffer with optional FACE and scroll."
+  (let ((buf (get-buffer-create "*org-agent-chat*")))
+    (with-current-buffer buf
+      (let ((inhibit-read-only t))
+        (save-excursion
+          (goto-char (point-max))
+          (insert (if face (propertize text 'face face) text)))
+        ;; Force scroll in all windows showing this buffer
+        (walk-windows
+         (lambda (w)
+           (when (eq (window-buffer w) buf)
+             (set-window-point w (point-max))))
+         nil t)))))
+
 (defun org-agent-chat-send ()
   "Send the current chat buffer content to the agent."
   (interactive)
   (unless org-agent--network-process
     (org-agent-connect))
-  (let* ((text (buffer-substring-no-properties (point-min) (point-max))))
-    (org-agent-send 
-     `(:type :EVENT 
-       :payload (:sensor :chat-message 
-                 :text ,text)))
-    (save-excursion
-      (goto-char (point-max))
-      (insert "\n\n** Thinking...\n"))
-    (message "org-agent: Message sent.")))
+  (let* ((text (buffer-substring-no-properties (point-min) (point-max)))
+         (clean-text (string-trim (replace-regexp-in-string "^#.*\n" "" text))))
+    (when (> (length clean-text) 0)
+      ;; Append to history with styling
+      (org-agent--insert-to-history (concat "YOU: " clean-text "\n\n") 'org-agent-user-face)
+      
+      ;; Clear input buffer
+      (let ((inhibit-read-only t))
+        (delete-region (point-min) (point-max))
+        (insert "# Type your message and press C-c C-c to send.\n"))
+      
+      ;; Send to daemon
+      (org-agent-send 
+       `(:type :EVENT 
+         :payload (:sensor :chat-message 
+                   :text ,clean-text)))
+      (message "org-agent: Message sent."))))
 
 (defun org-agent-auth-google (code)
   "Submit the Google OAuth authorization CODE to the daemon."

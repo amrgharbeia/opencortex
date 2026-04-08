@@ -5,8 +5,7 @@
 (defvar *auth-providers* (make-hash-table :test 'equal))
 (defun register-auth-provider (name fn) (setf (gethash name *auth-providers*) fn))
 (defun get-provider-auth (provider)
-  "Retrieves authentication credentials for a provider.
-   Supports direct plists, functions, or specific environment variable fallbacks."
+  "Retrieves authentication credentials for a provider."
   (let ((auth (gethash provider *auth-providers*)))
     (cond
       ((functionp auth) (funcall auth))
@@ -20,7 +19,6 @@
                              (t nil))))
          (if (and specific-key (> (length specific-key) 0))
              (list :api-key specific-key)
-             ;; Final fallback to the legacy generic key
              (let ((legacy (uiop:getenv "LLM_API_KEY")))
                (when (and legacy (> (length legacy) 0))
                  (list :api-key legacy)))))))))
@@ -32,8 +30,7 @@
 (defvar *model-selector-fn* nil "A function called with (provider context) to return a model ID.")
 
 (defun ask-neuro (prompt &key (system-prompt "You are the System 1 engine of a Neurosymbolic Lisp Machine.") (cascade nil) (context nil))
-  "Dispatches a neural request through the provider cascade.
-   If CASCADE is a function, it is called with CONTEXT to determine backends."
+  "Dispatches a neural request through the provider cascade."
   (let ((backends (cond
                     ((and cascade (listp cascade)) cascade)
                     ((functionp cascade) (funcall cascade context))
@@ -42,8 +39,7 @@
       (let ((backend-fn (gethash backend *neuro-backends*)))
         (when backend-fn
           (kernel-log "SYSTEM 1: Attempting backend ~a..." backend)
-          (let* (;; Consult the model selector (e.g. economist) for the model ID if available
-                 (model (when *model-selector-fn* (funcall *model-selector-fn* backend context)))
+          (let* ((model (when *model-selector-fn* (funcall *model-selector-fn* backend context)))
                  (result (if model 
                              (funcall backend-fn prompt system-prompt :model model)
                              (funcall backend-fn prompt system-prompt))))
@@ -71,25 +67,10 @@
       (format nil "[~4,'0d-~2,'0d-~2,'0d ~a ~2,'0d:~2,'0d]" 
               year month day (nth day-of-week day-names) hour min))))
 
-(defun update-note-metadata (filepath)
-  "Ensures a :PROPERTIES: drawer exists and updates the :EDITED: timestamp."
-  (let ((content (uiop:read-file-string filepath))
-        (now (get-org-timestamp)))
-    (if (search ":PROPERTIES:" content)
-        ;; Update existing EDITED or add it
-        (let ((new-content (if (search ":EDITED:" content)
-                               (cl-ppcre:regex-replace ":EDITED:   \\[.*?\\]" content (format nil ":EDITED:   ~a" now))
-                               (cl-ppcre:regex-replace ":PROPERTIES:\\n" content (format nil ":PROPERTIES:~%:EDITED:   ~a~%" now)))))
-          (with-open-file (out filepath :direction :output :if-exists :supersede)
-            (write-string new-content out)))
-        ;; Create new drawer
-        (let ((new-content (format nil ":PROPERTIES:~%:CREATED:  ~a~%:EDITED:   ~a~%:END:~%~a" now now content)))
-          (with-open-file (out filepath :direction :output :if-exists :supersede)
-            (write-string new-content out))))))
-
 (defun think (context)
   (let ((active-skill (find-triggered-skill context))
-        (tool-belt (generate-tool-belt-prompt)))
+        (tool-belt (generate-tool-belt-prompt))
+        (global-context (context-assemble-global-awareness)))
     (if active-skill
         (progn
           (kernel-log "SYSTEM 1: Engaging skill '~a'~%" (skill-name active-skill))
@@ -101,11 +82,10 @@ MANDATE: Output EXACTLY ONE Common Lisp property list starting with (:type :REQU
 ZERO CONVERSATION: Do not explain. Do not say 'Okay'. Do not use markdown blocks.
 STRICT RULE: Do not output multiple lists. Do not chain multiple requests. 
 DO NOT embed tool calls inside text strings.
-If you need to do multiple things or need information from a tool, you MUST:
-1. Call the tool FIRST.
-2. Wait for the result in the next recursive turn.
-3. Only then reply to the user or call the next tool.
 
+"
+                                                 global-context
+                                                 "
 "
                                                  tool-belt
                                                  "
@@ -138,7 +118,3 @@ To call a tool, you MUST use:
 (defun distill-prompt (full-prompt successful-output)
   (let ((system-instr "You are a Meta-Cognitive Prompt Architect. DISTILL into template."))
     (ask-neuro (format nil "PROMPT: ~a~%RESULT: ~a" full-prompt successful-output) :system-prompt system-instr)))
-
-(defun distillation-loop ()
-  "Autonomous distillation cycle (Skeletal)."
-  (kernel-log "NEURO [Evolution] - Distillation cycle triggered."))

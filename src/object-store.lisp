@@ -3,7 +3,19 @@
 (defvar *object-store* (make-hash-table :test 'equal))
 
 (defstruct org-object
-  id type attributes content vector parent-id children version last-sync)
+  id type attributes content vector parent-id children version last-sync hash)
+
+(defun compute-merkle-hash (id type attributes content child-hashes)
+  "Computes a SHA-256 Merkle hash for a node based on its core properties and children's hashes."
+  (let* ((alist (loop for (k v) on attributes by #'cddr collect (cons k v)))
+         (sorted-alist (sort alist #'string< :key (lambda (x) (format nil "~a" (car x)))))
+         (attr-string (format nil "~s" sorted-alist))
+         (children-string (format nil "~{~a~}" child-hashes))
+         (data-string (format nil "ID:~a|TYPE:~s|ATTRS:~a|CONTENT:~a|CHILDREN:~a"
+                              id type attr-string (or content "") children-string))
+         (digester (ironclad:make-digest :sha256)))
+    (ironclad:update-digest digester (ironclad:ascii-string-to-byte-array data-string))
+    (ironclad:byte-array-to-hex-string (ironclad:produce-digest digester))))
 
 (defun ingest-ast (ast &optional parent-id)
   (let* ((type (getf ast :type))
@@ -13,14 +25,23 @@
          (raw-content (when (eq type :HEADLINE)
                         (format nil "~a~%~a" (getf props :TITLE) (or (cl:getf ast :raw-content) ""))))
          (should-embed (and raw-content (equal (getf props :EMBED) "t")))
-         (child-ids nil))
+         (child-ids nil)
+         (child-hashes nil))
     (dolist (child contents)
-      (when (listp child) (push (ingest-ast child id) child-ids)))
-    (let ((obj (make-org-object 
-                :id id :type type :attributes props :content raw-content
-                :vector (when should-embed (get-embedding raw-content))
-                :parent-id parent-id :children (nreverse child-ids)
-                :version (get-universal-time) :last-sync (get-universal-time))))
+      (when (listp child)
+        (let ((child-id (ingest-ast child id)))
+          (push child-id child-ids)
+          (let ((child-obj (lookup-object child-id)))
+            (when child-obj (push (org-object-hash child-obj) child-hashes))))))
+    (setf child-ids (nreverse child-ids))
+    (setf child-hashes (nreverse child-hashes))
+    (let* ((hash (compute-merkle-hash id type props raw-content child-hashes))
+           (obj (make-org-object 
+                 :id id :type type :attributes props :content raw-content
+                 :vector (when should-embed (get-embedding raw-content))
+                 :parent-id parent-id :children child-ids
+                 :version (get-universal-time) :last-sync (get-universal-time)
+                 :hash hash)))
       (setf (gethash id *object-store*) obj)
       id)))
 
@@ -32,7 +53,8 @@
    :attributes (copy-list (org-object-attributes obj))
    :content (org-object-content obj) :vector (org-object-vector obj)
    :parent-id (org-object-parent-id obj) :children (copy-list (org-object-children obj))
-   :version (org-object-version obj) :last-sync (org-object-last-sync obj)))
+   :version (org-object-version obj) :last-sync (org-object-last-sync obj)
+   :hash (org-object-hash obj)))
 
 (defun snapshot-object-store ()
   (let ((snapshot (make-hash-table :test 'equal)))

@@ -4,7 +4,7 @@
   :version "0.1.0"
   :license "MIT"
   :description "The Neurosymbolic Lisp Machine Kernel"
-  :depends-on (:usocket :cl-json :bordeaux-threads :dexador :uiop :cl-dotenv :cl-ppcre :hunchentoot)
+  :depends-on (:usocket :cl-json :bordeaux-threads :dexador :uiop :cl-dotenv :cl-ppcre :hunchentoot :ironclad)
   :serial t
   :components ((:module "src"
                 :components ((:file "package")
@@ -26,8 +26,14 @@
   :components ((:module "tests"
                 :components ((:file "oacp-tests")
                              (:file "cognitive-loop-tests")
-                             (:file "boot-sequence-tests"))))
+                             (:file "boot-sequence-tests")
+                             (:file "object-store-tests")
+                             (:file "immune-system-tests")
+                             (:file "chaos-qa"))))
   :perform (test-op (o s) 
              (uiop:symbol-call :fiveam :run! (uiop:find-symbol* :oacp-suite :org-agent-tests))
              (uiop:symbol-call :fiveam :run! (uiop:find-symbol* :cognitive-suite :org-agent-cognitive-tests))
-             (uiop:symbol-call :fiveam :run! (uiop:find-symbol* :boot-suite :org-agent-boot-tests))))
+             (uiop:symbol-call :fiveam :run! (uiop:find-symbol* :boot-suite :org-agent-boot-tests))
+             (uiop:symbol-call :fiveam :run! (uiop:find-symbol* :object-store-suite :org-agent-object-store-tests))
+             (uiop:symbol-call :fiveam :run! (uiop:find-symbol* :immune-suite :org-agent-immune-system-tests))
+             (uiop:symbol-call :fiveam :run! (uiop:find-symbol* :chaos-suite :org-agent-chaos-qa))))
