@@ -65,7 +65,7 @@ Because Skills are compiled Lisp code, System 2 intercepts deterministic tasks (
 ** The Single Address Space
 #+begin_src mermaid
 graph TD
-    subgraph Lisp Machine (Single Address Space)
+    subgraph Lisp Machine
         K[Kernel Core] --> OS[(Object Store)]
         S1[Skill: Architect] --> OS
         S2[Skill: Analyst] --> OS
@@ -73,7 +73,7 @@ graph TD
         K -- Pointers --> S1
         K -- Pointers --> S2
     end
-    subgraph IPC (Slow)
+    subgraph IPC Slow
         E[Emacs Actuator] -. JSON .-> K
     end
 #+end_src
