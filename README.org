@@ -1,99 +1,42 @@
 #+TITLE: org-agent: The Neurosymbolic Kernel
-#+AUTHOR: User
+#+AUTHOR: Amr
 #+CREATED: [2026-03-17 Tue]
-#+UPDATED: [2026-04-01 Wed]
+#+UPDATED: [2026-04-08 Wed]
 #+FILETAGS: :platform:kernel:lisp:psf:
 #+STARTUP: content
 
-A hyper-minimalist, self-editing, proactive AI agent framework. `org-agent` acts as the "executive soul" of a personal OS, using Org-mode as its native memory and Common Lisp as its deterministic reasoning engine.
+* 1. What: The Neurosymbolic Environment
 
-* The Philosophy
+`org-agent` is a hyper-minimalist, self-editing, proactive AI agent framework. It acts as the "executive soul" of a personal OS, transforming a static collection of notes into a live, programmable environment. It is not a chatbot; it is a **Sovereign Intelligence Environment** where humans and agents collaborate within a shared address space.
 
-The design of `org-agent` represents a radical departure from mainstream AI architectures. Instead of relying on a fragmented web of Python scripts, JSON state files, and hidden text prompts, the system is conceived as a **Living Lisp Machine**. It is built on a "No Legacy" policy where Org-mode and Common Lisp form a perfectly unified, neurosymbolic environment.
+** Key Aspects:
+- **Knowledge-Native:** The agent doesn't just "read files"; it natively understands the recursive graph of your intelligence (The Memex).
+- **Dual-Process Brain:** It combines the intuitive creativity of Large Language Models (System 1) with the deterministic rigor of Common Lisp (System 2).
+- **Self-Editing Kernel:** The agent is designed to perceive its own errors and rewrite its own source code, achieving Order 2 Autonomy.
+- **Microkernel Design:** A sealed, unbreakable core that delegates all business logic to hot-reloadable, user-space Skills.
+
+* 2. Why: The Philosophy & Vision
+
+The design of `org-agent` represents a radical departure from mainstream, fragmented AI architectures.
 
 ** Homoiconic Memory (The Org Mandate)
-Most agent frameworks break the human-machine interface by forcing humans to read Markdown while machines read JSON. `org-agent` mandates that Org-mode is the native Abstract Syntax Tree (AST) for both. The code is the data, and the data is the interface. This ensures that the agent's memory is perfectly aligned with the user's, preventing "black box" logic and ensuring that the agent's reasoning is always fully auditable.
+Most frameworks break the human-machine interface by forcing humans to read Markdown while machines read JSON. `org-agent` mandates that **Org-mode is the native Abstract Syntax Tree (AST) for both.** The code is the data, and the data is the interface. This ensures the agent's memory is perfectly aligned with the user's, preventing "black box" logic.
 
 ** The Neurosymbolic Split (System 1 vs. System 2)
-Relying entirely on LLMs for complex workflows is notoriously fragile due to hallucinations and context limits. `org-agent` solves this by assigning the LLM to act strictly as "System 1" (intuition and creative proposal). Common Lisp acts as "System 2" (deterministic logic and safety gating). The system is imaginative but bound by mathematical rigor. It is safe by design.
+Relying entirely on LLMs is fragile. `org-agent` assigns the LLM strictly to **System 1** (intuition). Common Lisp acts as **System 2** (logic and safety gating). The system is imaginative but bound by mathematical rigor. It is safe by design.
 
-** The Microkernel and the Sovereign Boundary
-To guarantee a high Mean Time Between Failures (MTBF), the `org-agent` core is a hyper-minimalist microkernel. It manages only the cognitive loop, the persistent Object-Store, and the communication protocol. Everything else—LLM provider routing, vector embeddings, and business logic—is pushed across the "Sovereign Boundary" into hot-reloadable, user-space **Skills**. This ensures the core remains unbreakable while the agent's capabilities can evolve infinitely at runtime.
+** The Sovereign Boundary
+To guarantee a high MTBF (Mean Time Between Failures), the core microkernel manages only the cognitive loop, the Object-Store, and the protocol. Everything else—LLM routing, embeddings, and business logic—is pushed across the **Sovereign Boundary** into user-space Skills.
 
 ** Literate Programming as Institutional Memory
-Every line of system logic, including the skills that govern the agent's behavior, must be written as a Literate Org file. This weaves the "Why" (Architectural Intent and PRDs) seamlessly with the "How" (Lisp Implementation), ensuring the system continuously documents itself simply by existing.
+Every line of system logic is written as a **Literate Org file**. This weaves the "Why" (Architectural Intent) with the "How" (Lisp Implementation), ensuring the system documents itself simply by existing.
 
-** The Actuator-Agnostic Vision (Towards a True Lisp Machine)
-While Emacs currently serves as the primary editor, the `org-agent` core is fundamentally **actuator-agnostic**. Emacs is not a privileged citizen; it merely acts as a "dumb terminal" rendering the Org AST and passing stimuli to the kernel.
+** The Long-Term Vision: A True Lisp Machine
+The kernel is fundamentally **actuator-agnostic**. While it currently uses Emacs, the ultimate trajectory is to write external editors and browsers out of existence. In this vision, the interface itself—the editor, browser, and system prompt—will be built entirely in Common Lisp, running within the exact same address space as the agent. This eliminates IPC entirely, creating a unified, zero-latency cognitive environment.
 
-The ultimate trajectory of the architecture moves toward a "True Lisp Machine" where external editors and standard browsers are written out of existence. In this vision, the interface itself—the editor, the browser, and the system prompt—will be built entirely in Common Lisp, running within the exact same address space as the agent. This will eliminate IPC sockets entirely, creating a unified, zero-latency cognitive environment free from third-party technological dependencies.
+** Architecture Diagrams
 
-** Anti-Fragility and Managed Trade-offs
-This architecture accepts necessary trade-offs to achieve sovereignty:
-- **The Parsing Bottleneck:** Parsing massive plain-text Org files into Lisp structs at boot can be slow. We bypass this by dumping the live memory state (`memory-image.lisp`), loading the graph directly from RAM.
-- **Web/Mobile Accessibility:** Optimizing for Lisp and Emacs (e.g., using `org-id` for absolute structural integrity) breaks standard web rendering (like Gitea's markdown). A dedicated "Web Actuator" is required to translate the raw AST for other platforms.
-- **The "Zero-Bloat" Discipline:** Maintaining "Lisp Machine Sovereignty" requires constant vigilance against importing unnecessary external libraries as new skills are developed.
-
-* The Paradigm: Skills vs. Sub-Agents
-
-Modern AI frameworks heavily rely on "Sub-agents" (e.g., passing text between isolated Python scripts). `org-agent` fundamentally rejects this in favor of **Org-Native Skills**.
-
-** The Performance Advantage (Single Address Space)
-Following CLOSOS principles, the Lisp Machine architecture uses a **Single Address Space**. All applications (Skills) and the kernel share one unified memory space. We completely eliminate standard Inter-Process Communication (IPC) overhead. Objects are shared via direct pointers, meaning zero serialization/deserialization latency when moving from perception to thought.
-
-** Specialization (System 1 Prompt Injection)
-Instead of spinning up separate sub-agent processes with static prompts, the kernel dynamically injects the `:neuro-prompt` of the active skill into the LLM context. The LLM is temporarily "re-programmed" at runtime per task.
-
-** Context Length & Memory (Peripheral Vision)
-Multi-agent systems struggle with context bloat. `org-agent` solves this via its **Peripheral Vision API**. The Lisp Kernel uses `context-filter-sparse-tree` to surgically prune the Org AST, passing only the relevant hierarchical nodes to the LLM and preventing context-window overload.
-
-** Responsiveness (Dual-Process Advantage)
-The system employs a Dual-Process Architecture:
-- **System 1 (Neural):** Probabilistic, slow, creative (LLM).
-- **System 2 (Symbolic):** Deterministic, instant, rigorous (Lisp).
-Because Skills are compiled Lisp code, System 2 intercepts deterministic tasks (like assigning an ID) and executes them in milliseconds, bypassing the LLM entirely.
-
-* The 6 Core Components of the Microkernel
-
-The `org-agent` core is a masterful implementation of a **microkernel architecture**. It strictly adheres to the principle of keeping the engine minimal while delegating all business logic to dynamically loaded "Skills." The core is divided into six primary subsystems:
-
-** 1. The Cognitive Loop (`core.lisp`)
-This is the heart of the daemon. It implements a continuous, recursive OODA (Observe, Orient, Decide, Act) loop that handles asynchronous events without blocking the main thread.
-- **`perceive`**: Acts as the sensor array. It ingests raw OACP messages (e.g., `:buffer-update` from Emacs) and updates the internal state.
-- **`think`**: The "System 1" invocation. It takes the current context and asks the LLM for an intuitive proposal.
-- **`decide`**: The "System 2" Safety Gate. It intercepts the LLM's proposal and runs deterministic Lisp validation on it. If the LLM proposes something unsafe or structurally invalid, this layer rejects it.
-- **`dispatch-action`**: The Actuator router. Once an action clears the Safety Gate, this sends it to the physical world (e.g., instructing Emacs to modify a buffer).
-- **Self-Reflection:** The loop is recursive. When a tool is executed, its output is injected as a new stimulus, allowing the agent to observe the consequences of its actions and chain multiple steps together. A hardcoded depth limit (e.g., 10) prevents infinite loops.
-
-** 2. The Communication Protocol (`protocol.lisp`)
-Because the Lisp Machine and Emacs are technically separate processes, they need a fast, reliable way to talk. 
-- It implements **OACP (Org-Agent Communication Protocol)** over a raw TCP socket.
-- Instead of relying on raw JSON streams that can break mid-transmission, it uses a hex-length framing mechanism (`frame-message`, `parse-message`). This guarantees that massive ASTs or deep context dumps never cause TCP socket desynchronization.
-
-** 3. The Object Store (`object-store.lisp`)
-This implements the **CLOSOS (Common Lisp Object-Store OS)** principle.
-- Rather than constantly reading and writing text files, `org-agent` maintains a live, persistent hash table in RAM (`*object-store*`).
-- When Emacs sends an Org-mode AST, `ingest-ast` converts it into native Lisp `org-object` structs. This creates the "Single Address Space," allowing the agent to traverse massive Zettelkastens instantly via memory pointers rather than disk I/O.
-- The `snapshot-object-store` mechanism allows dumping the brain state to disk (`memory-image.lisp`), avoiding the parsing bottleneck on boot.
-
-** 4. Peripheral Vision (`context.lisp` & `embedding.lisp`)
-This solves the classic LLM "context window bloat" problem.
-- **`context.lisp`**: Provides functions like `context-filter-sparse-tree`. Before asking the LLM to think, the kernel surgically prunes the Org AST, stripping out irrelevant nodes and passing only the highly relevant hierarchical context to the LLM.
-- **`embedding.lisp`**: Handles vectorization and semantic similarity (to be moved to user-space in the future).
-
-** 5. The Skill Engine (`skills.lisp`)
-This is the late-binding plugin architecture.
-- The microkernel knows nothing about GTD, Zettelkastens, or your Project Foundry. It only knows how to run the Cognitive Loop.
-- `skills.lisp` provides the `defskill` macro. It dynamically parses Literate Org files, compiles the Lisp code blocks at runtime, and injects them into the `*skills-registry*`. Each skill is jailed in its own isolated Lisp package.
-
-** 6. The Neurosymbolic Bridge (`neuro.lisp` & `symbolic.lisp`)
-These two files represent the dual-process brain of the agent.
-- **`neuro.lisp`**: (System 1) Manages API connections to LLMs and handles **Prompt Injection**—dynamically changing the LLM's system prompt based on the active skill.
-- **`symbolic.lisp`**: (System 2) Executes the compiled Lisp code (`skill-symbolic-fn`) associated with a skill to guarantee deterministic outcomes, blocking dangerous or malformed LLM proposals.
-
-* Architecture Diagrams
-
-** The Single Address Space
+*** The Single Address Space
 #+begin_src mermaid
 graph TD
     subgraph Lisp Machine
@@ -104,12 +47,12 @@ graph TD
         K -- Pointers --> S1
         K -- Pointers --> S2
     end
-    subgraph IPC Slow
-        E[Emacs Actuator] -. JSON .-> K
+    subgraph IPC (Dumb Terminals)
+        E[Emacs / Actuators] -. OACP .-> K
     end
 #+end_src
 
-** The Cognitive Loop (OODA)
+*** The Cognitive Loop (OODA)
 #+begin_src mermaid
 sequenceDiagram
     participant Sensor
@@ -129,742 +72,14 @@ sequenceDiagram
     end
 #+end_src
 
-* System Definition
+* 3. How: The 6 Core Components
 
-This section defines the ASDF system, its dependencies, and the loading order of the modules.
+The microkernel is divided into six primary subsystems, each solving a fundamental problem of agentic autonomy.
 
-#+begin_src lisp :tangle org-agent.asd
-(defsystem :org-agent
-  :name "org-agent"
-  :author "Amr"
-  :version "0.1.0"
-  :license "MIT"
-  :description "The Neurosymbolic Lisp Machine Kernel"
-  :depends-on (:usocket :cl-json :bordeaux-threads :dexador :uiop :cl-dotenv :cl-ppcre :hunchentoot)
-  :serial t
-  :components ((:module "src"
-                :components ((:file "package")
-                             (:file "protocol")
-                             (:file "object-store")
-                             (:file "context")
-                             (:file "embedding")
-                             (:file "skills")
-                             (:file "neuro")
-                             (:file "symbolic")
-                             (:file "core"))))
-  :build-operation "program-op"
-  :build-pathname "org-agent-server"
-  :entry-point "org-agent:main"
-  :in-order-to ((test-op (test-op :org-agent/tests))))
+** I. The Cognitive Loop (core.lisp)
+**Problem:** Linear AI scripts are blocking and cannot perceive new information while thinking.
+**Solution:** A multi-threaded, asynchronous OODA loop. It uses recursion to allow the agent to observe its own results and chain thoughts together.
 
-(defsystem :org-agent/tests
-  :depends-on (:org-agent :fiveam)
-  :components ((:module "tests"
-                :components ((:file "oacp-tests")
-                             (:file "cognitive-loop-tests"))))
-  :perform (test-op (o s) 
-             (uiop:symbol-call :fiveam :run! (uiop:find-symbol* :oacp-suite :org-agent-tests))
-             (uiop:symbol-call :fiveam :run! (uiop:find-symbol* :cognitive-suite :org-agent-cognitive-tests))))
-#+end_src
-
-* The Kernel Core
-
-The physical implementation of the daemon, tangled from this Org document into =src/=.
-
-** Namespace & API
-#+begin_src lisp :tangle src/package.lisp
-(defpackage :org-agent
-  (:use :cl)
-  (:export 
-   ;; --- OACP Protocol ---
-   #:frame-message
-   #:parse-message
-   #:make-hello-message
-   
-   ;; --- Daemon Lifecycle ---
-   #:start-daemon
-   #:stop-daemon
-   #:kernel-log
-   #:main
-   
-   ;; --- Object Store (CLOSOS) ---
-   #:ingest-ast
-   #:lookup-object
-   #:list-objects-by-type
-   #:*object-store*
-   #:org-object
-   #:org-object-id
-   #:org-object-type
-   #:org-object-attributes
-   #:org-object-children
-   #:org-object-vector
-   #:org-object-content
-   #:snapshot-object-store
-   #:rollback-object-store
-   #:send-swarm-packet
-   
-   ;; --- Context API (Peripheral Vision) ---
-   #:context-query-store
-   #:context-get-active-projects
-   #:context-get-recent-completed-tasks
-   #:context-list-all-skills
-   #:context-get-skill-source
-   #:context-get-system-logs
-   #:context-filter-sparse-tree
-   #:context-resolve-path
-   #:context-get-skill-telemetry
-   
-   ;; --- Cognitive Loop & Event Bus ---
-   #:perceive
-   #:think
-   #:decide
-   #:act
-   #:cognitive-loop
-   #:inject-stimulus
-   #:dispatch-action
-   #:register-actuator
-   #:spawn-task
-   
-   ;; --- Skill Engine ---
-   #:load-skill-from-org
-   #:validate-lisp-syntax
-   #:find-triggered-skill
-   #:defskill
-   #:*skills-registry*
-   #:skill
-   #:skill-name
-   #:skill-priority
-   #:skill-trigger-fn
-   #:skill-neuro-prompt
-   #:skill-symbolic-fn
-
-   ;; --- Tool Registry ---
-   #:def-cognitive-tool
-   #:*cognitive-tools*
-   #:cognitive-tool
-   #:cognitive-tool-name
-   #:cognitive-tool-description
-   #:cognitive-tool-parameters
-   #:cognitive-tool-guard
-   #:cognitive-tool-body
-
-   ;; --- Emacs Client Registry ---
-   #:*emacs-clients*
-   #:*clients-lock*
-   #:register-emacs-client
-   #:unregister-emacs-client
-
-   ;; --- Neuro (System 1) ---
-
-   #:ask-neuro
-   #:register-neuro-backend
-   #:register-auth-provider
-   #:get-provider-auth
-   #:distill-prompt
-   #:get-embedding
-   #:cosine-similarity
-   #:find-most-similar
-   #:openrouter-get-available-models
-   #:*provider-cascade*
-   #:economist-route-task
-   
-   ;; --- Symbolic Logic ---
-   #:list-objects-with-attribute
-   #:org-id-new
-   
-   ;; --- AST Helpers ---
-   #:find-headline-missing-id
-   
-   ;; --- Environment Config ---
-   #:set-llm-model
-   #:get-llm-model))
-#+end_src
-
-** Communication (OACP)
-#+begin_src lisp :tangle src/protocol.lisp
-(in-package :org-agent)
-
-(defun frame-message (msg-string)
-  "Prefix MSG-STRING with a 6-character hex length (lowercase)."
-  (let ((len (length msg-string)))
-    (format nil "~(~6,'0x~)~a" len msg-string)))
-
-(defun parse-message (framed-string)
-  "Extract and parse the S-expression from a framed string."
-  (when (< (length framed-string) 6)
-    (error "Framed string too short"))
-  (let* ((len-str (subseq framed-string 0 6))
-         (actual-msg (subseq framed-string 6))
-         (expected-len (ignore-errors (parse-integer len-str :radix 16))))
-    (unless expected-len
-      (error "Invalid hex length prefix: ~a" len-str))
-    (unless (= expected-len (length actual-msg))
-      (error "Message length mismatch. Expected ~a, got ~a" expected-len (length actual-msg)))
-    (read-from-string actual-msg)))
-
-(defun make-hello-message (version)
-  "Construct the standard HELLO handshake message."
-  (list :type :EVENT 
-        :payload (list :action :handshake 
-                       :version version 
-                       :capabilities '(:auth :swank :org-ast))))
-#+end_src
-
-** Perceptual Memory (Object Store)
-#+begin_src lisp :tangle src/object-store.lisp
-(in-package :org-agent)
-
-(defvar *object-store* (make-hash-table :test 'equal))
-
-(defstruct org-object
-  id type attributes content vector parent-id children version last-sync)
-
-(defun ingest-ast (ast &optional parent-id)
-  (let* ((type (getf ast :type))
-         (props (getf ast :properties))
-         (id (or (getf props :ID) (format nil "temp-~a" (get-universal-time))))
-         (contents (getf ast :contents))
-         (raw-content (when (eq type :HEADLINE)
-                        (format nil "~a~%~a" (getf props :TITLE) (or (cl:getf ast :raw-content) ""))))
-         (should-embed (and raw-content (equal (getf props :EMBED) "t")))
-         (child-ids nil))
-    (dolist (child contents)
-      (when (listp child) (push (ingest-ast child id) child-ids)))
-    (let ((obj (make-org-object 
-                :id id :type type :attributes props :content raw-content
-                :vector (when should-embed (get-embedding raw-content))
-                :parent-id parent-id :children (nreverse child-ids)
-                :version (get-universal-time) :last-sync (get-universal-time))))
-      (setf (gethash id *object-store*) obj)
-      id)))
-
-(defvar *object-store-snapshots* nil)
-
-(defun clone-org-object (obj)
-  (make-org-object 
-   :id (org-object-id obj) :type (org-object-type obj)
-   :attributes (copy-list (org-object-attributes obj))
-   :content (org-object-content obj) :vector (org-object-vector obj)
-   :parent-id (org-object-parent-id obj) :children (copy-list (org-object-children obj))
-   :version (org-object-version obj) :last-sync (org-object-last-sync obj)))
-
-(defun snapshot-object-store ()
-  (let ((snapshot (make-hash-table :test 'equal)))
-    (maphash (lambda (id obj) (setf (gethash id snapshot) (clone-org-object obj))) *object-store*)
-    (push (list :timestamp (get-universal-time) :data snapshot) *object-store-snapshots*)
-    (when (> (length *object-store-snapshots*) 20)
-      (setf *object-store-snapshots* (subseq *object-store-snapshots* 0 20)))
-    (kernel-log "MEMORY - Object Store snapshot created.")))
-
-(defun rollback-object-store (&optional (index 0))
-  (let ((snapshot (nth index *object-store-snapshots*)))
-    (if snapshot
-        (progn (setf *object-store* (getf snapshot :data))
-               (kernel-log "MEMORY - Object Store rolled back to snapshot ~a" index))
-        (kernel-log "MEMORY ERROR - Snapshot ~a not found." index))))
-
-(defun lookup-object (id) (gethash id *object-store*))
-
-(defun list-objects-by-type (type)
-  (let ((results nil))
-    (maphash (lambda (id obj) (declare (ignore id)) (when (eq (org-object-type obj) type) (push obj results))) *object-store*)
-    results))
-
-(defun find-headline-missing-id (ast)
-  (when (listp ast)
-    (if (and (eq (getf ast :type) :HEADLINE) (not (getf (getf ast :properties) :ID)))
-        ast
-        (cl:some #'find-headline-missing-id (getf ast :contents)))))
-
-(defun file-name-nondirectory (path)
-  (let ((pos (position #\/ path :from-end t))) (if pos (subseq path (1+ pos)) path)))
-#+end_src
-
-** Peripheral Vision (Context API)
-#+begin_src lisp :tangle src/context.lisp
-(in-package :org-agent)
-
-(defun context-query-store (&key tag todo-state type)
-  (let ((results nil))
-    (maphash (lambda (id obj)
-               (declare (ignore id))
-               (let* ((attrs (org-object-attributes obj)) (state (getf attrs :TODO-STATE)) (match t))
-                 (when (and type (not (eq (org-object-type obj) type))) (setf match nil))
-                 (when tag (unless (search tag (format nil "~a" (getf attrs :TAGS)) :test #'string-equal) (setf match nil)))
-                 (when (and todo-state (not (equal state todo-state))) (setf match nil))
-                 (when match (push obj results))))
-             *object-store*)
-    results))
-
-(defun context-get-active-projects ()
-  (remove-if (lambda (obj) (equal (getf (org-object-attributes obj) :TODO-STATE) "DONE"))
-             (context-query-store :tag "project" :type :HEADLINE)))
-
-(defun context-get-recent-completed-tasks () (context-query-store :todo-state "DONE" :type :HEADLINE))
-
-(defun context-list-all-skills ()
-  (let ((results nil))
-    (maphash (lambda (name skill)
-               (declare (ignore name))
-               (push (list :name (skill-name skill) :priority (skill-priority skill) :dependencies (skill-dependencies skill)) results))
-             *skills-registry*)
-    (sort results #'> :key (lambda (x) (getf x :priority)))))
-
-(defun context-get-skill-source (skill-name)
-  (let* ((filename (format nil "~a.org" skill-name))
-         (skills-dir (merge-pathnames "skills/" (asdf:system-source-directory :org-agent)))
-         (full-path (merge-pathnames filename skills-dir)))
-    (if (uiop:file-exists-p full-path) (uiop:read-file-string full-path) nil)))
-
-(defun context-get-system-logs (&optional (limit 20))
-  (bt:with-lock-held (*logs-lock*)
-    (let ((count (min limit (length *system-logs*)))) (subseq *system-logs* 0 count))))
-
-(defun context-get-skill-telemetry (skill-name)
-  (bt:with-lock-held (*telemetry-lock*) (gethash (string-downcase skill-name) *skill-telemetry*)))
-
-(defun context-filter-sparse-tree (ast predicate)
-  (if (listp ast)
-      (let* ((contents (getf ast :contents))
-             (filtered-contents (remove-if #'null (mapcar (lambda (c) (context-filter-sparse-tree c predicate)) contents))))
-        (if (or (funcall predicate ast) (not (null filtered-contents)))
-            (let ((new-ast (copy-list ast))) (setf (getf new-ast :contents) filtered-contents) new-ast)
-            nil))
-      nil))
-
-(defun context-resolve-path (path-string)
-  (if (and (stringp path-string) (uiop:string-prefix-p "$" path-string))
-      (let* ((parts (uiop:split-string path-string :separator '(#\/)))
-             (var-name (subseq (car parts) 1)) (var-val (uiop:getenv var-name))
-             (remaining (cl:reduce (lambda (a b) (format nil "~a/~a" a b)) (cdr parts))))
-        (if var-val (let ((clean-val (string-trim '(#\" #\Space) var-val)))
-                      (format nil "~a/~a" (string-right-trim "/" clean-val) remaining))
-            path-string))
-      path-string))
-#+end_src
-
-* System 1 (Neural Engine)
-** Embedding Logic
-#+begin_src lisp :tangle src/embedding.lisp
-(in-package :org-agent)
-
-(defun get-embedding (text)
-  (let* ((auth (get-provider-auth :gemini)) (api-key (getf auth :api-key))
-         (endpoint "https://generativelanguage.googleapis.com/v1beta/models/text-embedding-004:embedContent"))
-    (unless api-key (return-from get-embedding nil))
-    (let* ((url (format nil "~a?key=~a" endpoint api-key)) (headers `(("Content-Type" . "application/json")))
-           (body (cl-json:encode-json-to-string `((model . "models/text-embedding-004") (content . ((parts . ((text . ,text)))))))))
-      (handler-case (let* ((response (dex:post url :headers headers :content body))
-                           (json (cl-json:decode-json-from-string response)))
-                      (cdr (assoc :values (cdr (assoc :embedding json)))))
-        (error (c) (kernel-log "EMBEDDING FAILURE: ~a" c) nil)))))
-
-(defun dot-product (v1 v2) (reduce #'+ (mapcar #'* v1 v2)))
-(defun magnitude (v) (sqrt (reduce #'+ (mapcar (lambda (x) (* x x)) v))))
-(defun cosine-similarity (v1 v2)
-  (let ((m1 (magnitude v1)) (m2 (magnitude v2))) (if (or (zerop m1) (zerop m2)) 0 (/ (dot-product v1 v2) (* m1 m2)))))
-
-(defun find-most-similar (query-vector top-k)
-  (let ((similarities nil))
-    (maphash (lambda (id obj) (let ((vec (org-object-vector obj))) (when vec (push (cons (cosine-similarity query-vector vec) obj) similarities)))) *object-store*)
-    (let ((sorted (sort similarities #'> :key #'car))) (subseq sorted 0 (min top-k (length sorted))))))
-#+end_src
-
-** Neural Logic
-#+begin_src lisp :tangle src/neuro.lisp
-(in-package :org-agent)
-
-(defun get-env (var &optional default) (or (uiop:getenv var) default))
-
-(defvar *auth-providers* (make-hash-table :test 'equal))
-(defun register-auth-provider (name fn) (setf (gethash name *auth-providers*) fn))
-(defun get-provider-auth (provider)
-  "Retrieves authentication credentials for a provider.
-   Supports direct plists, functions, or specific environment variable fallbacks."
-  (let ((auth (gethash provider *auth-providers*)))
-    (cond
-      ((functionp auth) (funcall auth))
-      ((listp auth) auth)
-      (t 
-       (let ((specific-key (case provider
-                             (:gemini (uiop:getenv "GEMINI_API_KEY"))
-                             (:openrouter (uiop:getenv "OPENROUTER_API_KEY"))
-                             (:anthropic (uiop:getenv "ANTHROPIC_API_KEY"))
-                             (:openai (uiop:getenv "OPENAI_API_KEY"))
-                             (t nil))))
-         (if (and specific-key (> (length specific-key) 0))
-             (list :api-key specific-key)
-             ;; Final fallback to the legacy generic key
-             (let ((legacy (uiop:getenv "LLM_API_KEY")))
-               (when (and legacy (> (length legacy) 0))
-                 (list :api-key legacy)))))))))
-
-(defvar *neuro-backends* (make-hash-table :test 'equal))
-(defvar *provider-cascade* '(:openrouter :gemini))
-(defun register-neuro-backend (name fn) (setf (gethash name *neuro-backends*) fn))
-
-(defvar *model-selector-fn* nil "A function called with (provider context) to return a model ID.")
-
-(defun ask-neuro (prompt &key (system-prompt "You are the System 1 engine of a Neurosymbolic Lisp Machine.") (cascade nil) (context nil))
-  "Dispatches a neural request through the provider cascade.
-   If CASCADE is a function, it is called with CONTEXT to determine backends."
-  (let ((backends (cond
-                    ((and cascade (listp cascade)) cascade)
-                    ((functionp cascade) (funcall cascade context))
-                    ((functionp *provider-cascade*) (funcall *provider-cascade* context))
-                    (t *provider-cascade*))))
-    (dolist (backend backends)
-      (let ((backend-fn (gethash backend *neuro-backends*)))
-        (when backend-fn
-          (kernel-log "SYSTEM 1: Attempting backend ~a..." backend)
-          (let* ((model (when *model-selector-fn* (funcall *model-selector-fn* backend context)))
-                 (result (if model 
-                             (funcall backend-fn prompt system-prompt :model model)
-                             (funcall backend-fn prompt system-prompt))))
-            (if (and (stringp result) (search ":LOG" result) (or (search "Failure" result) (search "missing" result)))
-                (kernel-log "SYSTEM 1: Backend ~a failed. Falling back..." backend)
-                (return-from ask-neuro result))))))
-    "(:type :LOG :payload (:text \"Neural Cascade Failure\"))"))
-
-(defun execute-gemini-request (prompt system-prompt &key model)
-  (let* ((auth (get-provider-auth :gemini)) (api-key (getf auth :api-key)) (bearer-token (getf auth :bearer-token))
-         (endpoint-base (if model (format nil "https://generativelanguage.googleapis.com/v1/models/~a:generateContent" model)
-                            (return-from execute-gemini-request "(:type :LOG :payload (:text \"Error: Gemini Model ID missing.\"))"))))
-    (unless (or api-key bearer-token) (return-from execute-gemini-request "(:type :LOG :payload (:text \"Authentication missing\"))"))
-    (let* ((url (if api-key (format nil "~a?key=~a" endpoint-base api-key) endpoint-base))
-           (headers `(("Content-Type" . "application/json") ,@(when bearer-token `(("Authorization" . ,(format nil "Bearer ~a" bearer-token))))))
-           (body (cl-json:encode-json-to-string `((contents . ((parts . ((text . ,(format nil "~a~%~%Prompt: ~a" system-prompt prompt))))))))))
-      (handler-case (let* ((response (dex:post url :headers headers :content body :connect-timeout 10 :read-timeout 30)) (json (cl-json:decode-json-from-string response)))
-                      (cdr (assoc :text (cdr (assoc :parts (car (cdr (assoc :parts (car (cdr (assoc :candidates json)))))))))))
-        (error (c) (format nil "(:type :LOG :payload (:text \"Neural Engine Failure: ~a\"))" c))))))
-
-(defun execute-groq-request (prompt system-prompt &key model)
-  (let ((api-key (uiop:getenv "GROQ_API_KEY"))
-        (endpoint "https://api.groq.com/openai/v1/chat/completions"))
-    (unless model (return-from execute-groq-request "(:type :LOG :payload (:text \"Error: Groq Model ID missing.\"))"))
-    (unless api-key (return-from execute-groq-request "(:type :LOG :payload (:text \"Groq API Key missing\"))"))
-    (let* ((headers `(("Content-Type" . "application/json")
-                      ("Authorization" . ,(format nil "Bearer ~a" api-key))))
-           (body (cl-json:encode-json-to-string
-                  `((model . ,model)
-                    (messages . (( (role . "system") (content . ,system-prompt) )
-                                 ( (role . "user") (content . ,prompt) )))))))
-      (handler-case (let* ((response (dex:post endpoint :headers headers :content body :connect-timeout 5 :read-timeout 10))
-                           (json (cl-json:decode-json-from-string response)))
-                      (cdr (assoc :content (cdr (assoc :message (car (cdr (assoc :choices json))))))))
-        (error (c) (format nil "(:type :LOG :payload (:text \"Groq Failure: ~a\"))" c))))))
-
-(defun execute-openrouter-request (prompt system-prompt &key model)
-  (let ((api-key (uiop:getenv "OPENROUTER_API_KEY"))
-        (endpoint "https://openrouter.ai/api/v1/chat/completions"))
-    (unless model (return-from execute-openrouter-request "(:type :LOG :payload (:text \"Error: Model ID missing. Accountant must provide a model.\"))"))
-    (unless api-key (return-from execute-openrouter-request "(:type :LOG :payload (:text \"OpenRouter API Key missing\"))"))
-    (let* ((headers `(("Content-Type" . "application/json")
-                      ("Authorization" . ,(format nil "Bearer ~a" api-key))
-                      ("HTTP-Referer" . "https://github.com/amr/org-agent")))
-           (body (cl-ppcre:regex-replace-all "\\\\/" 
-                                             (cl-json:encode-json-to-string
-                                              `((model . ,model)
-                                                (messages . (( (role . "system") (content . ,system-prompt) )
-                                                             ( (role . "user") (content . ,prompt) )))))
-                                             "/")))
-      (kernel-log "OPENROUTER DEBUG - Body: ~a" body)
-      (handler-case (let* ((response (dex:post endpoint :headers headers :content body :connect-timeout 10 :read-timeout 30)))
-                      (kernel-log "OPENROUTER DEBUG - Raw Response: ~a" response)
-                      (let ((json (cl-json:decode-json-from-string response)))
-                        (cdr (assoc :content (cdr (assoc :message (car (cdr (assoc :choices json)))))))))
-        (error (c) 
-          (kernel-log "OPENROUTER ERROR: ~a" c)
-          (if (typep c 'dex:http-request-failed)
-              (kernel-log "OPENROUTER ERROR BODY: ~a" (dex:response-body c)))
-          (format nil "(:type :LOG :payload (:text \"OpenRouter Failure: ~a\"))" c))))))
-
-(defun openrouter-get-available-models ()
-  "Fetches available models from OpenRouter."
-  (let ((api-key (uiop:getenv "OPENROUTER_API_KEY")))
-    (unless api-key (return-from openrouter-get-available-models nil))
-    (let ((headers `(("Authorization" . ,(format nil "Bearer ~a" api-key)))))
-      (handler-case
-          (let* ((response (dex:get "https://openrouter.ai/api/v1/models" 
-                                   :headers headers 
-                                   :connect-timeout 60 
-                                   :read-timeout 60))
-                 (json (cl-json:decode-json-from-string response))
-                 (data (cdr (assoc :data json)))
-                 (results nil))
-            (dolist (item data)
-              (let ((id (cdr (assoc :id item)))
-                    (context-len (cdr (assoc :context--length item))))
-                (when id
-                  (push (list :id id :context (format nil "~a" (or context-len "unknown"))) results))))
-            (nreverse results))
-        (error (c) 
-          (kernel-log "Model Discovery Error: ~a" c)
-          nil)))))
-
-;; --- Sovereign Service Stubs ---
-;; These are implemented in specialized skills but registered in the kernel namespace.
-
-(defun economist-route-task (complexity)
-  "Stub for Neuro-Economic routing. Overridden by skill-economist."
-  (declare (ignore complexity))
-  :gemini) ; Default fallback
-
-(defun org-id-new ()
-  "Stub for Sovereign ID generation. Overridden by skill-ast-normalization."
-  (format nil "node-~a" (get-universal-time)))
-
-(register-neuro-backend :gemini #'execute-gemini-request)
-(register-neuro-backend :openrouter #'execute-openrouter-request)
-(register-neuro-backend :groq #'execute-groq-request)
-(defvar *provider-cascade* '(:openrouter :gemini)) ; Default fallback only
-
-(defun get-org-timestamp ()
-  "Returns a current Org-mode active timestamp."
-  (multiple-value-bind (sec min hour day month year day-of-week) (decode-universal-time (get-universal-time))
-    (declare (ignore sec))
-    (let ((day-names '("Mon" "Tue" "Wed" "Thu" "Fri" "Sat" "Sun")))
-      (format nil "[~4,'0d-~2,'0d-~2,'0d ~a ~2,'0d:~2,'0d]" 
-              year month day (nth day-of-week day-names) hour min))))
-
-(defun update-note-metadata (filepath)
-  "Ensures a :PROPERTIES: drawer exists and updates the :EDITED: timestamp."
-  (let ((content (uiop:read-file-string filepath))
-        (now (get-org-timestamp)))
-    (if (search ":PROPERTIES:" content)
-        ;; Update existing EDITED or add it
-        (let ((new-content (if (search ":EDITED:" content)
-                               (cl-ppcre:regex-replace ":EDITED:   \\[.*?\\]" content (format nil ":EDITED:   ~a" now))
-                               (cl-ppcre:regex-replace ":PROPERTIES:\\n" content (format nil ":PROPERTIES:~%:EDITED:   ~a~%" now)))))
-          (with-open-file (out filepath :direction :output :if-exists :supersede)
-            (write-string new-content out)))
-        ;; Create new drawer
-        (let ((new-content (format nil ":PROPERTIES:~%:CREATED:  ~a~%:EDITED:   ~a~%:END:~%~a" now now content)))
-          (with-open-file (out filepath :direction :output :if-exists :supersede)
-            (write-string new-content out))))))
-
-(defun think (context)
-  (let ((active-skill (find-triggered-skill context))
-        (tool-belt (generate-tool-belt-prompt)))
-    (if active-skill
-        (progn
-          (kernel-log "SYSTEM 1: Engaging skill '~a'~%" (skill-name active-skill))
-          (let* ((prompt-generator (skill-neuro-prompt active-skill)) 
-                 (raw-prompt (when prompt-generator (funcall prompt-generator context)))
-                 (full-system-prompt (concatenate 'string 
-                                                 "ACTUATOR IDENTITY: You are the pure Lisp actuator for the org-agent kernel.
-MANDATE: Output EXACTLY ONE Common Lisp property list starting with (:type :REQUEST).
-ZERO CONVERSATION: Do not explain. Do not say 'Okay'. Do not use markdown blocks.
-STRICT RULE: Do not output multiple lists. Do not chain multiple requests. 
-DO NOT embed tool calls inside text strings.
-If you need to do multiple things or need information from a tool, you MUST:
-1. Call the tool FIRST.
-2. Wait for the result in the next recursive turn.
-3. Only then reply to the user or call the next tool.
-
-"
-                                                 tool-belt
-                                                 "
-IMPORTANT: To reply to the user, you MUST use:
-(:type :REQUEST :target :emacs :action :insert-at-end :buffer \"*org-agent-chat*\" :text \"* <Response Text>\")
-
-To call a tool, you MUST use:
-(:type :REQUEST :target :tool :action :call :tool \"<name>\" :args (:arg1 \"val\"))
-
-")))
-            (if (and raw-prompt (> (length raw-prompt) 1))
-                (let* ((thought (ask-neuro raw-prompt :system-prompt full-system-prompt :context context)))
-                  (kernel-log "SYSTEM 1 RAW: ~a~%" thought)
-                  (let* ((cleaned-thought 
-                          (let ((match (cl-ppcre:scan-to-strings "(?s)```(?:lisp)?\\n?(.*?)\\n?```" thought)))
-                            (if match
-                                (let ((regs (nth-value 1 (cl-ppcre:scan-to-strings "(?s)```(?:lisp)?\\n?(.*?)\\n?```" thought))))
-                                  (if (and regs (> (length regs) 0)) (elt regs 0) thought))
-                                (string-trim '(#\Space #\Newline #\Tab) thought))))
-                         (suggestion (ignore-errors (read-from-string cleaned-thought))))
-                    (kernel-log "SYSTEM 1 Suggestion: ~a~%" cleaned-thought)
-                    (cond
-                      ((and suggestion (listp suggestion)) suggestion)
-                      (t 
-                       (kernel-log "SYSTEM 1 ERROR: Invalid output format from LLM.~%")
-                       nil))))
-                '(:type :LOG :payload (:text "Skill triggered (Deterministic only)")))))
-        nil)))
-
-(defun distill-prompt (full-prompt successful-output)
-  (let ((system-instr "You are a Meta-Cognitive Prompt Architect. DISTILL into template."))
-    (ask-neuro (format nil "PROMPT: ~a~%RESULT: ~a" full-prompt successful-output) :system-prompt system-instr)))
-
-(defun distillation-loop ()
-  "Autonomous distillation cycle (Skeletal)."
-  (kernel-log "NEURO [Evolution] - Distillation cycle triggered."))
-#+end_src
-
-* System 2 (Symbolic Gating)
-** Symbolic Logic
-#+begin_src lisp :tangle src/symbolic.lisp
-(in-package :org-agent)
-
-(defun decide (proposed-action context)
-  (let ((active-skill (find-triggered-skill context)))
-    (if (and proposed-action (listp proposed-action) active-skill)
-        (let* ((symbolic-gate (skill-symbolic-fn active-skill))
-               (payload (getf proposed-action :payload))
-               (action (or (getf payload :action) (getf proposed-action :action)))
-               (code (or (getf payload :code) (getf proposed-action :code))))
-          ;; Global safety harness for EVAL
-          (when (and (member (getf proposed-action :type) '(:request :REQUEST))
-                     (member action '(:eval :EVAL)))
-            (let ((harness-pkg (find-package :org-agent.skills.org-skill-safety-harness)))
-              (when (and code harness-pkg)
-                (unless (ignore-errors (uiop:symbol-call :org-agent.skills.org-skill-safety-harness :safety-harness-validate code))
-                  (kernel-log "SYSTEM 2 [GLOBAL]: Security violation blocked.~%")
-                  (return-from decide '(:type :LOG :payload (:text "Blocked by Global Safety Harness")))))))
-          ;; Skill-specific verification
-          (if symbolic-gate
-              (let ((decision (funcall symbolic-gate proposed-action context)))
-                (if decision 
-                    (progn (kernel-log "SYSTEM 2: Verified by skill '~a'.~%" (skill-name active-skill)) decision)
-                    (progn (kernel-log "SYSTEM 2: REJECTED by skill '~a'.~%" (skill-name active-skill))
-                           '(:type :LOG :payload (:text "Action rejected by skill heuristics")))))
-              (progn (kernel-log "SYSTEM 2: Verified (Implicitly safe for skill '~a').~%" (skill-name active-skill)) proposed-action)))
-        proposed-action)))
-
-(defun list-objects-with-attribute (attr-key attr-val)
-  (let ((results nil))
-    (maphash (lambda (id obj) (declare (ignore id)) (when (equal (getf (org-object-attributes obj) attr-key) attr-val) (push obj results))) *object-store*)
-    results))
-#+end_src
-
-* Skill Engine
-** Skill Logic
-#+begin_src lisp :tangle src/skills.lisp
-(in-package :org-agent)
-
-(defvar *skills-registry* (make-hash-table :test 'equal))
-
-(defstruct skill name priority dependencies trigger-fn neuro-prompt symbolic-fn)
-
-(defvar *cognitive-tools* (make-hash-table :test 'equal))
-
-(defstruct cognitive-tool name description parameters guard body)
-
-(defmacro def-cognitive-tool (name description &key parameters guard body)
-  `(setf (gethash (string-downcase (string ,name)) *cognitive-tools*)
-         (make-cognitive-tool :name (string-downcase (string ,name))
-                             :description ,description
-                             :parameters ',parameters
-                             :guard ,guard
-                             :body ,body)))
-
-(defun generate-tool-belt-prompt ()
-  (let ((output (format nil "AVAILABLE TOOLS:
-You can call tools by returning a Lisp plist: (:target :tool :action :call :tool <name> :args (...))
-
-EXAMPLES:
-(:target :tool :action :call :tool \"eval\" :args (:code \"(+ 1 1)\"))
-(:target :tool :action :call :tool \"grep-search\" :args (:pattern \"sovereignty\"))
-(:target :tool :action :call :tool \"shell\" :args (:cmd \"ls -la\"))
-
----
-")))
-    (maphash (lambda (name tool)
-               (setf output (concatenate 'string output
-                                         (format nil "- ~a: ~a~%  Parameters: ~s~%~%"
-                                                 name
-                                                 (cognitive-tool-description tool)
-                                                 (cognitive-tool-parameters tool)))))
-             *cognitive-tools*)
-    output))
-
-(defmacro defskill (name &key priority dependencies trigger neuro symbolic)
-  `(setf (gethash ,(string-downcase (string name)) *skills-registry*)
-         (make-skill :name ,(string-downcase (string name)) :priority (or ,priority 10) :dependencies ,dependencies
-                     :trigger-fn ,trigger :neuro-prompt ,neuro :symbolic-fn ,symbolic)))
-
-(defun find-triggered-skill (context)
-  (let ((triggered nil))
-    (maphash (lambda (name skill) (declare (ignore name)) (when (ignore-errors (funcall (skill-trigger-fn skill) context)) (push skill triggered))) *skills-registry*)
-    (first (sort triggered #'> :key #'skill-priority))))
-
-(defun resolve-skill-dependencies (skill-name)
-  (let ((resolved nil) (seen nil))
-    (labels ((visit (name) (unless (member name seen :test #'equal) (push name seen)
-                             (let ((skill (gethash (string-downcase (string name)) *skills-registry*)))
-                               (when skill (dolist (dep (skill-dependencies skill)) (visit dep))))
-                             (push name resolved))))
-      (visit skill-name) (nreverse resolved))))
-
-(defun load-skill-from-org (filepath)
-  (when (uiop:file-exists-p filepath)
-    (let* ((content (uiop:read-file-string filepath)) (lines (uiop:split-string content :separator '(#\Newline)))
-           (in-lisp-block nil) (lisp-code "") (dependencies nil) (skill-base-name (pathname-name filepath))
-           (pkg-name (intern (string-upcase (format nil "ORG-AGENT.SKILLS.~a" skill-base-name)) :keyword)))
-      (dolist (line lines)
-        (let ((clean-line (string-trim '(#\Space #\Tab #\Return) line)))
-          (when (uiop:string-prefix-p "#+DEPENDS_ON:" (string-upcase clean-line))
-            (setf dependencies (mapcar (lambda (s) (string-trim "[] " s)) (uiop:split-string (subseq clean-line 13) :separator '(#\Space)))))))
-      (dolist (line lines)
-        (let ((clean-line (string-trim '(#\Space #\Tab #\Return) line)))
-          (cond ((uiop:string-prefix-p "#+begin_src lisp" (string-downcase clean-line)) (setf in-lisp-block t))
-                ((uiop:string-prefix-p "#+end_src" (string-downcase clean-line)) (setf in-lisp-block nil))
-                (in-lisp-block (setf lisp-code (concatenate 'string lisp-code line (string #\Newline)))))))
-      (when (> (length lisp-code) 0)
-        (kernel-log "KERNEL: Jailing skill '~a' in package ~a" skill-base-name pkg-name)
-        (unless (find-package pkg-name)
-          (let ((new-pkg (make-package pkg-name :use '(:cl))))
-            (do-external-symbols (sym (find-package :org-agent)) (shadowing-import sym new-pkg))))
-        (let ((*read-eval* nil) (*package* (find-package pkg-name)))
-          (handler-case (eval (read-from-string (format nil "(progn ~a)" lisp-code)))
-            (error (c) (kernel-log "READER ERROR in skill '~a': ~a~%" skill-base-name c))))))))
-
-(defun validate-lisp-syntax (code-string)
-  (handler-case (let ((*read-eval* nil)) (with-input-from-string (stream (format nil "(progn ~a)" code-string))
-                                          (loop for form = (read stream nil :eof) until (eq form :eof)) (values t nil)))
-    (error (c) (values nil (format nil "~a" c)))))
-
-(def-cognitive-tool :eval "Evaluates raw Common Lisp code in the kernel image. Use this for complex calculations or internal state inspection."
-  :parameters ((:code :type :string :description "The Lisp code to evaluate"))
-  :guard (lambda (args context)
-           (declare (ignore context))
-           (let ((code (getf args :code)))
-             ;; Reuse the global safety harness if it exists
-             (let ((harness-pkg (find-package :org-agent.skills.org-skill-safety-harness)))
-               (if harness-pkg 
-                   (uiop:symbol-call :org-agent.skills.org-skill-safety-harness :safety-harness-validate code)
-                   t)))) ; Implicitly safe if harness not loaded
-  :body (lambda (args)
-          (let ((code (getf args :code)))
-            (handler-case (let ((result (eval (read-from-string code))))
-                            (format nil "~s" result))
-              (error (c) (format nil "ERROR: ~a" c))))))
-
-(def-cognitive-tool :grep-search "Searches for a pattern in the project files."
-  :parameters ((:pattern :type :string :description "The regex pattern to search for")
-               (:dir :type :string :description "Directory to search in (default is project root)"))
-  :body (lambda (args)
-          (let ((pattern (getf args :pattern))
-                (dir (or (getf args :dir) (uiop:getenv "MEMEX_DIR"))))
-            (uiop:run-program (list "grep" "-r" "-n" "--exclude-dir=node_modules" pattern dir) 
-                              :output :string :ignore-error-status t))))
-
-(def-cognitive-tool :shell "Executes a shell command on the local machine. Use this for file operations, system checks, or running tests."
-  :parameters ((:cmd :type :string :description "The full bash command to execute"))
-  :guard (lambda (args context)
-           (declare (ignore context))
-           ;; Global safety: prohibit destructive commands
-           (let ((cmd (getf args :cmd)))
-             (not (or (search "rm -rf /" cmd) (search ":(){ :|:& };:" cmd)))))
-  :body (lambda (args)
-          (let ((cmd (getf args :cmd)))
-            (multiple-value-bind (out err code)
-                (uiop:run-program (list "bash" "-c" cmd) :output :string :error-output :string :ignore-error-status t)
-              (format nil "EXIT-CODE: ~a~%~%STDOUT:~%~a~%~%STDERR:~%~a" code out err)))))
-
-#+end_src
-
-* Daemon Runtime
-** Lifecycle & Loop
 #+begin_src lisp :tangle src/core.lisp
 (in-package :org-agent)
 
@@ -1113,33 +328,617 @@ EXAMPLES:
   (loop (sleep 3600)))
 #+end_src
 
-* Long-Term Vision: Orders of Autonomy
+** II. The Communication Protocol (protocol.lisp)
+**Problem:** Massive Org ASTs can fragment and desynchronize raw JSON streams over a socket.
+**Solution:** **OACP (Org-Agent Communication Protocol)**. It uses 6-character hex-length framing to guarantee the daemon never crashes regardless of payload size.
 
-The development of =org-agent= follows distinct orders of autonomy, progressing from a basic assistant to a fully sovereign entity.
+#+begin_src lisp :tangle src/protocol.lisp
+(in-package :org-agent)
 
-** Order 1: The Reactive Kernel (Phase 1 & 2)
-The agent acts as a strict "Delegator." It requires human stimulus to trigger the Cognitive Loop. Capabilities (Skills) are expanded, but the agent only speaks when spoken to.
+(defun frame-message (msg-string)
+  "Prefix MSG-STRING with a 6-character hex length (lowercase)."
+  (let ((len (length msg-string)))
+    (format nil "~(~6,'0x~)~a" len msg-string)))
 
-** Order 2: The Self-Editing Kernel (Phase 3 - Current)
-The agent achieves introspection. It can "perceive pain" (errors) via system logs and trigger a =skill-self-fix= loop to rewrite its own source code, hot-reloading the changes. It proactively maintains the system.
+(defun parse-message (framed-string)
+  "Extract and parse the S-expression from a framed string."
+  (when (< (length framed-string) 6)
+    (error "Framed string too short"))
+  (let* ((len-str (subseq framed-string 0 6))
+         (actual-msg (subseq framed-string 6))
+         (expected-len (ignore-errors (parse-integer len-str :radix 16))))
+    (unless expected-len
+      (error "Invalid hex length prefix: ~a" len-str))
+    (unless (= expected-len (length actual-msg))
+      (error "Message length mismatch. Expected ~a, got ~a" expected-len (length actual-msg)))
+    (read-from-string actual-msg)))
 
-** Order 3: The Sovereign Architect (Phase 4+)
-The agent transitions to full autonomy. It maintains the Consensus Loop entirely, identifying structural decay in the Memex, drafting its own PRDs, writing code, executing Chaos testing, and committing the final result without human intervention (unless authorization gates are explicitly set).
+(defun make-hello-message (version)
+  "Construct the standard HELLO handshake message."
+  (list :type :EVENT 
+        :payload (list :action :handshake 
+                       :version version 
+                       :capabilities '(:auth :swank :org-ast))))
+#+end_src
 
-* Current State: Order 2 Achieved
+** III. The Object Store (object-store.lisp)
+**Problem:** Reading text files for every "memory" is slow; external databases add bloat.
+**Solution:** **CLOSOS Single Address Space**. A persistent in-memory hash table that stores native Lisp `org-objects`. Includes memory-imaging to skip boot-time parsing.
 
-- DONE Core Lisp microkernel (Cognitive Loop: Perceive -> Think -> Decide -> Act)
-- DONE OACP (Swank/Socket communication protocol) implemented
-- DONE Org AST-to-Lisp conversion logic & Object Store integration
-- DONE System 2 Safety Gating (The Harness) established
-- DONE Org-Native Skill parsing and loading
-- DONE Secure Docker containerization
-- DONE Skill Graph & Recursive Dependencies (Ars Contexta)
-- DONE Multi-Provider LLM Failover Cascade
-- DONE Context API (Peripheral Vision)
-- DONE Heartbeat Loop (Proactive Awareness)
-- DONE Immune System (Autonomous Self-Repair)
-- DONE Web Dashboard (Visual Telemetry)
-- DONE Org-Native Multi-modal Delivery (Signal/Telegram/Discord)
-- DONE Project Foundry (Autonomous Scaffolding & Git Stewardship)
-- DONE Strictly Org-mode Mandate (.md purge)
+#+begin_src lisp :tangle src/object-store.lisp
+(in-package :org-agent)
+
+(defvar *object-store* (make-hash-table :test 'equal))
+
+(defstruct org-object
+  id type attributes content vector parent-id children version last-sync)
+
+(defun ingest-ast (ast &optional parent-id)
+  (let* ((type (getf ast :type))
+         (props (getf ast :properties))
+         (id (or (getf props :ID) (format nil "temp-~a" (get-universal-time))))
+         (contents (getf ast :contents))
+         (raw-content (when (eq type :HEADLINE)
+                        (format nil "~a~%~a" (getf props :TITLE) (or (cl:getf ast :raw-content) ""))))
+         (should-embed (and raw-content (equal (getf props :EMBED) "t")))
+         (child-ids nil))
+    (dolist (child contents)
+      (when (listp child) (push (ingest-ast child id) child-ids)))
+    (let ((obj (make-org-object 
+                :id id :type type :attributes props :content raw-content
+                :vector (when should-embed (get-embedding raw-content))
+                :parent-id parent-id :children (nreverse child-ids)
+                :version (get-universal-time) :last-sync (get-universal-time))))
+      (setf (gethash id *object-store*) obj)
+      id)))
+
+(defvar *object-store-snapshots* nil)
+
+(defun clone-org-object (obj)
+  (make-org-object 
+   :id (org-object-id obj) :type (org-object-type obj)
+   :attributes (copy-list (org-object-attributes obj))
+   :content (org-object-content obj) :vector (org-object-vector obj)
+   :parent-id (org-object-parent-id obj) :children (copy-list (org-object-children obj))
+   :version (org-object-version obj) :last-sync (org-object-last-sync obj)))
+
+(defun snapshot-object-store ()
+  (let ((snapshot (make-hash-table :test 'equal)))
+    (maphash (lambda (id obj) (setf (gethash id snapshot) (clone-org-object obj))) *object-store*)
+    (push (list :timestamp (get-universal-time) :data snapshot) *object-store-snapshots*)
+    (when (> (length *object-store-snapshots*) 20)
+      (setf *object-store-snapshots* (subseq *object-store-snapshots* 0 20)))
+    (kernel-log "MEMORY - Object Store snapshot created.")))
+
+(defun rollback-object-store (&optional (index 0))
+  (let ((snapshot (nth index *object-store-snapshots*)))
+    (if snapshot
+        (progn (setf *object-store* (getf snapshot :data))
+               (kernel-log "MEMORY - Object Store rolled back to snapshot ~a" index))
+        (kernel-log "MEMORY ERROR - Snapshot ~a not found." index))))
+
+(defun lookup-object (id) (gethash id *object-store*))
+
+(defun list-objects-by-type (type)
+  (let ((results nil))
+    (maphash (lambda (id obj) (declare (ignore id)) (when (eq (org-object-type obj) type) (push obj results))) *object-store*)
+    results))
+
+(defun find-headline-missing-id (ast)
+  (when (listp ast)
+    (if (and (eq (getf ast :type) :HEADLINE) (not (getf (getf ast :properties) :ID)))
+        ast
+        (cl:some #'find-headline-missing-id (getf ast :contents)))))
+
+(defun file-name-nondirectory (path)
+  (let ((pos (position #\/ path :from-end t))) (if pos (subseq path (1+ pos)) path)))
+#+end_src
+
+** IV. Peripheral Vision (context.lisp & embedding.lisp)
+**Problem:** Context window bloat confuses LLMs and wastes tokens.
+**Solution:** **Sparse Tree Perception**. Surgically prunes the Org AST to pass only the skeletal outline and high-signal context to System 1.
+
+#+begin_src lisp :tangle src/context.lisp
+(in-package :org-agent)
+
+(defun context-query-store (&key tag todo-state type)
+  (let ((results nil))
+    (maphash (lambda (id obj)
+               (declare (ignore id))
+               (let* ((attrs (org-object-attributes obj)) (state (getf attrs :TODO-STATE)) (match t))
+                 (when (and type (not (eq (org-object-type obj) type))) (setf match nil))
+                 (when tag (unless (search tag (format nil "~a" (getf attrs :TAGS)) :test #'string-equal) (setf match nil)))
+                 (when (and todo-state (not (equal state todo-state))) (setf match nil))
+                 (when match (push obj results))))
+             *object-store*)
+    results))
+
+(defun context-get-active-projects ()
+  (remove-if (lambda (obj) (equal (getf (org-object-attributes obj) :TODO-STATE) "DONE"))
+             (context-query-store :tag "project" :type :HEADLINE)))
+
+(defun context-get-recent-completed-tasks () (context-query-store :todo-state "DONE" :type :HEADLINE))
+
+(defun context-list-all-skills ()
+  (let ((results nil))
+    (maphash (lambda (name skill)
+               (declare (ignore name))
+               (push (list :name (skill-name skill) :priority (skill-priority skill) :dependencies (skill-dependencies skill)) results))
+             *skills-registry*)
+    (sort results #'> :key (lambda (x) (getf x :priority)))))
+
+(defun context-get-skill-source (skill-name)
+  (let* ((filename (format nil "~a.org" skill-name))
+         (skills-dir (merge-pathnames "skills/" (asdf:system-source-directory :org-agent)))
+         (full-path (merge-pathnames filename skills-dir)))
+    (if (uiop:file-exists-p full-path) (uiop:read-file-string full-path) nil)))
+
+(defun context-get-system-logs (&optional (limit 20))
+  (bt:with-lock-held (*logs-lock*)
+    (let ((count (min limit (length *system-logs*)))) (subseq *system-logs* 0 count))))
+
+(defun context-get-skill-telemetry (skill-name)
+  (bt:with-lock-held (*telemetry-lock*) (gethash (string-downcase skill-name) *skill-telemetry*)))
+
+(defun context-filter-sparse-tree (ast predicate)
+  (if (listp ast)
+      (let* ((contents (getf ast :contents))
+             (filtered-contents (remove-if #'null (mapcar (lambda (c) (context-filter-sparse-tree c predicate)) contents))))
+        (if (or (funcall predicate ast) (not (null filtered-contents)))
+            (let ((new-ast (copy-list ast))) (setf (getf new-ast :contents) filtered-contents) new-ast)
+            nil))
+      nil))
+
+(defun context-resolve-path (path-string)
+  (if (and (stringp path-string) (uiop:string-prefix-p "$" path-string))
+      (let* ((parts (uiop:split-string path-string :separator '(#\/)))
+             (var-name (subseq (car parts) 1)) (var-val (uiop:getenv var-name))
+             (remaining (cl:reduce (lambda (a b) (format nil "~a/~a" a b)) (cdr parts))))
+        (if var-val (let ((clean-val (string-trim '(#\" #\Space) var-val)))
+                      (format nil "~a/~a" (string-right-trim "/" clean-val) remaining))
+            path-string))
+      path-string))
+
+(in-package :org-agent)
+
+(defun get-embedding (text)
+  (let* ((auth (get-provider-auth :gemini)) (api-key (getf auth :api-key))
+         (endpoint "https://generativelanguage.googleapis.com/v1beta/models/text-embedding-004:embedContent"))
+    (unless api-key (return-from get-embedding nil))
+    (let* ((url (format nil "~a?key=~a" endpoint api-key)) (headers `(("Content-Type" . "application/json")))
+           (body (cl-json:encode-json-to-string `((model . "models/text-embedding-004") (content . ((parts . ((text . ,text)))))))))
+      (handler-case (let* ((response (dex:post url :headers headers :content body))
+                           (json (cl-json:decode-json-from-string response)))
+                      (cdr (assoc :values (cdr (assoc :embedding json)))))
+        (error (c) (kernel-log "EMBEDDING FAILURE: ~a" c) nil)))))
+
+(defun dot-product (v1 v2) (reduce #'+ (mapcar #'* v1 v2)))
+(defun magnitude (v) (sqrt (reduce #'+ (mapcar (lambda (x) (* x x)) v))))
+(defun cosine-similarity (v1 v2)
+  (let ((m1 (magnitude v1)) (m2 (magnitude v2))) (if (or (zerop m1) (zerop m2)) 0 (/ (dot-product v1 v2) (* m1 m2)))))
+
+(defun find-most-similar (query-vector top-k)
+  (let ((similarities nil))
+    (maphash (lambda (id obj) (let ((vec (org-object-vector obj))) (when vec (push (cons (cosine-similarity query-vector vec) obj) similarities)))) *object-store*)
+    (let ((sorted (sort similarities #'> :key #'car))) (subseq sorted 0 (min top-k (length sorted))))))
+#+end_src
+
+** V. The Skill Engine (skills.lisp)
+**Problem:** Hardcoding logic makes the daemon brittle; teaching new skills usually requires a restart.
+**Solution:** **Hot-Reloadable Late-Binding**. Compiles Lisp code blocks from Org files into isolated packages at runtime. Brain updates without dropping heartbeats.
+
+#+begin_src lisp :tangle src/skills.lisp
+(in-package :org-agent)
+
+(defvar *skills-registry* (make-hash-table :test 'equal))
+
+(defstruct skill name priority dependencies trigger-fn neuro-prompt symbolic-fn)
+
+(defvar *cognitive-tools* (make-hash-table :test 'equal))
+
+(defstruct cognitive-tool name description parameters guard body)
+
+(defmacro def-cognitive-tool (name description &key parameters guard body)
+  `(setf (gethash (string-downcase (string ,name)) *cognitive-tools*)
+         (make-cognitive-tool :name (string-downcase (string ,name))
+                             :description ,description
+                             :parameters ',parameters
+                             :guard ,guard
+                             :body ,body)))
+
+(defun generate-tool-belt-prompt ()
+  (let ((output (format nil "AVAILABLE TOOLS:
+You can call tools by returning a Lisp plist: (:target :tool :action :call :tool <name> :args (...))
+
+EXAMPLES:
+(:target :tool :action :call :tool \"eval\" :args (:code \"(+ 1 1)\"))
+(:target :tool :action :call :tool \"grep-search\" :args (:pattern \"sovereignty\"))
+(:target :tool :action :call :tool \"shell\" :args (:cmd \"ls -la\"))
+
+---
+")))
+    (maphash (lambda (name tool)
+               (setf output (concatenate 'string output
+                                         (format nil "- ~a: ~a~%  Parameters: ~s~%~%"
+                                                 name
+                                                 (cognitive-tool-description tool)
+                                                 (cognitive-tool-parameters tool)))))
+             *cognitive-tools*)
+    output))
+
+(defmacro defskill (name &key priority dependencies trigger neuro symbolic)
+  `(setf (gethash ,(string-downcase (string name)) *skills-registry*)
+         (make-skill :name ,(string-downcase (string name)) :priority (or ,priority 10) :dependencies ,dependencies
+                     :trigger-fn ,trigger :neuro-prompt ,neuro :symbolic-fn ,symbolic)))
+
+(defun find-triggered-skill (context)
+  (let ((triggered nil))
+    (maphash (lambda (name skill) (declare (ignore name)) (when (ignore-errors (funcall (skill-trigger-fn skill) context)) (push skill triggered))) *skills-registry*)
+    (first (sort triggered #'> :key #'skill-priority))))
+
+(defun resolve-skill-dependencies (skill-name)
+  (let ((resolved nil) (seen nil))
+    (labels ((visit (name) (unless (member name seen :test #'equal) (push name seen)
+                             (let ((skill (gethash (string-downcase (string name)) *skills-registry*)))
+                               (when skill (dolist (dep (skill-dependencies skill)) (visit dep))))
+                             (push name resolved))))
+      (visit skill-name) (nreverse resolved))))
+
+(defun load-skill-from-org (filepath)
+  (when (uiop:file-exists-p filepath)
+    (let* ((content (uiop:read-file-string filepath)) (lines (uiop:split-string content :separator '(#\Newline)))
+           (in-lisp-block nil) (lisp-code "") (dependencies nil) (skill-base-name (pathname-name filepath))
+           (pkg-name (intern (string-upcase (format nil "ORG-AGENT.SKILLS.~a" skill-base-name)) :keyword)))
+      (dolist (line lines)
+        (let ((clean-line (string-trim '(#\Space #\Tab #\Return) line)))
+          (when (uiop:string-prefix-p "#+DEPENDS_ON:" (string-upcase clean-line))
+            (setf dependencies (mapcar (lambda (s) (string-trim "[] " s)) (uiop:split-string (subseq clean-line 13) :separator '(#\Space)))))))
+      (dolist (line lines)
+        (let ((clean-line (string-trim '(#\Space #\Tab #\Return) line)))
+          (cond ((uiop:string-prefix-p "#+begin_src lisp" (string-downcase clean-line)) (setf in-lisp-block t))
+                ((uiop:string-prefix-p "#+end_src" (string-downcase clean-line)) (setf in-lisp-block nil))
+                (in-lisp-block (setf lisp-code (concatenate 'string lisp-code line (string #\Newline)))))))
+      (when (> (length lisp-code) 0)
+        (kernel-log "KERNEL: Jailing skill '~a' in package ~a" skill-base-name pkg-name)
+        (unless (find-package pkg-name)
+          (let ((new-pkg (make-package pkg-name :use '(:cl))))
+            (do-external-symbols (sym (find-package :org-agent)) (shadowing-import sym new-pkg))))
+        (let ((*read-eval* nil) (*package* (find-package pkg-name)))
+          (handler-case (eval (read-from-string (format nil "(progn ~a)" lisp-code)))
+            (error (c) (kernel-log "READER ERROR in skill '~a': ~a~%" skill-base-name c))))))))
+
+(defun validate-lisp-syntax (code-string)
+  (handler-case (let ((*read-eval* nil)) (with-input-from-string (stream (format nil "(progn ~a)" code-string))
+                                          (loop for form = (read stream nil :eof) until (eq form :eof)) (values t nil)))
+    (error (c) (values nil (format nil "~a" c)))))
+
+(def-cognitive-tool :eval "Evaluates raw Common Lisp code in the kernel image. Use this for complex calculations or internal state inspection."
+  :parameters ((:code :type :string :description "The Lisp code to evaluate"))
+  :guard (lambda (args context)
+           (declare (ignore context))
+           (let ((code (getf args :code)))
+             ;; Reuse the global safety harness if it exists
+             (let ((harness-pkg (find-package :org-agent.skills.org-skill-safety-harness)))
+               (if harness-pkg 
+                   (uiop:symbol-call :org-agent.skills.org-skill-safety-harness :safety-harness-validate code)
+                   t)))) ; Implicitly safe if harness not loaded
+  :body (lambda (args)
+          (let ((code (getf args :code)))
+            (handler-case (let ((result (eval (read-from-string code))))
+                            (format nil "~s" result))
+              (error (c) (format nil "ERROR: ~a" c))))))
+
+(def-cognitive-tool :grep-search "Searches for a pattern in the project files."
+  :parameters ((:pattern :type :string :description "The regex pattern to search for")
+               (:dir :type :string :description "Directory to search in (default is project root)"))
+  :body (lambda (args)
+          (let ((pattern (getf args :pattern))
+                (dir (or (getf args :dir) (uiop:getenv "MEMEX_DIR"))))
+            (uiop:run-program (list "grep" "-r" "-n" "--exclude-dir=node_modules" pattern dir) 
+                              :output :string :ignore-error-status t))))
+
+(def-cognitive-tool :shell "Executes a shell command on the local machine. Use this for file operations, system checks, or running tests."
+  :parameters ((:cmd :type :string :description "The full bash command to execute"))
+  :guard (lambda (args context)
+           (declare (ignore context))
+           ;; Global safety: prohibit destructive commands
+           (let ((cmd (getf args :cmd)))
+             (not (or (search "rm -rf /" cmd) (search ":(){ :|:& };:" cmd)))))
+  :body (lambda (args)
+          (let ((cmd (getf args :cmd)))
+            (multiple-value-bind (out err code)
+                (uiop:run-program (list "bash" "-c" cmd) :output :string :error-output :string :ignore-error-status t)
+              (format nil "EXIT-CODE: ~a~%~%STDOUT:~%~a~%~%STDERR:~%~a" code out err)))))
+
+#+end_src
+
+** VI. The Neurosymbolic Bridge (neuro.lisp & symbolic.lisp)
+**Problem:** LLMs hallucinate; pure code is rigid.
+**Solution:** The **Safety Gate**. `neuro.lisp` (System 1) proposes; `symbolic.lisp` (System 2) intercepts and validates. Imagination checked by the laws of physics.
+
+#+begin_src lisp :tangle src/neuro.lisp
+(in-package :org-agent)
+
+(defun get-env (var &optional default) (or (uiop:getenv var) default))
+
+(defvar *auth-providers* (make-hash-table :test 'equal))
+(defun register-auth-provider (name fn) (setf (gethash name *auth-providers*) fn))
+(defun get-provider-auth (provider)
+  "Retrieves authentication credentials for a provider.
+   Supports direct plists, functions, or specific environment variable fallbacks."
+  (let ((auth (gethash provider *auth-providers*)))
+    (cond
+      ((functionp auth) (funcall auth))
+      ((listp auth) auth)
+      (t 
+       (let ((specific-key (case provider
+                             (:gemini (uiop:getenv "GEMINI_API_KEY"))
+                             (:openrouter (uiop:getenv "OPENROUTER_API_KEY"))
+                             (:anthropic (uiop:getenv "ANTHROPIC_API_KEY"))
+                             (:openai (uiop:getenv "OPENAI_API_KEY"))
+                             (t nil))))
+         (if (and specific-key (> (length specific-key) 0))
+             (list :api-key specific-key)
+             ;; Final fallback to the legacy generic key
+             (let ((legacy (uiop:getenv "LLM_API_KEY")))
+               (when (and legacy (> (length legacy) 0))
+                 (list :api-key legacy)))))))))
+
+(defvar *neuro-backends* (make-hash-table :test 'equal))
+(defvar *provider-cascade* '(:openrouter :gemini))
+(defun register-neuro-backend (name fn) (setf (gethash name *neuro-backends*) fn))
+
+(defvar *model-selector-fn* nil "A function called with (provider context) to return a model ID.")
+
+(defun ask-neuro (prompt &key (system-prompt "You are the System 1 engine of a Neurosymbolic Lisp Machine.") (cascade nil) (context nil))
+  "Dispatches a neural request through the provider cascade.
+   If CASCADE is a function, it is called with CONTEXT to determine backends."
+  (let ((backends (cond
+                    ((and cascade (listp cascade)) cascade)
+                    ((functionp cascade) (funcall cascade context))
+                    ((functionp *provider-cascade*) (funcall *provider-cascade* context))
+                    (t *provider-cascade*))))
+    (dolist (backend backends)
+      (let ((backend-fn (gethash backend *neuro-backends*)))
+        (when backend-fn
+          (kernel-log "SYSTEM 1: Attempting backend ~a..." backend)
+          (let* ((model (when *model-selector-fn* (funcall *model-selector-fn* backend context)))
+                 (result (if model 
+                             (funcall backend-fn prompt system-prompt :model model)
+                             (funcall backend-fn prompt system-prompt))))
+            (if (and (stringp result) (search ":LOG" result) (or (search "Failure" result) (search "missing" result)))
+                (kernel-log "SYSTEM 1: Backend ~a failed. Falling back..." backend)
+                (return-from ask-neuro result))))))
+    "(:type :LOG :payload (:text \"Neural Cascade Failure\"))"))
+
+(defun execute-gemini-request (prompt system-prompt &key model)
+  (let* ((auth (get-provider-auth :gemini)) (api-key (getf auth :api-key)) (bearer-token (getf auth :bearer-token))
+         (endpoint-base (if model (format nil "https://generativelanguage.googleapis.com/v1/models/~a:generateContent" model)
+                            (return-from execute-gemini-request "(:type :LOG :payload (:text \"Error: Gemini Model ID missing.\"))"))))
+    (unless (or api-key bearer-token) (return-from execute-gemini-request "(:type :LOG :payload (:text \"Authentication missing\"))"))
+    (let* ((url (if api-key (format nil "~a?key=~a" endpoint-base api-key) endpoint-base))
+           (headers `(("Content-Type" . "application/json") ,@(when bearer-token `(("Authorization" . ,(format nil "Bearer ~a" bearer-token))))))
+           (body (cl-json:encode-json-to-string `((contents . ((parts . ((text . ,(format nil "~a~%~%Prompt: ~a" system-prompt prompt))))))))))
+      (handler-case (let* ((response (dex:post url :headers headers :content body :connect-timeout 10 :read-timeout 30)) (json (cl-json:decode-json-from-string response)))
+                      (cdr (assoc :text (cdr (assoc :parts (car (cdr (assoc :parts (car (cdr (assoc :candidates json)))))))))))
+        (error (c) (format nil "(:type :LOG :payload (:text \"Neural Engine Failure: ~a\"))" c))))))
+
+(defun execute-groq-request (prompt system-prompt &key model)
+  (let ((api-key (uiop:getenv "GROQ_API_KEY"))
+        (endpoint "https://api.groq.com/openai/v1/chat/completions"))
+    (unless model (return-from execute-groq-request "(:type :LOG :payload (:text \"Error: Groq Model ID missing.\"))"))
+    (unless api-key (return-from execute-groq-request "(:type :LOG :payload (:text \"Groq API Key missing\"))"))
+    (let* ((headers `(("Content-Type" . "application/json")
+                      ("Authorization" . ,(format nil "Bearer ~a" api-key))))
+           (body (cl-json:encode-json-to-string
+                  `((model . ,model)
+                    (messages . (( (role . "system") (content . ,system-prompt) )
+                                 ( (role . "user") (content . ,prompt) )))))))
+      (handler-case (let* ((response (dex:post endpoint :headers headers :content body :connect-timeout 5 :read-timeout 10))
+                           (json (cl-json:decode-json-from-string response)))
+                      (cdr (assoc :content (cdr (assoc :message (car (cdr (assoc :choices json))))))))
+        (error (c) (format nil "(:type :LOG :payload (:text \"Groq Failure: ~a\"))" c))))))
+
+(defun execute-openrouter-request (prompt system-prompt &key model)
+  (let ((api-key (uiop:getenv "OPENROUTER_API_KEY"))
+        (endpoint "https://openrouter.ai/api/v1/chat/completions"))
+    (unless model (return-from execute-openrouter-request "(:type :LOG :payload (:text \"Error: Model ID missing. Accountant must provide a model.\"))"))
+    (unless api-key (return-from execute-openrouter-request "(:type :LOG :payload (:text \"OpenRouter API Key missing\"))"))
+    (let* ((headers `(("Content-Type" . "application/json")
+                      ("Authorization" . ,(format nil "Bearer ~a" api-key))
+                      ("HTTP-Referer" . "https://github.com/amr/org-agent")))
+           (body (cl-ppcre:regex-replace-all "\\\\/" 
+                                             (cl-json:encode-json-to-string
+                                              `((model . ,model)
+                                                (messages . (( (role . "system") (content . ,system-prompt) )
+                                                             ( (role . "user") (content . ,prompt) )))))
+                                             "/")))
+      (kernel-log "OPENROUTER DEBUG - Body: ~a" body)
+      (handler-case (let* ((response (dex:post endpoint :headers headers :content body :connect-timeout 10 :read-timeout 30)))
+                      (kernel-log "OPENROUTER DEBUG - Raw Response: ~a" response)
+                      (let ((json (cl-json:decode-json-from-string response)))
+                        (cdr (assoc :content (cdr (assoc :message (car (cdr (assoc :choices json)))))))))
+        (error (c) 
+          (kernel-log "OPENROUTER ERROR: ~a" c)
+          (if (typep c 'dex:http-request-failed)
+              (kernel-log "OPENROUTER ERROR BODY: ~a" (dex:response-body c)))
+          (format nil "(:type :LOG :payload (:text \"OpenRouter Failure: ~a\"))" c))))))
+
+(defun openrouter-get-available-models ()
+  "Fetches available models from OpenRouter."
+  (let ((api-key (uiop:getenv "OPENROUTER_API_KEY")))
+    (unless api-key (return-from openrouter-get-available-models nil))
+    (let ((headers `(("Authorization" . ,(format nil "Bearer ~a" api-key)))))
+      (handler-case
+          (let* ((response (dex:get "https://openrouter.ai/api/v1/models" 
+                                   :headers headers 
+                                   :connect-timeout 60 
+                                   :read-timeout 60))
+                 (json (cl-json:decode-json-from-string response))
+                 (data (cdr (assoc :data json)))
+                 (results nil))
+            (dolist (item data)
+              (let ((id (cdr (assoc :id item)))
+                    (context-len (cdr (assoc :context--length item))))
+                (when id
+                  (push (list :id id :context (format nil "~a" (or context-len "unknown"))) results))))
+            (nreverse results))
+        (error (c) 
+          (kernel-log "Model Discovery Error: ~a" c)
+          nil)))))
+
+;; --- Sovereign Service Stubs ---
+;; These are implemented in specialized skills but registered in the kernel namespace.
+
+(defun economist-route-task (complexity)
+  "Stub for Neuro-Economic routing. Overridden by skill-economist."
+  (declare (ignore complexity))
+  :gemini) ; Default fallback
+
+(defun org-id-new ()
+  "Stub for Sovereign ID generation. Overridden by skill-ast-normalization."
+  (format nil "node-~a" (get-universal-time)))
+
+(register-neuro-backend :gemini #'execute-gemini-request)
+(register-neuro-backend :openrouter #'execute-openrouter-request)
+(register-neuro-backend :groq #'execute-groq-request)
+(defvar *provider-cascade* '(:openrouter :gemini)) ; Default fallback only
+
+(defun get-org-timestamp ()
+  "Returns a current Org-mode active timestamp."
+  (multiple-value-bind (sec min hour day month year day-of-week) (decode-universal-time (get-universal-time))
+    (declare (ignore sec))
+    (let ((day-names '("Mon" "Tue" "Wed" "Thu" "Fri" "Sat" "Sun")))
+      (format nil "[~4,'0d-~2,'0d-~2,'0d ~a ~2,'0d:~2,'0d]" 
+              year month day (nth day-of-week day-names) hour min))))
+
+(defun update-note-metadata (filepath)
+  "Ensures a :PROPERTIES: drawer exists and updates the :EDITED: timestamp."
+  (let ((content (uiop:read-file-string filepath))
+        (now (get-org-timestamp)))
+    (if (search ":PROPERTIES:" content)
+        ;; Update existing EDITED or add it
+        (let ((new-content (if (search ":EDITED:" content)
+                               (cl-ppcre:regex-replace ":EDITED:   \\[.*?\\]" content (format nil ":EDITED:   ~a" now))
+                               (cl-ppcre:regex-replace ":PROPERTIES:\\n" content (format nil ":PROPERTIES:~%:EDITED:   ~a~%" now)))))
+          (with-open-file (out filepath :direction :output :if-exists :supersede)
+            (write-string new-content out)))
+        ;; Create new drawer
+        (let ((new-content (format nil ":PROPERTIES:~%:CREATED:  ~a~%:EDITED:   ~a~%:END:~%~a" now now content)))
+          (with-open-file (out filepath :direction :output :if-exists :supersede)
+            (write-string new-content out))))))
+
+(defun think (context)
+  (let ((active-skill (find-triggered-skill context))
+        (tool-belt (generate-tool-belt-prompt)))
+    (if active-skill
+        (progn
+          (kernel-log "SYSTEM 1: Engaging skill '~a'~%" (skill-name active-skill))
+          (let* ((prompt-generator (skill-neuro-prompt active-skill)) 
+                 (raw-prompt (when prompt-generator (funcall prompt-generator context)))
+                 (full-system-prompt (concatenate 'string 
+                                                 "ACTUATOR IDENTITY: You are the pure Lisp actuator for the org-agent kernel.
+MANDATE: Output EXACTLY ONE Common Lisp property list starting with (:type :REQUEST).
+ZERO CONVERSATION: Do not explain. Do not say 'Okay'. Do not use markdown blocks.
+STRICT RULE: Do not output multiple lists. Do not chain multiple requests. 
+DO NOT embed tool calls inside text strings.
+If you need to do multiple things or need information from a tool, you MUST:
+1. Call the tool FIRST.
+2. Wait for the result in the next recursive turn.
+3. Only then reply to the user or call the next tool.
+
+"
+                                                 tool-belt
+                                                 "
+IMPORTANT: To reply to the user, you MUST use:
+(:type :REQUEST :target :emacs :action :insert-at-end :buffer \"*org-agent-chat*\" :text \"* <Response Text>\")
+
+To call a tool, you MUST use:
+(:type :REQUEST :target :tool :action :call :tool \"<name>\" :args (:arg1 \"val\"))
+
+")))
+            (if (and raw-prompt (> (length raw-prompt) 1))
+                (let* ((thought (ask-neuro raw-prompt :system-prompt full-system-prompt :context context)))
+                  (kernel-log "SYSTEM 1 RAW: ~a~%" thought)
+                  (let* ((cleaned-thought 
+                          (let ((match (cl-ppcre:scan-to-strings "(?s)```(?:lisp)?\\n?(.*?)\\n?```" thought)))
+                            (if match
+                                (let ((regs (nth-value 1 (cl-ppcre:scan-to-strings "(?s)```(?:lisp)?\\n?(.*?)\\n?```" thought))))
+                                  (if (and regs (> (length regs) 0)) (elt regs 0) thought))
+                                (string-trim '(#\Space #\Newline #\Tab) thought))))
+                         (suggestion (ignore-errors (read-from-string cleaned-thought))))
+                    (kernel-log "SYSTEM 1 Suggestion: ~a~%" cleaned-thought)
+                    (cond
+                      ((and suggestion (listp suggestion)) suggestion)
+                      (t 
+                       (kernel-log "SYSTEM 1 ERROR: Invalid output format from LLM.~%")
+                       nil))))
+                '(:type :LOG :payload (:text "Skill triggered (Deterministic only)")))))
+        nil)))
+
+(defun distill-prompt (full-prompt successful-output)
+  (let ((system-instr "You are a Meta-Cognitive Prompt Architect. DISTILL into template."))
+    (ask-neuro (format nil "PROMPT: ~a~%RESULT: ~a" full-prompt successful-output) :system-prompt system-instr)))
+
+(defun distillation-loop ()
+  "Autonomous distillation cycle (Skeletal)."
+  (kernel-log "NEURO [Evolution] - Distillation cycle triggered."))
+
+(in-package :org-agent)
+
+(defun decide (proposed-action context)
+  (let ((active-skill (find-triggered-skill context)))
+    (if (and proposed-action (listp proposed-action) active-skill)
+        (let* ((symbolic-gate (skill-symbolic-fn active-skill))
+               (payload (getf proposed-action :payload))
+               (action (or (getf payload :action) (getf proposed-action :action)))
+               (code (or (getf payload :code) (getf proposed-action :code))))
+          ;; Global safety harness for EVAL
+          (when (and (member (getf proposed-action :type) '(:request :REQUEST))
+                     (member action '(:eval :EVAL)))
+            (let ((harness-pkg (find-package :org-agent.skills.org-skill-safety-harness)))
+              (when (and code harness-pkg)
+                (unless (ignore-errors (uiop:symbol-call :org-agent.skills.org-skill-safety-harness :safety-harness-validate code))
+                  (kernel-log "SYSTEM 2 [GLOBAL]: Security violation blocked.~%")
+                  (return-from decide '(:type :LOG :payload (:text "Blocked by Global Safety Harness")))))))
+          ;; Skill-specific verification
+          (if symbolic-gate
+              (let ((decision (funcall symbolic-gate proposed-action context)))
+                (if decision 
+                    (progn (kernel-log "SYSTEM 2: Verified by skill '~a'.~%" (skill-name active-skill)) decision)
+                    (progn (kernel-log "SYSTEM 2: REJECTED by skill '~a'.~%" (skill-name active-skill))
+                           '(:type :LOG :payload (:text "Action rejected by skill heuristics")))))
+              (progn (kernel-log "SYSTEM 2: Verified (Implicitly safe for skill '~a').~%" (skill-name active-skill)) proposed-action)))
+        proposed-action)))
+
+(defun list-objects-with-attribute (attr-key attr-val)
+  (let ((results nil))
+    (maphash (lambda (id obj) (declare (ignore id)) (when (equal (getf (org-object-attributes obj) attr-key) attr-val) (push obj results))) *object-store*)
+    results))
+#+end_src
+
+* System Definition
+#+begin_src lisp :tangle org-agent.asd
+(defsystem :org-agent
+  :name "org-agent"
+  :author "Amr"
+  :version "0.1.0"
+  :license "MIT"
+  :description "The Neurosymbolic Lisp Machine Kernel"
+  :depends-on (:usocket :cl-json :bordeaux-threads :dexador :uiop :cl-dotenv :cl-ppcre :hunchentoot)
+  :serial t
+  :components ((:module "src"
+                :components ((:file "package")
+                             (:file "protocol")
+                             (:file "object-store")
+                             (:file "context")
+                             (:file "embedding")
+                             (:file "skills")
+                             (:file "neuro")
+                             (:file "symbolic")
+                             (:file "core"))))
+  :build-operation "program-op"
+  :build-pathname "org-agent-server"
+  :entry-point "org-agent:main"
+  :in-order-to ((test-op (test-op :org-agent/tests))))
+#+end_src
