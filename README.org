@@ -9,44 +9,30 @@ A hyper-minimalist, self-editing, proactive AI agent framework. `org-agent` acts
 
 * The Philosophy
 
-** Mandate 1: Strictly Org-mode and Common Lisp
-The system is built on a "No Legacy" policy. Markdown (.md) and JSON are strictly prohibited for internal system logic, planning, and memory. Org-mode is the native Abstract Syntax Tree (AST) for both human and machine, and Common Lisp (SBCL) is the deterministic reasoning engine.
+The design of `org-agent` represents a radical departure from mainstream AI architectures. Instead of relying on a fragmented web of Python scripts, JSON state files, and hidden text prompts, the system is conceived as a **Living Lisp Machine**. It is built on a "No Legacy" policy where Org-mode and Common Lisp form a perfectly unified, neurosymbolic environment.
 
-** Mandate 2: Minimalist Core, Skill-Based Extension
-The `org-agent` kernel (the Daemon) MUST remain a minimalist microkernel. It handles only the cognitive loop, the persistent Object-Store, and the communication protocol. All business logic, LLM provider connectors, and task-management rules MUST be implemented as hot-reloadable **Skills** living in the user's Memex.
-
-** Why Org-mode? (Homoiconic Memory)
-Most agent frameworks rely on a messy combination of Python scripts, JSON states, and Markdown prompts. This breaks the human-agent interface. JSON is for machines; Markdown is for humans. 
-
-*Org-mode is for both.* It provides a hierarchical Abstract Syntax Tree (AST) that a machine can navigate deterministically, while remaining a perfectly ergonomic, human-readable text document.
-
-** Why Common Lisp? (The Kernel vs. The Actuators)
-The `org-agent` kernel is built in Common Lisp to provide a persistent, high-performance background process (SBCL) that maintains a live, threaded Object Store in RAM.
-
-This architecture treats all interfaces as external **Actuators** and **Sensors**:
-- **Editor Actuator (Emacs):** A sensor array that detects file changes and executes structural refactoring.
-- **Messaging Actuator (Signal/Telegram/Discord):** A delivery channel for proactive alerts and human-in-the-loop decisions.
-- **Web Actuator (Dashboard):** A visual telemetry interface for monitoring the live kernel state.
-
-** The Actuator-Agnostic Vision (Towards a True Lisp Machine)
-While Emacs currently serves as the primary editor actuator, the `org-agent` core is fundamentally **actuator-agnostic**. Emacs is not a privileged citizen. The OACP (Org-Agent Communication Protocol) expects a serialized Org AST, but it does not care who generates it.
-
-The long-term design trajectory moves toward a "True Lisp Machine" where external editors and browsers are written out of existence:
-1. **Actuators as Dumb Terminals:** In the near term, Emacs, bash scripts, and web clients merely render views and pass stimuli to the kernel. All "truth" and state management live securely within the Lisp image.
-2. **The Sovereign GUI:** Eventually, the interface itself (the editor, the browser, the system prompt) must be built in Common Lisp (e.g., using McCLIM or Nyxt technologies), running in the *exact same address space* as the agent. This will completely eliminate the OACP IPC socket for local interaction, creating a unified, zero-latency cognitive environment.
+** Homoiconic Memory (The Org Mandate)
+Most agent frameworks break the human-machine interface by forcing humans to read Markdown while machines read JSON. `org-agent` mandates that Org-mode is the native Abstract Syntax Tree (AST) for both. The code is the data, and the data is the interface. This ensures that the agent's memory is perfectly aligned with the user's, preventing "black box" logic and ensuring that the agent's reasoning is always fully auditable.
 
 ** The Neurosymbolic Split (System 1 vs. System 2)
-Relying entirely on LLMs (System 1) for agentic workflows is notoriously fragile due to hallucinations and context limits. By using the LLM only for "intuition" (The `Think` phase) and using Common Lisp for deterministic gating and execution (The `Decide` and `Act` phases), the system is creative but strictly bound by mathematical logic. It's safe by design.
+Relying entirely on LLMs for complex workflows is notoriously fragile due to hallucinations and context limits. `org-agent` solves this by assigning the LLM to act strictly as "System 1" (intuition and creative proposal). Common Lisp acts as "System 2" (deterministic logic and safety gating). The system is imaginative but bound by mathematical rigor. It is safe by design.
+
+** The Microkernel and the Sovereign Boundary
+To guarantee a high Mean Time Between Failures (MTBF), the `org-agent` core is a hyper-minimalist microkernel. It manages only the cognitive loop, the persistent Object-Store, and the communication protocol. Everything else—LLM provider routing, vector embeddings, and business logic—is pushed across the "Sovereign Boundary" into hot-reloadable, user-space **Skills**. This ensures the core remains unbreakable while the agent's capabilities can evolve infinitely at runtime.
 
 ** Literate Programming as Institutional Memory
-The decision to force all system logic and rules into Literate Org files ensures that the "Why" (the PRD and philosophy) never drifts from the "How" (the Lisp implementation). The system documents itself simply by existing.
+Every line of system logic, including the skills that govern the agent's behavior, must be written as a Literate Org file. This weaves the "Why" (Architectural Intent and PRDs) seamlessly with the "How" (Lisp Implementation), ensuring the system continuously documents itself simply by existing.
 
-** Anti-Fragility and Trade-offs
-While the architecture is beautiful, it comes with specific engineering trade-offs that we manage:
+** The Actuator-Agnostic Vision (Towards a True Lisp Machine)
+While Emacs currently serves as the primary editor, the `org-agent` core is fundamentally **actuator-agnostic**. Emacs is not a privileged citizen; it merely acts as a "dumb terminal" rendering the Org AST and passing stimuli to the kernel.
 
-- **The Parsing Bottleneck:** Org-mode is a complex, plain-text format. While it is homoiconic, parsing massive Org files into Lisp structs every time the kernel starts could become a bottleneck. The `memory-image.lisp` state-dumping mechanism solves this by allowing the system to bypass text parsing and load directly from memory.
-- **Web/Mobile Accessibility:** Optimizing for Lisp and Emacs (structural integrity via `org-id`) often breaks standard web rendering (like Gitea's parsers). A dedicated "Web Actuator" skill is needed to translate the raw Org AST into a consumable format on those platforms.
-- **The "Zero-Bloat" Discipline:** Maintaining the "Lisp Machine Sovereignty" rule (no external dependencies unless strictly necessary) requires constant vigilance as new skills are added.
+The ultimate trajectory of the architecture moves toward a "True Lisp Machine" where external editors and standard browsers are written out of existence. In this vision, the interface itself—the editor, the browser, and the system prompt—will be built entirely in Common Lisp, running within the exact same address space as the agent. This will eliminate IPC sockets entirely, creating a unified, zero-latency cognitive environment free from third-party technological dependencies.
+
+** Anti-Fragility and Managed Trade-offs
+This architecture accepts necessary trade-offs to achieve sovereignty:
+- **The Parsing Bottleneck:** Parsing massive plain-text Org files into Lisp structs at boot can be slow. We bypass this by dumping the live memory state (`memory-image.lisp`), loading the graph directly from RAM.
+- **Web/Mobile Accessibility:** Optimizing for Lisp and Emacs (e.g., using `org-id` for absolute structural integrity) breaks standard web rendering (like Gitea's markdown). A dedicated "Web Actuator" is required to translate the raw AST for other platforms.
+- **The "Zero-Bloat" Discipline:** Maintaining "Lisp Machine Sovereignty" requires constant vigilance against importing unnecessary external libraries as new skills are developed.
 
 * The Paradigm: Skills vs. Sub-Agents
 
