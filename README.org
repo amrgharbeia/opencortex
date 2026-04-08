@@ -34,24 +34,11 @@ Every line of system logic is written as a **Literate Org file**. This weaves th
 ** The Long-Term Vision: A True Lisp Machine
 The kernel is fundamentally **actuator-agnostic**. While it currently uses Emacs, the ultimate trajectory is to write external editors and browsers out of existence. In this vision, the interface itself—the editor, browser, and system prompt—will be built entirely in Common Lisp, running within the exact same address space as the agent. This eliminates IPC entirely, creating a unified, zero-latency cognitive environment.
 
-** Architecture Diagrams
+* 3. How: The 6 Core Components
 
-*** The Single Address Space
-#+begin_src mermaid
-graph TD
-    subgraph Lisp Machine
-        K[Kernel Core] --> OS[(Object Store)]
-        S1[Skill: Architect] --> OS
-        S2[Skill: Analyst] --> OS
-        S3[Skill: GTD] --> OS
-        K -- Pointers --> S1
-        K -- Pointers --> S2
-    end
-    subgraph IPC (Dumb Terminals)
-        E[Emacs / Actuators] -. OACP .-> K
-    end
-#+end_src
+The microkernel is divided into six primary subsystems, each solving a fundamental problem of agentic autonomy.
 
+** The Cognitive Loop (core.lisp)
 *** The Cognitive Loop (OODA)
 #+begin_src mermaid
 sequenceDiagram
@@ -72,11 +59,6 @@ sequenceDiagram
     end
 #+end_src
 
-* 3. How: The 6 Core Components
-
-The microkernel is divided into six primary subsystems, each solving a fundamental problem of agentic autonomy.
-
-** I. The Cognitive Loop (core.lisp)
 **Problem:** Linear AI scripts are blocking and cannot perceive new information while thinking.
 **Solution:** A multi-threaded, asynchronous OODA loop. It uses recursion to allow the agent to observe its own results and chain thoughts together.
 
@@ -328,7 +310,7 @@ The microkernel is divided into six primary subsystems, each solving a fundament
   (loop (sleep 3600)))
 #+end_src
 
-** II. The Communication Protocol (protocol.lisp)
+** The Communication Protocol (protocol.lisp)
 **Problem:** Massive Org ASTs can fragment and desynchronize raw JSON streams over a socket.
 **Solution:** **OACP (Org-Agent Communication Protocol)**. It uses 6-character hex-length framing to guarantee the daemon never crashes regardless of payload size.
 
@@ -361,7 +343,23 @@ The microkernel is divided into six primary subsystems, each solving a fundament
                        :capabilities '(:auth :swank :org-ast))))
 #+end_src
 
-** III. The Object Store (object-store.lisp)
+** The Object Store (object-store.lisp)
+*** The Single Address Space
+#+begin_src mermaid
+graph TD
+    subgraph LispMachine[Lisp Machine]
+        K[Kernel Core] --> OS[(Object Store)]
+        S1[Skill: Architect] --> OS
+        S2[Skill: Analyst] --> OS
+        S3[Skill: GTD] --> OS
+        K -- Pointers --> S1
+        K -- Pointers --> S2
+    end
+    subgraph IPCSlow[IPC Slow]
+        E[Emacs / Actuators] -. OACP .-> K
+    end
+#+end_src
+
 **Problem:** Reading text files for every "memory" is slow; external databases add bloat.
 **Solution:** **CLOSOS Single Address Space**. A persistent in-memory hash table that stores native Lisp `org-objects`. Includes memory-imaging to skip boot-time parsing.
 
@@ -434,7 +432,7 @@ The microkernel is divided into six primary subsystems, each solving a fundament
   (let ((pos (position #\/ path :from-end t))) (if pos (subseq path (1+ pos)) path)))
 #+end_src
 
-** IV. Peripheral Vision (context.lisp & embedding.lisp)
+** Peripheral Vision (context.lisp & embedding.lisp)
 **Problem:** Context window bloat confuses LLMs and wastes tokens.
 **Solution:** **Sparse Tree Perception**. Surgically prunes the Org AST to pass only the skeletal outline and high-signal context to System 1.
 
@@ -523,7 +521,7 @@ The microkernel is divided into six primary subsystems, each solving a fundament
     (let ((sorted (sort similarities #'> :key #'car))) (subseq sorted 0 (min top-k (length sorted))))))
 #+end_src
 
-** V. The Skill Engine (skills.lisp)
+** The Skill Engine (skills.lisp)
 **Problem:** Hardcoding logic makes the daemon brittle; teaching new skills usually requires a restart.
 **Solution:** **Hot-Reloadable Late-Binding**. Compiles Lisp code blocks from Org files into isolated packages at runtime. Brain updates without dropping heartbeats.
 
@@ -652,7 +650,7 @@ EXAMPLES:
 
 #+end_src
 
-** VI. The Neurosymbolic Bridge (neuro.lisp & symbolic.lisp)
+** The Neurosymbolic Bridge (neuro.lisp & symbolic.lisp)
 **Problem:** LLMs hallucinate; pure code is rigid.
 **Solution:** The **Safety Gate**. `neuro.lisp` (System 1) proposes; `symbolic.lisp` (System 2) intercepts and validates. Imagination checked by the laws of physics.
 
