@@ -39,6 +39,12 @@ The kernel is fundamentally **actuator-agnostic**. While it currently uses Emacs
 The microkernel is divided into six primary subsystems, each solving a fundamental problem of agentic autonomy.
 
 ** The Cognitive Loop (core.lisp)
+*** Deep Reasoning: Why Asynchronous Recursion?
+Most AI agents are linear "chatbots" that block the interface while waiting for an LLM response. In a Sovereign OS, this is unacceptable.
+- **Responsiveness:** By spawning non-blocking threads, the user can continue typing in Emacs while the agent "thinks."
+- **Self-Reflection:** The recursive nature allows the agent to observe its own errors. If a tool fails, the error is injected as a new stimulus. The agent realizes its mistake and proposes a fix without human prompting.
+- **The Depth Break:** We implement a hardcoded depth limit (Order 2 Autonomy) to prevent "hallucination ruts" where the agent enters an infinite loop of apologies.
+
 *** The Cognitive Loop (OODA)
 #+begin_src mermaid
 sequenceDiagram
@@ -311,6 +317,11 @@ sequenceDiagram
 #+end_src
 
 ** The Communication Protocol (protocol.lisp)
+*** Deep Reasoning: Why Hex-Length Framing?
+Streaming raw JSON over a socket is fragile. If a 5MB Org AST is fragmented by the OS network stack, a standard parser will crash or desynchronize. 
+- **Physical Boundary:** By prefixing every message with a 6-character hex length, we create a deterministic physical boundary. 
+- **Actuator-Agnosticism:** This protocol makes the kernel a "Dumb Terminal" host. Any program (Bash, Python, WebSockets) that can calculate a length and send bytes can now become an agentic interface.
+
 **Problem:** Massive Org ASTs can fragment and desynchronize raw JSON streams over a socket.
 **Solution:** **OACP (Org-Agent Communication Protocol)**. It uses 6-character hex-length framing to guarantee the daemon never crashes regardless of payload size.
 
@@ -344,6 +355,11 @@ sequenceDiagram
 #+end_src
 
 ** The Object Store (object-store.lisp)
+*** Deep Reasoning: The Single Address Space Advantage
+Industry-standard "Vector Databases" or "SQLite Backends" add external complexity and I/O latency.
+- **Pointer-Based Reasoning:** By loading the entire Memex into a live Lisp hash table, we achieve microsecond recollection. The agent doesn't "search a file"; it traverses a memory pointer.
+- **Memory Imaging:** The `memory-image.lisp` snapshot allows the agent to wake up with its entire context already parsed. This solves the "Cold Start" problem of massive Org files.
+
 *** The Single Address Space
 #+begin_src mermaid
 graph TD
@@ -433,6 +449,10 @@ graph TD
 #+end_src
 
 ** Peripheral Vision (context.lisp & embedding.lisp)
+*** Deep Reasoning: Solving the "Lost in the Middle" Problem
+LLMs lose precision when context windows are bloated with irrelevant data.
+- **Sparse Trees:** We use Lisp's deterministic tree-walking to surgically prune the Org AST. We pass the skeletal "peripheral" outline to the LLM, giving it global awareness while keeping its "foveal" focus on the task at hand. This minimizes token burn and maximizes reasoning accuracy.
+
 **Problem:** Context window bloat confuses LLMs and wastes tokens.
 **Solution:** **Sparse Tree Perception**. Surgically prunes the Org AST to pass only the skeletal outline and high-signal context to System 1.
 
@@ -522,6 +542,11 @@ graph TD
 #+end_src
 
 ** The Skill Engine (skills.lisp)
+*** Deep Reasoning: Late-Binding Intelligence
+Hardcoding logic into a compiled binary creates a "Brittle Kernel."
+- **Institutional Memory:** By using Literate Org files as skills, the "Why" (PRD) and the "How" (Lisp) are unified. 
+- **Hot-Reloading:** The agent can "learn" a new trick (recompile a package) while running. This allows for a continuous evolutionary loop where the agent can eventually rewrite its own skills to fix bugs it perceives.
+
 **Problem:** Hardcoding logic makes the daemon brittle; teaching new skills usually requires a restart.
 **Solution:** **Hot-Reloadable Late-Binding**. Compiles Lisp code blocks from Org files into isolated packages at runtime. Brain updates without dropping heartbeats.
 
@@ -651,6 +676,11 @@ EXAMPLES:
 #+end_src
 
 ** The Neurosymbolic Bridge (neuro.lisp & symbolic.lisp)
+*** Deep Reasoning: Imagination Checked by Physics
+System 1 (LLM) is creative but hallucination-prone. System 2 (Lisp) is rigid but 100% accurate.
+- **The Safety Gate:** We never allow the LLM to talk to the actuators directly. It must propose a Lisp form. System 2 intercepts this form and validates it against mathematical rules and PSF invariants. 
+- **Sovereign Decoupling:** By moving the physical API logic into skills, the core remains a neutral "Thinking Engine" that doesn't care if the imagination comes from Google, Anthropic, or a local Llama instance.
+
 **Problem:** LLMs hallucinate; pure code is rigid.
 **Solution:** The **Safety Gate**. `neuro.lisp` (System 1) proposes; `symbolic.lisp` (System 2) intercepts and validates. Imagination checked by the laws of physics.
 
