@@ -53,6 +53,44 @@ The system employs a Dual-Process Architecture:
 - **System 2 (Symbolic):** Deterministic, instant, rigorous (Lisp).
 Because Skills are compiled Lisp code, System 2 intercepts deterministic tasks (like assigning an ID) and executes them in milliseconds, bypassing the LLM entirely.
 
+* The 6 Core Components of the Microkernel
+
+The `org-agent` core is a masterful implementation of a **microkernel architecture**. It strictly adheres to the principle of keeping the engine minimal while delegating all business logic to dynamically loaded "Skills." The core is divided into six primary subsystems:
+
+** 1. The Cognitive Loop (`core.lisp`)
+This is the heart of the daemon. It implements a continuous, recursive OODA (Observe, Orient, Decide, Act) loop that handles asynchronous events without blocking the main thread.
+- **`perceive`**: Acts as the sensor array. It ingests raw OACP messages (e.g., `:buffer-update` from Emacs) and updates the internal state.
+- **`think`**: The "System 1" invocation. It takes the current context and asks the LLM for an intuitive proposal.
+- **`decide`**: The "System 2" Safety Gate. It intercepts the LLM's proposal and runs deterministic Lisp validation on it. If the LLM proposes something unsafe or structurally invalid, this layer rejects it.
+- **`dispatch-action`**: The Actuator router. Once an action clears the Safety Gate, this sends it to the physical world (e.g., instructing Emacs to modify a buffer).
+- **Self-Reflection:** The loop is recursive. When a tool is executed, its output is injected as a new stimulus, allowing the agent to observe the consequences of its actions and chain multiple steps together. A hardcoded depth limit (e.g., 10) prevents infinite loops.
+
+** 2. The Communication Protocol (`protocol.lisp`)
+Because the Lisp Machine and Emacs are technically separate processes, they need a fast, reliable way to talk. 
+- It implements **OACP (Org-Agent Communication Protocol)** over a raw TCP socket.
+- Instead of relying on raw JSON streams that can break mid-transmission, it uses a hex-length framing mechanism (`frame-message`, `parse-message`). This guarantees that massive ASTs or deep context dumps never cause TCP socket desynchronization.
+
+** 3. The Object Store (`object-store.lisp`)
+This implements the **CLOSOS (Common Lisp Object-Store OS)** principle.
+- Rather than constantly reading and writing text files, `org-agent` maintains a live, persistent hash table in RAM (`*object-store*`).
+- When Emacs sends an Org-mode AST, `ingest-ast` converts it into native Lisp `org-object` structs. This creates the "Single Address Space," allowing the agent to traverse massive Zettelkastens instantly via memory pointers rather than disk I/O.
+- The `snapshot-object-store` mechanism allows dumping the brain state to disk (`memory-image.lisp`), avoiding the parsing bottleneck on boot.
+
+** 4. Peripheral Vision (`context.lisp` & `embedding.lisp`)
+This solves the classic LLM "context window bloat" problem.
+- **`context.lisp`**: Provides functions like `context-filter-sparse-tree`. Before asking the LLM to think, the kernel surgically prunes the Org AST, stripping out irrelevant nodes and passing only the highly relevant hierarchical context to the LLM.
+- **`embedding.lisp`**: Handles vectorization and semantic similarity (to be moved to user-space in the future).
+
+** 5. The Skill Engine (`skills.lisp`)
+This is the late-binding plugin architecture.
+- The microkernel knows nothing about GTD, Zettelkastens, or your Project Foundry. It only knows how to run the Cognitive Loop.
+- `skills.lisp` provides the `defskill` macro. It dynamically parses Literate Org files, compiles the Lisp code blocks at runtime, and injects them into the `*skills-registry*`. Each skill is jailed in its own isolated Lisp package.
+
+** 6. The Neurosymbolic Bridge (`neuro.lisp` & `symbolic.lisp`)
+These two files represent the dual-process brain of the agent.
+- **`neuro.lisp`**: (System 1) Manages API connections to LLMs and handles **Prompt Injection**—dynamically changing the LLM's system prompt based on the active skill.
+- **`symbolic.lisp`**: (System 2) Executes the compiled Lisp code (`skill-symbolic-fn`) associated with a skill to guarantee deterministic outcomes, blocking dangerous or malformed LLM proposals.
+
 * Architecture Diagrams
 
 ** The Single Address Space
