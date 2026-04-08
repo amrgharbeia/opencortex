@@ -25,7 +25,9 @@
   :depends-on (:org-agent :fiveam)
   :components ((:module "tests"
                 :components ((:file "oacp-tests")
-                             (:file "cognitive-loop-tests"))))
+                             (:file "cognitive-loop-tests")
+                             (:file "boot-sequence-tests"))))
   :perform (test-op (o s) 
              (uiop:symbol-call :fiveam :run! (uiop:find-symbol* :oacp-suite :org-agent-tests))
-             (uiop:symbol-call :fiveam :run! (uiop:find-symbol* :cognitive-suite :org-agent-cognitive-tests))))
+             (uiop:symbol-call :fiveam :run! (uiop:find-symbol* :cognitive-suite :org-agent-cognitive-tests))
+             (uiop:symbol-call :fiveam :run! (uiop:find-symbol* :boot-suite :org-agent-boot-tests))))

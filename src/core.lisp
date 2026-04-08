@@ -3,6 +3,8 @@
 (defvar *system-logs* nil)
 (defvar *logs-lock* (bt:make-lock "kernel-logs-lock"))
 (defvar *max-log-history* 100)
+(defvar *interrupt-flag* nil)
+(defvar *interrupt-lock* (bt:make-lock "kernel-interrupt-lock"))
 (defvar *skill-telemetry* (make-hash-table :test 'equal))
 (defvar *telemetry-lock* (bt:make-lock "kernel-telemetry-lock"))
 
@@ -65,22 +67,62 @@
       (:message (kernel-log "ACTUATOR [System] - ~a" (getf payload :text)))
       (t (kernel-log "ACTUATOR [System] - Unknown command ~s" cmd)))))
 
-(defun cognitive-loop (raw-message)
-  (let* ((start-time (get-internal-real-time))
-         (type (getf raw-message :type))
-         (perceive-fn (find-symbol "PERCEIVE" :org-agent))
-         (context (if perceive-fn (funcall perceive-fn raw-message) raw-message)))
-    (snapshot-object-store)
-    (if (eq type :REQUEST)
-        (dispatch-action raw-message context)
-        (let* ((skill (find-triggered-skill context))
-               (skill-name (when skill (skill-name skill)))
-               (proposed-action (think context))
-               (approved-action (decide proposed-action context))
-               (status (if (and proposed-action (null approved-action)) :rejected :success))
-               (duration (- (get-internal-real-time) start-time)))
-          (when skill-name (kernel-track-telemetry skill-name duration status))
-          (dispatch-action approved-action context)))))
+(defun cognitive-loop (raw-message &optional (depth 0))
+  (when (> depth 10)
+    (kernel-log "SYSTEM ERROR: Maximum cognitive depth reached.")
+    (return-from cognitive-loop nil))
+  (when (bt:with-lock-held (*interrupt-lock*) *interrupt-flag*)
+    (kernel-log "SYSTEM: Loop interrupted.")
+    (bt:with-lock-held (*interrupt-lock*) (setf *interrupt-flag* nil))
+    (return-from cognitive-loop nil))
+
+  (handler-case
+      (let* ((start-time (get-internal-real-time))
+             (type (getf raw-message :type))
+             (perceive-fn (find-symbol "PERCEIVE" :org-agent))
+             (context (if perceive-fn (funcall perceive-fn raw-message) raw-message)))
+        (snapshot-object-store)
+        (if (eq type :REQUEST)
+            (dispatch-action raw-message context)
+            (let* ((skill (find-triggered-skill context))
+                   (skill-name (when skill (skill-name skill)))
+                   (proposed-action (think context))
+                   (approved-action (decide proposed-action context))
+                   (status (if (and proposed-action (null approved-action)) :rejected :success))
+                   (duration (- (get-internal-real-time) start-time)))
+              (when skill-name (kernel-track-telemetry skill-name duration status))
+
+              (let* ((payload (getf approved-action :payload))
+                     (target (getf approved-action :target))
+                     (action (or (getf payload :action) (getf approved-action :action)))
+                     (tool-name (or (getf payload :tool) (getf approved-action :tool)))
+                     (tool-args (or (getf payload :args) (getf approved-action :args))))
+                (if (and approved-action (eq target :tool) (eq action :call))
+                    ;; Internal Tool Execution
+                    (let* ((tool (gethash (string-downcase (string tool-name)) *cognitive-tools*)))
+                      (if tool
+                          (progn
+                            (kernel-log "SYSTEM 2: Executing tool '~a'..." tool-name)
+                            (let* ((clean-args (if (and (listp tool-args) (listp (car tool-args))) (car tool-args) tool-args))
+                                   (tool-result (funcall (cognitive-tool-body tool) clean-args))
+                                   (next-stimulus `(:type :EVENT :payload (:sensor :tool-output :result ,tool-result :tool ,tool-name))))
+                              (when (getf raw-message :reply-stream) (setf (getf next-stimulus :reply-stream) (getf raw-message :reply-stream)))
+                              (cognitive-loop next-stimulus (1+ depth))))
+                          (progn
+                            (kernel-log "SYSTEM ERROR: Tool '~a' not found in registry." tool-name)
+                            (let ((err-stimulus `(:type :EVENT :payload (:sensor :tool-error :message "Tool not found"))))
+                              (when (getf raw-message :reply-stream) (setf (getf err-stimulus :reply-stream) (getf raw-message :reply-stream)))
+                              (cognitive-loop err-stimulus (1+ depth))))))
+
+                    ;; Physical Actuation (Emacs, Shell, etc.)
+                    (let ((result (dispatch-action approved-action context)))
+                      (when (and result (not (member target '(:emacs :system-message))))
+                        (let ((fallback-stimulus `(:type :EVENT :payload (:sensor :tool-output :result ,result :tool ,approved-action))))
+                          (when (getf raw-message :reply-stream) (setf (getf fallback-stimulus :reply-stream) (getf raw-message :reply-stream)))
+                          (cognitive-loop fallback-stimulus (1+ depth))))))))))
+    (error (c)
+      (kernel-log "LOOP CRASH - Error in recursive turn: ~a~%" c)
+      nil)))
 
 (defun perceive (raw-message)
   (let ((type (getf raw-message :type)) (payload (getf raw-message :payload)))
@@ -88,8 +130,10 @@
     (cond ((eq type :EVENT) (let ((sensor (getf payload :sensor)))
                               (case sensor
                                 (:buffer-update (let ((ast (getf payload :ast))) (when ast (ingest-ast ast))))
-                                (:point-update (let ((element (getf payload :element))) (when element (ingest-ast element)))))))
-          ((eq type :RESPONSE) (kernel-log "ACT RESULT: ~a" (getf payload :status))))
+                                (:point-update (let ((element (getf payload :element))) (when element (ingest-ast element))))
+                                (:interrupt (bt:with-lock-held (*interrupt-lock*) (setf *interrupt-flag* t))))))
+          ((eq type :RESPONSE) 
+           (kernel-log "ACT RESULT: ~a~%PAYLOAD: ~s~%" (getf payload :status) payload)))
     raw-message))
 
 (defun start-heartbeat (&optional (interval 60))
@@ -99,29 +143,56 @@
 (defun stop-heartbeat () (when (and *heartbeat-thread* (bt:thread-alive-p *heartbeat-thread*)) (bt:destroy-thread *heartbeat-thread*) (setf *heartbeat-thread* nil)))
 
 (defun load-all-skills ()
-  "Scans the directory defined by SKILLS_DIR and hot-loads skills.
-   Supports selective loading via SKILLS_WHITELIST environment variable."
+  "Performs a topological boot sequence.
+   1. Loads the Gateway Skill (org-skill-agent) first.
+   2. Performs topological sort of all other skills in SKILLS_DIR.
+   3. Loads the Minimal Boot Set followed by others."
   (let* ((env-path (uiop:getenv "SKILLS_DIR"))
          (whitelist-raw (uiop:getenv "SKILLS_WHITELIST"))
          (whitelist (when whitelist-raw (uiop:split-string whitelist-raw :separator '(#\,))))
          (skills-dir-str (or env-path (namestring (merge-pathnames "notes/" (user-homedir-pathname)))))
          (resolved-path (context-resolve-path skills-dir-str))
-         (skills-dir (if resolved-path (uiop:ensure-directory-pathname resolved-path) nil)))
-    (if (and skills-dir (uiop:directory-exists-p skills-dir))
-        (let ((files (uiop:directory-files skills-dir "org-skill-*.org")))
-          (if files
-              (dolist (file files)
-                (let ((skill-name (pathname-name file)))
-                  (if (or (null whitelist) (member skill-name whitelist :test #'string-equal))
-                      (load-skill-from-org file)
-                      (kernel-log "KERNEL: Skipping skill ~a (Not in whitelist)" skill-name))))
-              (kernel-log "KERNEL: No skills found in ~a" resolved-path)))
-        (kernel-log "KERNEL ERROR: Skills directory not found or invalid path: ~a" skills-dir-str))))
+         (skills-dir (if resolved-path (uiop:ensure-directory-pathname resolved-path) nil))
+         (timeout (or (ignore-errors (parse-integer (uiop:getenv "SKILL_LOAD_TIMEOUT"))) 5)))
+    
+    (unless (and skills-dir (uiop:directory-exists-p skills-dir))
+      (error "KERNEL FATAL: Skills directory not found: ~a" skills-dir-str))
+
+    ;; 1. The Gateway Handshake
+    (let ((gateway-file (merge-pathnames "org-skill-agent.org" skills-dir)))
+      (unless (uiop:file-exists-p gateway-file)
+        (error "KERNEL FATAL: Gateway Skill (org-skill-agent.org) missing from ~a" resolved-path))
+      (kernel-log "KERNEL: Instantiating Gateway (The Soul)...")
+      (load-skill-with-timeout gateway-file timeout))
+
+    ;; 2. Topological Sort
+    (let ((sorted-files (topological-sort-skills skills-dir)))
+      (dolist (file sorted-files)
+        (let ((skill-name (pathname-name file)))
+          ;; Skip the gateway as it's already loaded
+          (unless (string= skill-name "org-skill-agent")
+            (if (or (null whitelist) (member skill-name whitelist :test #'string-equal))
+                (progn
+                  (kernel-log "KERNEL: Loading skill ~a..." skill-name)
+                  (load-skill-with-timeout file timeout))
+                (kernel-log "KERNEL: Skipping skill ~a (Not in whitelist)" skill-name))))))))
 
 (defvar *daemon-thread* nil) (defvar *daemon-socket* nil)
+(defvar *emacs-clients* nil)
+(defvar *clients-lock* (bt:make-lock "emacs-clients-lock"))
+
+(defun register-emacs-client (stream)
+  (bt:with-lock-held (*clients-lock*)
+    (pushnew stream *emacs-clients*)))
+
+(defun unregister-emacs-client (stream)
+  (bt:with-lock-held (*clients-lock*)
+    (setf *emacs-clients* (remove stream *emacs-clients*))))
+
 (defun handle-client (stream)
   "Main loop for a single OACP client connection."
   (kernel-log "DAEMON: New client connected.~%")
+  (register-emacs-client stream)
   (unwind-protect
        (loop
          (handler-case
@@ -150,6 +221,7 @@
              (kernel-log "DAEMON CLIENT ERROR: ~a~%" c)
              (return))))
     (kernel-log "DAEMON: Client disconnected.~%")
+    (unregister-emacs-client stream)
     (ignore-errors (close stream))))
 
 (defun start-daemon (&key port interval)
