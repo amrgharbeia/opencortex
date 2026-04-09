@@ -1,0 +1,122 @@
+#+TITLE: System Interface (package.lisp)
+#+AUTHOR: Amr
+#+FILETAGS: :kernel:interface:
+#+STARTUP: content
+
+* System Interface (package.lisp)
+The `package.lisp` file defines the public API of the `org-agent` kernel. It exports all necessary symbols for skills and actuators to interact with the core.
+
+#+begin_src lisp :tangle ../src/package.lisp
+(defpackage :org-agent
+  (:use :cl)
+  (:export 
+   ;; --- OACP Protocol ---
+   #:frame-message
+   #:parse-message
+   #:make-hello-message
+   
+   ;; --- Daemon Lifecycle ---
+   #:start-daemon
+   #:stop-daemon
+   #:kernel-log
+   #:main
+   
+   ;; --- Object Store (CLOSOS) ---
+   #:ingest-ast
+   #:lookup-object
+   #:list-objects-by-type
+   #:*object-store*
+   #:org-object
+   #:org-object-id
+   #:org-object-type
+   #:org-object-attributes
+   #:org-object-parent-id
+   #:org-object-children
+   #:org-object-version
+   #:org-object-last-sync
+   #:org-object-vector
+   #:org-object-content
+   #:org-object-hash
+   #:snapshot-object-store
+   #:rollback-object-store
+   #:send-swarm-packet
+   
+   ;; --- Context API (Peripheral Vision) ---
+   #:context-query-store
+   #:context-get-active-projects
+   #:context-get-recent-completed-tasks
+   #:context-list-all-skills
+   #:context-get-skill-source
+   #:context-get-system-logs
+   #:context-filter-sparse-tree
+   #:context-resolve-path
+   #:context-get-skill-telemetry
+   #:context-assemble-global-awareness
+   
+   ;; --- Cognitive Loop & Event Bus ---
+   #:perceive
+   #:think
+   #:decide
+   #:act
+   #:cognitive-loop
+   #:inject-stimulus
+   #:dispatch-action
+   #:register-actuator
+   #:spawn-task
+   
+   ;; --- Skill Engine ---
+   #:load-skill-from-org
+   #:load-skill-with-timeout
+   #:topological-sort-skills
+   #:validate-lisp-syntax
+   #:find-triggered-skill
+   #:defskill
+   #:*skills-registry*
+   #:skill
+   #:skill-name
+   #:skill-priority
+   #:skill-trigger-fn
+   #:skill-neuro-prompt
+   #:skill-symbolic-fn
+
+   ;; --- Tool Registry ---
+   #:def-cognitive-tool
+   #:*cognitive-tools*
+   #:cognitive-tool
+   #:cognitive-tool-name
+   #:cognitive-tool-description
+   #:cognitive-tool-parameters
+   #:cognitive-tool-guard
+   #:cognitive-tool-body
+
+   ;; --- Emacs Client Registry ---
+   #:*emacs-clients*
+   #:*clients-lock*
+   #:register-emacs-client
+   #:unregister-emacs-client
+
+   ;; --- Neuro (System 1) ---
+
+   #:ask-neuro
+   #:register-neuro-backend
+   #:register-auth-provider
+   #:get-provider-auth
+   #:distill-prompt
+   #:get-embedding
+   #:cosine-similarity
+   #:find-most-similar
+   #:openrouter-get-available-models
+   #:*provider-cascade*
+   #:token-accountant-route-task
+   
+   ;; --- Symbolic Logic ---
+   #:list-objects-with-attribute
+   #:org-id-new
+   
+   ;; --- AST Helpers ---
+   #:find-headline-missing-id
+   
+   ;; --- Environment Config ---
+   #:set-llm-model
+   #:get-llm-model))
+#+end_src

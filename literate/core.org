@@ -1,0 +1,350 @@
+#+TITLE: The Cognitive Loop (core.lisp)
+#+AUTHOR: Amr
+#+FILETAGS: :kernel:core:
+#+STARTUP: content
+
+* The Cognitive Loop (core.lisp)
+** Deep Reasoning: Why Asynchronous Recursion?
+Most AI agents are linear "chatbots" that block the interface while waiting for an LLM response. In a Sovereign OS, this is unacceptable.
+- **Responsiveness:** By spawning non-blocking threads, the user can continue typing in Emacs while the agent "thinks."
+- **Self-Reflection:** The recursive nature allows the agent to observe its own errors. If a tool fails, the error is injected as a new stimulus. The agent realizes its mistake and proposes a fix without human prompting.
+- **The Depth Break:** We implement a hardcoded depth limit (Order 2 Autonomy) to prevent "hallucination ruts" where the agent enters an infinite loop of apologies.
+
+** The Cognitive Loop (OODA Architecture)
+#+begin_src mermaid
+sequenceDiagram
+    participant Sensor
+    participant Kernel
+    participant System1 as System 1 (LLM)
+    participant System2 as System 2 (Lisp)
+    participant Actuator
+    
+    Sensor->>Kernel: Perceive (Stimulus)
+    Kernel->>System1: Think (Inject Prompt)
+    System1-->>Kernel: Proposed Action
+    Kernel->>System2: Decide (Safety Gate)
+    alt Validation Failed
+        System2-->>Kernel: Reject / Log Error
+    else Validation Passed
+        System2->>Actuator: Act (Dispatch)
+    end
+#+end_src
+
+** Package Context
+#+begin_src lisp :tangle ../src/core.lisp
+(in-package :org-agent)
+#+end_src
+
+** Global Kernel State
+The kernel maintains several thread-safe global variables for logging, telemetry, and execution control.
+
+#+begin_src lisp :tangle ../src/core.lisp
+(defvar *system-logs* nil)
+(defvar *logs-lock* (bt:make-lock "kernel-logs-lock"))
+(defvar *max-log-history* 100)
+(defvar *interrupt-flag* nil)
+(defvar *interrupt-lock* (bt:make-lock "kernel-interrupt-lock"))
+(defvar *skill-telemetry* (make-hash-table :test 'equal))
+(defvar *telemetry-lock* (bt:make-lock "kernel-telemetry-lock"))
+#+end_src
+
+** Performance Tracking (kernel-track-telemetry)
+Updates performance metrics for a specific skill, tracking execution counts, total duration, and failure rates.
+
+#+begin_src lisp :tangle ../src/core.lisp
+(defun kernel-track-telemetry (skill-name duration status)
+  "Updates performance metrics for a specific skill."
+  (when skill-name (bt:with-lock-held (*telemetry-lock*)
+                     (let ((entry (or (gethash skill-name *skill-telemetry*) (list :executions 0 :total-time 0 :failures 0))))
+                       (incf (getf entry :executions)) (incf (getf entry :total-time) duration)
+                       (when (eq status :rejected) (incf (getf entry :failures))) (setf (gethash skill-name *skill-telemetry*) entry)))))
+#+end_src
+
+** System Logging (kernel-log)
+A centralized logging function that outputs to standard output and maintains a rolling in-memory buffer for context-aware reasoning.
+
+#+begin_src lisp :tangle ../src/core.lisp
+(defun kernel-log (fmt &rest args)
+  "Records a formatted message to the system log and standard output."
+  (let ((msg (apply #'format nil fmt args)))
+    (bt:with-lock-held (*logs-lock*) (push msg *system-logs*) (when (> (length *system-logs*) *max-log-history*) (setf *system-logs* (subseq *system-logs* 0 *max-log-history*))))
+    (format t "~a~%" msg) (finish-output)))
+#+end_src
+
+** Actuator Registration
+Actuators are the "hands" of the agent. This registry allows external modules (like Emacs or the Shell) to register functions that the kernel can invoke to perform physical actions.
+
+#+begin_src lisp :tangle ../src/core.lisp
+(defvar *heartbeat-thread* nil)
+(defvar *actuator-registry* (make-hash-table :test 'equal))
+
+(defun register-actuator (name fn) 
+  "Registers an actuator function. Actuators receive two arguments: (ACTION CONTEXT)."
+  (setf (gethash name *actuator-registry*) fn))
+#+end_src
+
+** Stimulus Injection (inject-stimulus)
+This is the entry point for all events into the kernel. It decides whether to handle an event synchronously or spawn a new background thread based on the stimulus type (e.g., chat messages and user commands are always asynchronous).
+
+#+begin_src lisp :tangle ../src/core.lisp
+(defun inject-stimulus (raw-message &key stream (depth 0))
+  "Enqueues a raw message into the cognitive loop, handling async/sync execution and recovery."
+  (let* ((payload (getf raw-message :payload)) 
+         (sensor (getf payload :sensor))
+         ;; Force Chat and Delegation to be async
+         (async-p (or (getf payload :async-p) (member sensor '(:chat-message :delegation :user-command)))))
+    (when stream (setf (getf raw-message :reply-stream) stream))
+    (if async-p (bt:make-thread (lambda () (restart-case (handler-bind ((error (lambda (c) (kernel-log "ASYNC ERROR: ~a" c) (invoke-restart 'skip-event))))
+                                                           (cognitive-loop raw-message depth)) (skip-event () nil))) :name "org-agent-async-task")
+        (restart-case (handler-bind ((error (lambda (c) (kernel-log "SYSTEM ERROR: ~a" c) (invoke-restart 'skip-event)))) (cognitive-loop raw-message depth))
+          (skip-event () (kernel-log "SYSTEM RECOVERY: Stimulus dropped.~%"))))))
+#+end_src
+
+** Internal Tool Execution
+The `execute-system-action` function handles kernel-level operations such as hot-loading skills, evaluating raw Lisp, or setting environment variables.
+
+#+begin_src lisp :tangle ../src/core.lisp
+(defun execute-system-action (action context)
+  "Processes internal kernel commands like skill creation or environment updates."
+  (declare (ignore context))
+  (let* ((payload (ignore-errors (getf action :payload))) (cmd (ignore-errors (getf payload :action))))
+    (case cmd
+      (:eval (let ((code (getf payload :code)))
+               (kernel-log "ACTUATOR [System] - Evaluating: ~a" code)
+               (handler-case (let ((result (eval (read-from-string code))))
+                               (kernel-log "ACTUATOR [System] - Result: ~s" result)
+                               result)
+                 (error (c) (kernel-log "ACTUATOR ERROR [System] - Eval failed: ~a" c)))))
+      (:create-skill (let* ((filename (getf payload :filename)) (content (getf payload :content))
+                            (skills-dir (merge-pathnames "skills/" (asdf:system-source-directory :org-agent))) (full-path (merge-pathnames filename skills-dir)))
+                       (kernel-log "ACTUATOR [System] - Creating skill ~a..." filename)
+                       (with-open-file (out full-path :direction :output :if-exists :supersede) (write-string content out))
+                       (load-skill-from-org full-path)))
+      (:set-cascade (setf *provider-cascade* (getf payload :cascade)))
+      (:message (kernel-log "ACTUATOR [System] - ~a" (getf payload :text)))
+      (t (kernel-log "ACTUATOR [System] - Unknown command ~s" cmd)))))
+#+end_src
+
+** The OODA Cycle (cognitive-loop)
+The heart of the system. It recursively executes the OODA cycle:
+1. **Perceive:** Process incoming sensors and update memory.
+2. **Think:** Consult System 1 (LLM) for a proposed action.
+3. **Decide:** System 2 (Lisp) validates the proposal.
+4. **Act:** Dispatch the validated action to an actuator.
+
+If a tool fails, the error is fed back into the loop as a new stimulus, allowing for autonomous self-correction.
+
+#+begin_src lisp :tangle ../src/core.lisp
+(defun cognitive-loop (raw-message &optional (depth 0))
+  "The main recursive OODA cycle: Perceive, Think, Decide, Act."
+  (when (> depth 10)
+    (kernel-log "SYSTEM ERROR: Maximum cognitive depth reached.")
+    (return-from cognitive-loop nil))
+  (when (bt:with-lock-held (*interrupt-lock*) *interrupt-flag*)
+    (kernel-log "SYSTEM: Loop interrupted.")
+    (bt:with-lock-held (*interrupt-lock*) (setf *interrupt-flag* nil))
+    (return-from cognitive-loop nil))
+
+  (handler-case
+      (let* ((start-time (get-internal-real-time))
+             (type (getf raw-message :type))
+             (perceive-fn (find-symbol "PERCEIVE" :org-agent))
+             (context (if perceive-fn (funcall perceive-fn raw-message) raw-message)))
+        (snapshot-object-store)
+        (if (eq type :REQUEST)
+            (dispatch-action raw-message context)
+            (let* ((skill (find-triggered-skill context))
+                   (skill-name (when skill (skill-name skill)))
+                   (proposed-action (think context))
+                   (approved-action (decide proposed-action context))
+                   (status (if (and proposed-action (null approved-action)) :rejected :success))
+                   (duration (- (get-internal-real-time) start-time)))
+              (when skill-name (kernel-track-telemetry skill-name duration status))
+
+              (let* ((payload (getf approved-action :payload))
+                     (target (getf approved-action :target))
+                     (action (or (getf payload :action) (getf approved-action :action)))
+                     (tool-name (or (getf payload :tool) (getf approved-action :tool)))
+                     (tool-args (or (getf payload :args) (getf approved-action :args))))
+                (if (and approved-action (eq target :tool) (eq action :call))
+                    ;; Internal Tool Execution
+                    (let* ((tool (gethash (string-downcase (string tool-name)) *cognitive-tools*)))
+                      (if tool
+                          (progn
+                            (kernel-log "SYSTEM 2: Executing tool '~a'..." tool-name)
+                            (handler-case
+                                (let* ((clean-args (if (and (listp tool-args) (listp (car tool-args))) (car tool-args) tool-args))
+                                       (tool-result (funcall (cognitive-tool-body tool) clean-args))
+                                       (next-stimulus `(:type :EVENT :payload (:sensor :tool-output :result ,tool-result :tool ,tool-name))))
+                                  (when (getf raw-message :reply-stream) (setf (getf next-stimulus :reply-stream) (getf raw-message :reply-stream)))
+                                  (cognitive-loop next-stimulus (1+ depth)))
+                              (error (c)
+                                (kernel-log "SYSTEM ERROR: Tool '~a' failed: ~a" tool-name c)
+                                (let ((err-stimulus `(:type :EVENT :payload (:sensor :tool-error :tool ,tool-name :message ,(format nil "~a" c)))))
+                                  (when (getf raw-message :reply-stream) (setf (getf err-stimulus :reply-stream) (getf raw-message :reply-stream)))
+                                  (cognitive-loop err-stimulus (1+ depth))))))
+                          (progn
+                            (kernel-log "SYSTEM ERROR: Tool '~a' not found in registry." tool-name)
+                            (let ((err-stimulus `(:type :EVENT :payload (:sensor :tool-error :message "Tool not found"))))
+                              (when (getf raw-message :reply-stream) (setf (getf err-stimulus :reply-stream) (getf raw-message :reply-stream)))
+                              (cognitive-loop err-stimulus (1+ depth))))))
+
+                    ;; Physical Actuation (Emacs, Shell, etc.)
+                    (let ((result (dispatch-action approved-action context)))
+                      (when (and result (not (member target '(:emacs :system-message))))
+                        (let ((fallback-stimulus `(:type :EVENT :payload (:sensor :tool-output :result ,result :tool ,approved-action))))
+                          (when (getf raw-message :reply-stream) (setf (getf fallback-stimulus :reply-stream) (getf raw-message :reply-stream)))
+                          (cognitive-loop fallback-stimulus (1+ depth))))))))))
+    (error (c)
+      (kernel-log "LOOP CRASH - Error in recursive turn: ~a~%" c)
+      ;; IMMUNE SYSTEM: Inject loop failure as a new stimulus if not too deep
+      (let ((sensor (ignore-errors (getf (getf raw-message :payload) :sensor))))
+        (unless (or (> depth 2) (member sensor '(:loop-error :tool-error)))
+          (inject-stimulus `(:type :EVENT :payload (:sensor :loop-error :message ,(format nil "~a" c) :depth ,depth))
+                           :stream (getf raw-message :reply-stream)
+                           :depth (1+ depth))))
+      nil)))
+#+end_src
+
+** Perception (perceive)
+Handles the low-level processing of stimuli, such as updating the Object Store when a buffer is saved in Emacs.
+
+#+begin_src lisp :tangle ../src/core.lisp
+(defun perceive (raw-message)
+  "Initial processing of raw stimuli, updating the Object Store if needed."
+  (handler-case
+      (let ((type (getf raw-message :type)) (payload (getf raw-message :payload)))
+        (kernel-log "PERCEIVE: ~a (~a)" type (or (getf payload :sensor) "no-sensor"))
+        (cond ((eq type :EVENT) (let ((sensor (getf payload :sensor)))
+                                  (case sensor
+                                    (:buffer-update (let ((ast (getf payload :ast))) (when ast (ingest-ast ast))))
+                                    (:point-update (let ((element (getf payload :element))) (when element (ingest-ast element))))
+                                    (:interrupt (bt:with-lock-held (*interrupt-lock*) (setf *interrupt-flag* t))))))
+              ((eq type :RESPONSE)
+               (kernel-log "ACT RESULT: ~a~%PAYLOAD: ~s~%" (getf payload :status) payload)))
+        raw-message)
+    (error (c)
+      (kernel-log "PERCEIVE ERROR: Malformed stimulus received: ~a" c)
+      nil)))
+#+end_src
+
+** Heartbeat Mechanism
+Periodically injects a "pulse" into the system to trigger temporal skills (like cron jobs or reminders).
+
+#+begin_src lisp :tangle ../src/core.lisp
+(defun start-heartbeat (&optional (interval 60))
+  "Spawns a thread that periodically injects a heartbeat stimulus."
+  (setf *heartbeat-thread* (bt:make-thread (lambda () (loop (sleep interval) (kernel-log "KERNEL: Heartbeat pulse...")
+                                                              (inject-stimulus `(:type :EVENT :payload (:sensor :heartbeat :unix-time ,(get-universal-time)))))) :name "org-agent-heartbeat")))
+
+(defun stop-heartbeat () 
+  "Gracefully terminates the heartbeat pulse thread."
+  (when (and *heartbeat-thread* (bt:thread-alive-p *heartbeat-thread*)) 
+    (bt:destroy-thread *heartbeat-thread*) 
+    (setf *heartbeat-thread* nil)))
+#+end_src
+
+** Boot Sequence (load-all-skills)
+Scans the skills directory and loads skills according to their topological dependency order.
+
+#+begin_src lisp :tangle ../src/core.lisp
+(defun load-all-skills ()
+  "Scans the directory defined by SKILLS_DIR and hot-loads skills using topological order."
+  (let* ((env-path (uiop:getenv "SKILLS_DIR"))
+         (skills-dir-str (or env-path (namestring (merge-pathnames "notes/" (user-homedir-pathname)))))
+         (resolved-path (context-resolve-path skills-dir-str))
+         (skills-dir (if resolved-path (uiop:ensure-directory-pathname resolved-path) nil)))
+    (if (and skills-dir (uiop:directory-exists-p skills-dir))
+        (let ((sorted-files (topological-sort-skills skills-dir)))
+          ;; GATEWAY ENFORCEMENT: Kernel cannot function without the Executive Soul
+          (unless (member "org-skill-agent" sorted-files :key #'pathname-name :test #'string-equal)
+            (error "GATEWAY FAILURE: org-skill-agent.org not found in skills directory."))
+          (dolist (file sorted-files)
+            (kernel-log "KERNEL: Loading skill ~a..." (pathname-name file))
+            (load-skill-with-timeout file 5)))
+        (kernel-log "KERNEL ERROR: Skills directory not found: ~a" skills-dir-str))))
+#+end_src
+
+** The Daemon Lifecycle
+Manages the TCP server that listens for OACP connections.
+
+#+begin_src lisp :tangle ../src/core.lisp
+(defvar *daemon-thread* nil) (defvar *daemon-socket* nil)
+(defvar *emacs-clients* nil)
+(defvar *clients-lock* (bt:make-lock "emacs-clients-lock"))
+
+(defun register-emacs-client (stream)
+  "Tracks an active Emacs socket connection."
+  (bt:with-lock-held (*clients-lock*)
+    (pushnew stream *emacs-clients*)))
+
+(defun unregister-emacs-client (stream)
+  "Removes a disconnected Emacs socket from the registry."
+  (bt:with-lock-held (*clients-lock*)
+    (setf *emacs-clients* (remove stream *emacs-clients*))))
+
+(defun handle-client (stream)
+  "Main loop for a single OACP client connection."
+  (kernel-log "DAEMON: New client connected.~%")
+  (register-emacs-client stream)
+  (unwind-protect
+       (loop
+         (handler-case
+             (progn
+               (loop for char = (peek-char nil stream nil :eof)
+                     while (and (not (eq char :eof)) (member char '(#\Space #\Newline #\Return #\Tab)))
+                     do (read-char stream))
+               (let ((peek (peek-char nil stream nil :eof)))
+                 (if (eq peek :eof) (return))
+                 (let* ((len-prefix (make-string 6)))
+                   (unless (read-sequence len-prefix stream) (return))
+                   (let* ((len (parse-integer len-prefix :radix 16))
+                          (msg-payload (make-string len)))
+                     (unless (read-sequence msg-payload stream) (return))
+                     (let ((msg (read-from-string msg-payload)))
+                       (kernel-log "DAEMON: Received stimulus (~a characters)~%" len)
+                       (inject-stimulus msg :stream stream))))))
+           (error (c) (kernel-log "DAEMON CLIENT ERROR: ~a~%" c) (return))))
+    (kernel-log "DAEMON: Client disconnected.~%")
+    (unregister-emacs-client stream)
+    (ignore-errors (close stream))))
+
+(defun start-daemon (&key port interval)
+  (let* ((env-host (uiop:getenv "DAEMON_HOST")) (env-port (uiop:getenv "ORG_AGENT_DAEMON_PORT"))
+         (listen-host (if env-host (string-trim " \"'" env-host) "127.0.0.1"))
+         (listen-port (or (or port (when env-port (ignore-errors (parse-integer (string-trim " \"'" env-port) :junk-allowed t)))) 9105)))
+    (register-actuator :system #'execute-system-action) 
+    (register-actuator :emacs (lambda (action context) 
+                                (declare (ignore context))
+                                (kernel-log "ACTUATOR [Emacs] - Action: ~a~%" action)))
+    (start-heartbeat (or interval 60))
+    (kernel-log "DAEMON: Binding to ~a:~a..." listen-host listen-port)
+    (setf *daemon-socket* (usocket:socket-listen listen-host listen-port :reuse-address t))
+    (setf *daemon-thread* (bt:make-thread (lambda () (unwind-protect (loop (handler-case (let ((client-socket (usocket:socket-accept *daemon-socket*)))
+                                                                                          (bt:make-thread (lambda () (handle-client (usocket:socket-stream client-socket))) :name "org-agent-client-handler"))
+                                                                                      (error (c) (kernel-log "DAEMON ERROR: ~a" c) (sleep 0.1))))
+                                                       (usocket:socket-close *daemon-socket*))) :name "org-agent-tcp-listener"))
+    (kernel-log "==================================================~% org-agent Kernel Booted Successfully.~% Daemon Listening: ~a:~a~%==================================================" listen-host listen-port)
+    (load-all-skills)))
+
+(defun stop-daemon () (stop-heartbeat) (when *daemon-socket* (usocket:socket-close *daemon-socket*) (setf *daemon-socket* nil)) (kernel-log "org-agent Kernel stopped.~%"))
+#+end_src
+
+** Main Entry Point
+The execution entry point for the kernel binary.
+
+#+begin_src lisp :tangle ../src/core.lisp
+(defun main ()
+  "The entry point for the compiled standalone binary."
+  (let* ((home (uiop:getenv "HOME"))
+         (env-file (uiop:merge-pathnames* ".local/share/org-agent/.env" (uiop:ensure-directory-pathname home))))
+    (if (uiop:file-exists-p env-file)
+        (progn
+          (format t "KERNEL: Loading environment from ~a~%" env-file)
+          (cl-dotenv:load-env env-file))
+        (format t "KERNEL ERROR: .env not found at ~a~%" env-file)))
+  (let ((interval (or (ignore-errors (parse-integer (uiop:getenv "HEARTBEAT_INTERVAL") :junk-allowed t)) 60)))
+    (format t "KERNEL: Heartbeat interval set to ~a seconds.~%" interval)
+    (start-daemon :interval interval))
+  (loop (sleep 3600)))
+#+end_src

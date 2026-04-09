@@ -1,0 +1,222 @@
+#+TITLE: The Neurosymbolic Bridge (neuro.lisp & symbolic.lisp)
+#+AUTHOR: Amr
+#+FILETAGS: :kernel:neuro:symbolic:
+#+STARTUP: content
+
+* The Neurosymbolic Bridge (neuro.lisp & symbolic.lisp)
+** Deep Reasoning: Imagination Checked by Physics
+System 1 (LLM) is creative but hallucination-prone. System 2 (Lisp) is rigid but 100% accurate.
+- **The Safety Gate:** We never allow the LLM to talk to the actuators directly. It must propose a Lisp form. System 2 intercepts this form and validates it against mathematical rules and PSF invariants. 
+- **Sovereign Decoupling:** By moving the physical API logic into skills, the core remains a neutral "Thinking Engine" that doesn't care if the imagination comes from Google, Anthropic, or a local Llama instance.
+
+* Neural Engine (neuro.lisp)
+This module handles the interaction with Large Language Models, providing a unified interface for multiple backends.
+
+** Package Context
+#+begin_src lisp :tangle ../src/neuro.lisp
+(in-package :org-agent)
+#+end_src
+
+** Environment Access
+#+begin_src lisp :tangle ../src/neuro.lisp
+(defun get-env (var &optional default) (or (uiop:getenv var) default))
+#+end_src
+
+** Authentication Registry
+Tracks API keys and authentication functions for various providers.
+
+#+begin_src lisp :tangle ../src/neuro.lisp
+(defvar *auth-providers* (make-hash-table :test 'equal))
+
+(defun register-auth-provider (name fn) (setf (gethash name *auth-providers*) fn))
+
+(defun get-provider-auth (provider)
+  "Retrieves authentication credentials for a provider."
+  (let ((auth (gethash provider *auth-providers*)))
+    (cond
+      ((functionp auth) (funcall auth))
+      ((listp auth) auth)
+      (t 
+       (let ((specific-key (case provider
+                             (:gemini (uiop:getenv "GEMINI_API_KEY"))
+                             (:openrouter (uiop:getenv "OPENROUTER_API_KEY"))
+                             (:anthropic (uiop:getenv "ANTHROPIC_API_KEY"))
+                             (:openai (uiop:getenv "OPENAI_API_KEY"))
+                             (t nil))))
+         (if (and specific-key (> (length specific-key) 0))
+             (list :api-key specific-key)
+             (let ((legacy (uiop:getenv "LLM_API_KEY")))
+               (when (and legacy (> (length legacy) 0))
+                 (list :api-key legacy)))))))))
+#+end_src
+
+** Backend Registry and Cascade
+The kernel supports a "cascade" of providers. If the primary provider (e.g. OpenRouter) fails, it automatically falls back to the secondary (e.g. Gemini).
+
+#+begin_src lisp :tangle ../src/neuro.lisp
+(defvar *neuro-backends* (make-hash-table :test 'equal))
+(defvar *provider-cascade* '(:openrouter :gemini))
+
+(defun register-neuro-backend (name fn) (setf (gethash name *neuro-backends*) fn))
+
+(defvar *model-selector-fn* nil "A function called with (provider context) to return a model ID.")
+#+end_src
+
+** Neural Dispatch (ask-neuro)
+The primary entry point for System 1. It handles the retry logic and backend selection.
+
+#+begin_src lisp :tangle ../src/neuro.lisp
+(defun ask-neuro (prompt &key (system-prompt "You are the System 1 engine of a Neurosymbolic Lisp Machine.") (cascade nil) (context nil))
+  "Dispatches a neural request through the provider cascade."
+  (let ((backends (cond
+                    ((and cascade (listp cascade)) cascade)
+                    ((functionp cascade) (funcall cascade context))
+                    (t *provider-cascade*))))
+    (dolist (backend backends)
+      (let ((backend-fn (gethash backend *neuro-backends*)))
+        (when backend-fn
+          (kernel-log "SYSTEM 1: Attempting backend ~a..." backend)
+          (let* ((model (when *model-selector-fn* (funcall *model-selector-fn* backend context)))
+                 (result (if model 
+                             (funcall backend-fn prompt system-prompt :model model)
+                             (funcall backend-fn prompt system-prompt))))
+            (if (and (stringp result) (search ":LOG" result) (or (search "Failure" result) (search "missing" result)))
+                (kernel-log "SYSTEM 1: Backend ~a failed. Falling back..." backend)
+                (return-from ask-neuro result))))))
+    "(:type :LOG :payload (:text \"Neural Cascade Failure\"))"))
+#+end_src
+
+** Sovereign Service Fallbacks
+Standard functions that can be overridden by specific skills to provide enhanced functionality.
+
+#+begin_src lisp :tangle ../src/neuro.lisp
+(defun token-accountant-route-task (context)
+  "Generic fallback for routing. Overridden by skill-token-accountant."
+  (declare (ignore context))
+  '(:openrouter :gemini))
+
+(defun org-id-new ()
+  "Generic fallback for ID generation. Overridden by skill-ast-normalization."
+  (format nil "node-~a" (get-universal-time)))
+
+(defun get-org-timestamp ()
+  "Returns a current Org-mode active timestamp."
+  (multiple-value-bind (sec min hour day month year day-of-week) (decode-universal-time (get-universal-time))
+    (declare (ignore sec))
+    (let ((day-names '("Mon" "Tue" "Wed" "Thu" "Fri" "Sat" "Sun")))
+      (format nil "[~4,'0d-~2,'0d-~2,'0d ~a ~2,'0d:~2,'0d]" 
+              year month day (nth day-of-week day-names) hour min))))
+#+end_src
+
+** Neural Reasoning (think)
+Invokes the System 1 engine to generate a proposed Lisp action. It automatically injects the tool documentation and global context into the prompt.
+
+#+begin_src lisp :tangle ../src/neuro.lisp
+(defun think (context)
+  "Invokes the neural System 1 engine to propose a Lisp action based on context."
+  (let ((active-skill (find-triggered-skill context))
+        (tool-belt (generate-tool-belt-prompt))
+        (global-context (context-assemble-global-awareness)))
+    (if active-skill
+        (progn
+          (kernel-log "SYSTEM 1: Engaging skill '~a'~%" (skill-name active-skill))
+          (let* ((prompt-generator (skill-neuro-prompt active-skill)) 
+                 (raw-prompt (when prompt-generator (funcall prompt-generator context)))
+                 (full-system-prompt (concatenate 'string 
+                                                 "ACTUATOR IDENTITY: You are the pure Lisp actuator for the org-agent kernel.
+MANDATE: Output EXACTLY ONE Common Lisp property list starting with (:type :REQUEST).
+ZERO CONVERSATION: Do not explain. Do not say 'Okay'. Do not use markdown blocks.
+STRICT RULE: Do not output multiple lists. Do not chain multiple requests. 
+DO NOT embed tool calls inside text strings.
+
+"
+                                                 global-context
+                                                 "
+"
+                                                 tool-belt
+                                                 "
+IMPORTANT: To reply to the user, you MUST use:
+(:type :REQUEST :target :emacs :action :insert-at-end :buffer \"*org-agent-chat*\" :text \"* <Response Text>\")
+
+To call a tool, you MUST use:
+(:type :REQUEST :target :tool :action :call :tool \"<name>\" :args (:arg1 \"val\"))
+
+")))
+            (if (and raw-prompt (> (length raw-prompt) 1))
+                (let* ((thought (ask-neuro raw-prompt :system-prompt full-system-prompt :context context)))
+                  (kernel-log "SYSTEM 1 RAW: ~a~%" thought)
+                  (let* ((cleaned-thought 
+                          (let ((match (cl-ppcre:scan-to-strings "(?s)```(?:lisp)?\\n?(.*?)\\n?```" thought)))
+                            (if match
+                                (let ((regs (nth-value 1 (cl-ppcre:scan-to-strings "(?s)```(?:lisp)?\\n?(.*?)\\n?```" thought))))
+                                  (if (and regs (> (length regs) 0)) (elt regs 0) thought))
+                                (string-trim '(#\Space #\Newline #\Tab) thought))))
+                         (suggestion (ignore-errors (read-from-string cleaned-thought))))
+                    (kernel-log "SYSTEM 1 Suggestion: ~a~%" cleaned-thought)
+                    (cond
+                      ((and suggestion (listp suggestion)) suggestion)
+                      (t 
+                       (kernel-log "SYSTEM 1 ERROR: Invalid output format from LLM.~%")
+                       nil))))
+                '(:type :LOG :payload (:text "Skill triggered (Deterministic only)")))))
+        nil)))
+#+end_src
+
+** Prompt Meta-Cognition (distill-prompt)
+Allows the agent to self-optimize its own prompts.
+
+#+begin_src lisp :tangle ../src/neuro.lisp
+(defun distill-prompt (full-prompt successful-output)
+  (let ((system-instr "You are a Meta-Cognitive Prompt Architect. DISTILL into template."))
+    (ask-neuro (format nil "PROMPT: ~a~%RESULT: ~a" full-prompt successful-output) :system-prompt system-instr)))
+#+end_src
+
+* Symbolic Logic (symbolic.lisp)
+The deterministic gatekeeper that ensures all proposed actions are safe and logically valid.
+
+** Package Context
+#+begin_src lisp :tangle ../src/symbolic.lisp
+(in-package :org-agent)
+#+end_src
+
+** Validation Gate (decide)
+The "System 2" supervisor. It intercepts every action proposed by System 1 and runs it through the skill's symbolic gate and the global safety harness.
+
+#+begin_src lisp :tangle ../src/symbolic.lisp
+(defun decide (proposed-action context)
+  "The System 2 Safety Gate: validates or rejects proposed neural actions."
+  (let ((active-skill (find-triggered-skill context)))
+    (if (and proposed-action (listp proposed-action) active-skill)
+        (let* ((symbolic-gate (skill-symbolic-fn active-skill))
+               (payload (getf proposed-action :payload))
+               (action (or (getf payload :action) (getf proposed-action :action)))
+               (code (or (getf payload :code) (getf proposed-action :code))))
+          ;; Global safety harness for EVAL
+          (when (and (member (getf proposed-action :type) '(:request :REQUEST))
+                     (member action '(:eval :EVAL)))
+            (let ((harness-pkg (find-package :org-agent.skills.org-skill-safety-harness)))
+              (when (and code harness-pkg)
+                (unless (ignore-errors (uiop:symbol-call :org-agent.skills.org-skill-safety-harness :safety-harness-validate code))
+                  (kernel-log "SYSTEM 2 [GLOBAL]: Security violation blocked.~%")
+                  (return-from decide '(:type :LOG :payload (:text "Blocked by Global Safety Harness")))))))
+          ;; Skill-specific verification
+          (if symbolic-gate
+              (let ((decision (funcall symbolic-gate proposed-action context)))
+                (if decision 
+                    (progn (kernel-log "SYSTEM 2: Verified by skill '~a'.~%" (skill-name active-skill)) decision)
+                    (progn (kernel-log "SYSTEM 2: REJECTED by skill '~a'.~%" (skill-name active-skill))
+                           '(:type :LOG :payload (:text "Action rejected by skill heuristics")))))
+              (progn (kernel-log "SYSTEM 2: Verified (Implicitly safe for skill '~a').~%" (skill-name active-skill)) proposed-action)))
+        proposed-action)))
+#+end_src
+
+** Store Filtering (list-objects-with-attribute)
+A symbolic helper function to find nodes with specific attributes.
+
+#+begin_src lisp :tangle ../src/symbolic.lisp
+(defun list-objects-with-attribute (attr-key attr-val)
+  "Filters the Object Store for nodes having a specific attribute value."
+  (let ((results nil))
+    (maphash (lambda (id obj) (declare (ignore id)) (when (equal (getf (org-object-attributes obj) attr-key) attr-val) (push obj results))) *object-store*)
+    results))
+#+end_src

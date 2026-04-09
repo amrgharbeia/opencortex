@@ -1,0 +1,207 @@
+#+TITLE: Peripheral Vision (context.lisp & embedding.lisp)
+#+AUTHOR: Amr
+#+FILETAGS: :kernel:context:embedding:
+#+STARTUP: content
+
+* Peripheral Vision (context.lisp & embedding.lisp)
+** Deep Reasoning: Solving the "Lost in the Middle" Problem
+LLMs lose precision when context windows are bloated with irrelevant data.
+- **Sparse Trees:** We use Lisp's deterministic tree-walking to surgically prune the Org AST. We pass the skeletal "peripheral" outline to the LLM, giving it global awareness while keeping its "foveal" focus on the task at hand. This minimizes token burn and maximizes reasoning accuracy.
+
+* Context Assembly (context.lisp)
+The `context.lisp` module provides deterministic functions for querying the `*object-store*` and assembling the precise context string sent to System 1.
+
+** Package Context
+#+begin_src lisp :tangle ../src/context.lisp
+(in-package :org-agent)
+#+end_src
+
+** Querying the Store (context-query-store)
+A generalized filter for the Object Store that supports tags, TODO states, and element types.
+
+#+begin_src lisp :tangle ../src/context.lisp
+(defun context-query-store (&key tag todo-state type)
+  "Filters the Object Store based on tags, todo states, or types."
+  (let ((results nil))
+    (maphash (lambda (id obj)
+               (declare (ignore id))
+               (let* ((attrs (org-object-attributes obj)) (state (getf attrs :TODO-STATE)) (match t))
+                 (when (and type (not (eq (org-object-type obj) type))) (setf match nil))
+                 (when tag (unless (search tag (format nil "~a" (getf attrs :TAGS)) :test #'string-equal) (setf match nil)))
+                 (when (and todo-state (not (equal state todo-state))) (setf match nil))
+                 (when match (push obj results))))
+             *object-store*)
+    results))
+#+end_src
+
+** Active Projects (context-get-active-projects)
+Identifies headlines tagged with `project` that are not yet marked as `DONE`.
+
+#+begin_src lisp :tangle ../src/context.lisp
+(defun context-get-active-projects ()
+  "Returns headlines tagged as 'project' that are not yet marked DONE."
+  (remove-if (lambda (obj) (equal (getf (org-object-attributes obj) :TODO-STATE) "DONE"))
+             (context-query-store :tag "project" :type :HEADLINE)))
+#+end_src
+
+** Completed Tasks (context-get-recent-completed-tasks)
+Retrieves a list of tasks that have reached the terminal `DONE` state.
+
+#+begin_src lisp :tangle ../src/context.lisp
+(defun context-get-recent-completed-tasks () 
+  "Retrieves recently finished tasks from the store."
+  (context-query-store :todo-state "DONE" :type :HEADLINE))
+#+end_src
+
+** Capability Discovery (context-list-all-skills)
+Provides a sorted list of all currently loaded skills, including their priority and dependencies.
+
+#+begin_src lisp :tangle ../src/context.lisp
+(defun context-list-all-skills ()
+  "Provides a sorted overview of currently loaded system capabilities."
+  (let ((results nil))
+    (maphash (lambda (name skill)
+               (declare (ignore name))
+               (push (list :name (skill-name skill) :priority (skill-priority skill) :dependencies (skill-dependencies skill)) results))
+             *skills-registry*)
+    (sort results #'> :key (lambda (x) (getf x :priority)))))
+#+end_src
+
+** Skill Inspection (context-get-skill-source)
+Reads the raw literate source of a specific skill. This is crucial for "System 2" meta-reasoning, where the agent needs to understand its own implementation.
+
+#+begin_src lisp :tangle ../src/context.lisp
+(defun context-get-skill-source (skill-name)
+  "Reads the raw literate source of a specific skill for inspection."
+  (let* ((filename (format nil "~a.org" skill-name))
+         (skills-dir (merge-pathnames "skills/" (asdf:system-source-directory :org-agent)))
+         (full-path (merge-pathnames filename skills-dir)))
+    (if (uiop:file-exists-p full-path) (uiop:read-file-string full-path) nil)))
+#+end_src
+
+** Kernel Logs (context-get-system-logs)
+Retrieves the most recent system logs, providing temporal context to the LLM.
+
+#+begin_src lisp :tangle ../src/context.lisp
+(defun context-get-system-logs (&optional (limit 20))
+  "Retrieves the most recent lines from the kernel's internal log."
+  (bt:with-lock-held (*logs-lock*)
+    (let ((count (min limit (length *system-logs*)))) (subseq *system-logs* 0 count))))
+#+end_src
+
+** Telemetry (context-get-skill-telemetry)
+Provides execution stats for a specific skill.
+
+#+begin_src lisp :tangle ../src/context.lisp
+(defun context-get-skill-telemetry (skill-name)
+  "Returns performance and execution data for a specific skill."
+  (bt:with-lock-held (*telemetry-lock*) (gethash (string-downcase skill-name) *skill-telemetry*)))
+#+end_src
+
+** Sparse Trees (context-filter-sparse-tree)
+Prunes the Org AST to show only specific nodes and their ancestors, creating a "skeleton" view that fits within LLM context limits.
+
+#+begin_src lisp :tangle ../src/context.lisp
+(defun context-filter-sparse-tree (ast predicate)
+  "Prunes an AST to show only nodes matching a predicate and their ancestors."
+  (if (listp ast)
+      (let* ((contents (getf ast :contents))
+             (filtered-contents (remove-if #'null (mapcar (lambda (c) (context-filter-sparse-tree c predicate)) contents))))
+        (if (or (funcall predicate ast) (not (null filtered-contents)))
+            (let ((new-ast (copy-list ast))) (setf (getf new-ast :contents) filtered-contents) new-ast)
+            nil))
+      nil))
+#+end_src
+
+** Path Resolution (context-resolve-path)
+Expands environment variables (like `$HOME`) within path strings.
+
+#+begin_src lisp :tangle ../src/context.lisp
+(defun context-resolve-path (path-string)
+  "Expands environment variables within path strings (e.g. $HOME/...)."
+  (if (and (stringp path-string) (uiop:string-prefix-p "$" path-string))
+      (let* ((parts (uiop:split-string path-string :separator '(#\/)))
+             (var-name (subseq (car parts) 1)) (var-val (uiop:getenv var-name))
+             (remaining (cl:reduce (lambda (a b) (format nil "~a/~a" a b)) (cdr parts))))
+        (if var-val (let ((clean-val (string-trim '(#\" #\Space) var-val)))
+                      (format nil "~a/~a" (string-right-trim "/" clean-val) remaining))
+            path-string))
+      path-string))
+#+end_src
+
+** Global Awareness (context-assemble-global-awareness)
+The primary "peripheral vision" generator. It produces the skeletal overview of the Memex that is prepended to LLM prompts.
+
+#+begin_src lisp :tangle ../src/context.lisp
+(defun context-assemble-global-awareness ()
+  "Produces a high-level skeletal outline of the current Object Store for the LLM."
+  (let ((projects (context-get-active-projects))
+        (output "GLOBAL MEMEX AWARENESS (Peripheral Vision):
+"))
+    (if projects
+        (dolist (project projects)
+          (setf output (concatenate 'string output
+                                    (format nil "- PROJECT: ~a (ID: ~a)~%" 
+                                            (getf (org-object-attributes project) :TITLE)
+                                            (org-object-id project)))))
+        (setf output (concatenate 'string output "No active projects found.~%")))
+    output))
+#+end_src
+
+* Semantic Search (embedding.lisp)
+The `embedding.lisp` module handles vector representations and cosine similarity for semantic discovery.
+
+** Package Context
+#+begin_src lisp :tangle ../src/embedding.lisp
+(in-package :org-agent)
+#+end_src
+
+** Embedding Retrieval (get-embedding)
+Fetches a numerical vector representation of text from the configured provider (defaults to Gemini `text-embedding-004`).
+
+#+begin_src lisp :tangle ../src/embedding.lisp
+(defun get-embedding (text)
+  "Retrieves a vector representation of text via the configured neural provider."
+  (let* ((auth (get-provider-auth :gemini)) (api-key (getf auth :api-key))
+         (endpoint "https://generativelanguage.googleapis.com/v1beta/models/text-embedding-004:embedContent"))
+    (unless api-key (return-from get-embedding nil))
+    (let* ((url (format nil "~a?key=~a" endpoint api-key)) (headers `(("Content-Type" . "application/json")))
+           (body (cl-json:encode-json-to-string `((model . "models/text-embedding-004") (content . ((parts . ((text . ,text)))))))))
+      (handler-case (let* ((response (dex:post url :headers headers :content body))
+                           (json (cl-json:decode-json-from-string response)))
+                      (cdr (assoc :values (cdr (assoc :embedding json)))))
+        (error (c) (kernel-log "EMBEDDING FAILURE: ~a" c) nil)))))
+#+end_src
+
+** Vector Math
+Simple implementations of dot product and magnitude for similarity calculations.
+
+#+begin_src lisp :tangle ../src/embedding.lisp
+(defun dot-product (v1 v2) 
+  "Calculates the dot product of two numerical vectors."
+  (reduce #'+ (mapcar #'* v1 v2)))
+
+(defun magnitude (v) 
+  "Calculates the Euclidean magnitude of a numerical vector."
+  (sqrt (reduce #'+ (mapcar (lambda (x) (* x x)) v))))
+#+end_src
+
+** Cosine Similarity (cosine-similarity)
+Calculates the semantic distance (normalized dot product) between two vectors.
+
+#+begin_src lisp :tangle ../src/embedding.lisp
+(defun cosine-similarity (v1 v2)
+  "Calculates the semantic distance between two vectors."
+  (let ((m1 (magnitude v1)) (m2 (magnitude v2))) (if (or (zerop m1) (zerop m2)) 0 (/ (dot-product v1 v2) (* m1 m2)))))
+#+end_src
+
+** Semantic Discovery (find-most-similar)
+Identifies the top-k most semantically related objects in the entire store by comparing their cached vectors against a query vector.
+
+#+begin_src lisp :tangle ../src/embedding.lisp
+(defun find-most-similar (query-vector top-k)
+  "Identifies the top-k most semantically related objects in the store."
+  (let ((similarities nil))
+    (maphash (lambda (id obj) (let ((vec (org-object-vector obj))) (when vec (push (cons (cosine-similarity query-vector vec) obj) similarities)))) *object-store*)
+    (let ((sorted (sort similarities #'> :key #'car))) (subseq sorted 0 (min top-k (length sorted))))))
+#+end_src

@@ -1,0 +1,91 @@
+#+TITLE: The Communication Protocol (protocol.lisp)
+#+AUTHOR: Amr
+#+FILETAGS: :kernel:protocol:
+#+STARTUP: content
+
+* The Communication Protocol (protocol.lisp)
+** Deep Reasoning: Why Hex-Length Framing?
+Streaming raw JSON over a socket is fragile. If a 5MB Org AST is fragmented by the OS network stack, a standard parser will crash or desynchronize. 
+- **Physical Boundary:** By prefixing every message with a 6-character hex length, we create a deterministic physical boundary. 
+- **Actuator-Agnosticism:** This protocol makes the kernel a "Dumb Terminal" host. Any program (Bash, Python, WebSockets) that can calculate a length and send bytes can now become an agentic interface.
+
+** Package Context
+We begin by ensuring we are in the correct package.
+
+#+begin_src lisp :tangle ../src/protocol.lisp
+(in-package :org-agent)
+#+end_src
+
+** Message Framing (frame-message)
+The `frame-message` function is responsible for preparing a string for transmission over the wire. It calculates the length and, if security is enabled via environment variables, appends an HMAC-SHA256 signature to guarantee message integrity.
+
+#+begin_src lisp :tangle ../src/protocol.lisp
+(defun frame-message (msg-string)
+  "Prefix MSG-STRING with a 6-character hex length (lowercase).
+   FUTURE: Will also prefix a 64-char HMAC signature when OACP_ENFORCE_HMAC=true."
+  (let ((len (length msg-string))
+        (enforce-hmac (uiop:getenv "OACP_ENFORCE_HMAC")))
+    (if (and enforce-hmac (string-equal enforce-hmac "true"))
+        (let* ((secret (or (uiop:getenv "OACP_HMAC_SECRET") "default-insecure-secret"))
+               (key (ironclad:ascii-string-to-byte-array secret))
+               (hmac (ironclad:make-mac :hmac key :sha256))
+               (payload-bytes (ironclad:ascii-string-to-byte-array msg-string)))
+          (ironclad:update-mac hmac payload-bytes)
+          (let ((signature (ironclad:byte-array-to-hex-string (ironclad:produce-mac hmac))))
+            (format nil "~(~6,'0x~)~a~a" len signature msg-string)))
+        (format nil "~(~6,'0x~)~a" len msg-string))))
+#+end_src
+
+** Message Parsing (parse-message)
+Parsing is the inverse of framing. This function performs three critical safety checks:
+1. It validates the 6-character hex length prefix.
+2. It verifies the HMAC signature (if enabled) to prevent man-in-the-middle attacks.
+3. It binds `*read-eval*` to `nil` before calling `read-from-string`, preventing "Reader Macro Injection" which could otherwise execute arbitrary Lisp code during deserialization.
+
+#+begin_src lisp :tangle ../src/protocol.lisp
+(defun parse-message (framed-string)
+  "Extract and parse the S-expression from a framed string, securely preventing reader macro injection."
+  (when (< (length framed-string) 6)
+    (error "Framed string too short"))
+  (let* ((enforce-hmac (uiop:getenv "OACP_ENFORCE_HMAC"))
+         (use-hmac (and enforce-hmac (string-equal enforce-hmac "true")))
+         (prefix-len (if use-hmac 70 6)))
+    (when (< (length framed-string) prefix-len)
+      (error "Framed string too short for OACP signature/length"))
+    
+    (let* ((len-str (subseq framed-string 0 6))
+           (signature (when use-hmac (subseq framed-string 6 70)))
+           (actual-msg (subseq framed-string prefix-len))
+           (expected-len (ignore-errors (parse-integer len-str :radix 16))))
+      (unless expected-len
+        (error "Invalid hex length prefix: ~a" len-str))
+      (unless (= expected-len (length actual-msg))
+        (error "Message length mismatch. Expected ~a, got ~a" expected-len (length actual-msg)))
+      
+      ;; HMAC Validation Foundation
+      (when use-hmac
+        (let* ((secret (or (uiop:getenv "OACP_HMAC_SECRET") "default-insecure-secret"))
+               (key (ironclad:ascii-string-to-byte-array secret))
+               (hmac (ironclad:make-mac :hmac key :sha256))
+               (payload-bytes (ironclad:ascii-string-to-byte-array actual-msg)))
+          (ironclad:update-mac hmac payload-bytes)
+          (let ((expected-signature (ironclad:byte-array-to-hex-string (ironclad:produce-mac hmac))))
+            (unless (string-equal signature expected-signature)
+              (error "OACP Integrity Failure: HMAC signature mismatch")))))
+      
+      ;; SECURITY: Prevent Reader Macro Injection (e.g. #. ) during deserialization
+      (let ((*read-eval* nil))
+        (read-from-string actual-msg)))))
+#+end_src
+
+** Handshaking (make-hello-message)
+Every OACP connection begins with a `HELLO` handshake. This function constructs the standard response that the kernel sends to a client to announce its capabilities and version.
+
+#+begin_src lisp :tangle ../src/protocol.lisp
+(defun make-hello-message (version)
+  "Construct the standard HELLO handshake message."
+  (list :type :EVENT 
+        :payload (list :action :handshake 
+                       :version version 
+                       :capabilities '(:auth :swank :org-ast))))
+#+end_src
