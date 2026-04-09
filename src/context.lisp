@@ -18,9 +18,11 @@
   (remove-if (lambda (obj) (equal (getf (org-object-attributes obj) :TODO-STATE) "DONE"))
              (context-query-store :tag "project" :type :HEADLINE)))
 
-(defun context-get-recent-completed-tasks () (context-query-store :todo-state "DONE" :type :HEADLINE))
+(defun context-get-recent-completed-tasks () 
   "Retrieves recently finished tasks from the store."
-  (defun context-list-all-skills ()
+  (context-query-store :todo-state "DONE" :type :HEADLINE))
+
+(defun context-list-all-skills ()
   "Provides a sorted overview of currently loaded system capabilities."
   (let ((results nil))
     (maphash (lambda (name skill)
@@ -45,15 +47,29 @@
   "Returns performance and execution data for a specific skill."
   (bt:with-lock-held (*telemetry-lock*) (gethash (string-downcase skill-name) *skill-telemetry*)))
 
-(defun context-filter-sparse-tree (ast predicate)
-  "Prunes an AST to show only nodes matching a predicate and their ancestors."
-  (if (listp ast)
-      (let* ((contents (getf ast :contents))
-             (filtered-contents (remove-if #'null (mapcar (lambda (c) (context-filter-sparse-tree c predicate)) contents))))
-        (if (or (funcall predicate ast) (not (null filtered-contents)))
-            (let ((new-ast (copy-list ast))) (setf (getf new-ast :contents) filtered-contents) new-ast)
-            nil))
-      nil))
+(defun context-render-to-org (obj &key (depth 1) (foveal-id nil))
+  "Recursively renders an org-object and its children to an Org string."
+  (let* ((is-foveal (equal (org-object-id obj) foveal-id))
+         (title (or (getf (org-object-attributes obj) :TITLE) "Untitled"))
+         (id (org-object-id obj))
+         (content (org-object-content obj))
+         (children (org-object-children obj))
+         (stars (make-string depth :initial-element #\*))
+         (output (format nil "~a ~a~%:PROPERTIES:~%:ID: ~a~%:END:~%" stars title id)))
+    
+    ;; Only include content if this is the foveal focus
+    (when (and is-foveal content)
+      (setf output (concatenate 'string output content (string #\Newline))))
+    
+    ;; Recursively render children
+    (dolist (child-id children)
+      (let ((child-obj (lookup-object child-id)))
+        (when child-obj
+          (setf output (concatenate 'string output 
+                                    (context-render-to-org child-obj 
+                                                           :depth (1+ depth) 
+                                                           :foveal-id foveal-id))))))
+    output))
 
 (defun context-resolve-path (path-string)
   "Expands environment variables within path strings (e.g. $HOME/...)."
@@ -66,16 +82,16 @@
             path-string))
       path-string))
 
-(defun context-assemble-global-awareness ()
+(defun context-assemble-global-awareness (&optional signal)
   "Produces a high-level skeletal outline of the current Object Store for the LLM."
-  (let ((projects (context-get-active-projects))
-        (output "GLOBAL MEMEX AWARENESS (Peripheral Vision):
+  (let* ((payload (when signal (getf signal :payload)))
+         (foveal-id (when payload (getf payload :target-id)))
+         (projects (context-get-active-projects))
+         (output "GLOBAL MEMEX AWARENESS (Peripheral Vision):
 "))
     (if projects
         (dolist (project projects)
           (setf output (concatenate 'string output
-                                    (format nil "- PROJECT: ~a (ID: ~a)~%" 
-                                            (getf (org-object-attributes project) :TITLE)
-                                            (org-object-id project)))))
+                                    (context-render-to-org project :foveal-id foveal-id))))
         (setf output (concatenate 'string output "No active projects found.~%")))
     output))

@@ -26,6 +26,7 @@
   :components ((:module "tests"
                 :components ((:file "oacp-tests")
                              (:file "pipeline-tests")
+                             (:file "peripheral-vision-tests")
                              (:file "boot-sequence-tests")
                              (:file "object-store-tests")
                              (:file "immune-system-tests")
@@ -33,6 +34,7 @@
   :perform (test-op (o s) 
              (uiop:symbol-call :fiveam :run! (uiop:find-symbol* :oacp-suite :org-agent-tests))
              (uiop:symbol-call :fiveam :run! (uiop:find-symbol* :pipeline-suite :org-agent-pipeline-tests))
+             (uiop:symbol-call :fiveam :run! (uiop:find-symbol* :vision-suite :org-agent-peripheral-vision-tests))
              (uiop:symbol-call :fiveam :run! (uiop:find-symbol* :boot-suite :org-agent-boot-tests))
              (uiop:symbol-call :fiveam :run! (uiop:find-symbol* :object-store-suite :org-agent-object-store-tests))
              (uiop:symbol-call :fiveam :run! (uiop:find-symbol* :immune-suite :org-agent-immune-system-tests))

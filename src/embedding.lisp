@@ -12,11 +12,15 @@
                       (cdr (assoc :values (cdr (assoc :embedding json)))))
         (error (c) (kernel-log "EMBEDDING FAILURE: ~a" c) nil)))))
 
-(defun dot-product (v1 v2) (reduce #'+ (mapcar #'* v1 v2)))
+(defun dot-product (v1 v2) 
   "Calculates the dot product of two numerical vectors."
-  (defun magnitude (v) (sqrt (reduce #'+ (mapcar (lambda (x) (* x x)) v))))
+  (reduce #'+ (mapcar #'* v1 v2)))
+
+(defun magnitude (v) 
   "Calculates the Euclidean magnitude of a numerical vector."
-  (defun cosine-similarity (v1 v2)
+  (sqrt (reduce #'+ (mapcar (lambda (x) (* x x)) v))))
+
+(defun cosine-similarity (v1 v2)
   "Calculates the semantic distance between two vectors."
   (let ((m1 (magnitude v1)) (m2 (magnitude v2))) (if (or (zerop m1) (zerop m2)) 0 (/ (dot-product v1 v2) (* m1 m2)))))
 
