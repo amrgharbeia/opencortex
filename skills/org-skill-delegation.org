@@ -1,0 +1,76 @@
+:PROPERTIES:
+:ID:       f670cf84-21ab-41eb-a16b-b9a3f3c8c76e
+:CREATED:  [2026-04-04 Sat 20:27]
+:EDITED:   [2026-04-07 Tue 13:42]
+:END:
+#+TITLE: SKILL: Delegation Manager (Universal Literate Note)
+#+STARTUP: content
+#+FILETAGS: :delegation:multi-agent:psf:
+
+* Overview
+The *Delegation Manager* orchestrates the dispatch of tasks to sub-agents or specialized skills.
+
+* Phase A: Demand (PRD)
+:PROPERTIES:
+:STATUS: FROZEN
+:END:
+
+** 1. Purpose
+Define the protocol for delegating work between agents.
+
+** 2. User Needs
+- *Trigger:* Detect when a task requires delegation.
+- *Actuate:* Execute the delegation to a target skill or agent.
+
+
+* Phase B: Blueprint (PROTOCOL)
+:PROPERTIES:
+:STATUS: SIGNED
+:END:
+
+
+* Phase B: Blueprint (PROTOCOL)
+:PROPERTIES:
+:STATUS: DRAFT
+:END:
+
+** 1. Architectural Intent
+The Delegation Manager will utilize a message-passing architecture. Tasks are packaged into messages and routed based on content. A central *resolution* function determines the appropriate target agent or skill for each task. Error handling and fallback mechanisms are crucial for robustness.  The core principle is *explicit delegation contracts* to ensure compatibility and predictability.
+
+** 2. Semantic Interfaces (Lisp Signatures)
+
+*** Task Delegation
+
+#+BEGIN_SRC lisp
+;; Sends a task to a target.  Returns a promise (future) that will eventually resolve
+;; to the task result.  The :delegation-id is internally managed to track the delegation lifecycle.
+(defun delegate-task (task :priority :context)
+  :returns (promise task-result))
+#+END_SRC
+
+*** Skill Resolution
+
+#+BEGIN_SRC lisp
+;; Determines the target agent/skill for a given task.
+;; It receives the task details and any relevant context.  Returns the ID of the
+;; targeted agent/skill.  Can return `:error` if no suitable delegation is found.
+(defun resolve-skill (task :context)
+  :returns (skill-id or :error))
+#+END_SRC
+
+*** Error Handling
+
+#+BEGIN_SRC lisp
+;; Reports a delegation failure. This allows for fallback strategies.
+(defun report-delegation-failure (delegation-id :error-message)
+  :returns nil)
+#+END_SRC
+
+*** Task Result Handling
+
+#+BEGIN_SRC lisp
+;; Informs the Delegation Manager that a task has been completed successfully.
+(defun report-task-completion (delegation-id :result)
+  :returns nil)
+#+END_SRC
+ 

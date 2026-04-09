@@ -1,0 +1,75 @@
+:PROPERTIES:
+:ID:       21bcb7ff-1b69-45ae-8844-981c7fc2373c
+:CREATED:  [2026-04-04 Sat 20:27]
+:EDITED:   [2026-04-07 Tue 13:42]
+:END:
+#+TITLE: SKILL: Hook Manager (Universal Literate Note)
+#+STARTUP: content
+#+FILETAGS: :hooks:event-driven:system:psf:
+
+* Overview
+The *Hook Manager* enables event-driven extensibility within the agent by allowing functions to be registered and executed at specific lifecycle points.
+
+* Phase A: Demand (PRD)
+:PROPERTIES:
+:STATUS: FROZEN
+:END:
+
+** 1. Purpose
+Provide a hook-based event system.
+
+** 2. User Needs
+- *Registration:* Register functions to be called on specific hooks.
+- *Execution:* Trigger all registered functions for a given hook.
+
+
+* Phase B: Blueprint (PROTOCOL)
+:PROPERTIES:
+:STATUS: SIGNED
+:END:
+
+* Phase B: Blueprint (PROTOCOL)
+:PROPERTIES:
+:STATUS: DRAFT
+:END:
+
+** 1. Architectural Intent
+The Hook Manager will provide a centralized mechanism for registering and executing hook functions.  It aims for simplicity, flexibility, and minimal performance overhead.  The core design principle is a simple registry mapping hook names to lists of functions.
+
+** 2. Semantic Interfaces
+
+*** 2.1. `register-hook`
+
+Registers a function to be executed when a specific hook is triggered.
+
+    Signature: `(register-hook hook-name function)`
+
+    - `hook-name`: A symbol representing the name of the hook.
+    - `function`:  A function (lambda or symbol) to be executed when the hook is triggered.  The function's arguments depend on the hook (see hook-specific documentation).
+
+    Example:
+    `(register-hook 'before-planning #'my-planning-hook)`
+
+*** 2.2. `trigger-hook`
+
+Executes all registered functions for a given hook.
+
+    Signature: `(trigger-hook hook-name &rest args)`
+
+    - `hook-name`: A symbol representing the name of the hook to trigger.
+    - `&rest args`:  Optional arguments to be passed to the registered functions.  The meaning and number of arguments depends on the specific hook.
+
+    Example:
+    `(trigger-hook 'after-planning current-plan)`
+
+*** 2.3. `remove-hook`
+
+Removes a registered function from a hook.
+
+    Signature: `(remove-hook hook-name function)`
+
+    - `hook-name`: A symbol representing the name of the hook.
+    - `function`: The function to remove from the hook's registry.
+
+    Example:
+    `(remove-hook 'before-planning #'my-planning-hook)`

@@ -1,0 +1,12 @@
+:PROPERTIES:
+:ID:       ae49bb72-8c5d-4392-af70-4eb00d285054
+:CREATED:  [2026-03-30 Mon 21:16]
+:EDITED:   [2026-04-07 Tue 13:42]
+:END:
+#+TITLE: SKILL: Model Explorer Agent (Universal Literate Note)
+#+STARTUP: content
+#+FILETAGS: :discovery:telemetry:psf:
+
+* Overview
+The *Model Explorer Agent* provides dynamic introspection of the system's LLM capabilities. It intercepts specific user commands to list and describe all available models across providers, rendering them as native Org-mode tables.
+

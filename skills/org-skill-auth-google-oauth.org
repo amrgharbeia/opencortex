@@ -1,0 +1,59 @@
+:PROPERTIES:
+:ID:       440074d1-fe4d-41fb-b349-4570ba91cda2
+:CREATED:  [2026-03-31 Tue 18:13]
+:EDITED:   [2026-04-07 Tue 13:42]
+:END:
+#+TITLE: SKILL: Google Authentication Suite (Universal Literate Note)
+#+STARTUP: content
+#+FILETAGS: :auth:google:oauth:cookies:psf:
+
+* Overview
+This skill manages the dual-path authentication for Google services: Official API Keys and Session Cookie ingestion for the Pro Web UI.
+
+* Phase A: Demand (PRD)
+:PROPERTIES:
+:STATUS: SIGNED
+:END:
+
+** 1. Purpose
+Provide a high-fidelity onboarding flow for the Gemini Web bridge.
+
+** 2. User Needs
+- *Guided Onboarding:* Clear instructions for Chrome, Firefox, and Safari.
+- *Secure Ingestion:* Process the Bookmarklet JSON into the kernel.
+
+* Phase B: Blueprint (PROTOCOL)
+:PROPERTIES:
+:STATUS: SIGNED
+:END:
+
+** 1. Architectural Intent
+Implement the `onboard-web-session` command with cross-platform instructions.
+
+* Phase D: Build (Implementation)
+
+#+begin_src lisp :tangle ../projects/org-skill-auth-google-oauth/src/onboarding-logic.lisp
+(in-package :org-agent)
+
+(defun onboard-web-session ()
+  "Instructions for the Sovereign Cookie Handshake."
+  (kernel-log "--- GEMINI WEB ONBOARDING ---")
+  (kernel-log "1. Visit gemini.google.com")
+  (kernel-log "2. Run the 'Get Gemini Cookies' Bookmarklet.")
+  (kernel-log "   CODE: javascript:(function(){const c=document.cookie.split('; ').reduce((r,v)=>{const [n,val]=v.split('=');r[n]=val;return r},{});const target=['__Secure-1PSID','__Secure-1PSIDTS'];const out=target.map(n=>({name:n,value:c[n]}));prompt('Copy JSON:',JSON.stringify(out));})();")
+  (kernel-log "PLATFORM GUIDE:")
+  (kernel-log " - Chrome/Brave: Right-click Bookmarks Bar > Add Page > Paste Code into URL.")
+  (kernel-log " - Firefox: Right-click Sidebar > New Bookmark > Paste Code into Location.")
+  (kernel-log " - Safari: Edit an existing bookmark's address and paste the code.")
+  t)
+#+end_src
+
+* Registration
+#+begin_src lisp
+(progn
+  (defskill :skill-auth-google
+    :priority 100
+    :trigger (lambda (context) (eq (getf (getf context :payload) :sensor) :onboarding-request))
+    :neuro (lambda (context) nil)
+    :symbolic (lambda (action context) (onboard-web-session))))
+#+end_src

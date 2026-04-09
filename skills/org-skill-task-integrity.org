@@ -1,0 +1,77 @@
+:PROPERTIES:
+:ID:       74f65792-1bf2-4b33-ab1a-e8a4830143fb
+:CREATED:  [2026-03-30 Mon 21:16]
+:EDITED:   [2026-04-07 Tue 13:42]
+:END:
+#+TITLE: SKILL: Task Integrity Agent (Universal Literate Note)
+#+STARTUP: content
+#+FILETAGS: :gtd:integrity:safety:psf:
+
+* Overview
+The *Task Integrity Agent* is the "Guardian" of the GTD system. It ensures that all task transitions adhere to semantic rules, preventing logical inconsistencies and maintaining the structural health of the task hierarchy.
+
+* Phase A: Demand (PRD)
+:PROPERTIES:
+:STATUS: FROZEN
+:END:
+
+** 1. Purpose
+Define automated behaviors for GTD state consistency and dependency verification.
+
+** 2. User Needs
+- *Semantic Enforcement:* Valid state transitions (Active vs. Resolved).
+- *Dependency Awareness:* Block closing parents with active children.
+- *Proactive Assistance:* Suggesting next logical actions based on momentum.
+- *Fidelity:* Preservation of metadata during state transitions.
+
+** 3. Success Criteria
+*** TODO Semantic Category Mapping
+*** TODO Active Children Detection
+*** TODO State Transition Block Verification
+
+
+* Phase B: Blueprint (PROTOCOL)
+:PROPERTIES:
+:STATUS: SIGNED
+:END:
+
+
+* Phase B: Blueprint (PROTOCOL)
+:PROPERTIES:
+:STATUS: DRAFT
+:END:
+
+** 1. Architectural Intent
+   The Task Integrity Agent will operate as a reactive system, intercepting task state change requests within the Org-mode task management system.  It will validate these requests against predefined semantic rules and dependencies before allowing the change to propagate. It will be implemented using Lisp, leveraging Org-mode's extension capabilities to hook into task state modification events. The goal is to build a system that is both performant and easily extensible with new integrity rules.  Errors will be reported clearly to the user with options for correction.
+
+** 2. Semantic Interfaces (Lisp Signatures)
+
+*** `task-integrity-check (task-id new-state)`
+    - *Purpose:*  Core function to validate a proposed state transition.
+    - *Parameters:*
+      - `task-id`: Unique identifier of the task (e.g., Org-id).
+      - `new-state`: Target state of the task (e.g., 'DONE', 'ACTIVE').
+    - *Returns:* `t` if the transition is valid; `nil` or an error message (string) if invalid.
+    - *Example:* `(task-integrity-check "*TODO Example Task" 'DONE)`
+
+*** `semantic-mapping (task-state)`
+    - *Purpose:*  Maps Org-mode task states (e.g., 'TODO', 'DONE') to semantic categories (e.g., 'Active', 'Resolved').
+    - *Parameters:*
+      - `task-state`: An Org-mode task state keyword.
+    - *Returns:*  Semantic category symbol (e.g., `:active`, `:resolved`).
+    - *Example:* `(semantic-mapping 'TODO)`  -> `:active`
+
+*** `detect-active-children (task-id)`
+    - *Purpose:*  Checks if a task has any child tasks in an active state.
+    - *Parameters:*
+      - `task-id`: Unique identifier of the parent task.
+    - *Returns:*  A list of active child task IDs, or `nil` if no active children exist.
+    - *Example:* `(detect-active-children "*TODO Parent Task")` -> `("*TODO Child Task 1" "*TODO Child Task 2")` (if they are TODO)
+
+*** `block-state-transition (task-id error-message)`
+    - *Purpose:*  Prevents a task state transition and displays an error message to the user.
+    - *Parameters:*
+      - `task-id`: Unique identifier of the task.
+      - `error-message`:  String explaining why the transition is blocked.
+    - *Returns:*  `nil` (side effect: displays message).
+

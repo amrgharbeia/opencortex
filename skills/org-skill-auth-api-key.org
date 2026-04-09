@@ -1,0 +1,56 @@
+:PROPERTIES:
+:ID:       ab7f8ca4-5589-44ed-b797-1389ceeaf39c
+:CREATED:  [2026-03-31 Tue 18:13]
+:EDITED:   [2026-04-07 Tue 13:42]
+:END:
+#+TITLE: SKILL: API Key Authentication (Universal Literate Note)
+#+STARTUP: content
+#+FILETAGS: :auth:security:system:psf:
+
+* Overview
+This skill provides the legacy-compatible *Static API Key* authentication method. It retrieves credentials from the system environment variables and provides them to the kernel's neural backends.
+
+* Phase A: Demand (PRD)
+:PROPERTIES:
+:STATUS: FROZEN
+:END:
+
+** 1. Purpose
+Provide a simple, environment-driven authentication mechanism for LLM providers.
+
+** 2. User Needs
+- *Static Retrieval:* Pull `LLM_API_KEY` from `.env`.
+- *Provider Mapping:* Support mapping keys to specific providers (Gemini, OpenAI, etc.).
+- *Reliability:* Return NIL gracefully if no key is found.
+
+* Phase B: Blueprint (PROTOCOL)
+:PROPERTIES:
+:STATUS: SIGNED
+:END:
+
+** 1. Architectural Intent
+Interfaces for credential retrieval. Source of truth is the system environment.
+
+** 2. Semantic Interfaces
+"Returns a plist containing the :api-key for the default provider."
+
+* Phase D: Build (Implementation)
+
+#+begin_src lisp :tangle ../projects/org-skill-auth-api-key/src/auth-api-key.lisp
+(defun auth-api-key-get-credentials ()
+  (let ((key (uiop:getenv "LLM_API_KEY")))
+    (when key
+      (list :api-key key))))
+
+;; Register as the default auth provider for Gemini during transition
+(org-agent:register-auth-provider :gemini #'auth-api-key-get-credentials)
+#+end_src
+
+* Registration
+#+begin_src lisp
+(defskill :skill-auth-api-key
+  :priority 100
+  :trigger (lambda (context) nil)
+  :neuro (lambda (context) nil)
+  :symbolic (lambda (action context) action))
+#+end_src

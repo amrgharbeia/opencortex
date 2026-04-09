@@ -1,0 +1,87 @@
+:PROPERTIES:
+:ID:       52799ee8-693f-49da-97bc-2c02bc6a7ef7
+:CREATED:  [2026-03-30 Mon 21:16]
+:EDITED:   [2026-04-07 Tue 13:42]
+:END:
+#+TITLE: SKILL: Gemini Provider Agent (Universal Literate Note)
+#+STARTUP: content
+#+FILETAGS: :llm:provider:gemini:google:psf:
+
+* Overview
+The *Gemini Provider Agent* provides a dual-path interface to Google's neural models. It supports both the low-latency Developer API and the high-fidelity Web/Pro interface.
+
+* Phase A: Demand (PRD)
+:PROPERTIES:
+:STATUS: SIGNED
+:END:
+
+** 1. Purpose
+Enable a hybrid cost/performance strategy for Google's models.
+
+** 2. User Needs
+- *API Path:* Reliable, programmatic access for system reflexes.
+- *Web Path:* Zero-cost access to Pro-tier reasoning via browser session bridging.
+
+* Phase B: Blueprint (PROTOCOL)
+:PROPERTIES:
+:STATUS: SIGNED
+:END:
+
+** 1. Architectural Intent
+Expose two distinct backends to the kernel: =:gemini-api= and =:gemini-web=.
+
+** 2. Semantic Interfaces
+
+*** `execute-gemini-api-request`
+:signature `(execute-gemini-api-request prompt system-prompt &key model) :string`
+:description "Direct call to the Google AI Studio API."
+
+*** `execute-gemini-web-request`
+:signature `(execute-gemini-web-request prompt system-prompt) :string`
+:description "Routes the request through the Web Research browser proxy."
+
+* Phase D: Build (Implementation)
+
+** API Implementation
+#+begin_src lisp :tangle ../projects/org-skill-provider-gemini/src/provider-logic.lisp
+(in-package :org-agent)
+
+(defun execute-gemini-request (prompt system-prompt &key model)
+  (let* ((auth (get-provider-auth :gemini)) (api-key (getf auth :api-key)) (bearer-token (getf auth :bearer-token))
+         (endpoint-base (if model (format nil "https://generativelanguage.googleapis.com/v1/models/~a:generateContent" model)
+                            "https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash-latest:generateContent")))
+    (unless (or api-key bearer-token) (return-from execute-gemini-request "(:type :LOG :payload (:text \"Authentication missing\"))"))
+    (let* ((url (if api-key (format nil "~a?key=~a" endpoint-base api-key) endpoint-base))
+           (headers `(("Content-Type" . "application/json") ,@(when bearer-token `(("Authorization" . ,(format nil "Bearer ~a" bearer-token))))))
+           (body (cl-json:encode-json-to-string `((contents . ((parts . ((text . ,(format nil "~a~%~%Prompt: ~a" system-prompt prompt))))))))))
+      (handler-case (let* ((response (dex:post url :headers headers :content body :connect-timeout 10 :read-timeout 30)) (json (cl-json:decode-json-from-string response)))
+                      (cdr (assoc :text (cdr (assoc :parts (car (cdr (assoc :parts (car (cdr (assoc :candidates json)))))))))))
+        (error (c) (format nil "(:type :LOG :payload (:text \"Neural Engine Failure: ~a\"))" c))))))
+
+(defun execute-gemini-api-request (prompt system-prompt &key model)
+  "Implementation uses the standard kernel execute-gemini-request logic."
+  (execute-gemini-request prompt system-prompt :model model))
+#+end_src
+
+** Web Implementation
+#+begin_src lisp :tangle ../projects/org-skill-provider-gemini/src/provider-logic.lisp
+(defun execute-gemini-web-request (prompt system-prompt &key model)
+  (declare (ignore model))
+  "Dispatches to the browser-based Web Research skill."
+  (let ((full-prompt (format nil "~a~%~%Prompt: ~a" system-prompt prompt)))
+    (uiop:symbol-call :org-agent.skills.org-skill-web-research :ask-gemini-web full-prompt)))
+#+end_src
+
+* Registration
+#+begin_src lisp
+(progn
+  (org-agent:register-neuro-backend :gemini #'execute-gemini-request)
+  (org-agent:register-neuro-backend :gemini-api #'execute-gemini-api-request)
+  (org-agent:register-neuro-backend :gemini-web #'execute-gemini-web-request)
+  
+  (defskill :skill-provider-gemini
+    :priority 90
+    :trigger (lambda (context) nil)
+    :neuro (lambda (context) nil)
+    :symbolic (lambda (action context) action)))
+#+end_src

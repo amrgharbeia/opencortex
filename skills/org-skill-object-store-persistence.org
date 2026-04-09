@@ -1,0 +1,74 @@
+:PROPERTIES:
+:ID:       e8b500e2-3f26-4c8e-8558-528061e178ca
+:CREATED:  [2026-03-31 Tue 18:28]
+:EDITED:   [2026-04-07 Tue 13:42]
+:END:
+#+TITLE: SKILL: Object Store Persistence (Universal Literate Note)
+#+STARTUP: content
+#+FILETAGS: :memory:persistence:closos:psf:
+
+* Overview
+The *Object Store Persistence* skill ensures that the agent's perceptual memory (the `*object-store*`) is durable. It provides the mechanism to "dump" the in-RAM knowledge graph to a Lisp-native image file and "reload" it upon boot, eliminating the need to re-parse the entire Memex on every restart.
+
+* Phase A: Demand (PRD)
+:PROPERTIES:
+:STATUS: FROZEN
+:END:
+
+** 1. Purpose
+Define automated behaviors for knowledge graph serialization and restoration.
+
+** 2. User Needs
+- *Instant Recall:* Rapid loading of the Object Store from a persistent image.
+- *High-Fidelity Serialization:* Recursive dumping of `org-object` structs and their relations.
+- *Atomic Persistence:* Save the entire graph state to a single `.el` or `.lisp` file.
+- *Background Synchronization:* Periodically dump the image during heartbeats.
+
+** 3. Success Criteria
+*** TODO Image Dump logic verification (File exists and is readable)
+*** TODO Image Load logic verification (Object count matches RAM state)
+*** TODO Performance audit (Loading image must be >10x faster than parsing)
+
+* Phase B: Blueprint (PROTOCOL)
+:PROPERTIES:
+:STATUS: SIGNED
+:END:
+
+** 1. Architectural Intent
+Interfaces for state dumping and restoration. Source of truth is the RAM-resident `*object-store*` and the `system/state/memory-image.lisp` file.
+
+** 2. Semantic Interfaces
+#+begin_src lisp
+(defun memory-dump-image ()
+  "Serializes the current *object-store* to disk.")
+
+(defun memory-load-image ()
+  "Restores the *object-store* from the persistent image file.")
+#+end_src
+
+* Phase D: Build (Implementation)
+
+** Image Serialization
+#+begin_src lisp :tangle ../projects/org-skill-object-store-persistence/src/persistence-logic.lisp
+(defun memory-dump-image ()
+  (let* ((state-dir (or (uiop:getenv "SYSTEM_DIR") "system/"))
+         (image-file (merge-pathnames "state/memory-image.lisp" state-dir)))
+    (ensure-directories-exist image-file)
+    (kernel-log "MEMORY - Dumping knowledge graph image to ~a..." (uiop:native-namestring image-file))
+    (with-open-file (out image-file :direction :output :if-exists :supersede)
+      ;; We serialize the hash table entries as a list of forms
+      (maphash (lambda (id obj)
+                 (declare (ignore id))
+                 (print `(setf (gethash ,(org-agent:org-object-id obj) org-agent:*object-store*) ,obj) out))
+               org-agent:*object-store*))
+    '(:target :system :payload (:action :message :text "Memory image dumped."))))
+#+end_src
+
+* Registration
+#+begin_src lisp
+(defskill :skill-object-store-persistence
+  :priority 100 ; Foundational infrastructure
+  :trigger (lambda (context) (eq (getf (getf context :payload) :sensor) :heartbeat))
+  :neuro (lambda (context) nil)
+  :symbolic (lambda (action context) (memory-dump-image)))
+#+end_src

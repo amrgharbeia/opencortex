@@ -1,0 +1,90 @@
+:PROPERTIES:
+:ID:       65891ce2-a465-49e6-a0c1-be13d3288d55
+:CREATED:  [2026-03-30 Mon 21:16]
+:EDITED:   [2026-04-07 Tue 13:42]
+:END:
+#+TITLE: SKILL: Self-Fix Agent (Universal Literate Note)
+#+STARTUP: content
+#+FILETAGS: :self-repair:autonomy:debugging:psf:
+#+DEPENDS_ON: skill-scientist skill-shell-actuator
+
+* Overview
+The *Self-Fix Agent* is the system's "Repair Mechanism." It takes the failure hypotheses from the *Scientist Agent*, applies surgical code modifications in a sandboxed environment, and merges the fix only after rigorous verification by the *TDD Runner*.
+
+* Phase A: Demand (PRD)
+:PROPERTIES:
+:STATUS: FROZEN
+:END:
+
+** 1. Purpose
+Enable autonomous, verified code correction without human intervention.
+
+** 2. User Needs
+- *Surgical Modification:* Apply targeted changes to specific Lisp functions or Org headlines.
+- *Sandboxed Verification:* Test every fix in a controlled environment before merging.
+- *Rollback Capability:* Use the *Interactive Steering* snapshots to revert if a fix fails.
+- *Audit Logging:* Every fix must be documented in `RCA.org`.
+
+* Phase D: Build (Implementation)
+
+** Repair Logic
+#+begin_src lisp :tangle ../projects/org-skill-self-fix/src/repair-logic.lisp
+(defun self-fix-replace-all (string part replacement)
+  (with-output-to-string (out)
+    (loop with part-length = (length part)
+          for old-pos = 0 then (+ pos part-length)
+          for pos = (search part string :start2 old-pos)
+          do (write-string string out :start old-pos :end (or pos (length string)))
+          when pos do (write-string replacement out)
+          while pos)))
+
+(defun self-fix-apply (action context)
+  "Applies a surgical code fix directly to the target file."
+  (declare (ignore context))
+  (let* ((payload (getf action :payload))
+         (target-file (getf payload :file))
+         (old-code (getf payload :old))
+         (new-code (getf payload :new)))
+    (org-agent:kernel-log "SELF-FIX - Attempting surgical fix on ~a..." target-file)
+    (if (uiop:file-exists-p target-file)
+        (let ((content (uiop:read-file-string target-file)))
+          (if (search old-code content)
+              (let ((new-content (self-fix-replace-all content old-code new-code)))
+                (with-open-file (out target-file :direction :output :if-exists :supersede)
+                  (write-string new-content out))
+                (org-agent:kernel-log "SELF-FIX SUCCESS - Applied fix to ~a" target-file)
+                t)
+              (progn
+                (org-agent:kernel-log "SELF-FIX FAILURE - Could not find old code in ~a" target-file)
+                nil)))
+        (progn
+          (org-agent:kernel-log "SELF-FIX FAILURE - File not found: ~a" target-file)
+          nil))))
+
+(defun neuro-skill-self-fix (context)
+  "Neural stage: Synthesizes a surgical code modification based on the hypothesis."
+  (let* ((payload (getf context :payload))
+         (hypothesis (getf payload :hypothesis))
+         (failure-log (getf payload :failure-log)))
+    (org-agent:ask-neuro 
+     (format nil "Based on the hypothesis '~a' and failure '~a', provide the exact Lisp code to fix it. 
+Return a Lisp plist: (:target :self-fix :action :apply :file \"path/to/file.lisp\" :old \"old code\" :new \"new code\")" 
+             hypothesis failure-log)
+     :system-prompt "You are the PSF Repair Actuator. You MUST return ONLY a Lisp plist.")))
+#+end_src
+
+* Registration
+#+begin_src lisp
+(defskill :skill-self-fix
+  :priority 95
+  :trigger (lambda (context) (eq (getf (getf context :payload) :sensor) :repair-request))
+  :neuro #'neuro-skill-self-fix
+  :symbolic #'self-fix-apply)
+#+end_src
+
+* Phase B: Blueprint (PROTOCOL)
+:PROPERTIES:
+:STATUS: SIGNED
+:END:
+
+** 1. Architectural IntentnEstablish core functional interfaces for this skill.\n\n** 2. Semantic Interfaces\n(defun trigger-skill-org-skill-self-fix (context))\n(defun neuro-skill-org-skill-self-fix (context))

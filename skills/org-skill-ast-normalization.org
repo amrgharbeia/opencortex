@@ -1,0 +1,66 @@
+:PROPERTIES:
+:ID:       1063668a-57ab-4d44-8db5-6f6fabb915b9
+:CREATED:  [2026-03-30 Mon 21:16]
+:EDITED:   [2026-04-07 Tue 13:42]
+:END:
+#+TITLE: SKILL: AST Normalization Agent (Universal Literate Note)
+#+STARTUP: content
+#+FILETAGS: :ast:normalization:integrity:psf:
+
+* Overview
+The *AST Normalization Agent* maintains the structural integrity of the Org-mode Abstract Syntax Tree. It ensures all nodes adhere to strict metadata requirements and handles deterministic refactoring.
+
+* Phase A: Demand (PRD)
+:PROPERTIES:
+:STATUS: FROZEN
+:END:
+
+** 1. Purpose
+Define automated structural enforcement and refactoring for the Org AST.
+
+** 2. User Needs
+- *Structural Enforcement:* Mandatory unique IDs for all headlines.
+- *Deterministic Preemption:* Symbolic verification must override neural suggestions if errors exist.
+- *Fidelity:* Preservation of content during metadata normalization.
+
+** 3. Success Criteria
+*** TODO ID Injection
+*** TODO Neural Preemption
+*** TODO Subtree Refactoring Verification
+
+
+* Phase B: Blueprint (PROTOCOL)
+:PROPERTIES:
+:STATUS: SIGNED
+:END:
+
+
+* Phase B: Blueprint (PROTOCOL)
+:PROPERTIES:
+:STATUS: IN-PROGRESS
+:END:
+
+** 1. Architectural Intent
+The AST Normalization Agent operates as a background process, triggered on file save or via explicit user command. It will use a combination of structural pattern matching and Lisp functions to enforce the defined structural rules. Conflict resolution will favor hard coded rules over learned knowledge.
+
+** 2. Semantic Interfaces
+
+*** Function: `ast-normalize-file`
+    - *Signature:* `(filepath) -> (normalized-ast)`
+    - *Purpose:* Takes a file path, parses the Org-mode file into an AST, normalizes the AST, and returns the normalized AST.
+
+*** Function: `headline-ensure-id`
+    - *Signature:* `(headline-node) -> (headline-node)`
+    - *Purpose:* Checks if a headline node has a unique ID. If not, generates and injects one. Returns the (possibly modified) headline node.
+
+*** Function: `ast-verify-integrity`
+    - *Signature:* `(ast) -> (t | nil)`
+    - *Purpose:*  Traverses the AST and verifies that all structural constraints are met (e.g., all headlines have IDs). Returns `t` if the AST is valid, `nil` otherwise.
+
+*** Function: `find-conflicts`
+    - *Signature:* `(normalized-ast prior-ast neural-suggestions) -> (list-of-conflicts)`
+    - *Purpose:*  Compares the normalized AST with Neural Net's structural suggestions and the original AST. Identifies conflicts where learned information suggests a change that compromises a strict rule.  Returns a list of conflicts.  Each conflict should indicate its severity.
+
+*** Function: `resolve-conflicts`
+    - *Signature:* `(list-of-conflicts) -> (resolved-ast)`
+    - *Purpose:* Resolves conflicts, enforcing the hard-coded normalization rules in cases where they conflict with neural suggestions. Returns the resolved AST.

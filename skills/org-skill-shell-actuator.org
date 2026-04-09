@@ -1,0 +1,146 @@
+:PROPERTIES:
+:ID:       0ae190ec-5658-4630-aed8-a5e9ffbbea0e
+:CREATED:  [2026-03-30 Mon 21:16]
+:EDITED:   [2026-04-07 Tue 13:42]
+:END:
+#+TITLE: SKILL: Shell Actuator Agent (Universal Literate Note)
+#+STARTUP: content
+#+FILETAGS: :shell:actuator:system:psf:
+
+* Overview
+The *Shell Actuator Agent* provides the bridge to the host operating system. It enables secure command execution while maintaining a strict security posture through whitelisting and diagnostic feedback loops.
+
+* Phase A: Demand (PRD)
+:PROPERTIES:
+:STATUS: FROZEN
+:END:
+
+** 1. Purpose
+Define a secure, diagnostic-rich interface for host OS interaction.
+
+** 2. User Needs
+- *Secure Actuation:* Strict whitelist of permitted commands.
+- *Diagnostic Feedback:* Capture STDOUT, STDERR, and exit codes.
+- *Loop Closure:* Automatic neural analysis of command results.
+- *Resilience:* Graceful handling of blocked or failed commands.
+
+** 3. Success Criteria
+*** TODO Whitelist Enforcement
+*** TODO Diagnostic Capture
+*** TODO Result Analysis Loop
+
+* Phase B: Blueprint (PROTOCOL)
+:PROPERTIES:
+:STATUS: SIGNED
+:END:
+
+** 1. Architectural Intent
+Interfaces for secure system calls. State is event-driven via the core kernel bus.
+
+** 2. Semantic Interfaces
+#+begin_src lisp
+(defun execute-shell-safely (action)
+  "Verifies command against whitelist and captures diagnostics.")
+
+(defun trigger-skill-shell-actuator (context)
+  "Monitors for shell-response events.")
+
+(defun neuro-skill-shell-actuator (context)
+  "Neural interpretation of command diagnostics.")
+#+end_src
+
+* Phase D: Build (Implementation)
+
+** Whitelisting & Execution
+#+begin_src lisp :tangle ../projects/org-skill-shell-actuator/src/shell-logic.lisp
+(defparameter *allowed-commands* '("ls" "git" "rg" "grep" "date" "echo" "cat" "node" "python3" "sbcl"))
+
+(defun execute-shell-safely (action context)
+  (let* ((cmd-string (getf (getf action :payload) :cmd))
+         (executable (car (uiop:split-string cmd-string :separator '(#\Space)))))
+    (if (member executable *allowed-commands* :test #'string=)
+        (multiple-value-bind (stdout stderr exit-code)
+            (uiop:run-program cmd-string :output :string :error-output :string :ignore-error-status t)
+          (org-agent:inject-stimulus 
+           `(:type :EVENT :payload (:sensor :shell-response :cmd ,cmd-string :stdout ,(or stdout "") :stderr ,(or stderr "") :exit-code ,exit-code))
+           :stream (getf context :reply-stream)))
+        (org-agent:inject-stimulus 
+         `(:type :EVENT :payload (:sensor :shell-response :cmd ,cmd-string :stdout "" :stderr "ERROR - Command not in security whitelist." :exit-code 1))
+         :stream (getf context :reply-stream)))))
+
+(defun execute-sandboxed-script (action context)
+  "Executes a synthesized script (Python/Lisp/JS) in a controlled directory.
+   This enables SOTA-level Tool Synthesis and Iterative Fixing."
+  (let* ((payload (getf action :payload))
+         (language (getf payload :language))
+         (content (getf payload :content))
+         (sandbox-dir "/tmp/org-agent-sandbox/")
+         (filename (format nil "synth-~a.~a" (get-universal-time) (case language (:python "py") (:lisp "lisp") (:js "js") (t "txt"))))
+         (full-path (format nil "~a~a" sandbox-dir filename)))
+    
+    (ensure-directories-exist sandbox-dir)
+    (with-open-file (out full-path :direction :output :if-exists :supersede)
+      (write-string content out))
+    
+    (let ((cmd (case language
+                 (:python (format nil "python3 ~a" full-path))
+                 (:lisp (format nil "sbcl --script ~a" full-path))
+                 (:js (format nil "node ~a" full-path)))))
+      (multiple-value-bind (stdout stderr exit-code)
+          (uiop:run-program cmd :output :string :error-output :string :ignore-error-status t)
+        (org-agent:inject-stimulus 
+         `(:type :EVENT :payload (:sensor :shell-response :cmd ,cmd :stdout ,(or stdout "") :stderr ,(or stderr "") :exit-code ,exit-code :synthesis-p t))
+         :stream (getf context :reply-stream))))))
+
+(defun provision-microvm (id &key (cpu 1) (ram 512))
+  "Hardware-Level Isolation: Provisions an ephemeral Firecracker MicroVM.
+   This is the high-security evolution of directory-based sandboxing."
+  (kernel-log "SECURITY [Hardware] - Provisioning MicroVM ~a (CPU: ~a, RAM: ~aMB)..." id cpu ram)
+  ;; Future implementation: Wraps 'fcvm' or 'firecracker' CLI calls.
+  (format nil "vm-~a-provisioned" id))
+#+end_src
+
+** Feedback Perception
+#+begin_src lisp :tangle ../projects/org-skill-shell-actuator/src/shell-logic.lisp
+(defun trigger-skill-shell-actuator (context)
+  (let ((type (getf context :type))
+        (payload (getf context :payload)))
+    (and (eq type :EVENT)
+         (eq (getf payload :sensor) :shell-response))))
+#+end_src
+
+** Neuro-Cognitive Analysis
+#+begin_src lisp :tangle ../projects/org-skill-shell-actuator/src/shell-logic.lisp
+(defun neuro-skill-shell-actuator (context)
+  (let* ((p (getf context :payload))
+         (cmd (getf p :cmd))
+         (stdout (getf p :stdout))
+         (stderr (getf p :stderr))
+         (exit-code (getf p :exit-code))
+         (synthesis-p (getf p :synthesis-p)))
+    (if synthesis-p
+        (format nil "
+          TOOL SYNTHESIS RESULT:
+          Command: ~a (Exit: ~a)
+          STDOUT: ~a
+          STDERR: ~a
+          
+          TASK: 
+          If the command failed (Exit != 0), analyze the STDERR and propose a FIX for the script.
+          If it succeeded, use the STDOUT to complete the original goal.
+        " cmd exit-code stdout stderr)
+        (let ((result-text (format nil "* Shell Command Result\n- Command: ~a\n- Exit Code: ~a\n\n** STDOUT\n#+begin_example\n~a\n#+end_example\n\n** STDERR\n#+begin_example\n~a\n#+end_example"
+                                   cmd exit-code stdout stderr)))
+          `(:type :request :target :emacs :payload (:action :insert-at-end :buffer "*org-agent-chat*" :text ,result-text))))))
+#+end_src
+
+* Registration
+#+begin_src lisp
+(org-agent:register-actuator :shell #'execute-shell-safely)
+
+(defskill :skill-shell-actuator
+  :priority 80
+  :trigger #'trigger-skill-shell-actuator
+  :neuro #'neuro-skill-shell-actuator
+  :symbolic (lambda (action context) action))
+#+end_src

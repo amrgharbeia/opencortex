@@ -1,0 +1,72 @@
+:PROPERTIES:
+:ID:       3ffed7d8-7a73-4766-bf64-473ba81f67f1
+:CREATED:  [2026-03-31 Tue 16:14]
+:EDITED:   [2026-04-07 Tue 13:42]
+:END:
+#+TITLE: SKILL: Org-JSON Bridge (Universal Literate Note)
+#+STARTUP: content
+#+FILETAGS: :org-mode:json:manipulation:psf:
+
+* Overview
+The *Org-JSON Bridge* enables programmatic manipulation of Org-mode files by converting them into a structured JSON representation and vice-versa. This bypasses the fragility of direct string manipulation for complex structures like tables, properties, and source blocks.
+
+* Phase A: Demand (PRD)
+:PROPERTIES:
+:STATUS: FROZEN
+:END:
+
+** 1. Purpose
+Define the interfaces for bidirectional Org-to-JSON conversion.
+
+** 2. User Needs
+- *Robust Parsing:* Convert Org-mode files into structured JSON AST.
+- *High-Fidelity Rendering:* Re-materialize JSON AST back into syntactically correct Org-mode text.
+- *Complex Structure Support:* Handle tables, property drawers, and source blocks without data loss.
+- *Programmatic API:* Provide a CLI and Lisp interface for other skills to use.
+
+** 3. Success Criteria
+*** TODO Parse Org-mode to JSON AST without loss of hierarchy
+*** TODO Render JSON AST back to Org-mode text matching original format
+*** TODO Table row injection via JSON manipulation verification
+
+
+* Phase B: Blueprint (PROTOCOL)
+:PROPERTIES:
+:STATUS: SIGNED
+:END:
+
+
+* Phase B: Blueprint (PROTOCOL)
+
+** 1. Architectural Intent
+The Org-JSON Bridge will be implemented as a modular system centered around two core functions: `org-to-json` and `json-to-org`.  The design prioritizes correctness,  maintainability, and extensibility. Error handling and clear documentation will be crucial. Serialization will leverage existing robust JSON libraries in the Lisp environment.  The internal representation (JSON AST) will mirror Org's structural components as much as practical, to minimize translation complexity.
+
+** 2. Semantic Interfaces
+
+*** `org-to-json`
+
+    - *Intent:*  Parse an Org-mode file (or string) and convert its content to a JSON AST.
+    - *Signature:* `(org-to-json source &key (source-type :file) (output-format :json) (error-policy :strict))`
+    - *Arguments:*
+        - `source`:  Either a file path (if `source-type` is `:file`) or an Org-mode string (if `source-type` is `:string`).
+        - `source-type`:  Keyword specifying the type of the `source` argument.  Valid values are `:file` and `:string`. Defaults to `:file`.
+        - `output-format`: Keyword specifying the desired output format. Currently only `:json` is supported.  Future options might include other serialization formats (e.g., YAML).
+        - `error-policy`:  Keyword specifying how parsing errors should be handled.  `:strict` (the default) signals an error immediately.  `:lenient` attempts to recover and continue parsing, potentially returning a partial AST with error annotations.
+    - *Returns:* A JSON AST representing the Org-mode content, or `NIL` if an unrecoverable error occurs and `error-policy` is `:strict`.
+    - *Error Handling:* Raises errors when `error-policy` is `:strict` and parsing fails.  Returns informative error messages.
+
+*** `json-to-org`
+
+    - *Intent:* Convert a JSON AST back into an Org-mode string.
+    - *Signature:* `(json-to-org ast &key (output-format :org) (pretty-print t) (error-policy :strict))`
+    - *Arguments:*
+        - `ast`:  The JSON AST to be converted.
+        - `output-format`: Keyword specifying the desired output format. Only `:org` is currently supported.
+        - `pretty-print`: Boolean indicating whether the output should be formatted for readability. Defaults to `T`.
+        - `error-policy`:  Keyword specifying how rendering errors should be handled.  `:strict` (the default) signals an error immediately.  `:lenient` attempts to recover and continue rendering, potentially producing a partial Org-mode string with error annotations.
+    - *Returns:* An Org-mode string representing the content of the JSON AST, or `NIL` if an unrecoverable error occurs and `error-policy` is `:strict`.
+    - *Error Handling:* Raises errors during rendering when `error-policy` is `:strict` and the provided AST is invalid (e.g., missing required fields or incorrect data types). Returns informative error messages.
+
+*** CLI Interface
+
+    - Command-line tools wrapping `org-to-json` and `json-to-org` will also be provided for convenient use from the shell.  These tools will accept file paths as input and output, and include options to control formatting and error handling.  Example: `org-json-convert --to-json input.org output.json`.

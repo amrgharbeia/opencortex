@@ -1,0 +1,70 @@
+:PROPERTIES:
+:ID:       4ed67571-bde3-44f9-93d1-f5b2aef5f26b
+:CREATED:  [2026-03-31 Tue 18:13]
+:EDITED:   [2026-04-07 Tue 13:42]
+:END:
+#+TITLE: SKILL: Onboarding & Calibration (Universal Literate Note)
+#+STARTUP: content
+#+FILETAGS: :onboarding:calibration:setup:psf:
+
+* Overview
+The *Onboarding Skill* ensures that the Lisp Machine environment is correctly calibrated. It automates the "zero-to-one" setup of the Neurosymbolic Kernel, including path normalization, identity personalization, and provider/actuator configuration.
+
+* Phase A: Demand (PRD)
+:PROPERTIES:
+:STATUS: FROZEN
+:END:
+
+** 1. Purpose
+Define automated behaviors for verifying and configuring the PSF environment.
+
+** 2. User Needs
+- *Environment Verification:* Confirm SBCL, Quicklisp, and core binaries are present.
+- *Path Calibration:* Resolve absolute paths for the Memex PARA structure.
+- *Neural Calibration:* Interactive selection of LLM providers and models.
+- *Actuator Calibration:* Interactive setup of delivery channels (Signal, Telegram, etc.).
+- *Identity Persona:* Establish $MEMEX_USER and $MEMEX_ASSISTANT.
+
+** 3. Success Criteria
+*** TODO SBCL/Quicklisp Verification Logic
+*** TODO Automated .env Generation from Template
+*** TODO Model Tiering Property Injection
+*** TODO Delivery Channel Actuator Verification
+
+
+* Phase B: Blueprint (PROTOCOL)
+:PROPERTIES:
+:STATUS: SIGNED
+:END:
+
+
+* Phase B: Blueprint (PROTOCOL)
+:PROPERTIES:
+:STATUS: DRAFT
+:END:
+
+** 1. Architectural Intent
+The Onboarding Protocol aims for a modular, extensible, and interactive configuration process.  We will leverage Lisp's interactive environment and metaprogramming capabilities to guide the user through setup and validation.  The core principle is *gradual disclosure* and *progressive enhancement*. The system first checks for minimal requirements and then interactively enhances the configuration.  Configuration data is stored in a `.env` file, ensuring persistence and easy modification.  Modules (Actors in the system) are responsible for specific aspects of configuration and are designed to be easily added or modified. Error handling is proactive, guiding the user through resolution steps rather than crashing. Logging and audit trails will be implemented.
+
+** 2. Semantic Interfaces (Lisp Signatures)
+
+*** `verify-system-dependencies &key (sbcl-present-p t) (quicklisp-present-p t) -> boolean`
+    Verifies the presence and basic functionality of essential system dependencies like SBCL and Quicklisp.  Returns `T` if all specified dependencies are met, `NIL` otherwise.  Accepts keyword arguments to selectively disable verification of specific dependencies (useful during development).
+
+*** `calibrate-memex-paths &key (memex-root "/home/user/memex/") -> plist`
+    Interactively guides the user to define the absolute paths for the Memex PARA structure (Projects, Areas, Resources, Archive). Stores these paths in a plist and updates the `.env` file.  `memex-root` provides a default value;  the user can override this.  Returns a plist of the form `(:projects "/path/to/projects/" :areas "/path/to/areas/" ...)`
+
+*** `calibrate-neural-provider &key (default-provider :openai) (default-model "gpt-3.5-turbo") -> plist`
+    Presents the user with a choice of LLM providers and models.  Validates API keys (if required) and stores the chosen provider, model, and API key in the `.env` file.  `default-provider` and `default-model` provide starting defaults. Returns a plist of the form `(:provider :openai :model "gpt-4" :api-key "sk-...")`
+
+*** `configure-delivery-channel &key (channel-type :signal) -> plist`
+    Guides the user through the configuration of a specific delivery channel (e.g., Signal, Telegram). Interactively prompts for necessary credentials and validates the configuration. Returns configurations as plist, containing `:channel-type` and other necessary credentials, e.g., `(:channel-type :signal :phone-number "+15551234567" :signal-cli-path "/usr/bin/signal-cli")`
+
+*** `setup-identity &key (memex-user "user") (memex-assistant "Assistant") -> plist`
+   Sets up the `$MEMEX_USER` and `$MEMEX_ASSISTANT` environment variables, allowing customization of the user and assistant names used within the Lisp Machine. Interactively prompts the user for confirmation or modification of the default values. Returns a plist `(:memex-user "NewUser" :memex-assistant "NewAssistant")`.
+
+*** `generate-env-file &key (template-path "/path/to/default/.env.template") (output-path ".env") (config-data plist) -> boolean`
+    Generates the `.env` file from a template, populating it with the configuration data gathered from the other calibration functions. Returns `T` on success, `NIL` on failure.
+
+*** `validate-env-variables -> plist`
+    Validates .env variables are set and functional for the kernel, actuators, and models. Returns a plist `(:kernel t :actuators t :models t)`. This is the main test before boot.

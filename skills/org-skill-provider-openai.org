@@ -1,0 +1,84 @@
+:PROPERTIES:
+:ID:       c6cbd603-3fa2-4fe9-807d-68006af1362a
+:CREATED:  [2026-03-30 Mon 21:16]
+:EDITED:   [2026-04-07 Tue 13:42]
+:END:
+#+TITLE: SKILL: OpenAI Provider Agent (Universal Literate Note)
+#+STARTUP: content
+#+FILETAGS: :llm:provider:openai:gpt:psf:
+
+* Overview
+The *OpenAI Provider Agent* integrates OpenAI's GPT models as a pluggable System 1 (neural) backend. It provides industry-standard processing capabilities for reasoning and content generation.
+
+* Phase A: Demand (PRD)
+:PROPERTIES:
+:STATUS: FROZEN
+:END:
+
+** 1. Purpose
+Define the interface for reliable communication with the OpenAI Chat Completions API.
+
+** 2. User Needs
+- *Compatibility:* Full implementation of the Chat Completions protocol.
+- *Reliability:* Secure management of `$OPENAI_API_KEY`.
+- *Optimized Inference:* Configurable temperature and model selection (GPT-4o, etc.).
+- *Resilience:* Graceful handling of timeouts and errors.
+
+** 3. Success Criteria
+*** TODO API Authentication via Bearer Token
+*** TODO Chat Payload Construction
+*** TODO Choice Extraction Verification
+
+
+* Phase B: Blueprint (PROTOCOL)
+:PROPERTIES:
+:STATUS: SIGNED
+:END:
+
+* Phase B: Blueprint (PROTOCOL)
+:PROPERTIES:
+:STATUS: DRAFT
+:END:
+
+** 1. Architectural Intent
+The OpenAI Provider Agent will act as a translator and executor for requests targeting OpenAI's Chat Completions API.  It will abstract away the complexities of API authentication, payload construction, and response parsing, providing a clean and consistent interface for System 1 agents within the Lisp Machine. It prioritizes secure API key management using environment variables and offers configurable parameters for inference.  The architecture focuses on resilience, managing potential API errors (timeouts, rate limits) through robust error handling.
+
+** 2. Semantic Interfaces
+
+*** `execute-openai-request`
+:signature `(execute-openai-request prompt system-prompt &key model) :string`
+:description "Direct call to the OpenAI Chat Completions API."
+
+* Phase D: Build (Implementation)
+
+#+begin_src lisp :tangle ../projects/org-skill-provider-openai/src/provider-logic.lisp
+(in-package :org-agent)
+
+(defun execute-openai-request (prompt system-prompt &key model)
+  (let ((api-key (uiop:getenv "OPENAI_API_KEY"))
+        (endpoint "https://api.openai.com/v1/chat/completions")
+        (model-id (or model "gpt-4o")))
+    (unless api-key (return-from execute-openai-request "(:type :LOG :payload (:text \"OpenAI API Key missing\"))"))
+    (let* ((headers `(("Content-Type" . "application/json")
+                      ("Authorization" . ,(format nil "Bearer ~a" api-key))))
+           (body (cl-json:encode-json-to-string
+                  `((model . ,model-id)
+                    (messages . (( (role . "system") (content . ,system-prompt) )
+                                 ( (role . "user") (content . ,prompt) )))))))
+      (handler-case (let* ((response (dex:post endpoint :headers headers :content body :connect-timeout 10 :read-timeout 30))
+                           (json (cl-json:decode-json-from-string response)))
+                      (cdr (assoc :content (cdr (assoc :message (car (cdr (assoc :choices json))))))))
+        (error (c) (format nil "(:type :LOG :payload (:text \"OpenAI Failure: ~a\"))" c))))))
+#+end_src
+
+* Registration
+#+begin_src lisp
+(progn
+  (org-agent:register-neuro-backend :openai #'execute-openai-request)
+  
+  (defskill :skill-provider-openai
+    :priority 100
+    :trigger (lambda (context) nil)
+    :neuro (lambda (context) nil)
+    :symbolic (lambda (action context) action)))
+#+end_src

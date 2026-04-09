@@ -1,0 +1,95 @@
+:PROPERTIES:
+:ID:       98576df2-c496-4e4a-9acb-0bca514a0305
+:CREATED:  [2026-03-31 Tue 18:28]
+:EDITED:   [2026-04-07 Tue 13:42]
+:END:
+#+TITLE: SKILL: Global Safety Harness (Universal Literate Note)
+#+STARTUP: content
+#+FILETAGS: :security:sandbox:ast:psf:
+
+* Overview
+The *Global Safety Harness* is the primary "Safety Gate" for the Neurosymbolic Lisp Machine. It provides a recursive AST validator that subjects all Elisp proposals from System 1 to a strict "Deny-by-Default" sandbox, preventing arbitrary code execution while allowing high-fidelity system manipulation.
+
+* Phase A: Demand (PRD)
+:PROPERTIES:
+:STATUS: FROZEN
+:END:
+
+** 1. Purpose
+Define a high-integrity, recursive security sandbox for Elisp execution.
+
+** 2. User Needs
+- *Recursive Validation:* Every nested function call and variable access MUST be checked.
+- *Deny-by-Default:* Only explicitly whitelisted functions and variables are permitted.
+- *Eval Protection:* Block all forms of `eval`, `load`, or dynamic execution.
+- *Symbolic Preemption:* This skill acts as a mandatory global System 2 check.
+
+** 3. Success Criteria
+*** TODO Implement recursive AST walker in Lisp
+*** TODO Establish strict function whitelist (surgical Org operations)
+*** TODO Detect and block nested 'eval' attempts
+*** TODO Verify that malformed or malicious sexps are rejected
+
+
+* Phase B: Blueprint (PROTOCOL)
+:PROPERTIES:
+:STATUS: SIGNED
+:END:
+
+* Phase B: Blueprint (PROTOCOL)
+:PROPERTIES:
+:STATUS: IN-PROGRESS
+:END:
+
+** 1. Architectural Intent
+
+The Global Safety Harness will function as a global aspect, intercepting all Elisp forms before they are evaluated by the core Lisp interpreter.  It achieves this by:
+
+- **AST Walking:** Recursively traversing the Abstract Syntax Tree (AST) of the Elisp expression.
+- **Whitelist Enforcement:** Comparing each function call and variable access against a pre-approved whitelist. Any item not on the whitelist is immediately rejected.
+- **Eval Blocking:**  Explicitly searching for and rejecting any instances of `eval`, `load`, `eval-expression`, and related functions that enable dynamic code generation or loading.
+- **Error Handling:**  Providing informative error messages when a security violation occurs, including the specific function or variable that triggered the rejection and its location within the AST.
+- **Performance Consideration:** Optimizing the AST walking and whitelist lookup to minimize overhead on Elisp evaluation. Memoization of whitelist checks should be implemented to avoid redundant lookups.
+
+** 2. Semantic Interfaces
+
+*** Function: +safety-harness-validate+
+
+     #+BEGIN_SRC lisp
+     (defun +safety-harness-validate+ (form whitelist)
+       "Validates an Elisp form against a security whitelist.
+       FORM:  The Elisp form to validate (list or symbol).
+       WHITELIST: An alist associating symbols (function/variable names) to metadata. Metadata includes :safe? boolean flag and :trust-level (integer).")
+     #+END_SRC
+
+*** Function: +safety-harness-ast-walk+
+
+     #+BEGIN_SRC lisp
+     (defun +safety-harness-ast-walk+ (form whitelist)
+       "Recursively walks the Abstract Syntax Tree (AST) of an Elisp form,
+       validating each node against the whitelist.")
+     #+END_SRC
+
+*** Function: +safety-harness-whitelist-lookup+
+
+     #+BEGIN_SRC lisp
+     (defun +safety-harness-whitelist-lookup+ (symbol whitelist)
+       "Looks up a symbol in the security whitelist.
+       Returns the whitelist entry if found, or nil if not found.")
+     #+END_SRC
+
+*** Function: +safety-harness-eval-blocked?+
+
+     #+BEGIN_SRC lisp
+     (defun +safety-harness-eval-blocked?+ (form)
+       "Checks if the Elisp form contains any prohibited eval-like constructs.
+       Returns t if eval is blocked, nil otherwise.")
+     #+END_SRC
+
+*** Data Structure: +safety-harness-error+
+
+     A plist data structure representing a security violation:
+     - `:type`:  `'whitelist-violation` or `'eval-blocked`
+     - `:symbol`: The offending symbol (function or variable name)
+     - `:location`:  A list representing the path within the AST where the violation occurred.
+

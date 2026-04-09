@@ -1,0 +1,144 @@
+:PROPERTIES:
+:ID:       f605bf22-7ba7-458e-b0ce-5356e8ca46c6
+:CREATED:  [2026-03-30 Mon 21:16]
+:EDITED:   [2026-04-07 Tue 13:42]
+:END:
+#+TITLE: SKILL: Ollama Provider Agent (Universal Literate Note)
+#+STARTUP: content
+#+FILETAGS: :llm:provider:ollama:local:psf:
+
+* Overview
+The *Ollama Provider Agent* enables the use of local, privacy-preserving LLM models. It integrates with a local Ollama instance to ensure system functionality and sovereignty without external internet connectivity.
+
+* Phase A: Demand (PRD)
+:PROPERTIES:
+:STATUS: FROZEN
+:END:
+
+** 1. Purpose
+Define the interface for communication with a local Ollama daemon.
+
+** 2. User Needs
+- *Sovereignty:* Fallback backend independent of cloud providers.
+- *Performance:* Efficient local network interaction.
+- *Simplicity:* Deterministic, non-streaming text generation.
+
+** 3. Success Criteria
+*** TODO Local API Connectivity
+*** TODO Model Specification (llama3)
+*** TODO Response Extraction Verification
+
+
+* Phase B: Blueprint (PROTOCOL)
+:PROPERTIES:
+:STATUS: SIGNED
+:END:
+
+* Phase B: Blueprint (PROTOCOL)
+
+** 1. Architectural Intent
+This protocol outlines the communication between the Ollama Provider Agent and the local Ollama instance. The primary goal is to provide a simple, deterministic interface for generating text from a specified language model.  Error handling and model specification are crucial for robustness. We'll use a straightforward request-response pattern using the Ollama API. We will use the ollama HTTP API to avoid complex dependencies.
+
+** 2. Semantic Interfaces
+
+*** `ollama-generate`
+This function sends a prompt to the local Ollama instance and returns the generated text.
+
+    :lisp
+    (defun ollama-generate (model prompt &key (host "localhost:11434") (timeout 10))
+      "Generates text from the specified Ollama model.
+
+      MODEL: The name of the Ollama model.  Example: \"llama3\"
+      PROMPT: The text prompt to send to the model.
+      HOST:  The hostname and port of the Ollama instance.  Defaults to localhost:11434
+      TIMEOUT:  Timeout for the HTTP request in seconds.  Defaults to 10
+
+      Returns: A string containing the generated text or NIL on error."
+      (let ((url (format nil "http://~A/api/generate" host)))
+        (let ((data (json:encode-json-to-string (alist-to-plist `((model . ,model) (prompt . ,prompt) (stream . false))))))
+          (handler-case
+              (let ((response (drakma:http-request url
+                                                  :method :POST
+                                                  :content-type "application/json"
+                                                  :content data
+                                                  :timeout timeout
+                                                  :want-stream t)))
+                (unwind-protect
+                     (let ((json-response (json:decode-json-from-stream (drakma:get-input-stream response))))
+                       (getf json-response :response))
+                  (drakma:close-http-connection response)))
+            (drakma:http-request-error (e)
+              (format t "Error in HTTP request: ~A~%" e)
+              nil)
+            (json:json-decode-error (e)
+              (format t "Error decoding JSON response: ~A~%" e)
+              nil)
+            (error (e)
+              (format t "Unexpected error: ~A~%" e)
+              nil)))))
+
+*** `ollama-model-exists-p`
+This function checks if a given model exists in the local Ollama instance.
+
+    :lisp
+    (defun ollama-model-exists-p (model &key (host "localhost:11434") (timeout 5))
+      "Checks if a model exists in the local Ollama instance.
+
+      MODEL: The name of the Ollama model to check.
+      HOST: The hostname and port of the Ollama instance. Defaults to localhost:11434
+      TIMEOUT: Timeout for the HTTP request in seconds. Defaults to 5
+
+      Returns: T if the model exists, NIL otherwise."
+      (let ((url (format nil "http://~A/api/tags" host)))
+        (handler-case
+            (let ((response (drakma:http-request url
+                                                :method :GET
+                                                :timeout timeout
+                                                :want-stream t)))
+              (unwind-protect
+                   (let ((json-response (json:decode-json-from-stream (drakma:get-input-stream response))))
+                     (loop for model-data in (getf json-response :models)
+                           when (string= (getf model-data :name) model)
+                             do (return t)
+                           finally (return nil)))
+                (drakma:close-http-connection response)))
+          (drakma:http-request-error (e)
+            (format t "Error in HTTP request: ~A~%" e)
+            nil)
+          (json:json-decode-error (e)
+            (format t "Error decoding JSON response: ~A~%" e)
+            nil)
+          (error (e)
+            (format t "Unexpected error: ~A~%" e)
+            nil))))
+
+*** `ollama-list-models`
+   Lists the available models in Ollama
+
+    :lisp
+    (defun ollama-list-models (&key (host "localhost:11434") (timeout 5))
+      "Lists available models in the local Ollama instance.
+
+      HOST: The hostname and port of the Ollama instance. Defaults to localhost:11434
+      TIMEOUT: Timeout for the HTTP request in seconds. Defaults to 5
+
+      Returns: a list of model names (strings)."
+      (let ((url (format nil "http://~A/api/tags" host)))
+        (handler-case
+            (let ((response (drakma:http-request url
+                                                :method :GET
+                                                :timeout timeout
+                                                :want-stream t)))
+              (unwind-protect
+                   (let ((json-response (json:decode-json-from-stream (drakma:get-input-stream response))))
+                     (mapcar #'(lambda (m) (getf m :name)) (getf json-response :models)))
+                (drakma:close-http-connection response)))
+          (drakma:http-request-error (e)
+            (format t "Error in HTTP request: ~A~%" e)
+            nil)
+          (json:json-decode-error (e)
+            (format t "Error decoding JSON response: ~A~%" e)
+            nil)
+          (error (e)
+            (format t "Unexpected error: ~A~%" e)
+            nil))))

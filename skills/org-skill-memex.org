@@ -1,0 +1,83 @@
+:PROPERTIES:
+:ID:       3cf112fa-c8f6-4649-8d0f-96cde70d8807
+:CREATED:  [2026-03-31 Tue 13:03]
+:EDITED:   [2026-04-07 Tue 13:42]
+:END:
+#+TITLE: SKILL: Memex Manager (Universal Literate Note)
+#+STARTUP: content
+#+FILETAGS: :memex:gtd:zettelkasten:integrity:psf:
+
+* Overview
+The *Memex Manager* is the primary automation engine for the Personal Knowledge Management system. It enforces metadata standards, automates task lifecycles, and distills ephemeral daily logs into timeless knowledge.
+
+* Phase A: Demand (PRD)
+:PROPERTIES:
+:STATUS: FROZEN
+:END:
+
+** 1. Purpose
+Define automated behaviors for knowledge and task management integrity.
+
+** 2. User Needs
+- *Unified Capture:* Landing all new information in `inbox.org`.
+- *Metadata Compliance:* Mandatory `:CREATED:` and `:LOGBOOK:` drawers.
+- *Automated Task Lifecycle:* `NEXT` promotion logic for GTD.
+- *Mobile Sovereignty:* Compatibility with Markor and Orgzly.
+- *Agentic Distillation:* Extracting evergreen concepts from daily logs.
+
+** 3. Success Criteria
+*** TODO Metadata Audit Accuracy
+*** TODO Task Promotion Verification
+*** TODO Note Distillation Provenance
+
+
+* Phase B: Blueprint (PROTOCOL)
+:PROPERTIES:
+:STATUS: SIGNED
+:END:
+
+* Phase B: Blueprint (PROTOCOL)
+:PROPERTIES:
+:STATUS: DRAFT
+:END:
+
+** 1. Architectural Intent
+
+The Memex Manager is designed as a collection of independent, composable functions orchestrated by Emacs Lisp.  We prioritize modularity, testability, and adherence to functional programming principles.  Each function addresses a specific aspect of PKM automation. The system should be easily extensible to accommodate new workflows and data sources. Core functions must be idempotent where applicable, and failures must be gracefully handled with informative logging. The system will interact with Org mode files primarily via the `org.el` library and file system operations.  Error reporting should use Emacs' built-in mechanisms.
+
+** 2. Semantic Interfaces (Lisp Signatures)
+
+*** `memex-capture-unified (content &key source)`
+     - *Purpose:*  Append `content` to `inbox.org`, tagging with `source`.
+     - *Input:*
+       - `content`: String, the text to be captured.
+       - `source`: Keyword, indicating the origin (e.g., `:email`, `:web`, `:cli`).
+     - *Output:*  Boolean, `t` on success, `nil` on failure.
+     - *Side Effects:*  Modifies `inbox.org`.
+     - *Example:* `(memex-capture-unified "New idea from a book" :source :book)`
+
+*** `memex-metadata-enforce (filepath)`
+     - *Purpose:*  Ensure `:CREATED:` and `:LOGBOOK:` drawers exist and are populated in the Org file at `filepath`.
+     - *Input:* `filepath`: String, the path to the Org file.
+     - *Output:* Boolean, `t` if metadata is compliant, `nil` if not (and log warnings.)
+     - *Side Effects:*  Potentially modifies the Org file.
+     - *Example:*  `(memex-metadata-enforce "/home/user/memex/notes/some-new-note.org")`
+
+*** `memex-task-promote (filepath &key heading)`
+     - *Purpose:*  Advance the GTD status of the task matching `heading` within `filepath` (NEXT -> DOING -> REVIEW -> DONE).
+     - *Input:*
+       - `filepath`: String, the path to the Org file.
+       - `heading`: String, the exact text of the Org mode heading for the task.
+     - *Output:* Boolean, `t` on success, `nil` if the task isn't found or promotion fails.
+     - *Side Effects:* Modifies the Org file if the task is promoted.
+     - *Example:* `(memex-task-promote "/home/user/memex/tasks.org" :heading "Implement file sync")`
+
+*** `memex-distill-notes (logfile &key keywords)`
+     - *Purpose:* Extract and create evergreen notes from a daily log file.
+     - *Input:*
+       - `logfile`: String, the path to the daily log Org file.
+       - `keywords`: List of strings. Focuses extraction based on keywords.
+     - *Output:* List of strings, representing the filepaths of the newly created evergreen notes extracted from the log.
+     - *Side Effects:* Creates one or more new Org files for the distilled concepts.
+     - *Example:* `(memex-distill-notes "/home/user/memex/daily/2024-10-27.org" :keywords '("spaced repetition" "zettelkasten"))`
+

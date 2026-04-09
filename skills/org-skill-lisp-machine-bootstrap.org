@@ -1,0 +1,59 @@
+:PROPERTIES:
+:ID:       81e3492e-0d28-416c-a67c-c7f6f114643d
+:CREATED:  [2026-04-07 Tue 12:57]
+:EDITED:   [2026-04-07 Tue 13:42]
+:END:
+#+TITLE: SKILL: Lisp Machine Bootstrap (Universal Literate Note)
+#+STARTUP: content
+#+FILETAGS: :hardware:lisp:sovereignty:fpga:psf:
+
+* Overview
+The *Lisp Machine Bootstrap* project is the "Endgame" of the PSF. It aims to eliminate the "Unix/C Tax" by building a hardware-native Lisp machine where CAR, CDR, and CONS are primitive gates. This ensures ultimate digital sovereignty and a provably secure, homoiconic environment.
+
+* Phase A: Demand (PRD)
+:PROPERTIES:
+:STATUS: FROZEN
+:END:
+
+** 1. Purpose
+Define the requirements for a hardware environment optimized for Lisp and user sovereignty.
+
+** 2. User Needs
+- *Hardware-Native Lisp:* ISA designed for list processing efficiency.
+- *Tagged Memory:* Hardware-level safety preventing memory corruption.
+- *Bootstrapping Path:* Progression from Soft Machine (Linux) to Sovereign Silicon (ASIC).
+- *Transparency:* Every gate and instruction must be introspectable and documented.
+
+** 3. Success Criteria
+*** TODO Research existing Lisp-on-FPGA implementations (Openora, etc.)
+*** TODO Define minimum hardware-native Lisp ISA (Instruction Set Architecture)
+*** TODO Draft CLOSOS-style Virtual Machine specification
+*** TODO FPGA Implementation: Verilog/VHDL skeleton synthesis
+
+* Phase B: Blueprint (PROTOCOL)
+:PROPERTIES:
+:STATUS: SIGNED
+:END:
+
+** 1. Architectural Intent
+The protocol defines the interface between the high-level Lisp image and the low-level ISA/VM.
+
+** 2. Semantic Interfaces
+#+begin_src lisp
+(defun isa-dispatch (instruction opcode)
+  "Simulates the hardware dispatch of a Lisp-native instruction.")
+
+(defun memory-tag-audit (address)
+  "Verifies the hardware tag of a specific memory word.")
+#+end_src
+
+* Phase D: Build (Implementation)
+Current focus is on research and simulation (Phase 1: Soft Machine).
+
+** Simulation Interface
+#+begin_src lisp
+;; Soft machine simulator stubs
+#+end_src
+
+* Phase E: Chaos (Verification)
+Verification will occur via FPGA synthesis reports and VM regression tests.
