@@ -120,14 +120,37 @@ echo -e "\n${BLUE}[5/5] Seeding Core Skills...${NC}"
 NOTES_DIR="$PARENT_DIR/notes"
 mkdir -p "$NOTES_DIR"
 
-CORE_SKILLS=("org-skill-memex.org" "org-skill-scribe.org" "org-skill-project-foundry.org")
-for skill in "${CORE_SKILLS[@]}"; do
-    if [ -f "$NOTES_DIR/$skill" ]; then
-        echo -e "${GREEN}✓ $skill already present in notes/.${NC}"
+# Core skills (The Standard Library)
+echo -e "Installing Standard Library from projects/org-agent/skills/..."
+for skill_path in skills/*.org; do
+    skill_name=$(basename "$skill_path")
+    if [[ "$1" == "--dev" ]]; then
+        ln -sf "$PROJECT_ROOT/$skill_path" "$NOTES_DIR/$skill_name"
+        echo -e "  Linked: $skill_name"
     else
-        echo -e "${BLUE}! $skill missing. Ensuring system/skills/ symlinks are valid...${NC}"
+        cp -n "$skill_path" "$NOTES_DIR/$skill_name"
+        echo -e "  Copied: $skill_name"
     fi
 done
+
+# Contrib skills (The Ecosystem)
+CONTRIB_DIR="$PARENT_DIR/projects/org-agent-contrib"
+if [ -d "$CONTRIB_DIR" ]; then
+    echo -e "\n${BLUE}Ecosystem Skills detected in projects/org-agent-contrib/.${NC}"
+    read -p "Would you like to install additional domain skills? [y/N]: " INSTALL_CONTRIB
+    if [[ "$INSTALL_CONTRIB" =~ ^[Yy]$ ]]; then
+        for skill_path in "$CONTRIB_DIR"/*.org; do
+            skill_name=$(basename "$skill_path")
+            if [[ "$1" == "--dev" ]]; then
+                ln -sf "$skill_path" "$NOTES_DIR/$skill_name"
+                echo -e "  Linked: $skill_name"
+            else
+                cp -n "$skill_path" "$NOTES_DIR/$skill_name"
+                echo -e "  Copied: $skill_name"
+            fi
+        done
+    fi
+fi
 
 echo -e "\n${GREEN}==================================================${NC}"
 echo -e "${GREEN} Onboarding Complete!                             ${NC}"
