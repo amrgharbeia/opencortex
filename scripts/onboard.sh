@@ -38,114 +38,127 @@ if [ ! -f .env ]; then
     cp .env.example .env
     echo -e "${GREEN}✓ Created .env from .env.example.${NC}"
 else
-    echo -e "${BLUE}! .env already exists. Skipping creation.${NC}"
+    echo -e "${BLUE}! .env already exists. Loading existing values.${NC}"
 fi
 
-# Set MEMEX_DIR automatically to current parent if not set
+# Function to get value from .env without quotes
+get_env_val() {
+    local key=$1
+    local val=$(grep "^${key}=" .env | cut -d'=' -f2- | sed 's/^"//;s/"$//;s/^\x27//;s/\x27$//')
+    echo "$val"
+}
+
+# Load variables
+MEMEX_DIR=$(get_env_val "MEMEX_DIR")
+SKILLS_DIR=$(get_env_val "SKILLS_DIR")
+
+# If MEMEX_DIR is still the default or empty, normalize it to the parent of the project
 PROJECT_ROOT=$(pwd)
 PARENT_DIR=$(dirname "$PROJECT_ROOT")
 
-# Use a temporary file for editing .env to be safe
-sed -i "s|MEMEX_DIR=\"/memex\"|MEMEX_DIR=\"$PARENT_DIR\"|g" .env
-sed -i "s|ZETTELKASTEN_DIR=\"/memex/notes\"|ZETTELKASTEN_DIR=\"$PARENT_DIR/notes\"|g" .env
-sed -i "s|SKILLS_DIR=\"/memex/notes\"|SKILLS_DIR=\"$PARENT_DIR/notes\"|g" .env
-sed -i "s|INBOX_DIR=\"/memex/inbox\"|INBOX_DIR=\"$PARENT_DIR/inbox\"|g" .env
-sed -i "s|DAILY_DIR=\"/memex/daily\"|DAILY_DIR=\"$PARENT_DIR/daily\"|g" .env
-sed -i "s|PROJECTS_DIR=\"/memex/projects\"|PROJECTS_DIR=\"$PARENT_DIR/projects\"|g" .env
-sed -i "s|SYSTEM_DIR=\"/memex/system\"|SYSTEM_DIR=\"$PARENT_DIR/system\"|g" .env
-
-echo -e "${GREEN}✓ Absolute paths normalized to: $PARENT_DIR${NC}"
+if [[ -z "$MEMEX_DIR" || "$MEMEX_DIR" == "/memex" ]]; then
+    MEMEX_DIR="$PARENT_DIR"
+    sed -i "s|MEMEX_DIR=.*|MEMEX_DIR=\"$MEMEX_DIR\"|g" .env
+    sed -i "s|ZETTELKASTEN_DIR=.*|ZETTELKASTEN_DIR=\"$MEMEX_DIR/notes\"|g" .env
+    sed -i "s|SKILLS_DIR=.*|SKILLS_DIR=\"$MEMEX_DIR/notes\"|g" .env
+    sed -i "s|INBOX_DIR=.*|INBOX_DIR=\"$MEMEX_DIR/inbox\"|g" .env
+    sed -i "s|DAILY_DIR=.*|DAILY_DIR=\"$MEMEX_DIR/daily\"|g" .env
+    sed -i "s|PROJECTS_DIR=.*|PROJECTS_DIR=\"$MEMEX_DIR/projects\"|g" .env
+    sed -i "s|SYSTEM_DIR=.*|SYSTEM_DIR=\"$MEMEX_DIR/system\"|g" .env
+    echo -e "${GREEN}✓ Paths normalized to: $MEMEX_DIR${NC}"
+    # Refresh SKILLS_DIR after normalization
+    SKILLS_DIR=$(get_env_val "SKILLS_DIR")
+fi
 
 # 3. Model Strategy
 echo -e "\n${BLUE}[3/5] Primary LLM Configuration...${NC}"
-echo "Select your primary neural provider:"
-echo "1) Google Gemini (Free Tier / Official)"
-echo "2) OpenRouter (Unified / Paid)"
-echo "3) Anthropic (Claude / API Key)"
-echo "4) OpenAI (GPT / API Key)"
-read -p "Choice [1-4]: " LLM_CHOICE
+LLM_KEY=$(get_env_val "LLM_API_KEY")
+OR_KEY=$(get_env_val "OPENROUTER_API_KEY")
 
-case $LLM_CHOICE in
-    2)
-        read -p "Enter OpenRouter API Key: " OR_KEY
-        sed -i "s/OPENROUTER_API_KEY=\"your_openrouter_key_here\"/OPENROUTER_API_KEY=\"$OR_KEY\"/g" .env
-        echo -e "${GREEN}✓ OpenRouter configured.${NC}"
-        ;;
-    3)
-        read -p "Enter Anthropic API Key: " ANTH_KEY
-        sed -i "s/LLM_API_KEY=\"your_api_key_here\"/LLM_API_KEY=\"$ANTH_KEY\"/g" .env
-        sed -i "s|LLM_ENDPOINT=.*|LLM_ENDPOINT=\"https://api.anthropic.com/v1/messages\"|g" .env
-        echo -e "${GREEN}✓ Anthropic configured.${NC}"
-        ;;
-    4)
-        read -p "Enter OpenAI API Key: " OPENAI_KEY
-        sed -i "s/LLM_API_KEY=\"your_api_key_here\"/LLM_API_KEY=\"$OPENAI_KEY\"/g" .env
-        sed -i "s|LLM_ENDPOINT=.*|LLM_ENDPOINT=\"https://api.openai.com/v1/chat/completions\"|g" .env
-        echo -e "${GREEN}✓ OpenAI configured.${NC}"
-        ;;
-    *)
-        read -p "Enter Gemini API Key (or leave blank for OAuth): " GEM_KEY
-        if [ ! -z "$GEM_KEY" ]; then
-            sed -i "s/LLM_API_KEY=\"your_api_key_here\"/LLM_API_KEY=\"$GEM_KEY\"/g" .env
-        fi
-        echo -e "${GREEN}✓ Gemini primary selected.${NC}"
-        ;;
-esac
+if [[ ! -z "$LLM_KEY" && "$LLM_KEY" != "your_api_key_here" ]] || [[ ! -z "$OR_KEY" && "$OR_KEY" != "your_openrouter_key_here" ]]; then
+    echo -e "${GREEN}✓ Neural provider already configured in .env.${NC}"
+else
+    echo "Select your primary neural provider:"
+    echo "1) Google Gemini (Free Tier / Official)"
+    echo "2) OpenRouter (Unified / Paid)"
+    echo "3) Anthropic (Claude / API Key)"
+    echo "4) OpenAI (GPT / API Key)"
+    read -p "Choice [1-4]: " LLM_CHOICE
 
-# 4. Identity & Channels
-echo -e "\n${BLUE}[4/5] Identity & Delivery Channels...${NC}"
-read -p "What is your name? (default: User): " USER_NAME
-USER_NAME=${USER_NAME:-User}
-read -p "What shall we name your Assistant? (default: Agent): " AGENT_NAME
-AGENT_NAME=${AGENT_NAME:-Agent}
+    case $LLM_CHOICE in
+        2)
+            read -p "Enter OpenRouter API Key: " OR_KEY_INPUT
+            sed -i "s/OPENROUTER_API_KEY=.*/OPENROUTER_API_KEY=\"$OR_KEY_INPUT\"/g" .env
+            echo -e "${GREEN}✓ OpenRouter configured.${NC}"
+            ;;
+        3)
+            read -p "Enter Anthropic API Key: " ANTH_KEY
+            sed -i "s/LLM_API_KEY=.*/LLM_API_KEY=\"$ANTH_KEY\"/g" .env
+            sed -i "s|LLM_ENDPOINT=.*|LLM_ENDPOINT=\"https://api.anthropic.com/v1/messages\"|g" .env
+            echo -e "${GREEN}✓ Anthropic configured.${NC}"
+            ;;
+        4)
+            read -p "Enter OpenAI API Key: " OPENAI_KEY
+            sed -i "s/LLM_API_KEY=.*/LLM_API_KEY=\"$OPENAI_KEY\"/g" .env
+            sed -i "s|LLM_ENDPOINT=.*|LLM_ENDPOINT=\"https://api.openai.com/v1/chat/completions\"|g" .env
+            echo -e "${GREEN}✓ OpenAI configured.${NC}"
+            ;;
+        *)
+            read -p "Enter Gemini API Key (or leave blank for OAuth): " GEM_KEY
+            if [ ! -z "$GEM_KEY" ]; then
+                sed -i "s/LLM_API_KEY=.*/LLM_API_KEY=\"$GEM_KEY\"/g" .env
+            fi
+            echo -e "${GREEN}✓ Gemini selected.${NC}"
+            ;;
+    esac
+fi
 
-sed -i "s/MEMEX_USER=\"YourName\"/MEMEX_USER=\"$USER_NAME\"/g" .env
-sed -i "s/MEMEX_ASSISTANT=\"AgentName\"/MEMEX_ASSISTANT=\"$AGENT_NAME\"/g" .env
+# 4. Identity
+echo -e "\n${BLUE}[4/5] Identity Setup...${NC}"
+CURRENT_USER=$(get_env_val "MEMEX_USER")
+if [[ "$CURRENT_USER" == "YourName" || -z "$CURRENT_USER" ]]; then
+    read -p "What is your name? (default: User): " USER_NAME
+    USER_NAME=${USER_NAME:-User}
+    read -p "What shall we name your Assistant? (default: Agent): " AGENT_NAME
+    AGENT_NAME=${AGENT_NAME:-Agent}
 
-echo "Configure primary delivery channel (optional):"
-echo "1) Signal"
-echo "2) Telegram"
-echo "3) Discord"
-echo "4) None / Local Only"
-read -p "Choice [1-4]: " CHANNEL_CHOICE
-
-if [ "$CHANNEL_CHOICE" != "4" ]; then
-    read -p "Enter Recipient ID (e.g. phone number or handle): " RECIPIENT
-    sed -i "s/RECIPIENT_ID=\"+1...\"/RECIPIENT_ID=\"$RECIPIENT\"/g" .env
-    echo -e "${GREEN}✓ Delivery channel configured for $RECIPIENT.${NC}"
+    sed -i "s/MEMEX_USER=.*/MEMEX_USER=\"$USER_NAME\"/g" .env
+    sed -i "s/MEMEX_ASSISTANT=.*/MEMEX_ASSISTANT=\"$AGENT_NAME\"/g" .env
+else
+    echo -e "${GREEN}✓ Identity already set: $CURRENT_USER${NC}"
 fi
 
 # 5. Skill Seeding
-echo -e "\n${BLUE}[5/5] Seeding Core Skills...${NC}"
-NOTES_DIR="$PARENT_DIR/notes"
-mkdir -p "$NOTES_DIR"
+echo -e "\n${BLUE}[5/5] Seeding Skills...${NC}"
+# Use SKILLS_DIR from .env, expanding $HOME if necessary
+REAL_SKILLS_DIR=$(echo "$SKILLS_DIR" | sed "s|\$HOME|$HOME|g")
+mkdir -p "$REAL_SKILLS_DIR"
 
-# Core skills (The Standard Library)
-echo -e "Installing Standard Library from projects/org-agent/skills/..."
+echo -e "Installing Standard Library to $REAL_SKILLS_DIR..."
 for skill_path in skills/*.org; do
     skill_name=$(basename "$skill_path")
     if [[ "$1" == "--dev" ]]; then
-        ln -sf "$PROJECT_ROOT/$skill_path" "$NOTES_DIR/$skill_name"
+        ln -sf "$PROJECT_ROOT/$skill_path" "$REAL_SKILLS_DIR/$skill_name"
         echo -e "  Linked: $skill_name"
     else
-        cp -n "$skill_path" "$NOTES_DIR/$skill_name"
+        cp -n "$skill_path" "$REAL_SKILLS_DIR/$skill_name"
         echo -e "  Copied: $skill_name"
     fi
 done
 
-# Contrib skills (The Ecosystem)
-CONTRIB_DIR="$PARENT_DIR/projects/org-agent-contrib"
+# Contrib skills
+CONTRIB_DIR="$PROJECT_ROOT/../org-agent-contrib"
 if [ -d "$CONTRIB_DIR" ]; then
-    echo -e "\n${BLUE}Ecosystem Skills detected in projects/org-agent-contrib/.${NC}"
+    echo -e "\n${BLUE}Ecosystem Skills detected in $CONTRIB_DIR.${NC}"
     read -p "Would you like to install additional domain skills? [y/N]: " INSTALL_CONTRIB
     if [[ "$INSTALL_CONTRIB" =~ ^[Yy]$ ]]; then
         for skill_path in "$CONTRIB_DIR"/*.org; do
             skill_name=$(basename "$skill_path")
             if [[ "$1" == "--dev" ]]; then
-                ln -sf "$skill_path" "$NOTES_DIR/$skill_name"
+                ln -sf "$skill_path" "$REAL_SKILLS_DIR/$skill_name"
                 echo -e "  Linked: $skill_name"
             else
-                cp -n "$skill_path" "$NOTES_DIR/$skill_name"
+                cp -n "$skill_path" "$REAL_SKILLS_DIR/$skill_name"
                 echo -e "  Copied: $skill_name"
             fi
         done
