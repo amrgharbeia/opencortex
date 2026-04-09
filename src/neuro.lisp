@@ -68,6 +68,7 @@
               year month day (nth day-of-week day-names) hour min))))
 
 (defun think (context)
+  "Invokes the neural System 1 engine to propose a Lisp action based on context."
   (let ((active-skill (find-triggered-skill context))
         (tool-belt (generate-tool-belt-prompt))
         (global-context (context-assemble-global-awareness)))

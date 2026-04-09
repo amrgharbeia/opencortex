@@ -9,12 +9,14 @@
 (defvar *telemetry-lock* (bt:make-lock "kernel-telemetry-lock"))
 
 (defun kernel-track-telemetry (skill-name duration status)
+  "Updates performance metrics for a specific skill."
   (when skill-name (bt:with-lock-held (*telemetry-lock*)
                      (let ((entry (or (gethash skill-name *skill-telemetry*) (list :executions 0 :total-time 0 :failures 0))))
                        (incf (getf entry :executions)) (incf (getf entry :total-time) duration)
                        (when (eq status :rejected) (incf (getf entry :failures))) (setf (gethash skill-name *skill-telemetry*) entry)))))
 
 (defun kernel-log (fmt &rest args)
+  "Records a formatted message to the system log and standard output."
   (let ((msg (apply #'format nil fmt args)))
     (bt:with-lock-held (*logs-lock*) (push msg *system-logs*) (when (> (length *system-logs*) *max-log-history*) (setf *system-logs* (subseq *system-logs* 0 *max-log-history*))))
     (format t "~a~%" msg) (finish-output)))
@@ -26,6 +28,7 @@
   (setf (gethash name *actuator-registry*) fn))
 
 (defun inject-stimulus (raw-message &key stream (depth 0))
+  "Enqueues a raw message into the cognitive loop, handling async/sync execution and recovery."
   (let* ((payload (getf raw-message :payload)) 
          (sensor (getf payload :sensor))
          ;; Force Chat and Delegation to be async
@@ -37,18 +40,22 @@
           (skip-event () (kernel-log "SYSTEM RECOVERY: Stimulus dropped.~%"))))))
 
 (defun spawn-task (task-description &key (async-p t))
+  "Creates a new background cognitive task from a description."
   (inject-stimulus `(:type :EVENT :payload (:sensor :delegation :query ,task-description :async-p ,async-p))))
 
 (defun send-swarm-packet (target-url payload)
+  "Transmits a JSON payload to a remote swarm node."
   (let* ((json-payload (cl-json:encode-json-to-string payload)) (headers '(("Content-Type" . "application/json"))))
     (handler-case (dex:post target-url :headers headers :content json-payload) (error (c) (kernel-log "SWARM ERROR: ~a" c) nil))))
 
 (defun dispatch-action (action context)
+  "Routes an approved action to its registered physical actuator."
   (when (and action (listp action))
     (let* ((target (or (ignore-errors (getf action :target)) :emacs)) (actuator-fn (gethash target *actuator-registry*)))
       (if actuator-fn (funcall actuator-fn action context) (kernel-log "DISPATCH ERROR: No actuator for ~a" target)))))
 
 (defun execute-system-action (action context)
+  "Processes internal kernel commands like skill creation or environment updates."
   (declare (ignore context))
   (let* ((payload (ignore-errors (getf action :payload))) (cmd (ignore-errors (getf payload :action))))
     (case cmd
@@ -68,6 +75,7 @@
       (t (kernel-log "ACTUATOR [System] - Unknown command ~s" cmd)))))
 
 (defun cognitive-loop (raw-message &optional (depth 0))
+  "The main recursive OODA cycle: Perceive, Think, Decide, Act."
   (when (> depth 10)
     (kernel-log "SYSTEM ERROR: Maximum cognitive depth reached.")
     (return-from cognitive-loop nil))
@@ -138,6 +146,7 @@
       nil)))
 
 (defun perceive (raw-message)
+  "Initial processing of raw stimuli, updating the Object Store if needed."
   (handler-case
       (let ((type (getf raw-message :type)) (payload (getf raw-message :payload)))
         (kernel-log "PERCEIVE: ~a (~a)" type (or (getf payload :sensor) "no-sensor"))
@@ -154,13 +163,15 @@
       nil)))
 
 (defun start-heartbeat (&optional (interval 60))
+  "Spawns a thread that periodically injects a heartbeat stimulus."
   (setf *heartbeat-thread* (bt:make-thread (lambda () (loop (sleep interval) (kernel-log "KERNEL: Heartbeat pulse...")
                                                               (inject-stimulus `(:type :EVENT :payload (:sensor :heartbeat :unix-time ,(get-universal-time)))))) :name "org-agent-heartbeat")))
 
 (defun stop-heartbeat () (when (and *heartbeat-thread* (bt:thread-alive-p *heartbeat-thread*)) (bt:destroy-thread *heartbeat-thread*) (setf *heartbeat-thread* nil)))
-
-(defun load-all-skills ()
-  "Scans the directory defined by SKILLS_DIR and hot-loads skills using topological order."
+  "Gracefully terminates the heartbeat pulse thread."
+  (defun load-all-skills ()
+  "Scans the skills directory and hot-loads them in dependency order."
+   "Scans the directory defined by SKILLS_DIR and hot-loads skills using topological order."
   (let* ((env-path (uiop:getenv "SKILLS_DIR"))
          (skills-dir-str (or env-path (namestring (merge-pathnames "notes/" (user-homedir-pathname)))))
          (resolved-path (context-resolve-path skills-dir-str))
@@ -180,10 +191,12 @@
 (defvar *clients-lock* (bt:make-lock "emacs-clients-lock"))
 
 (defun register-emacs-client (stream)
+  "Tracks an active Emacs socket connection."
   (bt:with-lock-held (*clients-lock*)
     (pushnew stream *emacs-clients*)))
 
 (defun unregister-emacs-client (stream)
+  "Removes a disconnected Emacs socket from the registry."
   (bt:with-lock-held (*clients-lock*)
     (setf *emacs-clients* (remove stream *emacs-clients*))))
 

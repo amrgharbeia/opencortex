@@ -141,6 +141,7 @@ EXAMPLES:
       (sleep 0.05))))
 
 (defun load-skill-from-org (filepath)
+  "Parses and evaluates Lisp blocks from an Org file into a jailed package."
   (when (uiop:file-exists-p filepath)
     (let* ((content (uiop:read-file-string filepath)) (lines (uiop:split-string content :separator '(#\Newline)))
            (in-lisp-block nil) (lisp-code "") (dependencies nil) (skill-base-name (pathname-name filepath))
@@ -164,6 +165,7 @@ EXAMPLES:
             (error (c) (kernel-log "READER ERROR in skill '~a': ~a~%" skill-base-name c))))))))
 
 (defun validate-lisp-syntax (code-string)
+  "Checks if a string contains valid, readable Common Lisp forms."
   (handler-case (let ((*read-eval* nil)) (with-input-from-string (stream (format nil "(progn ~a)" code-string))
                                           (loop for form = (read stream nil :eof) until (eq form :eof)) (values t nil)))
     (error (c) (values nil (format nil "~a" c)))))

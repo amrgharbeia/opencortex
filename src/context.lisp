@@ -1,6 +1,7 @@
 (in-package :org-agent)
 
 (defun context-query-store (&key tag todo-state type)
+  "Filters the Object Store based on tags, todo states, or types."
   (let ((results nil))
     (maphash (lambda (id obj)
                (declare (ignore id))
@@ -13,12 +14,14 @@
     results))
 
 (defun context-get-active-projects ()
+  "Returns headlines tagged as 'project' that are not yet marked DONE."
   (remove-if (lambda (obj) (equal (getf (org-object-attributes obj) :TODO-STATE) "DONE"))
              (context-query-store :tag "project" :type :HEADLINE)))
 
 (defun context-get-recent-completed-tasks () (context-query-store :todo-state "DONE" :type :HEADLINE))
-
-(defun context-list-all-skills ()
+  "Retrieves recently finished tasks from the store."
+  (defun context-list-all-skills ()
+  "Provides a sorted overview of currently loaded system capabilities."
   (let ((results nil))
     (maphash (lambda (name skill)
                (declare (ignore name))
@@ -27,19 +30,23 @@
     (sort results #'> :key (lambda (x) (getf x :priority)))))
 
 (defun context-get-skill-source (skill-name)
+  "Reads the raw literate source of a specific skill for inspection."
   (let* ((filename (format nil "~a.org" skill-name))
          (skills-dir (merge-pathnames "skills/" (asdf:system-source-directory :org-agent)))
          (full-path (merge-pathnames filename skills-dir)))
     (if (uiop:file-exists-p full-path) (uiop:read-file-string full-path) nil)))
 
 (defun context-get-system-logs (&optional (limit 20))
+  "Retrieves the most recent lines from the kernel's internal log."
   (bt:with-lock-held (*logs-lock*)
     (let ((count (min limit (length *system-logs*)))) (subseq *system-logs* 0 count))))
 
 (defun context-get-skill-telemetry (skill-name)
+  "Returns performance and execution data for a specific skill."
   (bt:with-lock-held (*telemetry-lock*) (gethash (string-downcase skill-name) *skill-telemetry*)))
 
 (defun context-filter-sparse-tree (ast predicate)
+  "Prunes an AST to show only nodes matching a predicate and their ancestors."
   (if (listp ast)
       (let* ((contents (getf ast :contents))
              (filtered-contents (remove-if #'null (mapcar (lambda (c) (context-filter-sparse-tree c predicate)) contents))))
@@ -49,6 +56,7 @@
       nil))
 
 (defun context-resolve-path (path-string)
+  "Expands environment variables within path strings (e.g. $HOME/...)."
   (if (and (stringp path-string) (uiop:string-prefix-p "$" path-string))
       (let* ((parts (uiop:split-string path-string :separator '(#\/)))
              (var-name (subseq (car parts) 1)) (var-val (uiop:getenv var-name))

@@ -196,12 +196,14 @@ sequenceDiagram
 (defvar *telemetry-lock* (bt:make-lock "kernel-telemetry-lock"))
 
 (defun kernel-track-telemetry (skill-name duration status)
+  "Updates performance metrics for a specific skill."
   (when skill-name (bt:with-lock-held (*telemetry-lock*)
                      (let ((entry (or (gethash skill-name *skill-telemetry*) (list :executions 0 :total-time 0 :failures 0))))
                        (incf (getf entry :executions)) (incf (getf entry :total-time) duration)
                        (when (eq status :rejected) (incf (getf entry :failures))) (setf (gethash skill-name *skill-telemetry*) entry)))))
 
 (defun kernel-log (fmt &rest args)
+  "Records a formatted message to the system log and standard output."
   (let ((msg (apply #'format nil fmt args)))
     (bt:with-lock-held (*logs-lock*) (push msg *system-logs*) (when (> (length *system-logs*) *max-log-history*) (setf *system-logs* (subseq *system-logs* 0 *max-log-history*))))
     (format t "~a~%" msg) (finish-output)))
@@ -213,6 +215,7 @@ sequenceDiagram
   (setf (gethash name *actuator-registry*) fn))
 
 (defun inject-stimulus (raw-message &key stream (depth 0))
+  "Enqueues a raw message into the cognitive loop, handling async/sync execution and recovery."
   (let* ((payload (getf raw-message :payload)) 
          (sensor (getf payload :sensor))
          ;; Force Chat and Delegation to be async
@@ -224,18 +227,22 @@ sequenceDiagram
           (skip-event () (kernel-log "SYSTEM RECOVERY: Stimulus dropped.~%"))))))
 
 (defun spawn-task (task-description &key (async-p t))
+  "Creates a new background cognitive task from a description."
   (inject-stimulus `(:type :EVENT :payload (:sensor :delegation :query ,task-description :async-p ,async-p))))
 
 (defun send-swarm-packet (target-url payload)
+  "Transmits a JSON payload to a remote swarm node."
   (let* ((json-payload (cl-json:encode-json-to-string payload)) (headers '(("Content-Type" . "application/json"))))
     (handler-case (dex:post target-url :headers headers :content json-payload) (error (c) (kernel-log "SWARM ERROR: ~a" c) nil))))
 
 (defun dispatch-action (action context)
+  "Routes an approved action to its registered physical actuator."
   (when (and action (listp action))
     (let* ((target (or (ignore-errors (getf action :target)) :emacs)) (actuator-fn (gethash target *actuator-registry*)))
       (if actuator-fn (funcall actuator-fn action context) (kernel-log "DISPATCH ERROR: No actuator for ~a" target)))))
 
 (defun execute-system-action (action context)
+  "Processes internal kernel commands like skill creation or environment updates."
   (declare (ignore context))
   (let* ((payload (ignore-errors (getf action :payload))) (cmd (ignore-errors (getf payload :action))))
     (case cmd
@@ -255,6 +262,7 @@ sequenceDiagram
       (t (kernel-log "ACTUATOR [System] - Unknown command ~s" cmd)))))
 
 (defun cognitive-loop (raw-message &optional (depth 0))
+  "The main recursive OODA cycle: Perceive, Think, Decide, Act."
   (when (> depth 10)
     (kernel-log "SYSTEM ERROR: Maximum cognitive depth reached.")
     (return-from cognitive-loop nil))
@@ -325,6 +333,7 @@ sequenceDiagram
       nil)))
 
 (defun perceive (raw-message)
+  "Initial processing of raw stimuli, updating the Object Store if needed."
   (handler-case
       (let ((type (getf raw-message :type)) (payload (getf raw-message :payload)))
         (kernel-log "PERCEIVE: ~a (~a)" type (or (getf payload :sensor) "no-sensor"))
@@ -341,13 +350,15 @@ sequenceDiagram
       nil)))
 
 (defun start-heartbeat (&optional (interval 60))
+  "Spawns a thread that periodically injects a heartbeat stimulus."
   (setf *heartbeat-thread* (bt:make-thread (lambda () (loop (sleep interval) (kernel-log "KERNEL: Heartbeat pulse...")
                                                               (inject-stimulus `(:type :EVENT :payload (:sensor :heartbeat :unix-time ,(get-universal-time)))))) :name "org-agent-heartbeat")))
 
 (defun stop-heartbeat () (when (and *heartbeat-thread* (bt:thread-alive-p *heartbeat-thread*)) (bt:destroy-thread *heartbeat-thread*) (setf *heartbeat-thread* nil)))
-
-(defun load-all-skills ()
-  "Scans the directory defined by SKILLS_DIR and hot-loads skills using topological order."
+  "Gracefully terminates the heartbeat pulse thread."
+  (defun load-all-skills ()
+  "Scans the skills directory and hot-loads them in dependency order."
+   "Scans the directory defined by SKILLS_DIR and hot-loads skills using topological order."
   (let* ((env-path (uiop:getenv "SKILLS_DIR"))
          (skills-dir-str (or env-path (namestring (merge-pathnames "notes/" (user-homedir-pathname)))))
          (resolved-path (context-resolve-path skills-dir-str))
@@ -367,10 +378,12 @@ sequenceDiagram
 (defvar *clients-lock* (bt:make-lock "emacs-clients-lock"))
 
 (defun register-emacs-client (stream)
+  "Tracks an active Emacs socket connection."
   (bt:with-lock-held (*clients-lock*)
     (pushnew stream *emacs-clients*)))
 
 (defun unregister-emacs-client (stream)
+  "Removes a disconnected Emacs socket from the registry."
   (bt:with-lock-held (*clients-lock*)
     (setf *emacs-clients* (remove stream *emacs-clients*))))
 
@@ -557,6 +570,7 @@ graph TD
     (ironclad:byte-array-to-hex-string (ironclad:produce-digest digester))))
 
 (defun ingest-ast (ast &optional parent-id)
+  "Parses an Org AST into the recursive Lisp Object Store with Merkle hashing."
   (let* ((type (getf ast :type))
          (props (getf ast :properties))
          (id (or (getf props :ID) (format nil "temp-~a" (get-universal-time))))
@@ -587,6 +601,7 @@ graph TD
 (defvar *object-store-snapshots* nil)
 
 (defun clone-org-object (obj)
+  "Creates a deep copy of an org-object structure."
   (make-org-object 
    :id (org-object-id obj) :type (org-object-type obj)
    :attributes (copy-list (org-object-attributes obj))
@@ -596,6 +611,7 @@ graph TD
    :hash (org-object-hash obj)))
 
 (defun snapshot-object-store ()
+  "Creates an immutable point-in-time image of the current knowledge graph."
   (let ((snapshot (make-hash-table :test 'equal)))
     (maphash (lambda (id obj) (setf (gethash id snapshot) (clone-org-object obj))) *object-store*)
     (push (list :timestamp (get-universal-time) :data snapshot) *object-store-snapshots*)
@@ -604,6 +620,7 @@ graph TD
     (kernel-log "MEMORY - Object Store snapshot created.")))
 
 (defun rollback-object-store (&optional (index 0))
+  "Restores the Object Store to a previously captured snapshot."
   (let ((snapshot (nth index *object-store-snapshots*)))
     (if snapshot
         (progn (setf *object-store* (getf snapshot :data))
@@ -611,19 +628,22 @@ graph TD
         (kernel-log "MEMORY ERROR - Snapshot ~a not found." index))))
 
 (defun lookup-object (id) (gethash id *object-store*))
-
-(defun list-objects-by-type (type)
+  "Retrieves an object from the store by its unique ID."
+  (defun list-objects-by-type (type)
+  "Returns a list of all objects matching a specific Org element type."
   (let ((results nil))
     (maphash (lambda (id obj) (declare (ignore id)) (when (eq (org-object-type obj) type) (push obj results))) *object-store*)
     results))
 
 (defun find-headline-missing-id (ast)
+  "Traverses an AST to find headlines that lack an :ID: property."
   (when (listp ast)
     (if (and (eq (getf ast :type) :HEADLINE) (not (getf (getf ast :properties) :ID)))
         ast
         (cl:some #'find-headline-missing-id (getf ast :contents)))))
 
 (defun file-name-nondirectory (path)
+  "Extracts the filename from a full path string."
   (let ((pos (position #\/ path :from-end t))) (if pos (subseq path (1+ pos)) path)))
 #+end_src
 
@@ -637,6 +657,7 @@ LLMs lose precision when context windows are bloated with irrelevant data.
 (in-package :org-agent)
 
 (defun context-query-store (&key tag todo-state type)
+  "Filters the Object Store based on tags, todo states, or types."
   (let ((results nil))
     (maphash (lambda (id obj)
                (declare (ignore id))
@@ -649,12 +670,14 @@ LLMs lose precision when context windows are bloated with irrelevant data.
     results))
 
 (defun context-get-active-projects ()
+  "Returns headlines tagged as 'project' that are not yet marked DONE."
   (remove-if (lambda (obj) (equal (getf (org-object-attributes obj) :TODO-STATE) "DONE"))
              (context-query-store :tag "project" :type :HEADLINE)))
 
 (defun context-get-recent-completed-tasks () (context-query-store :todo-state "DONE" :type :HEADLINE))
-
-(defun context-list-all-skills ()
+  "Retrieves recently finished tasks from the store."
+  (defun context-list-all-skills ()
+  "Provides a sorted overview of currently loaded system capabilities."
   (let ((results nil))
     (maphash (lambda (name skill)
                (declare (ignore name))
@@ -663,19 +686,23 @@ LLMs lose precision when context windows are bloated with irrelevant data.
     (sort results #'> :key (lambda (x) (getf x :priority)))))
 
 (defun context-get-skill-source (skill-name)
+  "Reads the raw literate source of a specific skill for inspection."
   (let* ((filename (format nil "~a.org" skill-name))
          (skills-dir (merge-pathnames "skills/" (asdf:system-source-directory :org-agent)))
          (full-path (merge-pathnames filename skills-dir)))
     (if (uiop:file-exists-p full-path) (uiop:read-file-string full-path) nil)))
 
 (defun context-get-system-logs (&optional (limit 20))
+  "Retrieves the most recent lines from the kernel's internal log."
   (bt:with-lock-held (*logs-lock*)
     (let ((count (min limit (length *system-logs*)))) (subseq *system-logs* 0 count))))
 
 (defun context-get-skill-telemetry (skill-name)
+  "Returns performance and execution data for a specific skill."
   (bt:with-lock-held (*telemetry-lock*) (gethash (string-downcase skill-name) *skill-telemetry*)))
 
 (defun context-filter-sparse-tree (ast predicate)
+  "Prunes an AST to show only nodes matching a predicate and their ancestors."
   (if (listp ast)
       (let* ((contents (getf ast :contents))
              (filtered-contents (remove-if #'null (mapcar (lambda (c) (context-filter-sparse-tree c predicate)) contents))))
@@ -685,6 +712,7 @@ LLMs lose precision when context windows are bloated with irrelevant data.
       nil))
 
 (defun context-resolve-path (path-string)
+  "Expands environment variables within path strings (e.g. $HOME/...)."
   (if (and (stringp path-string) (uiop:string-prefix-p "$" path-string))
       (let* ((parts (uiop:split-string path-string :separator '(#\/)))
              (var-name (subseq (car parts) 1)) (var-val (uiop:getenv var-name))
@@ -713,6 +741,7 @@ LLMs lose precision when context windows are bloated with irrelevant data.
 (in-package :org-agent)
 
 (defun get-embedding (text)
+  "Retrieves a vector representation of text via the configured neural provider."
   (let* ((auth (get-provider-auth :gemini)) (api-key (getf auth :api-key))
          (endpoint "https://generativelanguage.googleapis.com/v1beta/models/text-embedding-004:embedContent"))
     (unless api-key (return-from get-embedding nil))
@@ -724,11 +753,15 @@ LLMs lose precision when context windows are bloated with irrelevant data.
         (error (c) (kernel-log "EMBEDDING FAILURE: ~a" c) nil)))))
 
 (defun dot-product (v1 v2) (reduce #'+ (mapcar #'* v1 v2)))
-(defun magnitude (v) (sqrt (reduce #'+ (mapcar (lambda (x) (* x x)) v))))
-(defun cosine-similarity (v1 v2)
+  "Calculates the dot product of two numerical vectors."
+  (defun magnitude (v) (sqrt (reduce #'+ (mapcar (lambda (x) (* x x)) v))))
+  "Calculates the Euclidean magnitude of a numerical vector."
+  (defun cosine-similarity (v1 v2)
+  "Calculates the semantic distance between two vectors."
   (let ((m1 (magnitude v1)) (m2 (magnitude v2))) (if (or (zerop m1) (zerop m2)) 0 (/ (dot-product v1 v2) (* m1 m2)))))
 
 (defun find-most-similar (query-vector top-k)
+  "Identifies the top-k most semantically related objects in the store."
   (let ((similarities nil))
     (maphash (lambda (id obj) (let ((vec (org-object-vector obj))) (when vec (push (cons (cosine-similarity query-vector vec) obj) similarities)))) *object-store*)
     (let ((sorted (sort similarities #'> :key #'car))) (subseq sorted 0 (min top-k (length sorted))))))
@@ -885,6 +918,7 @@ EXAMPLES:
       (sleep 0.05))))
 
 (defun load-skill-from-org (filepath)
+  "Parses and evaluates Lisp blocks from an Org file into a jailed package."
   (when (uiop:file-exists-p filepath)
     (let* ((content (uiop:read-file-string filepath)) (lines (uiop:split-string content :separator '(#\Newline)))
            (in-lisp-block nil) (lisp-code "") (dependencies nil) (skill-base-name (pathname-name filepath))
@@ -908,6 +942,7 @@ EXAMPLES:
             (error (c) (kernel-log "READER ERROR in skill '~a': ~a~%" skill-base-name c))))))))
 
 (defun validate-lisp-syntax (code-string)
+  "Checks if a string contains valid, readable Common Lisp forms."
   (handler-case (let ((*read-eval* nil)) (with-input-from-string (stream (format nil "(progn ~a)" code-string))
                                           (loop for form = (read stream nil :eof) until (eq form :eof)) (values t nil)))
     (error (c) (values nil (format nil "~a" c)))))
@@ -1030,6 +1065,7 @@ System 1 (LLM) is creative but hallucination-prone. System 2 (Lisp) is rigid but
               year month day (nth day-of-week day-names) hour min))))
 
 (defun think (context)
+  "Invokes the neural System 1 engine to propose a Lisp action based on context."
   (let ((active-skill (find-triggered-skill context))
         (tool-belt (generate-tool-belt-prompt))
         (global-context (context-assemble-global-awareness)))
@@ -1086,6 +1122,7 @@ To call a tool, you MUST use:
 (in-package :org-agent)
 
 (defun decide (proposed-action context)
+  "The System 2 Safety Gate: validates or rejects proposed neural actions."
   (let ((active-skill (find-triggered-skill context)))
     (if (and proposed-action (listp proposed-action) active-skill)
         (let* ((symbolic-gate (skill-symbolic-fn active-skill))
@@ -1111,6 +1148,7 @@ To call a tool, you MUST use:
         proposed-action)))
 
 (defun list-objects-with-attribute (attr-key attr-val)
+  "Filters the Object Store for nodes having a specific attribute value."
   (let ((results nil))
     (maphash (lambda (id obj) (declare (ignore id)) (when (equal (getf (org-object-attributes obj) attr-key) attr-val) (push obj results))) *object-store*)
     results))

@@ -1,6 +1,7 @@
 (in-package :org-agent)
 
 (defun decide (proposed-action context)
+  "The System 2 Safety Gate: validates or rejects proposed neural actions."
   (let ((active-skill (find-triggered-skill context)))
     (if (and proposed-action (listp proposed-action) active-skill)
         (let* ((symbolic-gate (skill-symbolic-fn active-skill))
@@ -26,6 +27,7 @@
         proposed-action)))
 
 (defun list-objects-with-attribute (attr-key attr-val)
+  "Filters the Object Store for nodes having a specific attribute value."
   (let ((results nil))
     (maphash (lambda (id obj) (declare (ignore id)) (when (equal (getf (org-object-attributes obj) attr-key) attr-val) (push obj results))) *object-store*)
     results))

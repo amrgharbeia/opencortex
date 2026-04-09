@@ -18,6 +18,7 @@
     (ironclad:byte-array-to-hex-string (ironclad:produce-digest digester))))
 
 (defun ingest-ast (ast &optional parent-id)
+  "Parses an Org AST into the recursive Lisp Object Store with Merkle hashing."
   (let* ((type (getf ast :type))
          (props (getf ast :properties))
          (id (or (getf props :ID) (format nil "temp-~a" (get-universal-time))))
@@ -48,6 +49,7 @@
 (defvar *object-store-snapshots* nil)
 
 (defun clone-org-object (obj)
+  "Creates a deep copy of an org-object structure."
   (make-org-object 
    :id (org-object-id obj) :type (org-object-type obj)
    :attributes (copy-list (org-object-attributes obj))
@@ -57,6 +59,7 @@
    :hash (org-object-hash obj)))
 
 (defun snapshot-object-store ()
+  "Creates an immutable point-in-time image of the current knowledge graph."
   (let ((snapshot (make-hash-table :test 'equal)))
     (maphash (lambda (id obj) (setf (gethash id snapshot) (clone-org-object obj))) *object-store*)
     (push (list :timestamp (get-universal-time) :data snapshot) *object-store-snapshots*)
@@ -65,6 +68,7 @@
     (kernel-log "MEMORY - Object Store snapshot created.")))
 
 (defun rollback-object-store (&optional (index 0))
+  "Restores the Object Store to a previously captured snapshot."
   (let ((snapshot (nth index *object-store-snapshots*)))
     (if snapshot
         (progn (setf *object-store* (getf snapshot :data))
@@ -72,17 +76,20 @@
         (kernel-log "MEMORY ERROR - Snapshot ~a not found." index))))
 
 (defun lookup-object (id) (gethash id *object-store*))
-
-(defun list-objects-by-type (type)
+  "Retrieves an object from the store by its unique ID."
+  (defun list-objects-by-type (type)
+  "Returns a list of all objects matching a specific Org element type."
   (let ((results nil))
     (maphash (lambda (id obj) (declare (ignore id)) (when (eq (org-object-type obj) type) (push obj results))) *object-store*)
     results))
 
 (defun find-headline-missing-id (ast)
+  "Traverses an AST to find headlines that lack an :ID: property."
   (when (listp ast)
     (if (and (eq (getf ast :type) :HEADLINE) (not (getf (getf ast :properties) :ID)))
         ast
         (cl:some #'find-headline-missing-id (getf ast :contents)))))
 
 (defun file-name-nondirectory (path)
+  "Extracts the filename from a full path string."
   (let ((pos (position #\/ path :from-end t))) (if pos (subseq path (1+ pos)) path)))
