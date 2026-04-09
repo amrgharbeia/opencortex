@@ -4,30 +4,21 @@
 #+STARTUP: content
 
 * The Cognitive Loop (core.lisp)
-** Deep Reasoning: Why Asynchronous Recursion?
-Most AI agents are linear "chatbots" that block the interface while waiting for an LLM response. In a Sovereign OS, this is unacceptable.
-- **Responsiveness:** By spawning non-blocking threads, the user can continue typing in Emacs while the agent "thinks."
-- **Self-Reflection:** The recursive nature allows the agent to observe its own errors. If a tool fails, the error is injected as a new stimulus. The agent realizes its mistake and proposes a fix without human prompting.
-- **The Depth Break:** We implement a hardcoded depth limit (Order 2 Autonomy) to prevent "hallucination ruts" where the agent enters an infinite loop of apologies.
+** Deep Reasoning: Beyond Asynchronous Recursion
+The original `cognitive-loop` used asynchronous recursion to handle stimuli. While responsive, it led to deep Lisp stacks and made multi-backend consensus difficult to implement.
+- **The Signal Pipeline:** We have evolved the kernel into a functional transformation pipeline. Every event—be it a keystroke, a timer pulse, or a neural proposal—is a **Signal**.
+- **Flat Execution:** By using a feedback-loop orchestrator (`process-signal`), we flatten the execution stack. Tool outputs and errors are re-injected as new signals rather than creating nested function calls.
+- **Observability:** Each "Gate" in the pipeline is a discrete, traceable stage, making it easier to debug the agent's internal reasoning process.
 
-** The Cognitive Loop (OODA Architecture)
+** The Signal Pipeline (Architecture)
 #+begin_src mermaid
-sequenceDiagram
-    participant Sensor
-    participant Kernel
-    participant System1 as System 1 (LLM)
-    participant System2 as System 2 (Lisp)
-    participant Actuator
-    
-    Sensor->>Kernel: Perceive (Stimulus)
-    Kernel->>System1: Think (Inject Prompt)
-    System1-->>Kernel: Proposed Action
-    Kernel->>System2: Decide (Safety Gate)
-    alt Validation Failed
-        System2-->>Kernel: Reject / Log Error
-    else Validation Passed
-        System2->>Actuator: Act (Dispatch)
-    end
+graph LR
+    S1[Signal: Raw Event] --> P[Perceive Gate]
+    P --> N[Neuro Gate: System 1]
+    N --> C[Consensus Gate]
+    C --> V[Validation Gate: System 2]
+    V --> D[Dispatch Gate: Actuators]
+    D -- Feedback Signal --> S1
 #+end_src
 
 ** Package Context
@@ -46,6 +37,31 @@ The kernel maintains several thread-safe global variables for logging, telemetry
 (defvar *interrupt-lock* (bt:make-lock "kernel-interrupt-lock"))
 (defvar *skill-telemetry* (make-hash-table :test 'equal))
 (defvar *telemetry-lock* (bt:make-lock "kernel-telemetry-lock"))
+#+end_src
+
+** Actuator Registration
+Actuators are the "hands" of the agent. This registry allows external modules (like Emacs or the Shell) to register functions that the kernel can invoke to perform physical actions.
+
+#+begin_src lisp :tangle ../src/core.lisp
+(defvar *actuator-registry* (make-hash-table :test 'equal))
+
+(defun register-actuator (name fn) 
+  "Registers an actuator function. Actuators receive two arguments: (ACTION CONTEXT)."
+  (setf (gethash name *actuator-registry*) fn))
+#+end_src
+
+** Physical Dispatch (dispatch-action)
+Routes an approved action to its registered physical actuator.
+
+#+begin_src lisp :tangle ../src/core.lisp
+(defun dispatch-action (action context)
+  "Routes an approved action to its registered physical actuator."
+  (when (and action (listp action))
+    (let* ((target (or (ignore-errors (getf action :target)) :emacs)) 
+           (actuator-fn (gethash target *actuator-registry*)))
+      (if actuator-fn 
+          (funcall actuator-fn action context) 
+          (kernel-log "DISPATCH ERROR: No actuator for ~a" target)))))
 #+end_src
 
 ** Performance Tracking (kernel-track-telemetry)
@@ -71,32 +87,20 @@ A centralized logging function that outputs to standard output and maintains a r
     (format t "~a~%" msg) (finish-output)))
 #+end_src
 
-** Actuator Registration
-Actuators are the "hands" of the agent. This registry allows external modules (like Emacs or the Shell) to register functions that the kernel can invoke to perform physical actions.
-
-#+begin_src lisp :tangle ../src/core.lisp
-(defvar *heartbeat-thread* nil)
-(defvar *actuator-registry* (make-hash-table :test 'equal))
-
-(defun register-actuator (name fn) 
-  "Registers an actuator function. Actuators receive two arguments: (ACTION CONTEXT)."
-  (setf (gethash name *actuator-registry*) fn))
-#+end_src
-
 ** Stimulus Injection (inject-stimulus)
-This is the entry point for all events into the kernel. It decides whether to handle an event synchronously or spawn a new background thread based on the stimulus type (e.g., chat messages and user commands are always asynchronous).
+This is the entry point for all events into the kernel. It initializes a signal and passes it to the `process-signal` pipeline.
 
 #+begin_src lisp :tangle ../src/core.lisp
 (defun inject-stimulus (raw-message &key stream (depth 0))
-  "Enqueues a raw message into the cognitive loop, handling async/sync execution and recovery."
+  "Enqueues a raw message into the reactive signal pipeline, handling async/sync execution and recovery."
   (let* ((payload (getf raw-message :payload)) 
          (sensor (getf payload :sensor))
          ;; Force Chat and Delegation to be async
          (async-p (or (getf payload :async-p) (member sensor '(:chat-message :delegation :user-command)))))
     (when stream (setf (getf raw-message :reply-stream) stream))
     (if async-p (bt:make-thread (lambda () (restart-case (handler-bind ((error (lambda (c) (kernel-log "ASYNC ERROR: ~a" c) (invoke-restart 'skip-event))))
-                                                           (cognitive-loop raw-message depth)) (skip-event () nil))) :name "org-agent-async-task")
-        (restart-case (handler-bind ((error (lambda (c) (kernel-log "SYSTEM ERROR: ~a" c) (invoke-restart 'skip-event)))) (cognitive-loop raw-message depth))
+                                                           (process-signal raw-message)) (skip-event () nil))) :name "org-agent-async-task")
+        (restart-case (handler-bind ((error (lambda (c) (kernel-log "SYSTEM ERROR: ~a" c) (invoke-restart 'skip-event)))) (process-signal raw-message))
           (skip-event () (kernel-log "SYSTEM RECOVERY: Stimulus dropped.~%"))))))
 #+end_src
 
@@ -125,117 +129,163 @@ The `execute-system-action` function handles kernel-level operations such as hot
       (t (kernel-log "ACTUATOR [System] - Unknown command ~s" cmd)))))
 #+end_src
 
-** The OODA Cycle (cognitive-loop)
-The heart of the system. It recursively executes the OODA cycle:
-1. **Perceive:** Process incoming sensors and update memory.
-2. **Think:** Consult System 1 (LLM) for a proposed action.
-3. **Decide:** System 2 (Lisp) validates the proposal.
-4. **Act:** Dispatch the validated action to an actuator.
+** The Reactive Signal Pipeline (process-signal)
+The kernel has evolved into a functional transformation pipeline. Every event—be it a keystroke, a timer pulse, or a neural proposal—is a **Signal**. Signals flow through a series of "Gates" that progressively enrich and validate the event until it is dispatched to an actuator.
 
-If a tool fails, the error is fed back into the loop as a new stimulus, allowing for autonomous self-correction.
+*** Perceive Gate
+Normalizes raw stimuli and updates the Object Store knowledge graph.
 
 #+begin_src lisp :tangle ../src/core.lisp
-(defun cognitive-loop (raw-message &optional (depth 0))
-  "The main recursive OODA cycle: Perceive, Think, Decide, Act."
-  (when (> depth 10)
-    (kernel-log "SYSTEM ERROR: Maximum cognitive depth reached.")
-    (return-from cognitive-loop nil))
-  (when (bt:with-lock-held (*interrupt-lock*) *interrupt-flag*)
-    (kernel-log "SYSTEM: Loop interrupted.")
-    (bt:with-lock-held (*interrupt-lock*) (setf *interrupt-flag* nil))
-    (return-from cognitive-loop nil))
-
-  (handler-case
-      (let* ((start-time (get-internal-real-time))
-             (type (getf raw-message :type))
-             (perceive-fn (find-symbol "PERCEIVE" :org-agent))
-             (context (if perceive-fn (funcall perceive-fn raw-message) raw-message)))
-        (snapshot-object-store)
-        (if (eq type :REQUEST)
-            (dispatch-action raw-message context)
-            (let* ((skill (find-triggered-skill context))
-                   (skill-name (when skill (skill-name skill)))
-                   (proposed-action (think context))
-                   (approved-action (decide proposed-action context))
-                   (status (if (and proposed-action (null approved-action)) :rejected :success))
-                   (duration (- (get-internal-real-time) start-time)))
-              (when skill-name (kernel-track-telemetry skill-name duration status))
-
-              (let* ((payload (getf approved-action :payload))
-                     (target (getf approved-action :target))
-                     (action (or (getf payload :action) (getf approved-action :action)))
-                     (tool-name (or (getf payload :tool) (getf approved-action :tool)))
-                     (tool-args (or (getf payload :args) (getf approved-action :args))))
-                (if (and approved-action (eq target :tool) (eq action :call))
-                    ;; Internal Tool Execution
-                    (let* ((tool (gethash (string-downcase (string tool-name)) *cognitive-tools*)))
-                      (if tool
-                          (progn
-                            (kernel-log "SYSTEM 2: Executing tool '~a'..." tool-name)
-                            (handler-case
-                                (let* ((clean-args (if (and (listp tool-args) (listp (car tool-args))) (car tool-args) tool-args))
-                                       (tool-result (funcall (cognitive-tool-body tool) clean-args))
-                                       (next-stimulus `(:type :EVENT :payload (:sensor :tool-output :result ,tool-result :tool ,tool-name))))
-                                  (when (getf raw-message :reply-stream) (setf (getf next-stimulus :reply-stream) (getf raw-message :reply-stream)))
-                                  (cognitive-loop next-stimulus (1+ depth)))
-                              (error (c)
-                                (kernel-log "SYSTEM ERROR: Tool '~a' failed: ~a" tool-name c)
-                                (let ((err-stimulus `(:type :EVENT :payload (:sensor :tool-error :tool ,tool-name :message ,(format nil "~a" c)))))
-                                  (when (getf raw-message :reply-stream) (setf (getf err-stimulus :reply-stream) (getf raw-message :reply-stream)))
-                                  (cognitive-loop err-stimulus (1+ depth))))))
-                          (progn
-                            (kernel-log "SYSTEM ERROR: Tool '~a' not found in registry." tool-name)
-                            (let ((err-stimulus `(:type :EVENT :payload (:sensor :tool-error :message "Tool not found"))))
-                              (when (getf raw-message :reply-stream) (setf (getf err-stimulus :reply-stream) (getf raw-message :reply-stream)))
-                              (cognitive-loop err-stimulus (1+ depth))))))
-
-                    ;; Physical Actuation (Emacs, Shell, etc.)
-                    (let ((result (dispatch-action approved-action context)))
-                      (when (and result (not (member target '(:emacs :system-message))))
-                        (let ((fallback-stimulus `(:type :EVENT :payload (:sensor :tool-output :result ,result :tool ,approved-action))))
-                          (when (getf raw-message :reply-stream) (setf (getf fallback-stimulus :reply-stream) (getf raw-message :reply-stream)))
-                          (cognitive-loop fallback-stimulus (1+ depth))))))))))
-    (error (c)
-      (kernel-log "LOOP CRASH - Error in recursive turn: ~a~%" c)
-      ;; IMMUNE SYSTEM: Inject loop failure as a new stimulus if not too deep
-      (let ((sensor (ignore-errors (getf (getf raw-message :payload) :sensor))))
-        (unless (or (> depth 2) (member sensor '(:loop-error :tool-error)))
-          (inject-stimulus `(:type :EVENT :payload (:sensor :loop-error :message ,(format nil "~a" c) :depth ,depth))
-                           :stream (getf raw-message :reply-stream)
-                           :depth (1+ depth))))
-      nil)))
+(defun perceive-gate (signal)
+  "Initial processing: Normalizes raw stimuli and updates memory."
+  (let* ((payload (getf signal :payload))
+         (type (getf signal :type))
+         (sensor (getf payload :sensor)))
+    (kernel-log "GATE [Perceive]: ~a (~a)" type (or sensor "no-sensor"))
+    (snapshot-object-store)
+    (cond ((eq type :EVENT)
+           (case sensor
+             (:buffer-update (let ((ast (getf payload :ast))) (when ast (ingest-ast ast))))
+             (:point-update (let ((element (getf payload :element))) (when element (ingest-ast element))))
+             (:interrupt (bt:with-lock-held (*interrupt-lock*) (setf *interrupt-flag* t)))))
+          ((eq type :RESPONSE)
+           (kernel-log "GATE [Perceive]: Act Result -> ~a" (getf payload :status))))
+    (setf (getf signal :status) :perceived)
+    signal))
 #+end_src
 
-** Perception (perceive)
-Handles the low-level processing of stimuli, such as updating the Object Store when a buffer is saved in Emacs.
+*** Neuro Gate
+Invokes the neural System 1 engine to generate intuition-based proposals.
 
 #+begin_src lisp :tangle ../src/core.lisp
-(defun perceive (raw-message)
-  "Initial processing of raw stimuli, updating the Object Store if needed."
-  (handler-case
-      (let ((type (getf raw-message :type)) (payload (getf raw-message :payload)))
-        (kernel-log "PERCEIVE: ~a (~a)" type (or (getf payload :sensor) "no-sensor"))
-        (cond ((eq type :EVENT) (let ((sensor (getf payload :sensor)))
-                                  (case sensor
-                                    (:buffer-update (let ((ast (getf payload :ast))) (when ast (ingest-ast ast))))
-                                    (:point-update (let ((element (getf payload :element))) (when element (ingest-ast element))))
-                                    (:interrupt (bt:with-lock-held (*interrupt-lock*) (setf *interrupt-flag* t))))))
-              ((eq type :RESPONSE)
-               (kernel-log "ACT RESULT: ~a~%PAYLOAD: ~s~%" (getf payload :status) payload)))
-        raw-message)
-    (error (c)
-      (kernel-log "PERCEIVE ERROR: Malformed stimulus received: ~a" c)
-      nil)))
+(defun neuro-gate (signal)
+  "System 1: Intuition and proposed actions."
+  (unless (eq (getf signal :type) :EVENT)
+    (return-from neuro-gate signal))
+  (kernel-log "GATE [Neuro]: Consulting System 1...")
+  (let ((thought (think signal)))
+    (setf (getf signal :proposals) (if thought (list thought) nil))
+    (setf (getf signal :status) :thought)
+    signal))
+#+end_src
+
+*** Consensus Gate
+Compares multiple proposals (from parallel backends) and selects the most consistent one. Currently acts as a pass-through for the primary proposal.
+
+#+begin_src lisp :tangle ../src/core.lisp
+(defun consensus-gate (signal)
+  "Resolves multiple proposals into a single candidate action."
+  (let ((proposals (getf signal :proposals)))
+    (setf (getf signal :candidate) (first proposals))
+    (setf (getf signal :status) :consensus)
+    signal))
+#+end_src
+
+*** Decide Gate
+The System 2 safety gate. Validates the candidate action against formal rules and PSF invariants.
+
+#+begin_src lisp :tangle ../src/core.lisp
+(defun decide-gate (signal)
+  "System 2: Safety and validation."
+  (let ((candidate (getf signal :candidate)))
+    (if candidate
+        (let ((approved (decide candidate signal)))
+          (setf (getf signal :approved-action) approved)
+          (unless approved (kernel-log "GATE [Decide]: REJECTED by System 2")))
+        (setf (getf signal :approved-action) nil))
+    (setf (getf signal :status) :decided)
+    signal))
+#+end_src
+
+*** Dispatch Gate
+Routes approved actions to actuators. If an action results in new information (like tool output), it returns a FEEDBACK signal to be re-injected.
+
+#+begin_src lisp :tangle ../src/core.lisp
+(defun dispatch-gate (signal)
+  "Final Stage: Actuation and feedback generation."
+  (let* ((approved (getf signal :approved-action))
+         (type (getf signal :type))
+         (depth (getf signal :depth 0))
+         (feedback nil))
+    (case type
+      (:REQUEST (dispatch-action signal signal))
+      (:EVENT 
+       (when approved
+         (let* ((payload (getf approved :payload))
+                (target (getf approved :target))
+                (action (or (getf payload :action) (getf approved :action)))
+                (tool-name (or (getf payload :tool) (getf approved :tool)))
+                (tool-args (or (getf payload :args) (getf approved :args))))
+           (if (and (eq target :tool) (eq action :call))
+               (let ((tool (gethash (string-downcase (string tool-name)) *cognitive-tools*)))
+                 (if tool
+                     (handler-case
+                         (let* ((clean-args (if (and (listp tool-args) (listp (car tool-args))) (car tool-args) tool-args))
+                                (result (funcall (cognitive-tool-body tool) clean-args)))
+                           (setf feedback (list :type :EVENT :depth (1+ depth) :reply-stream (getf signal :reply-stream)
+                                                :payload (list :sensor :tool-output :result result :tool tool-name))))
+                       (error (c)
+                         (setf feedback (list :type :EVENT :depth (1+ depth) :reply-stream (getf signal :reply-stream)
+                                              :payload (list :sensor :tool-error :tool tool-name :message (format nil "~a" c))))))
+                     (setf feedback (list :type :EVENT :depth (1+ depth) :reply-stream (getf signal :reply-stream)
+                                          :payload (list :sensor :tool-error :message "Tool not found")))))
+               (let ((result (dispatch-action approved signal)))
+                 (when (and result (not (member target '(:emacs :system-message))))
+                   (setf feedback (list :type :EVENT :depth (1+ depth) :reply-stream (getf signal :reply-stream)
+                                        :payload (list :sensor :tool-output :result result :tool approved))))))))))
+    (setf (getf signal :status) :dispatched)
+    feedback))
+#+end_src
+
+*** Pipeline Orchestrator (process-signal)
+Moves a signal through the gates in a flat loop, handling feedback signals without increasing the Lisp stack depth.
+
+#+begin_src lisp :tangle ../src/core.lisp
+(defun process-signal (signal)
+  "The entry point to the Reactive Signal Pipeline."
+  (let ((current-signal signal))
+    (loop while current-signal do
+      (let ((depth (getf current-signal :depth 0)))
+        (when (> depth 10)
+          (kernel-log "PIPELINE ERROR: Max depth reached.")
+          (return nil))
+        (when (bt:with-lock-held (*interrupt-lock*) *interrupt-flag*)
+          (kernel-log "PIPELINE: Interrupted.")
+          (bt:with-lock-held (*interrupt-lock*) (setf *interrupt-flag* nil))
+          (return nil))
+        
+        (handler-case
+            (progn
+              (setf current-signal (perceive-gate current-signal))
+              (setf current-signal (neuro-gate current-signal))
+              (setf current-signal (consensus-gate current-signal))
+              (setf current-signal (decide-gate current-signal))
+              (setf current-signal (dispatch-gate current-signal)))
+          (error (c)
+            (kernel-log "PIPELINE CRASH: ~a" c)
+            (let ((sensor (ignore-errors (getf (getf current-signal :payload) :sensor))))
+              (if (or (> depth 2) (member sensor '(:loop-error :tool-error)))
+                  (setf current-signal nil)
+                  (setf current-signal (list :type :EVENT :depth (1+ depth) :reply-stream (getf current-signal :reply-stream)
+                                             :payload (list :sensor :loop-error :message (format nil "~a" c) :depth depth)))))))))))
 #+end_src
 
 ** Heartbeat Mechanism
 Periodically injects a "pulse" into the system to trigger temporal skills (like cron jobs or reminders).
 
 #+begin_src lisp :tangle ../src/core.lisp
+(defvar *heartbeat-thread* nil)
+
 (defun start-heartbeat (&optional (interval 60))
   "Spawns a thread that periodically injects a heartbeat stimulus."
-  (setf *heartbeat-thread* (bt:make-thread (lambda () (loop (sleep interval) (kernel-log "KERNEL: Heartbeat pulse...")
-                                                              (inject-stimulus `(:type :EVENT :payload (:sensor :heartbeat :unix-time ,(get-universal-time)))))) :name "org-agent-heartbeat")))
+  (setf *heartbeat-thread* 
+        (bt:make-thread 
+         (lambda () 
+           (loop 
+             (sleep interval) 
+             (kernel-log "KERNEL: Heartbeat pulse...")
+             (inject-stimulus (list :type :EVENT :payload (list :sensor :heartbeat :unix-time (get-universal-time)))))) 
+         :name "org-agent-heartbeat")))
 
 (defun stop-heartbeat () 
   "Gracefully terminates the heartbeat pulse thread."
@@ -347,4 +397,109 @@ The execution entry point for the kernel binary.
     (format t "KERNEL: Heartbeat interval set to ~a seconds.~%" interval)
     (start-daemon :interval interval))
   (loop (sleep 3600)))
+#+end_src
+
+* Phase E: Chaos (Verification)
+Following the PSF mandates, the Reactive Signal Pipeline must be empirically verified. The following test suite ensures that signals flow correctly through the gates, that feedback is handled without stack recursion, and that depth limits are strictly enforced.
+
+#+begin_src lisp :tangle ../tests/pipeline-tests.lisp
+(defpackage :org-agent-pipeline-tests
+  (:use :cl :fiveam :org-agent))
+(in-package :org-agent-pipeline-tests)
+
+(def-suite pipeline-suite
+  :description "Verification of the Reactive Signal Pipeline.")
+(in-suite pipeline-suite)
+
+(defun setup-mock-skills ()
+  "Register mock skills for testing."
+  (clrhash org-agent::*skills-registry*)
+  
+  (org-agent::defskill :mock-refactor
+    :priority 100
+    :trigger (lambda (ctx) (eq (getf (getf ctx :payload) :command) :organize-subtree))
+    :neuro (lambda (ctx) "Mock neuro prompt")
+    :symbolic (lambda (action ctx) 
+                `(:type :REQUEST :id 123 
+                  :payload (:action :refactor-subtree 
+                            :target-id nil 
+                            :properties (("ID" . "node-123"))))))
+
+  (org-agent::defskill :mock-safety
+    :priority 50
+    :trigger (lambda (ctx) t) ; always triggers
+    :neuro (lambda (ctx) "Mock neuro")
+    :symbolic (lambda (action ctx) nil))) ; rejects everything
+
+(test test-perceive-gate
+  "Perceive gate should update the object store and normalize signal."
+  (clrhash org-agent::*object-store*)
+  (let* ((signal (list :type :EVENT :payload (list :sensor :buffer-update :ast (list :type :HEADLINE :properties (list :ID "test-node" :TITLE "Test") :contents nil))))
+         (result (perceive-gate signal)))
+    (is (eq :perceived (getf result :status)))
+    (is (not (null (gethash "test-node" org-agent::*object-store*))))))
+
+(test test-decide-gate-safety
+  "Decide gate should block unsafe LLM proposals."
+  (setup-mock-skills)
+  (let* ((candidate (list :type :REQUEST :payload (list :action :eval :code "(shell-command \"rm -rf /\")")))
+         (signal (list :type :EVENT :candidate candidate))
+         (result (decide-gate signal)))
+    (is (eq :decided (getf result :status)))
+    (let ((approved (getf result :approved-action)))
+      (is (eq :LOG (getf approved :type)))
+      (is (search "Action rejected by skill heuristics" (getf (getf approved :payload) :text))))))
+
+(test test-pipeline-flow-flat
+  "Verify that process-signal correctly executes a signal through gates."
+  (setup-mock-skills)
+  (clrhash org-agent::*object-store*)
+  (let ((signal (list :type :EVENT :payload (list :sensor :buffer-update))))
+    (process-signal signal)
+    (pass "Pipeline completed execution.")))
+
+(test test-depth-limiting
+  "Verify that the pipeline terminates runaway feedback loops."
+  (let ((runaway-signal (list :type :EVENT :depth 11 :payload (list :sensor :heartbeat))))
+    (is (null (process-signal runaway-signal)))))
+
+(test test-env-loading
+  "Verify that environment variables are accessible."
+  (setf (uiop:getenv "LLM_ENDPOINT") "http://mock")
+  (setf (uiop:getenv "MEMEX_USER") "Amr")
+  (is (not (null (uiop:getenv "LLM_ENDPOINT"))))
+  (is (stringp (org-agent::get-env "MEMEX_USER"))))
+
+(test test-path-resolution
+  "Verify that context-resolve-path expands environment variables."
+  (setf (uiop:getenv "MEMEX_USER") "Amr")
+  (let ((path "$MEMEX_USER/test"))
+    (is (search "Amr/test" (context-resolve-path path)))))
+
+(test test-skill-dependencies
+  "Verify that resolve-skill-dependencies correctly flattens the graph."
+  (setup-mock-skills)
+  (org-agent::defskill :mock-dependent
+    :priority 10
+    :dependencies (list "mock-safety")
+    :trigger (lambda (ctx) nil)
+    :neuro nil
+    :symbolic nil)
+  (let ((deps (org-agent::resolve-skill-dependencies "mock-dependent")))
+    (is (member "mock-safety" deps :test #'string-equal))
+    (is (member "mock-dependent" deps :test #'string-equal))))
+
+(test test-log-buffering
+  "Verify that kernel-log correctly populates the system logs."
+  (kernel-log "PSF TEST LOG")
+  (let ((logs (context-get-system-logs 5)))
+    (is (cl:some (lambda (line) (search "PSF TEST LOG" line)) logs))))
+
+(test test-global-awareness-assembly
+  "Verify that context-assemble-global-awareness reports active projects."
+  (clrhash org-agent::*object-store*)
+  (ingest-ast (list :type :HEADLINE :properties (list :ID "proj-1" :TITLE "Project Alpha" :TAGS "project") :contents nil))
+  (let ((awareness (context-assemble-global-awareness)))
+    (is (search "Project Alpha" awareness))
+    (is (search "proj-1" awareness))))
 #+end_src

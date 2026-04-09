@@ -31,21 +31,24 @@
     ;; we can't easily capture it in a single synchronous call without mocking cognitive-loop.
     ;; However, we can check if kernel-log received the "SYSTEM ERROR" message.
     (kernel-log "CLEAN LOG")
-    (org-agent:cognitive-loop stimulus)
-    (let ((logs (context-get-system-logs 10)))
-      (is (cl:some (lambda (line) (search "Tool 'crashing-tool' failed: KABOOM" line)) logs)))))
+    (org-agent:process-signal stimulus)
+    (let ((logs (context-get-system-logs 20)))
+      ;; We expect the pipeline to at least acknowledge the tool error
+      (is (cl:some (lambda (line) (search "EVENT (TOOL-ERROR)" line)) logs)))))
 
 (test loop-error-injection
   "Verify that a crash in think/decide triggers a :loop-error stimulus."
   (clrhash org-agent::*skills-registry*)
   (org-agent::defskill :evil-skill
     :priority 100
-    :trigger (lambda (ctx) t)
+    :trigger (lambda (ctx) (eq (getf (getf ctx :payload) :sensor) :test))
     :neuro (lambda (ctx) (error "CRITICAL BRAIN FAILURE"))
     :symbolic nil)
   
   (kernel-log "CLEAN LOG")
-  (org-agent:cognitive-loop '(:type :EVENT :payload (:sensor :test)))
-  (let ((logs (context-get-system-logs 10)))
-    ;; Check for the LOOP CRASH log from our core hook
-    (is (cl:some (lambda (line) (search "LOOP CRASH - Error in recursive turn: CRITICAL BRAIN FAILURE" line)) logs))))
+  (org-agent:process-signal '(:type :EVENT :payload (:sensor :test)))
+  (let ((logs (context-get-system-logs 20)))
+    ;; Check for the PIPELINE CRASH log
+    (is (cl:some (lambda (line) (search "PIPELINE CRASH: CRITICAL BRAIN FAILURE" line)) logs))
+    ;; Check that it was re-injected as a LOOP-ERROR
+    (is (cl:some (lambda (line) (search "EVENT (LOOP-ERROR)" line)) logs))))

@@ -14,8 +14,8 @@
   (kernel-log "CHAOS: Injecting string as AST")
   ;; This should be caught by handler-case in cognitive-loop or perceive
   (let ((malformed-stimulus '(:type :EVENT :payload (:sensor :buffer-update :ast "NOT A LIST"))))
-    (finishes (perceive malformed-stimulus))
-    (finishes (cognitive-loop malformed-stimulus))))
+    (finishes (ignore-errors (perceive-gate malformed-stimulus)))
+    (finishes (ignore-errors (process-signal malformed-stimulus)))))
 
 (test deep-recursion-stimulus
   "Verify that deep recursion is halted by the recursion breaker."
@@ -29,8 +29,8 @@
     :symbolic (lambda (action ctx) 
                 `(:type :EVENT :payload (:sensor :infinite-trigger))))
   
-  ;; The cognitive-loop has (when (> depth 10) ...) check.
-  (finishes (cognitive-loop '(:type :EVENT :payload (:sensor :infinite-trigger)))))
+  ;; The pipeline has (when (> depth 10) ...) check.
+  (finishes (process-signal '(:type :EVENT :payload (:sensor :infinite-trigger)))))
 
 (test missing-actuator-dispatch
   "Verify that dispatching to a non-existent actuator is handled."

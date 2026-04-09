@@ -45,12 +45,13 @@
    #:context-get-skill-telemetry
    #:context-assemble-global-awareness
    
-   ;; --- Cognitive Loop & Event Bus ---
-   #:perceive
-   #:think
-   #:decide
-   #:act
-   #:cognitive-loop
+   ;; --- Reactive Signal Pipeline ---
+   #:process-signal
+   #:perceive-gate
+   #:neuro-gate
+   #:consensus-gate
+   #:decide-gate
+   #:dispatch-gate
    #:inject-stimulus
    #:dispatch-action
    #:register-actuator
