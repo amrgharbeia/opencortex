@@ -17,6 +17,7 @@
    #:lookup-object
    #:list-objects-by-type
    #:*object-store*
+   #: *history-store*
    #:org-object
    #:org-object-id
    #:org-object-type
