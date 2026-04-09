@@ -70,3 +70,123 @@ The Org-JSON Bridge will be implemented as a modular system centered around two 
 *** CLI Interface
 
     - Command-line tools wrapping `org-to-json` and `json-to-org` will also be provided for convenient use from the shell.  These tools will accept file paths as input and output, and include options to control formatting and error handling.  Example: `org-json-convert --to-json input.org output.json`.
+
+* Implementation
+
+** Emacs Lisp Core (org-json-bridge.el)
+#+begin_src elisp :tangle projects/org-json-bridge/org-json-bridge.el
+(require 'org-element)
+(require 'json)
+(require 'cl-lib)
+
+(defun org-json-bridge--clean-tree (element)
+  "Recursively convert an Org ELEMENT into a JSON-serializable format."
+  (cond
+   ((listp element)
+    (let* ((type (car element))
+           (props (nth 1 element))
+           (children (nthcdr 2 element))
+           (cleaned-props nil))
+      
+      (cl-loop for (key val) on props by 'cddr do
+               (unless (member key '(:standard-properties :parent))
+                 (let ((json-key (substring (symbol-name key) 1)))
+                   (push (cons json-key 
+                              (cond
+                               ((stringp val) val)
+                               ((numberp val) val)
+                               ((booleanp val) val)
+                               (t (format "%s" val))))
+                         cleaned-props))))
+      
+      (list (cons 'type (symbol-name type))
+            (cons 'properties cleaned-props)
+            (cons 'contents (mapcar #'org-json-bridge--clean-tree children)))))
+   ((stringp element) element)
+   (t (format "%s" element))))
+
+(defun org-to-json (file-path)
+  "Parse an Org file and output its structure as JSON."
+  (with-current-buffer (find-file-noselect file-path)
+    (let* ((tree (org-element-parse-buffer))
+           (cleaned (org-json-bridge--clean-tree tree)))
+      (princ (json-encode cleaned)))))
+
+(defun json-to-org (json-string output-file)
+ "Take a JSON representation of an Org tree and write it back to a file."
+ (let ((data (json-read-from-string json-string)))
+ (with-temp-file output-file
+ (insert (org-element-interpret-data data)))))
+
+;; Entry point for batch mode
+(when (string= (car command-line-args-left) "--")
+  (pop command-line-args-left))
+
+(let ((command (pop command-line-args-left)))
+  (cond
+   ((string= command "org-to-json") 
+    (let ((file (pop command-line-args-left)))
+      (org-to-json file)))
+   ((string= command "json-to-org")
+    (let ((json-str (pop command-line-args-left))
+          (out-file (pop command-line-args-left)))
+      (json-to-org json-str out-file)))))
+#+end_src
+
+** Python Wrapper (org_bridge.py)
+#+begin_src python :tangle projects/org-json-bridge/org_bridge.py
+import subprocess
+import json
+import os
+import argparse
+from typing import Dict, Any, Optional
+
+class OrgBridge:
+    def __init__(self, lisp_script_path: str = os.path.join(os.path.dirname(__file__), "org-json-bridge.el")):
+        self.lisp_path = os.path.abspath(lisp_script_path)
+
+    def _run_emacs_batch(self, command: str, *args) -> str:
+        """Helper to execute the Emacs batch command with arguments."""
+        cmd = [
+            "emacs", "--batch",
+            "-l", self.lisp_path,
+            "--", command, *args
+        ]
+        result = subprocess.run(cmd, capture_output=True, text=True, check=True)
+        return result.stdout.strip()
+
+    def parse_to_dict(self, file_path: str) -> Dict[str, Any]:
+        """Reads an Org file and returns its AST as a Python Dictionary."""
+        abs_path = os.path.abspath(file_path)
+        json_output = self._run_emacs_batch("org-to-json", abs_path)
+        return json.loads(json_output)
+
+    def write_from_dict(self, ast_dict: Dict[str, Any], output_path: str):
+        """Takes a Python Dictionary (AST) and writes it back to an Org file."""
+        json_input = json.dumps(ast_dict)
+        abs_output_path = os.path.abspath(output_path)
+        self._run_emacs_batch("json-to-org", json_input, abs_output_path)
+
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description="Org-mode to JSON bridge for programmatic manipulation.")
+    parser.add_argument("action", choices=["parse", "render"], help="Action to perform: 'parse' an Org file to JSON, or 'render' JSON to an Org file.")
+    parser.add_argument("--file-path", help="Path to the Org-mode file (required for 'parse' action).")
+    parser.add_argument("--json-input-file", help="Path to a JSON file containing the AST (required for 'render' action).")
+    parser.add_argument("--output-file", help="Path to output the Org-mode file (required for 'render' action).")
+
+    args = parser.parse_args()
+    bridge = OrgBridge()
+
+    if args.action == "parse":
+        if not args.file_path:
+            parser.error("--file-path is required for the 'parse' action.")
+        org_ast = bridge.parse_to_dict(args.file_path)
+        print(json.dumps(org_ast, indent=2))
+    elif args.action == "render":
+        if not args.json_input_file or not args.output_file:
+            parser.error("--json-input-file and --output-file are required for the 'render' action.")
+        with open(args.json_input_file, 'r') as f:
+            ast_dict = json.load(f)
+        bridge.write_from_dict(ast_dict, args.output_file)
+#+end_src

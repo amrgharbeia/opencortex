@@ -71,6 +71,7 @@ The `package.lisp` file defines the public API of the `org-agent` kernel. It exp
    #:load-skill-with-timeout
    #:topological-sort-skills
    #:validate-lisp-syntax
+   #:safety-harness-validate
    #:find-triggered-skill
    #:defskill
    #:*skills-registry*

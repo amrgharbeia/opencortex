@@ -62,6 +62,7 @@
    #:load-skill-with-timeout
    #:topological-sort-skills
    #:validate-lisp-syntax
+   #:safety-harness-validate
    #:find-triggered-skill
    #:defskill
    #:*skills-registry*

@@ -97,3 +97,32 @@
   (let ((awareness (context-assemble-global-awareness)))
     (is (search "Project Alpha" awareness))
     (is (search "proj-1" awareness))))
+
+(test test-micro-rollback
+  "Verify that a pipeline crash triggers an automatic Object Store rollback."
+  (clrhash org-agent::*object-store*)
+  (clrhash org-agent::*history-store*)
+  (setf org-agent::*object-store-snapshots* nil)
+  
+  ;; State A
+  (ingest-ast (list :type :HEADLINE :properties (list :ID "node-1" :TITLE "State A") :contents nil))
+  
+  (setup-mock-skills)
+  ;; Skill that crashes in Symbolic Gate
+  (org-agent::defskill :crashing-skill
+    :priority 200
+    :trigger (lambda (ctx) t)
+    :neuro (lambda (ctx) (list :type :REQUEST :payload (list :action :eval :code "(error \"BOOM\")")))
+    :symbolic (lambda (action ctx) (error "CRASH IN SYSTEM 2")))
+
+  ;; Run pipeline. This turn will:
+  ;; 1. Perceive (Take snapshot of State A)
+  ;; 2. Neuro (Think)
+  ;; 3. Decide (Crash!)
+  ;; 4. Rollback to State A.
+  (process-signal (list :type :EVENT :payload (list :sensor :test)))
+  
+  ;; Verify that we are still in State A
+  (let ((obj (lookup-object "node-1")))
+    (is (not (null obj)))
+    (is (equal (getf (org-object-attributes obj) :TITLE) "State A"))))

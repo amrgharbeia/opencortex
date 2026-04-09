@@ -1,44 +1,5 @@
-:PROPERTIES:
-:ID:       98576df2-c496-4e4a-9acb-0bca514a0305
-:CREATED:  [2026-03-31 Tue 18:28]
-:EDITED:   [2026-04-09 Thu]
-:END:
-#+TITLE: SKILL: Global Safety Harness (Universal Literate Note)
-#+STARTUP: content
-#+FILETAGS: :security:sandbox:ast:psf:
-
-* Overview
-The *Global Safety Harness* is the primary "Safety Gate" for the Neurosymbolic Lisp Machine. It provides a recursive AST validator that subjects all Elisp/Lisp proposals from System 1 to a strict "Deny-by-Default" sandbox, preventing arbitrary code execution while allowing high-fidelity system manipulation.
-
-* Phase A: Demand (PRD)
-:PROPERTIES:
-:STATUS: FROZEN
-:END:
-
-** 1. Purpose
-Define a high-integrity, recursive security sandbox for Lisp execution.
-
-** 2. User Needs
-- *Recursive Validation:* Every nested function call and variable access MUST be checked.
-- *Deny-by-Default:* Only explicitly whitelisted functions and variables are permitted.
-- *Eval Protection:* Block all forms of `eval`, `load`, or dynamic execution.
-- *Symbolic Preemption:* This skill acts as a mandatory global System 2 check.
-
-** 3. Success Criteria
-*** DONE Implement recursive AST walker in Lisp
-*** DONE Establish strict function whitelist (surgical Org operations)
-*** DONE Detect and block nested 'eval' attempts
-*** DONE Verify that malformed or malicious sexps are rejected
-
-* Implementation
-
-** Package
-#+begin_src lisp :tangle ../src/safety-harness.lisp
 (in-package :org-agent)
-#+end_src
 
-** Whitelist Definition
-#+begin_src lisp :tangle ../src/safety-harness.lisp
 (defparameter *safety-whitelist*
   '(;; Math & Logic
     + - * / = < > <= >= 1+ 1- min max
@@ -79,10 +40,7 @@ Define a high-integrity, recursive security sandbox for Lisp execution.
     declare ignore
     ;; Let's also add simple data types
     t nil quote function))
-#+end_src
 
-** Recursive AST Walker
-#+begin_src lisp :tangle ../src/safety-harness.lisp
 (defun safety-harness-ast-walk (form)
   "Recursively walks the Lisp AST. Returns T if safe, NIL if unsafe."
   (cond
@@ -106,10 +64,7 @@ Define a high-integrity, recursive security sandbox for Lisp execution.
           (kernel-log "SAFETY HARNESS: Blocked call to non-whitelisted function ~a" head)
           nil))))
     (t nil)))
-#+end_src
 
-** Validation Entry Point
-#+begin_src lisp :tangle ../src/safety-harness.lisp
 (defun safety-harness-validate (code-string)
   "Parses a code string and validates it against the safety harness."
   (handler-case
@@ -119,39 +74,9 @@ Define a high-integrity, recursive security sandbox for Lisp execution.
     (error (c)
       (kernel-log "SAFETY HARNESS ERROR: Syntax or read error during validation: ~a" c)
       nil)))
-#+end_src
 
-** Skill Definition
-#+begin_src lisp :tangle ../src/safety-harness.lisp
 (defskill :skill-safety-harness
   :priority 90
   :trigger (lambda (ctx) nil)
   :neuro nil
   :symbolic nil)
-#+end_src
-
-* Phase E: Chaos (Verification)
-#+begin_src lisp :tangle ../tests/safety-harness-tests.lisp
-(defpackage :org-agent-safety-tests
-  (:use :cl :fiveam :org-agent)
-  (:export #:safety-suite))
-(in-package :org-agent-safety-tests)
-
-(def-suite safety-suite :description "Tests for the Global Safety Harness.")
-(in-suite safety-suite)
-
-(test test-basic-math-safe
-  (is (org-agent:safety-harness-validate "(+ 1 2)")))
-
-(test test-blocked-eval
-  (is (not (org-agent:safety-harness-validate "(eval '(+ 1 2))"))))
-
-(test test-blocked-shell
-  (is (not (org-agent:safety-harness-validate "(uiop:run-program \"ls\")"))))
-
-(test test-nested-unsafe
-  (is (not (org-agent:safety-harness-validate "(let ((x 1)) (delete-file \"test.txt\"))"))))
-
-(test test-safe-kernel-api
-  (is (org-agent:safety-harness-validate "(org-agent::lookup-object \"node-1\")")))
-#+end_src

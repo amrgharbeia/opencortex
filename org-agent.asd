@@ -15,6 +15,7 @@
                              (:file "skills")
                              (:file "neuro")
                              (:file "symbolic")
+                             (:file "safety-harness")
                              (:file "core"))))
   :build-operation "program-op"
   :build-pathname "org-agent-server"
@@ -27,6 +28,7 @@
                 :components ((:file "oacp-tests")
                              (:file "pipeline-tests")
                              (:file "peripheral-vision-tests")
+                             (:file "safety-harness-tests")
                              (:file "boot-sequence-tests")
                              (:file "object-store-tests")
                              (:file "immune-system-tests")
@@ -35,6 +37,7 @@
              (uiop:symbol-call :fiveam :run! (uiop:find-symbol* :oacp-suite :org-agent-tests))
              (uiop:symbol-call :fiveam :run! (uiop:find-symbol* :pipeline-suite :org-agent-pipeline-tests))
              (uiop:symbol-call :fiveam :run! (uiop:find-symbol* :vision-suite :org-agent-peripheral-vision-tests))
+             (uiop:symbol-call :fiveam :run! (uiop:find-symbol* :safety-suite :org-agent-safety-tests))
              (uiop:symbol-call :fiveam :run! (uiop:find-symbol* :boot-suite :org-agent-boot-tests))
              (uiop:symbol-call :fiveam :run! (uiop:find-symbol* :object-store-suite :org-agent-object-store-tests))
              (uiop:symbol-call :fiveam :run! (uiop:find-symbol* :immune-suite :org-agent-immune-system-tests))

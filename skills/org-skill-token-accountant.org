@@ -90,3 +90,469 @@ Maintain a state-aware provider cascade that routes around "pain" (failures) and
                   (when p (token-accountant-record-pain p))
                   action))))
 #+end_src
+
+* Documentation (Token Optimization)
+** research.org
+#+TITLE: Token Management & Model Optimization Research
+#+author: Amero Garcia
+#+created: [2026-03-16 Mon 14:28]
+#+DATE: 2026-03-04
+#+FILETAGS: :research:token:optimization:models
+
+* Token Management Strategy Research
+
+** Initial Findings
+
+*** OpenRouter Free Tier
+- URL: https://openrouter.ai/collections/free-models
+- Providers moving from free to paid-only models
+- Belief: "Free models play crucial role in democratizing access"
+
+*** Google AI Studio (Gemini)
+- Free tier available
+- Limits: 60 requests/minute, 300K tokens/day
+- No credit card required
+- Every API key gets these limits
+
+** Research Questions
+
+1. Which providers offer free or low-cost tiers?
+2. What are the rate limits and quotas?
+3. Which models are best for which use cases?
+4. How to optimize context windows?
+5. What is the cost per token breakdown?
+
+** To Research Further
+
+| Provider | Free Tier | Paid Tier | Best For |
+|----------|-----------|-----------|----------|
+| Google Gemini | 300K tokens/day | Pay per use? | General, coding |
+| OpenRouter | Varies by model | Per-request | Routing, variety |
+| OpenAI | ? | ? | GPT-4 quality |
+| Anthropic | ? | ? | Claude capabilities |
+| Mistral | ? | ? | Open weights |
+| Local | Hardware cost | Free | Privacy, control |
+
+** Token Optimization Strategies to Explore
+
+1. *Tiered Model Usage*
+   - Simple tasks: Fast/cheap models
+   - Complex tasks: Stronger models
+   - Fallback: Lower tier if higher fails
+
+2. *Context Compression*
+   - Summarize long contexts
+   - Use RAG instead of full context
+   - Prune old conversation
+
+3. *Caching*
+   - Cache common responses
+   - Reuse embeddings
+   - Batch requests
+
+4. *Hybrid Approach*
+   - Local models for simple queries
+   - Cloud APIs for complex tasks
+   - Manual review for critical outputs
+
+** X Account Access
+
+*Pending:* X account access via Google login
+*Blocker:* Requires OTP from user per security rule (SOUL.md)
+*Action needed:* User provides OTP, I complete OAuth, access bookmarks
+** budget-50.org
+#+TITLE: Token Optimization - $50 Monthly Budget
+#+author: Amero Garcia
+#+created: [2026-03-16 Mon 14:28]
+#+DATE: 2026-03-04
+#+FILETAGS: :budget:constraints:optimization
+
+* Budget: $50/Month
+
+** Budget Breakdown
+
+| Tier | Provider | Allocation | Tokens Est. | Use Case |
+|------|----------|-----------|-------------|----------|
+| FREE | Google Gemini | $0 | ~9M/month | 90% of work |
+| CHEAP | OpenRouter | $20 | ~6M tokens | Fallback, complex tasks |
+| PREMIUM | Claude/GPT-4o | $25 | ~500K tokens | Critical decisions |
+| BUFFER | Various | $5 | Emergency | Overruns, testing |
+
+** Daily Free Allowance
+
+- *Google Gemini:* 300K tokens/day = 9M/month = *$0*
+- This covers 90-95% of expected workload
+
+** Paid Tier Allocation ($45)
+
+- *$20 → OpenRouter* (Qwen, Mistral, Llama)
+  - ~6M tokens at $0.003/1K
+  - Use when: Gemini rate limited, need different model
+  
+- *$25 → Premium models* (Claude, GPT-4o)
+  - ~500K tokens at $0.05/1K average
+  - Use when: Architecture decisions, critical code review, final validation
+
+- *$5 → Buffer*
+  - Handle overruns
+  - Emergency access
+  - Testing new models
+
+** Hard Limits
+
+| Provider | Monthly Cap | Alert At |
+|----------|-------------|----------|
+| OpenRouter | $20 | $16 (80%) |
+| Premium | $25 | $20 (80%) |
+| Total | $50 | $45 (90%) |
+
+** Daily Tracking
+
+Target: *Monitor consumption every session*
+
+```
+IF daily_cost > $1.50:
+  → Switch to Gemini only
+  → Defer premium tasks
+  
+IF weekly_cost > $12:
+  → Review usage patterns
+  → Find optimization opportunities
+```
+
+** Emergency Protocol
+
+If approaching $50 limit before month end:
+1. Halt all paid API calls
+2. Switch to Gemini-only mode
+3. Queue premium tasks for next month
+4. Consider local inference setup
+
+** Cost-Per-Task Guidelines
+
+| Task Type | Max Cost | Preferred Model |
+|-----------|----------|-----------------|
+| Quick lookup | $0.00 | Gemini |
+| Code review | $0.01 | Gemini/OpenRouter |
+| Feature design | $0.05 | OpenRouter |
+| Architecture review | $0.10 | Claude/GPT-4o |
+| Emergency debug | $0.20 | Best available |
+
+** Optimization Imperative
+
+With $50/month, waste is not affordable:
+- ❌ No speculative queries
+- ❌ No "just curious" premium calls
+- ❌ No repeated similar prompts
+- ✅ Always use Gemini first
+- ✅ Batch similar requests
+- ✅ Cache embeddings locally
+- ✅ Summarize long contexts
+
+** Monthly Review
+
+1. Compare actual vs. projected usage
+2. Adjust model routing rules
+3. Identify expensive query patterns
+4. Plan next month's allocation
+
+** Break-Even Analysis
+
+At $50/month = $600/year:
+- *Option A:* Continue APIs (flexible, managed)
+- *Option B:* Local inference (~$800 hardware, $0 ongoing)
+  - Break-even: 16 months
+  - Risk: Hardware failure, maintenance
+  
+*Recommendation:* Stick with APIs until $100+/month, then evaluate hardware.
+
+** Questions for Human Partner
+
+1. Is $50 firm or flexible in emergencies?
+2. What happens if we hit limit mid-critical-task?
+3. Preference for which premium model? (Claude vs GPT-4 vs both)
+4. Should I track and report costs per project?
+5. Any tasks that are "unlimited budget" critical?
+** README.org
+#+TITLE: Token Optimization
+#+AUTHOR: Amr
+#+CREATED: [2026-03-17 Tue]
+#+BEGIN_COMMENT
+Cost-effective LLM usage through smart routing, context compression, and multi-provider strategies.
+#+END_COMMENT
+
+* Token Optimization
+
+Strategy and implementation for minimizing LLM costs while maintaining quality.
+
+* Project Tasks
+
+See the actionable tasks for this project in [[file:../../gtd.org::*Token Optimization][GTD.org > Projects > Token Optimization]]
+
+* Key Documents
+
+- [[file:plan.org][Optimization Plan]]
+- [[file:token-optimization.yaml][Configuration]]
+
+* Current Focus
+
+- Multi-provider setup (Gemini primary, OpenRouter fallback)
+- Usage tracking and budget alerts
+- Smart routing by task type
+- Context compression techniques
+** quick-start.org
+#+TITLE: Token Optimization - Quick Start
+#+author: Amero Garcia
+#+created: [2026-03-16 Mon 14:28]
+#+DATE: 2026-03-04
+
+* Quick Reference for Daily Use
+
+** Rule of Thumb
+
+| What you need | Use this | Cost |
+|---------------|----------|------|
+| Quick answer, formatting, lookup | Gemini Flash | FREE |
+| Code review, analysis | Gemini Pro | FREE |
+| Complex problem solving | Claude Haiku / Qwen | $ |
+| Critical architecture decision | GPT-4o | $$ |
+
+** Free Tier Limits (Daily)
+
+| Provider | Tokens | Requests | Reset |
+|----------|--------|----------|-------|
+| Google AI Studio | 300,000 | 60/min | Daily |
+| OpenRouter Free | Varies | Limited | - |
+
+** Current Recommendation
+
+→ *Use Google Gemini exclusively* until hitting 250K tokens/day
+→ Then add OpenRouter fallback
+→ Only use GPT-4 for final reviews
+
+** This will reduce token costs by ~90%
+
+** Next Steps
+
+1. Configure Gemini as primary (already partially done)
+2. Add quota tracking
+3. Set alerts at 80% of free limits
+4. Implement tiered routing
+
+** Savings Potential: $100-500/month → $10-50/month
+** plan.org
+#+TITLE: Token Optimization Strategy
+#+author: Amero Garcia
+#+created: [2026-03-16 Mon 14:28]
+#+DATE: 2026-03-04
+#+FILETAGS: :strategy:token:optimization:cost
+
+* Executive Summary
+
+** Goal: Minimize inference costs while maximizing capability
+
+Current approach: Single default model → Multi-tier, multi-provider strategy
+
+* Three-Tier Model Strategy
+
+** Tier 1: Fast/Cheap (80% of queries)
+- *Purpose:* Simple tasks, formatting, lookups
+- *Models:* Google Gemini Flash, Local models
+- *Cost:* $0-0.000001 per 1K tokens
+- *Speed:* Fastest
+
+** Tier 2: Balanced (18% of queries)
+- *Purpose:* Complex reasoning, code generation, analysis
+- *Models:* Gemini Pro, Claude Haiku, Llama 3 70B
+- *Cost:* $0.0001-0.003 per 1K tokens
+- *Speed:* Medium
+
+** Tier 3: High-Performance (2% of queries)
+- *Purpose:* Critical decisions, complex architecture, final review
+- *Models:* GPT-4, Claude Opus, Gemini Ultra
+- *Cost:* $0.01-0.03 per 1K tokens
+- *Speed:* Slower
+
+* Provider Analysis
+
+** Google AI Studio (Primary Recommended)
+
+| Model | Free Tier | Rate Limit | Best For |
+|-------|-----------|------------|----------|
+| Gemini 2.0 Flash | 300K tokens/day | 60 req/min | Quick tasks, coding |
+| Gemini 1.5 Flash | 300K tokens/day | 60 req/min | Fast responses |
+| Gemini 1.5 Pro | 300K tokens/day | 60 req/min | Complex tasks |
+
+*Cost: FREE (within limits)*
+
+** OpenRouter.Aggregated (Secondary)
+
+| Model | Price/1K tokens | Context | Reliability |
+|-------|-----------------|---------|-------------|
+| Qwen 3 235B | $0.0001-0.0003 | 128K | High |
+| Mistral Large | $0.002-0.006 | 128K | High |
+| Llama 4 405B | $0.0002-0.0005 | 128K | Medium |
+| Free tier models | $0 | Varies | Variable |
+
+** OpenAI (Tier 3 only)
+- GPT-4: $0.03/1K tokens (expensive)
+- GPT-4o: $0.005/1K tokens (better value)
+- Use sparingly for critical tasks only
+
+** Local Inference (Long-term goal)
+- Hardware: $1000-5000 initial investment
+- Ongoing: $0 (electricity only)
+- Models: Llama 3, Mistral, DeepSeek
+- Best for: High-volume, privacy-sensitive work
+
+* Context Optimization Strategies
+
+** 1. Context Windows by Task Type
+
+| Task Type | Optimal Context | Compression | Savings |
+|-----------|-----------------|-------------|---------|
+| Code review | 4K-8K | Truncate old files | 50% |
+| Documentation | 8K-16K | Summarize sections | 30% |
+| Research | 16K-32K | Chunk + RAG | 70% |
+| Architecture | 32K-128K | Maintain full | 0% |
+
+** 2. Conversation Pruning
+- Remove "thinking" blocks from history
+- Summarize conversation every 10 turns
+- Archive old sessions to external storage
+
+** 3. RAG vs. Full Context
+- *Rule:* < 5K tokens of context → Full
+- *Rule:* > 10K tokens of context → Use embeddings/RAG
+- *Savings:* 60-80% on large document tasks
+
+* Request Optimization
+
+** Batching Strategy
+- Group similar requests (3-5 per batch)
+- Same model, same parameters
+- Shared overhead costs
+
+** Caching Strategy
+- Cache embeddings for repeated contexts
+- Store common completions (templates)
+- Reuse code snippet suggestions
+
+** Streaming vs. Non-Stream
+- *Streaming:* Better UX, but higher token overhead
+- *Non-stream:* More efficient for programmatic use
+- *Recommendation:* Non-stream for background tasks
+
+* Smart Routing Rules
+
+** Automatic Selection Logic
+
+```
+IF task_type == "simple_lookup" OR "formatting":
+    → Gemini Flash (free)
+
+ELIF task_type == "code_generation" AND complexity < 3:
+    → Gemini Pro (free tier)
+
+ELIF task_type == "complex_reasoning" OR "architecture":
+    → Claude Sonnet or GPT-4o
+
+ELIF task_type == "final_review" OR "critical_decision":
+    → GPT-4 or Claude Opus
+```
+
+** Fallback Chain
+1. Try Gemini (free)
+2. If rate limited → OpenRouter (cheap)
+3. If quality insufficient → GPT-4o
+4. If critical failure → GPT-4
+
+* Concrete Implementation
+
+** Config Structure (openclaw.json)
+
+```json
+{
+  "models": {
+    "defaults": {
+      "primary": "google-gemini-cli/gemini-2.0-flash",
+      "fallbacks": [
+        "openrouter/qwen/qwen3-235b-a22b",
+        "google-gemini-cli/gemini-1.5-pro",
+        "openai/gpt-4o"
+      ]
+    },
+    "providers": {
+      "google-gemini-cli": {
+        "freeTier": true,
+        "dailyLimit": 300000,
+        "rateLimit": 60
+      },
+      "openrouter": {
+        "freeTierModels": ["openrouter/auto"],
+        "budgetLimit": 500
+      },
+      "openai": {
+        "budgetLimit": 200,
+        "useFor": ["critical", "architecture"]
+      }
+    }
+  }
+}
+```
+
+** Monitoring & Alerts
+
+- Track daily token usage per provider
+- Alert at 80% of free tier limits
+- Monthly budget review and adjustment
+
+* Cost Projections
+
+** Current Unknown Usage → Optimized
+
+| Scenario | Monthly Tokens | Current Cost | Optimized Cost | Savings |
+|----------|---------------|--------------|----------------|---------|
+| Light (< 1M) | 1M | $50-100 | $0-10 | 90% |
+| Medium (1-5M) | 3M | $200-500 | $20-100 | 80% |
+| Heavy (5-20M) | 10M | $1000-3000 | $200-500 | 80% |
+
+* Immediate Actions
+
+** Week 1: Setup
+- Configure Gemini as primary provider
+- Set up OpenRouter fallback
+- Implement basic usage tracking
+- Document current baseline
+
+** Week 2: Implement
+- Add smart routing logic
+- Implement context compression
+- Set up budget alerts
+- A/B test model choices
+
+** Week 3: Optimize
+- Analyze usage patterns
+- Fine-tune routing rules
+- Tune context windows
+- Document findings
+
+** Week 4: Scale
+- Full multi-provider setup
+- Implement full caching
+- Maximize free tier usage
+- Plan for paid tiers if needed
+
+* Long-term: Local Inference Path
+
+** Minimum Viable Setup
+- Hardware: RTX 4090 or Apple Silicon M3 Max
+- Software: Ollama + OpenClaw integration
+- Cost: ~$2000-4000 one-time
+- Break-even: 3-6 months vs. API costs
+
+** Full Self-Hosted
+- Hardware: Dual RTX 4090 or 2x Mac Studio
+- Models: Llama 3 70B, Mixtral 8x22B
+- Cost: ~$8000-12000
+- For: Privacy, unlimited inference, control
