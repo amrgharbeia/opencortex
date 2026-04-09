@@ -2,6 +2,9 @@
 
 (defvar *object-store* (make-hash-table :test 'equal))
 
+(defvar *history-store* (make-hash-table :test 'equal)
+  "Immutable Merkle-Tree versioning store mapping hashes to objects.")
+
 (defstruct org-object
   id type attributes content vector parent-id children version last-sync hash)
 
@@ -32,52 +35,55 @@
       (when (listp child)
         (let ((child-id (ingest-ast child id)))
           (push child-id child-ids)
-          (let ((child-obj (lookup-object child-id)))
-            (when child-obj (push (org-object-hash child-obj) child-hashes))))))
+          (let ((child-id-val child-id))
+             (let ((child-obj (lookup-object child-id-val)))
+               (when child-obj (push (org-object-hash child-obj) child-hashes)))))))
     (setf child-ids (nreverse child-ids))
     (setf child-hashes (nreverse child-hashes))
     (let* ((hash (compute-merkle-hash id type props raw-content child-hashes))
-           (obj (make-org-object 
-                 :id id :type type :attributes props :content raw-content
-                 :vector (when should-embed (get-embedding raw-content))
-                 :parent-id parent-id :children child-ids
-                 :version (get-universal-time) :last-sync (get-universal-time)
-                 :hash hash)))
+           (existing-obj (gethash hash *history-store*))
+           (obj (or existing-obj
+                    (make-org-object 
+                     :id id :type type :attributes props :content raw-content
+                     :vector (when should-embed (get-embedding raw-content))
+                     :parent-id parent-id :children child-ids
+                     :version (get-universal-time) :last-sync (get-universal-time)
+                     :hash hash))))
+      (unless existing-obj
+        (setf (gethash hash *history-store*) obj))
       (setf (gethash id *object-store*) obj)
       id)))
 
 (defvar *object-store-snapshots* nil)
 
-(defun clone-org-object (obj)
-  "Creates a deep copy of an org-object structure."
-  (make-org-object 
-   :id (org-object-id obj) :type (org-object-type obj)
-   :attributes (copy-list (org-object-attributes obj))
-   :content (org-object-content obj) :vector (org-object-vector obj)
-   :parent-id (org-object-parent-id obj) :children (copy-list (org-object-children obj))
-   :version (org-object-version obj) :last-sync (org-object-last-sync obj)
-   :hash (org-object-hash obj)))
+(defun copy-hash-table (hash-table)
+  "Creates a shallow copy of a hash table."
+  (let ((new-table (make-hash-table :test (hash-table-test hash-table) 
+                                    :size (hash-table-size hash-table))))
+    (maphash (lambda (k v) (setf (gethash k new-table) v)) hash-table)
+    new-table))
 
 (defun snapshot-object-store ()
-  "Creates an immutable point-in-time image of the current knowledge graph."
-  (let ((snapshot (make-hash-table :test 'equal)))
-    (maphash (lambda (id obj) (setf (gethash id snapshot) (clone-org-object obj))) *object-store*)
+  "Creates a lightweight, Copy-on-Write snapshot using Merkle-Tree pointers."
+  (let ((snapshot (copy-hash-table *object-store*)))
     (push (list :timestamp (get-universal-time) :data snapshot) *object-store-snapshots*)
     (when (> (length *object-store-snapshots*) 20)
       (setf *object-store-snapshots* (subseq *object-store-snapshots* 0 20)))
-    (kernel-log "MEMORY - Object Store snapshot created.")))
+    (kernel-log "MEMORY - CoW Object Store snapshot created.")))
 
 (defun rollback-object-store (&optional (index 0))
-  "Restores the Object Store to a previously captured snapshot."
+  "Restores the Object Store to a previously captured snapshot using immutable history pointers."
   (let ((snapshot (nth index *object-store-snapshots*)))
     (if snapshot
-        (progn (setf *object-store* (getf snapshot :data))
+        (progn (setf *object-store* (copy-hash-table (getf snapshot :data)))
                (kernel-log "MEMORY - Object Store rolled back to snapshot ~a" index))
         (kernel-log "MEMORY ERROR - Snapshot ~a not found." index))))
 
-(defun lookup-object (id) (gethash id *object-store*))
+(defun lookup-object (id) 
   "Retrieves an object from the store by its unique ID."
-  (defun list-objects-by-type (type)
+  (gethash id *object-store*))
+
+(defun list-objects-by-type (type)
   "Returns a list of all objects matching a specific Org element type."
   (let ((results nil))
     (maphash (lambda (id obj) (declare (ignore id)) (when (eq (org-object-type obj) type) (push obj results))) *object-store*)
