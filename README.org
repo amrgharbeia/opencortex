@@ -325,16 +325,20 @@ sequenceDiagram
       nil)))
 
 (defun perceive (raw-message)
-  (let ((type (getf raw-message :type)) (payload (getf raw-message :payload)))
-    (kernel-log "PERCEIVE: ~a (~a)" type (or (getf payload :sensor) "no-sensor"))
-    (cond ((eq type :EVENT) (let ((sensor (getf payload :sensor)))
-                              (case sensor
-                                (:buffer-update (let ((ast (getf payload :ast))) (when ast (ingest-ast ast))))
-                                (:point-update (let ((element (getf payload :element))) (when element (ingest-ast element))))
-                                (:interrupt (bt:with-lock-held (*interrupt-lock*) (setf *interrupt-flag* t))))))
-          ((eq type :RESPONSE) 
-           (kernel-log "ACT RESULT: ~a~%PAYLOAD: ~s~%" (getf payload :status) payload)))
-    raw-message))
+  (handler-case
+      (let ((type (getf raw-message :type)) (payload (getf raw-message :payload)))
+        (kernel-log "PERCEIVE: ~a (~a)" type (or (getf payload :sensor) "no-sensor"))
+        (cond ((eq type :EVENT) (let ((sensor (getf payload :sensor)))
+                                  (case sensor
+                                    (:buffer-update (let ((ast (getf payload :ast))) (when ast (ingest-ast ast))))
+                                    (:point-update (let ((element (getf payload :element))) (when element (ingest-ast element))))
+                                    (:interrupt (bt:with-lock-held (*interrupt-lock*) (setf *interrupt-flag* t))))))
+              ((eq type :RESPONSE)
+               (kernel-log "ACT RESULT: ~a~%PAYLOAD: ~s~%" (getf payload :status) payload)))
+        raw-message)
+    (error (c)
+      (kernel-log "PERCEIVE ERROR: Malformed stimulus received: ~a" c)
+      nil)))
 
 (defun start-heartbeat (&optional (interval 60))
   (setf *heartbeat-thread* (bt:make-thread (lambda () (loop (sleep interval) (kernel-log "KERNEL: Heartbeat pulse...")
@@ -452,22 +456,53 @@ Streaming raw JSON over a socket is fragile. If a 5MB Org AST is fragmented by t
 (in-package :org-agent)
 
 (defun frame-message (msg-string)
-  "Prefix MSG-STRING with a 6-character hex length (lowercase)."
-  (let ((len (length msg-string)))
-    (format nil "~(~6,'0x~)~a" len msg-string)))
+  "Prefix MSG-STRING with a 6-character hex length (lowercase).
+   FUTURE: Will also prefix a 64-char HMAC signature when OACP_ENFORCE_HMAC=true."
+  (let ((len (length msg-string))
+        (enforce-hmac (uiop:getenv "OACP_ENFORCE_HMAC")))
+    (if (and enforce-hmac (string-equal enforce-hmac "true"))
+        (let* ((secret (or (uiop:getenv "OACP_HMAC_SECRET") "default-insecure-secret"))
+               (key (ironclad:ascii-string-to-byte-array secret))
+               (hmac (ironclad:make-mac :hmac key :sha256))
+               (payload-bytes (ironclad:ascii-string-to-byte-array msg-string)))
+          (ironclad:update-mac hmac payload-bytes)
+          (let ((signature (ironclad:byte-array-to-hex-string (ironclad:produce-mac hmac))))
+            (format nil "~(~6,'0x~)~a~a" len signature msg-string)))
+        (format nil "~(~6,'0x~)~a" len msg-string))))
 
 (defun parse-message (framed-string)
-  "Extract and parse the S-expression from a framed string."
+  "Extract and parse the S-expression from a framed string, securely preventing reader macro injection."
   (when (< (length framed-string) 6)
     (error "Framed string too short"))
-  (let* ((len-str (subseq framed-string 0 6))
-         (actual-msg (subseq framed-string 6))
-         (expected-len (ignore-errors (parse-integer len-str :radix 16))))
-    (unless expected-len
-      (error "Invalid hex length prefix: ~a" len-str))
-    (unless (= expected-len (length actual-msg))
-      (error "Message length mismatch. Expected ~a, got ~a" expected-len (length actual-msg)))
-    (read-from-string actual-msg)))
+  (let* ((enforce-hmac (uiop:getenv "OACP_ENFORCE_HMAC"))
+         (use-hmac (and enforce-hmac (string-equal enforce-hmac "true")))
+         (prefix-len (if use-hmac 70 6)))
+    (when (< (length framed-string) prefix-len)
+      (error "Framed string too short for OACP signature/length"))
+    
+    (let* ((len-str (subseq framed-string 0 6))
+           (signature (when use-hmac (subseq framed-string 6 70)))
+           (actual-msg (subseq framed-string prefix-len))
+           (expected-len (ignore-errors (parse-integer len-str :radix 16))))
+      (unless expected-len
+        (error "Invalid hex length prefix: ~a" len-str))
+      (unless (= expected-len (length actual-msg))
+        (error "Message length mismatch. Expected ~a, got ~a" expected-len (length actual-msg)))
+      
+      ;; HMAC Validation Foundation
+      (when use-hmac
+        (let* ((secret (or (uiop:getenv "OACP_HMAC_SECRET") "default-insecure-secret"))
+               (key (ironclad:ascii-string-to-byte-array secret))
+               (hmac (ironclad:make-mac :hmac key :sha256))
+               (payload-bytes (ironclad:ascii-string-to-byte-array actual-msg)))
+          (ironclad:update-mac hmac payload-bytes)
+          (let ((expected-signature (ironclad:byte-array-to-hex-string (ironclad:produce-mac hmac))))
+            (unless (string-equal signature expected-signature)
+              (error "OACP Integrity Failure: HMAC signature mismatch")))))
+      
+      ;; SECURITY: Prevent Reader Macro Injection (e.g. #. ) during deserialization
+      (let ((*read-eval* nil))
+        (read-from-string actual-msg)))))
 
 (defun make-hello-message (version)
   "Construct the standard HELLO handshake message."
@@ -837,17 +872,17 @@ EXAMPLES:
                                        (setf finished :error))))
                                  :name (format nil "loader-~a" (pathname-name filepath))))
          (start-time (get-internal-real-time))
-         (timeout-units (* timeout-seconds internal-time-units-per-second)))
+         (timeout-units (truncate (* timeout-seconds internal-time-units-per-second))))
     (loop 
       (when (eq finished t) (return :success))
       (when (eq finished :error) (return :error))
       (unless (bt:thread-alive-p thread) (return :error))
       (when (> (- (get-internal-real-time) start-time) timeout-units)
+        (kernel-log "KERNEL: Timing out skill ~a..." (pathname-name filepath))
         #+sbcl (sb-thread:terminate-thread thread)
         #-sbcl (bt:destroy-thread thread)
-        (kernel-log "KERNEL ERROR: Timeout loading skill ~a" (pathname-name filepath))
         (return :timeout))
-      (sleep 0.1))))
+      (sleep 0.05))))
 
 (defun load-skill-from-org (filepath)
   (when (uiop:file-exists-p filepath)

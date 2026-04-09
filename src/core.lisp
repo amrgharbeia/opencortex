@@ -138,16 +138,20 @@
       nil)))
 
 (defun perceive (raw-message)
-  (let ((type (getf raw-message :type)) (payload (getf raw-message :payload)))
-    (kernel-log "PERCEIVE: ~a (~a)" type (or (getf payload :sensor) "no-sensor"))
-    (cond ((eq type :EVENT) (let ((sensor (getf payload :sensor)))
-                              (case sensor
-                                (:buffer-update (let ((ast (getf payload :ast))) (when ast (ingest-ast ast))))
-                                (:point-update (let ((element (getf payload :element))) (when element (ingest-ast element))))
-                                (:interrupt (bt:with-lock-held (*interrupt-lock*) (setf *interrupt-flag* t))))))
-          ((eq type :RESPONSE) 
-           (kernel-log "ACT RESULT: ~a~%PAYLOAD: ~s~%" (getf payload :status) payload)))
-    raw-message))
+  (handler-case
+      (let ((type (getf raw-message :type)) (payload (getf raw-message :payload)))
+        (kernel-log "PERCEIVE: ~a (~a)" type (or (getf payload :sensor) "no-sensor"))
+        (cond ((eq type :EVENT) (let ((sensor (getf payload :sensor)))
+                                  (case sensor
+                                    (:buffer-update (let ((ast (getf payload :ast))) (when ast (ingest-ast ast))))
+                                    (:point-update (let ((element (getf payload :element))) (when element (ingest-ast element))))
+                                    (:interrupt (bt:with-lock-held (*interrupt-lock*) (setf *interrupt-flag* t))))))
+              ((eq type :RESPONSE)
+               (kernel-log "ACT RESULT: ~a~%PAYLOAD: ~s~%" (getf payload :status) payload)))
+        raw-message)
+    (error (c)
+      (kernel-log "PERCEIVE ERROR: Malformed stimulus received: ~a" c)
+      nil)))
 
 (defun start-heartbeat (&optional (interval 60))
   (setf *heartbeat-thread* (bt:make-thread (lambda () (loop (sleep interval) (kernel-log "KERNEL: Heartbeat pulse...")
