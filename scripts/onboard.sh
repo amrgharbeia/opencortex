@@ -72,10 +72,15 @@ fi
 
 # 3. Model Strategy
 echo -e "\n${BLUE}[3/5] Primary LLM Configuration...${NC}"
-LLM_KEY=$(get_env_val "LLM_API_KEY")
+GEMINI_KEY=$(get_env_val "GEMINI_API_KEY")
 OR_KEY=$(get_env_val "OPENROUTER_API_KEY")
+ANTH_KEY=$(get_env_val "ANTHROPIC_API_KEY")
+OPENAI_KEY=$(get_env_val "OPENAI_API_KEY")
 
-if [[ ! -z "$LLM_KEY" && "$LLM_KEY" != "your_api_key_here" ]] || [[ ! -z "$OR_KEY" && "$OR_KEY" != "your_openrouter_key_here" ]]; then
+if [[ ! -z "$GEMINI_KEY" && "$GEMINI_KEY" != "your_gemini_key_here" ]] || \
+   [[ ! -z "$OR_KEY" && "$OR_KEY" != "your_openrouter_key_here" ]] || \
+   [[ ! -z "$ANTH_KEY" && "$ANTH_KEY" != "your_anthropic_key_here" ]] || \
+   [[ ! -z "$OPENAI_KEY" && "$OPENAI_KEY" != "your_openai_key_here" ]]; then
     echo -e "${GREEN}✓ Neural provider already configured in .env.${NC}"
 else
     echo "Select your primary neural provider:"
@@ -87,26 +92,24 @@ else
 
     case $LLM_CHOICE in
         2)
-            read -p "Enter OpenRouter API Key: " OR_KEY_INPUT
-            sed -i "s/OPENROUTER_API_KEY=.*/OPENROUTER_API_KEY=\"$OR_KEY_INPUT\"/g" .env
+            read -p "Enter OpenRouter API Key: " OR_INPUT
+            sed -i "s/OPENROUTER_API_KEY=.*/OPENROUTER_API_KEY=\"$OR_INPUT\"/g" .env
             echo -e "${GREEN}✓ OpenRouter configured.${NC}"
             ;;
         3)
-            read -p "Enter Anthropic API Key: " ANTH_KEY
-            sed -i "s/LLM_API_KEY=.*/LLM_API_KEY=\"$ANTH_KEY\"/g" .env
-            sed -i "s|LLM_ENDPOINT=.*|LLM_ENDPOINT=\"https://api.anthropic.com/v1/messages\"|g" .env
+            read -p "Enter Anthropic API Key: " ANTH_INPUT
+            sed -i "s/ANTHROPIC_API_KEY=.*/ANTHROPIC_API_KEY=\"$ANTH_INPUT\"/g" .env
             echo -e "${GREEN}✓ Anthropic configured.${NC}"
             ;;
         4)
-            read -p "Enter OpenAI API Key: " OPENAI_KEY
-            sed -i "s/LLM_API_KEY=.*/LLM_API_KEY=\"$OPENAI_KEY\"/g" .env
-            sed -i "s|LLM_ENDPOINT=.*|LLM_ENDPOINT=\"https://api.openai.com/v1/chat/completions\"|g" .env
+            read -p "Enter OpenAI API Key: " OPENAI_INPUT
+            sed -i "s/OPENAI_API_KEY=.*/OPENAI_API_KEY=\"$OPENAI_INPUT\"/g" .env
             echo -e "${GREEN}✓ OpenAI configured.${NC}"
             ;;
         *)
-            read -p "Enter Gemini API Key (or leave blank for OAuth): " GEM_KEY
-            if [ ! -z "$GEM_KEY" ]; then
-                sed -i "s/LLM_API_KEY=.*/LLM_API_KEY=\"$GEM_KEY\"/g" .env
+            read -p "Enter Gemini API Key (or leave blank for OAuth): " GEM_INPUT
+            if [ ! -z "$GEM_INPUT" ]; then
+                sed -i "s/GEMINI_API_KEY=.*/GEMINI_API_KEY=\"$GEM_INPUT\"/g" .env
             fi
             echo -e "${GREEN}✓ Gemini selected.${NC}"
             ;;
