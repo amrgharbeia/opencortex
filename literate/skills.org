@@ -21,6 +21,15 @@ The central hub for all loaded capabilities.
 (defvar *skills-registry* (make-hash-table :test 'equal))
 
 (defstruct skill name priority dependencies trigger-fn neuro-prompt symbolic-fn)
+
+(defvar *skill-catalog* (make-hash-table :test 'equal)
+  "A stateful tracking table for all skill files discovered in the environment.")
+
+(defstruct skill-entry 
+  filename 
+  (status :discovered) ;; :discovered, :loading, :ready, :failed
+  error-log
+  (load-time 0))
 #+end_src
 
 ** Cognitive Tool Registry
@@ -165,32 +174,53 @@ Calculates the correct load order for a directory of skill files, detecting circ
 #+end_src
 
 ** Jailed Loading (load-skill-from-org)
-The core "hot-loading" mechanism. It extracts Lisp blocks from an Org file and evaluates them within a dedicated package ("Jail"). This prevents skills from accidentally polluting the global namespace while still allowing them to access the `org-agent` API.
+The core "hot-loading" mechanism. It extracts Lisp blocks from an Org file and evaluates them within a dedicated package ("Jail"). 
 
 #+begin_src lisp :tangle ../src/skills.lisp
 (defun load-skill-from-org (filepath)
   "Parses and evaluates Lisp blocks from an Org file into a jailed package."
-  (when (uiop:file-exists-p filepath)
-    (let* ((content (uiop:read-file-string filepath)) (lines (uiop:split-string content :separator '(#\Newline)))
-           (in-lisp-block nil) (lisp-code "") (dependencies nil) (skill-base-name (pathname-name filepath))
-           (pkg-name (intern (string-upcase (format nil "ORG-AGENT.SKILLS.~a" skill-base-name)) :keyword)))
-      (dolist (line lines)
-        (let ((clean-line (string-trim '(#\Space #\Tab #\Return) line)))
-          (when (uiop:string-prefix-p "#+DEPENDS_ON:" (string-upcase clean-line))
-            (setf dependencies (mapcar (lambda (s) (string-trim "[] " s)) (uiop:split-string (subseq clean-line 13) :separator '(#\Space)))))))
-      (dolist (line lines)
-        (let ((clean-line (string-trim '(#\Space #\Tab #\Return) line)))
-          (cond ((uiop:string-prefix-p "#+begin_src lisp" (string-downcase clean-line)) (setf in-lisp-block t))
-                ((uiop:string-prefix-p "#+end_src" (string-downcase clean-line)) (setf in-lisp-block nil))
-                (in-lisp-block (setf lisp-code (concatenate 'string lisp-code line (string #\Newline)))))))
-      (when (> (length lisp-code) 0)
-        (kernel-log "KERNEL: Jailing skill '~a' in package ~a" skill-base-name pkg-name)
-        (unless (find-package pkg-name)
-          (let ((new-pkg (make-package pkg-name :use '(:cl))))
-            (do-external-symbols (sym (find-package :org-agent)) (shadowing-import sym new-pkg))))
-        (let ((*read-eval* nil) (*package* (find-package pkg-name)))
-          (handler-case (eval (read-from-string (format nil "(progn ~a)" lisp-code)))
-            (error (c) (kernel-log "READER ERROR in skill '~a': ~a~%" skill-base-name c))))))))
+  (let* ((skill-base-name (pathname-name filepath))
+         (entry (or (gethash skill-base-name *skill-catalog*) (make-skill-entry :filename skill-base-name))))
+    (setf (skill-entry-status entry) :loading)
+    (setf (gethash skill-base-name *skill-catalog*) entry)
+    
+    (handler-case
+        (let* ((content (uiop:read-file-string filepath)) 
+               (lines (uiop:split-string content :separator '(#\Newline)))
+               (in-lisp-block nil) 
+               (lisp-code "") 
+               (pkg-name (intern (string-upcase (format nil "ORG-AGENT.SKILLS.~a" skill-base-name)) :keyword)))
+          
+          (dolist (line lines)
+            (let ((clean-line (string-trim '(#\Space #\Tab #\Return) line)))
+              (cond ((uiop:string-prefix-p "#+begin_src lisp" (string-downcase clean-line)) (setf in-lisp-block t))
+                    ((uiop:string-prefix-p "#+end_src" (string-downcase clean-line)) (setf in-lisp-block nil))
+                    (in-lisp-block (setf lisp-code (concatenate 'string lisp-code line (string #\Newline)))))))
+          
+          (if (= (length lisp-code) 0)
+              (progn (setf (skill-entry-status entry) :ready) t) ;; Valid empty skill
+              (progn
+                ;; PRE-FLIGHT: Syntax Validation
+                (multiple-value-bind (valid-p err) (validate-lisp-syntax lisp-code)
+                  (unless valid-p
+                    (error "Syntax Error: ~a" err)))
+                
+                (kernel-log "KERNEL: Jailing skill '~a' in package ~a" skill-base-name pkg-name)
+                (unless (find-package pkg-name)
+                  (let ((new-pkg (make-package pkg-name :use '(:cl))))
+                    (do-external-symbols (sym (find-package :org-agent)) (shadowing-import sym new-pkg))))
+                
+                (let ((*read-eval* nil) (*package* (find-package pkg-name)))
+                  (eval (read-from-string (format nil "(progn ~a)" lisp-code))))
+                
+                (setf (skill-entry-status entry) :ready)
+                t)))
+      (error (c)
+        (let ((msg (format nil "~a" c)))
+          (kernel-log "LOADER ERROR in skill '~a': ~a" skill-base-name msg)
+          (setf (skill-entry-status entry) :failed)
+          (setf (skill-entry-error-log entry) msg)
+          nil)))))
 #+end_src
 
 ** Safe Loading with Timeout
@@ -201,13 +231,9 @@ Wraps the skill loader in a thread with a hard timeout to prevent a single malfo
   "Loads a skill Org file with a hard execution timeout."
   (let* ((finished nil)
          (thread (bt:make-thread (lambda () 
-                                   (handler-case
-                                       (progn
-                                         (load-skill-from-org filepath)
-                                         (setf finished t))
-                                     (error (c) 
-                                       (kernel-log "THREAD ERROR: ~a" c)
-                                       (setf finished :error))))
+                                   (if (load-skill-from-org filepath)
+                                       (setf finished t)
+                                       (setf finished :error)))
                                  :name (format nil "loader-~a" (pathname-name filepath))))
          (start-time (get-internal-real-time))
          (timeout-units (truncate (* timeout-seconds internal-time-units-per-second))))
@@ -221,6 +247,45 @@ Wraps the skill loader in a thread with a hard timeout to prevent a single malfo
         #-sbcl (bt:destroy-thread thread)
         (return :timeout))
       (sleep 0.05))))
+#+end_src
+
+** Initializing All Skills (initialize-all-skills)
+The unified orchestrator for the kernel boot sequence. It scans the environment, calculates dependencies, and loads the system brain.
+
+#+begin_src lisp :tangle ../src/skills.lisp
+(defun initialize-all-skills ()
+  "Scans the directory defined by SKILLS_DIR and hot-loads skills using topological order."
+  (let* ((env-path (uiop:getenv "SKILLS_DIR"))
+         (skills-dir-str (or env-path (namestring (merge-pathnames "notes/" (user-homedir-pathname)))))
+         (resolved-path (context-resolve-path skills-dir-str))
+         (skills-dir (if resolved-path (uiop:ensure-directory-pathname resolved-path) nil)))
+    
+    (unless (and skills-dir (uiop:directory-exists-p skills-dir))
+      (kernel-log "KERNEL ERROR: Skills directory not found: ~a" skills-dir-str)
+      (return-from initialize-all-skills nil))
+
+    (let ((sorted-files (topological-sort-skills skills-dir)))
+      ;; MANDATE: The Executive Soul must be present
+      (unless (member "org-skill-agent" sorted-files :key #'pathname-name :test #'string-equal)
+        (error "BOOT FAILURE: org-skill-agent.org not found in skills directory."))
+      
+      (kernel-log "==================================================")
+      (kernel-log " LOADER: Initializing ~a skills..." (length sorted-files))
+      
+      (dolist (file sorted-files)
+        (let ((skill-name (pathname-name file)))
+          (kernel-log " LOADER: Loading ~a..." skill-name)
+          (load-skill-with-timeout file 5)))
+      
+      ;; Final Summary
+      (let ((ready 0) (failed 0))
+        (maphash (lambda (k v) 
+                   (declare (ignore k))
+                   (if (eq (skill-entry-status v) :ready) (incf ready) (incf failed)))
+                 *skill-catalog*)
+        (kernel-log " LOADER: Boot Complete. [Ready: ~a] [Failed: ~a]" ready failed)
+        (kernel-log "==================================================")
+        (values ready failed)))))
 #+end_src
 
 ** Syntax Validation
@@ -278,4 +343,44 @@ We register a set of standard cognitive tools that all skills can use.
             (multiple-value-bind (out err code)
                 (uiop:run-program (list "bash" "-c" cmd) :output :string :error-output :string :ignore-error-status t)
               (format nil "EXIT-CODE: ~a~%~%STDOUT:~%~a~%~%STDERR:~%~a" code out err)))))
+#+end_src
+
+* Phase E: Chaos (Verification)
+Verify that the Micro-Loader correctly handles malformed skills and reports status.
+
+#+begin_src lisp :tangle ../tests/boot-sequence-tests.lisp
+(defpackage :org-agent-boot-tests
+  (:use :cl :fiveam :org-agent)
+  (:export #:boot-suite))
+(in-package :org-agent-boot-tests)
+
+(def-suite boot-suite :description "Verification of the Micro-Loader.")
+(in-suite boot-suite)
+
+(test test-skill-catalog-tracking
+  "Verify that skills are added to the catalog with correct status."
+  (clrhash org-agent::*skill-catalog*)
+  ;; We need a temporary skill file to test loading
+  (let ((tmp-skill "/tmp/org-skill-test-catalog.org"))
+    (with-open-file (out tmp-skill :direction :output :if-exists :supersede)
+      (format out "#+TITLE: Test Skill~%#+begin_src lisp~%(defun test-catalog-fn () t)~%#+end_src"))
+    
+    (org-agent:load-skill-from-org tmp-skill)
+    (let ((entry (gethash "org-skill-test-catalog" org-agent::*skill-catalog*)))
+      (is (not (null entry)))
+      (is (eq :ready (org-agent::skill-entry-status entry))))
+    (uiop:delete-file-if-exists tmp-skill)))
+
+(test test-syntax-preflight-blocking
+  "Verify that malformed Lisp prevents skill from loading."
+  (clrhash org-agent::*skill-catalog*)
+  (let ((bad-skill "/tmp/org-skill-bad-syntax.org"))
+    (with-open-file (out bad-skill :direction :output :if-exists :supersede)
+      (format out "#+TITLE: Bad Skill~%#+begin_src lisp~%(defun unclosed (x~%#+end_src"))
+    
+    (org-agent:load-skill-from-org bad-skill)
+    (let ((entry (gethash "org-skill-bad-syntax" org-agent::*skill-catalog*)))
+      (is (eq :failed (org-agent::skill-entry-status entry)))
+      (is (search "Syntax Error" (org-agent::skill-entry-error-log entry))))
+    (uiop:delete-file-if-exists bad-skill)))
 #+end_src

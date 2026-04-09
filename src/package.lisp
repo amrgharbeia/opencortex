@@ -59,6 +59,7 @@
    
    ;; --- Skill Engine ---
    #:load-skill-from-org
+   #:initialize-all-skills
    #:load-skill-with-timeout
    #:topological-sort-skills
    #:validate-lisp-syntax

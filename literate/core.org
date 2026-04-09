@@ -295,90 +295,13 @@ Periodically injects a "pulse" into the system to trigger temporal skills (like 
     (setf *heartbeat-thread* nil)))
 #+end_src
 
-** Boot Sequence (load-all-skills)
-Scans the skills directory and loads skills according to their topological dependency order.
+** Boot Sequence (initialize-all-skills)
+The kernel initialization sequence has been moved to the Micro-Loader in the skills module. It remains exported for consistency.
 
 #+begin_src lisp :tangle ../src/core.lisp
 (defun load-all-skills ()
-  "Scans the directory defined by SKILLS_DIR and hot-loads skills using topological order."
-  (let* ((env-path (uiop:getenv "SKILLS_DIR"))
-         (skills-dir-str (or env-path (namestring (merge-pathnames "notes/" (user-homedir-pathname)))))
-         (resolved-path (context-resolve-path skills-dir-str))
-         (skills-dir (if resolved-path (uiop:ensure-directory-pathname resolved-path) nil)))
-    (if (and skills-dir (uiop:directory-exists-p skills-dir))
-        (let ((sorted-files (topological-sort-skills skills-dir)))
-          ;; GATEWAY ENFORCEMENT: Kernel cannot function without the Executive Soul
-          (unless (member "org-skill-agent" sorted-files :key #'pathname-name :test #'string-equal)
-            (error "GATEWAY FAILURE: org-skill-agent.org not found in skills directory."))
-          (dolist (file sorted-files)
-            (kernel-log "KERNEL: Loading skill ~a..." (pathname-name file))
-            (load-skill-with-timeout file 5)))
-        (kernel-log "KERNEL ERROR: Skills directory not found: ~a" skills-dir-str))))
-#+end_src
-
-** The Daemon Lifecycle
-Manages the TCP server that listens for OACP connections.
-
-#+begin_src lisp :tangle ../src/core.lisp
-(defvar *daemon-thread* nil) (defvar *daemon-socket* nil)
-(defvar *emacs-clients* nil)
-(defvar *clients-lock* (bt:make-lock "emacs-clients-lock"))
-
-(defun register-emacs-client (stream)
-  "Tracks an active Emacs socket connection."
-  (bt:with-lock-held (*clients-lock*)
-    (pushnew stream *emacs-clients*)))
-
-(defun unregister-emacs-client (stream)
-  "Removes a disconnected Emacs socket from the registry."
-  (bt:with-lock-held (*clients-lock*)
-    (setf *emacs-clients* (remove stream *emacs-clients*))))
-
-(defun handle-client (stream)
-  "Main loop for a single OACP client connection."
-  (kernel-log "DAEMON: New client connected.~%")
-  (register-emacs-client stream)
-  (unwind-protect
-       (loop
-         (handler-case
-             (progn
-               (loop for char = (peek-char nil stream nil :eof)
-                     while (and (not (eq char :eof)) (member char '(#\Space #\Newline #\Return #\Tab)))
-                     do (read-char stream))
-               (let ((peek (peek-char nil stream nil :eof)))
-                 (if (eq peek :eof) (return))
-                 (let* ((len-prefix (make-string 6)))
-                   (unless (read-sequence len-prefix stream) (return))
-                   (let* ((len (parse-integer len-prefix :radix 16))
-                          (msg-payload (make-string len)))
-                     (unless (read-sequence msg-payload stream) (return))
-                     (let ((msg (read-from-string msg-payload)))
-                       (kernel-log "DAEMON: Received stimulus (~a characters)~%" len)
-                       (inject-stimulus msg :stream stream))))))
-           (error (c) (kernel-log "DAEMON CLIENT ERROR: ~a~%" c) (return))))
-    (kernel-log "DAEMON: Client disconnected.~%")
-    (unregister-emacs-client stream)
-    (ignore-errors (close stream))))
-
-(defun start-daemon (&key port interval)
-  (let* ((env-host (uiop:getenv "DAEMON_HOST")) (env-port (uiop:getenv "ORG_AGENT_DAEMON_PORT"))
-         (listen-host (if env-host (string-trim " \"'" env-host) "127.0.0.1"))
-         (listen-port (or (or port (when env-port (ignore-errors (parse-integer (string-trim " \"'" env-port) :junk-allowed t)))) 9105)))
-    (register-actuator :system #'execute-system-action) 
-    (register-actuator :emacs (lambda (action context) 
-                                (declare (ignore context))
-                                (kernel-log "ACTUATOR [Emacs] - Action: ~a~%" action)))
-    (start-heartbeat (or interval 60))
-    (kernel-log "DAEMON: Binding to ~a:~a..." listen-host listen-port)
-    (setf *daemon-socket* (usocket:socket-listen listen-host listen-port :reuse-address t))
-    (setf *daemon-thread* (bt:make-thread (lambda () (unwind-protect (loop (handler-case (let ((client-socket (usocket:socket-accept *daemon-socket*)))
-                                                                                          (bt:make-thread (lambda () (handle-client (usocket:socket-stream client-socket))) :name "org-agent-client-handler"))
-                                                                                      (error (c) (kernel-log "DAEMON ERROR: ~a" c) (sleep 0.1))))
-                                                       (usocket:socket-close *daemon-socket*))) :name "org-agent-tcp-listener"))
-    (kernel-log "==================================================~% org-agent Kernel Booted Successfully.~% Daemon Listening: ~a:~a~%==================================================" listen-host listen-port)
-    (load-all-skills)))
-
-(defun stop-daemon () (stop-heartbeat) (when *daemon-socket* (usocket:socket-close *daemon-socket*) (setf *daemon-socket* nil)) (kernel-log "org-agent Kernel stopped.~%"))
+  "Deprecated: use initialize-all-skills. Centralized boot orchestrator."
+  (initialize-all-skills))
 #+end_src
 
 ** Main Entry Point

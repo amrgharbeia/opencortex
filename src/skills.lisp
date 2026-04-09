@@ -4,6 +4,15 @@
 
 (defstruct skill name priority dependencies trigger-fn neuro-prompt symbolic-fn)
 
+(defvar *skill-catalog* (make-hash-table :test 'equal)
+  "A stateful tracking table for all skill files discovered in the environment.")
+
+(defstruct skill-entry 
+  filename 
+  (status :discovered) ;; :discovered, :loading, :ready, :failed
+  error-log
+  (load-time 0))
+
 (defvar *cognitive-tools* (make-hash-table :test 'equal))
 
 (defstruct cognitive-tool name description parameters guard body)
@@ -54,8 +63,6 @@ EXAMPLES:
                              (push name resolved))))
       (visit skill-name) (nreverse resolved))))
 
-;; --- Boot Sequence & Micro-Loader ---
-
 (defun parse-skill-metadata (filepath)
   "Extracts ID and DEPENDS_ON tags using robust line-scanning."
   (let ((dependencies nil)
@@ -82,14 +89,12 @@ EXAMPLES:
         (result nil)
         (visited (make-hash-table :test 'equal))
         (stack (make-hash-table :test 'equal)))
-    ;; First pass: Build ID-to-File mapping and store raw dependencies
     (dolist (file files)
       (let ((filename (pathname-name file)))
         (multiple-value-bind (id deps) (parse-skill-metadata file)
           (setf (gethash (string-downcase filename) id-to-file) file)
           (when id (setf (gethash (string-downcase id) id-to-file) file))
           (setf (gethash (string-downcase filename) adj) deps))))
-    
     (labels ((visit (file)
                (let* ((filename (pathname-name file))
                       (node-key (string-downcase filename)))
@@ -108,24 +113,64 @@ EXAMPLES:
                    (setf (gethash node-key stack) nil)
                    (setf (gethash node-key visited) t)
                    (push file result)))))
-      
       (let ((filenames (sort (mapcar #'pathname-name files) #'string<)))
         (dolist (name filenames)
           (let ((file (gethash (string-downcase name) id-to-file)))
             (when file (visit file)))))
       result)))
 
+(defun load-skill-from-org (filepath)
+  "Parses and evaluates Lisp blocks from an Org file into a jailed package."
+  (let* ((skill-base-name (pathname-name filepath))
+         (entry (or (gethash skill-base-name *skill-catalog*) (make-skill-entry :filename skill-base-name))))
+    (setf (skill-entry-status entry) :loading)
+    (setf (gethash skill-base-name *skill-catalog*) entry)
+    
+    (handler-case
+        (let* ((content (uiop:read-file-string filepath)) 
+               (lines (uiop:split-string content :separator '(#\Newline)))
+               (in-lisp-block nil) 
+               (lisp-code "") 
+               (pkg-name (intern (string-upcase (format nil "ORG-AGENT.SKILLS.~a" skill-base-name)) :keyword)))
+          
+          (dolist (line lines)
+            (let ((clean-line (string-trim '(#\Space #\Tab #\Return) line)))
+              (cond ((uiop:string-prefix-p "#+begin_src lisp" (string-downcase clean-line)) (setf in-lisp-block t))
+                    ((uiop:string-prefix-p "#+end_src" (string-downcase clean-line)) (setf in-lisp-block nil))
+                    (in-lisp-block (setf lisp-code (concatenate 'string lisp-code line (string #\Newline)))))))
+          
+          (if (= (length lisp-code) 0)
+              (progn (setf (skill-entry-status entry) :ready) t) ;; Valid empty skill
+              (progn
+                ;; PRE-FLIGHT: Syntax Validation
+                (multiple-value-bind (valid-p err) (validate-lisp-syntax lisp-code)
+                  (unless valid-p
+                    (error "Syntax Error: ~a" err)))
+                
+                (kernel-log "KERNEL: Jailing skill '~a' in package ~a" skill-base-name pkg-name)
+                (unless (find-package pkg-name)
+                  (let ((new-pkg (make-package pkg-name :use '(:cl))))
+                    (do-external-symbols (sym (find-package :org-agent)) (shadowing-import sym new-pkg))))
+                
+                (let ((*read-eval* nil) (*package* (find-package pkg-name)))
+                  (eval (read-from-string (format nil "(progn ~a)" lisp-code))))
+                
+                (setf (skill-entry-status entry) :ready)
+                t)))
+      (error (c)
+        (let ((msg (format nil "~a" c)))
+          (kernel-log "LOADER ERROR in skill '~a': ~a" skill-base-name msg)
+          (setf (skill-entry-status entry) :failed)
+          (setf (skill-entry-error-log entry) msg)
+          nil)))))
+
 (defun load-skill-with-timeout (filepath timeout-seconds)
   "Loads a skill Org file with a hard execution timeout."
   (let* ((finished nil)
          (thread (bt:make-thread (lambda () 
-                                   (handler-case
-                                       (progn
-                                         (load-skill-from-org filepath)
-                                         (setf finished t))
-                                     (error (c) 
-                                       (kernel-log "THREAD ERROR: ~a" c)
-                                       (setf finished :error))))
+                                   (if (load-skill-from-org filepath)
+                                       (setf finished t)
+                                       (setf finished :error)))
                                  :name (format nil "loader-~a" (pathname-name filepath))))
          (start-time (get-internal-real-time))
          (timeout-units (truncate (* timeout-seconds internal-time-units-per-second))))
@@ -140,29 +185,39 @@ EXAMPLES:
         (return :timeout))
       (sleep 0.05))))
 
-(defun load-skill-from-org (filepath)
-  "Parses and evaluates Lisp blocks from an Org file into a jailed package."
-  (when (uiop:file-exists-p filepath)
-    (let* ((content (uiop:read-file-string filepath)) (lines (uiop:split-string content :separator '(#\Newline)))
-           (in-lisp-block nil) (lisp-code "") (dependencies nil) (skill-base-name (pathname-name filepath))
-           (pkg-name (intern (string-upcase (format nil "ORG-AGENT.SKILLS.~a" skill-base-name)) :keyword)))
-      (dolist (line lines)
-        (let ((clean-line (string-trim '(#\Space #\Tab #\Return) line)))
-          (when (uiop:string-prefix-p "#+DEPENDS_ON:" (string-upcase clean-line))
-            (setf dependencies (mapcar (lambda (s) (string-trim "[] " s)) (uiop:split-string (subseq clean-line 13) :separator '(#\Space)))))))
-      (dolist (line lines)
-        (let ((clean-line (string-trim '(#\Space #\Tab #\Return) line)))
-          (cond ((uiop:string-prefix-p "#+begin_src lisp" (string-downcase clean-line)) (setf in-lisp-block t))
-                ((uiop:string-prefix-p "#+end_src" (string-downcase clean-line)) (setf in-lisp-block nil))
-                (in-lisp-block (setf lisp-code (concatenate 'string lisp-code line (string #\Newline)))))))
-      (when (> (length lisp-code) 0)
-        (kernel-log "KERNEL: Jailing skill '~a' in package ~a" skill-base-name pkg-name)
-        (unless (find-package pkg-name)
-          (let ((new-pkg (make-package pkg-name :use '(:cl))))
-            (do-external-symbols (sym (find-package :org-agent)) (shadowing-import sym new-pkg))))
-        (let ((*read-eval* nil) (*package* (find-package pkg-name)))
-          (handler-case (eval (read-from-string (format nil "(progn ~a)" lisp-code)))
-            (error (c) (kernel-log "READER ERROR in skill '~a': ~a~%" skill-base-name c))))))))
+(defun initialize-all-skills ()
+  "Scans the directory defined by SKILLS_DIR and hot-loads skills using topological order."
+  (let* ((env-path (uiop:getenv "SKILLS_DIR"))
+         (skills-dir-str (or env-path (namestring (merge-pathnames "notes/" (user-homedir-pathname)))))
+         (resolved-path (context-resolve-path skills-dir-str))
+         (skills-dir (if resolved-path (uiop:ensure-directory-pathname resolved-path) nil)))
+    
+    (unless (and skills-dir (uiop:directory-exists-p skills-dir))
+      (kernel-log "KERNEL ERROR: Skills directory not found: ~a" skills-dir-str)
+      (return-from initialize-all-skills nil))
+
+    (let ((sorted-files (topological-sort-skills skills-dir)))
+      ;; MANDATE: The Executive Soul must be present
+      (unless (member "org-skill-agent" sorted-files :key #'pathname-name :test #'string-equal)
+        (error "BOOT FAILURE: org-skill-agent.org not found in skills directory."))
+      
+      (kernel-log "==================================================")
+      (kernel-log " LOADER: Initializing ~a skills..." (length sorted-files))
+      
+      (dolist (file sorted-files)
+        (let ((skill-name (pathname-name file)))
+          (kernel-log " LOADER: Loading ~a..." skill-name)
+          (load-skill-with-timeout file 5)))
+      
+      ;; Final Summary
+      (let ((ready 0) (failed 0))
+        (maphash (lambda (k v) 
+                   (declare (ignore k))
+                   (if (eq (skill-entry-status v) :ready) (incf ready) (incf failed)))
+                 *skill-catalog*)
+        (kernel-log " LOADER: Boot Complete. [Ready: ~a] [Failed: ~a]" ready failed)
+        (kernel-log "==================================================")
+        (values ready failed)))))
 
 (defun validate-lisp-syntax (code-string)
   "Checks if a string contains valid, readable Common Lisp forms."
@@ -175,11 +230,10 @@ EXAMPLES:
   :guard (lambda (args context)
            (declare (ignore context))
            (let ((code (getf args :code)))
-             ;; Reuse the global safety harness if it exists
              (let ((harness-pkg (find-package :org-agent.skills.org-skill-safety-harness)))
                (if harness-pkg 
                    (uiop:symbol-call :org-agent.skills.org-skill-safety-harness :safety-harness-validate code)
-                   t)))) ; Implicitly safe if harness not loaded
+                   t))))
   :body (lambda (args)
           (let ((code (getf args :code)))
             (handler-case (let ((result (eval (read-from-string code))))
@@ -199,7 +253,6 @@ EXAMPLES:
   :parameters ((:cmd :type :string :description "The full bash command to execute"))
   :guard (lambda (args context)
            (declare (ignore context))
-           ;; Global safety: prohibit destructive commands
            (let ((cmd (getf args :cmd)))
              (not (or (search "rm -rf /" cmd) (search ":(){ :|:& };:" cmd)))))
   :body (lambda (args)
