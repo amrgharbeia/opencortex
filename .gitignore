@@ -1,0 +1,6 @@
+.env
+org-agent-server
+\$MEMEX_DIR/
+*.log
+*~
+\#*#
