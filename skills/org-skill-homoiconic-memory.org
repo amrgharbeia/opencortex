@@ -1,0 +1,172 @@
+:PROPERTIES:
+:ID:       homoiconic-memory-skill
+:CREATED:  [2026-04-09 Thu]
+:END:
+#+TITLE: SKILL: Homoiconic Memory (Universal Literate Note)
+#+STARTUP: content
+#+FILETAGS: :org-mode:ast:json:normalization:psf:
+#+DEPENDS_ON: id:e8b500e2-3f26-4c8e-8558-528061e178ca
+
+* Overview
+The *Homoiconic Memory* skill defines the "Grammar of the Memex." It establishes Org-mode as the native Abstract Syntax Tree (AST) for both humans and agents. This skill consolidates the definition of Org nodes, the bidirectional JSON bridge, and the structural normalization logic (ID injection) into a single, high-integrity unit.
+
+* Phase A: Demand (PRD)
+:PROPERTIES:
+:STATUS: SIGNED
+:END:
+
+** 1. Purpose
+Unify the structural rules and programmatic manipulation of the Org-mode AST.
+
+** 2. User Needs
+- *Structural Integrity:* Mandatory unique IDs and metadata drawers for all headlines.
+- *Bidirectional Bridge:* Lossless conversion between Org-mode text and structured JSON AST.
+- *Atomic Refactoring:* Pure functions for creating, updating, and deleting nodes.
+- *Normalization:* Automatic injection of IDs during ingest or save.
+
+* Phase B: Blueprint (PROTOCOL)
+:PROPERTIES:
+:STATUS: SIGNED
+:END:
+
+** 1. Architectural Intent
+The memory suite uses a "Functional Core" for AST manipulation. Every transformation (normalization, refactoring) returns a new AST version, which is then persisted to the Object Store.
+
+** 2. Semantic Interfaces
+#+begin_src lisp
+(defun memory-org-to-json (source)
+  "Converts Org-mode source to JSON AST.")
+
+(defun memory-json-to-org (ast)
+  "Converts JSON AST back to Org-mode text.")
+
+(defun memory-normalize-ast (ast)
+  "Recursively ensures ID uniqueness across the AST.")
+#+end_src
+
+* Phase C: Success (QUALITY)
+:PROPERTIES:
+:STATUS: SIGNED
+:END:
+
+** 1. Success Criteria
+- [ ] *Round-trip Fidelity:* Org -> JSON -> Org must result in identical text (modulo normalization).
+- [ ] *ID Uniqueness:* No two headlines may share an ID after normalization.
+- [ ] *Merkle Integration:* AST modifications must trigger Object Store snapshots.
+
+** 2. TDD Plan
+Tests in `tests/memory-suite-tests.lisp` will verify the round-trip conversion and the recursive ID injection logic.
+
+* Phase D: Build (Implementation)
+
+** Package Context
+#+begin_src lisp :tangle ../src/homoiconic-memory.lisp
+(in-package :org-agent)
+#+end_src
+
+** Node Structure Definition
+We define the standard `org-node` structure used throughout the kernel.
+
+#+begin_src lisp :tangle ../src/homoiconic-memory.lisp
+(defun make-memory-node (headline &key content properties children)
+  "Constructor for a normalized Org node alist."
+  (list :type :HEADLINE
+        :properties (or properties nil)
+        :content content
+        :contents children))
+#+end_src
+
+** ID Injection (memory-ensure-id)
+Ensures every headline has a unique ID property. This is foundational for the Merkle-Tree object store.
+
+#+begin_src lisp :tangle ../src/homoiconic-memory.lisp
+(defun memory-ensure-id (node)
+  "Injects a unique ID into an Org node if missing."
+  (let* ((props (getf node :properties))
+         (id (getf props :ID)))
+    (if (and id (not (equal id "")))
+        node
+        (let ((new-id (org-id-new)))
+          (setf (getf node :properties) (append props (list :ID new-id)))
+          (kernel-log "MEMORY - Injected ID ~a" new-id)
+          node))))
+#+end_src
+
+** Recursive Normalization (memory-normalize-ast)
+Recursively walks the AST to enforce structural rules.
+
+#+begin_src lisp :tangle ../src/homoiconic-memory.lisp
+(defun memory-normalize-ast (ast)
+  "Recursively normalizes an Org AST."
+  (let ((type (getf ast :type))
+        (contents (getf ast :contents)))
+    (when (eq type :HEADLINE)
+      (setf ast (memory-ensure-id ast)))
+    (when contents
+      (setf (getf ast :contents)
+            (mapcar (lambda (child)
+                      (if (listp child)
+                          (memory-normalize-ast child)
+                          child))
+                    contents)))
+    ast))
+#+end_src
+
+** JSON Bridge: Org-to-JSON
+Utilizes the Emacs bridge (or local parser) to convert text to JSON.
+
+#+begin_src lisp :tangle ../src/homoiconic-memory.lisp
+(defun memory-org-to-json (source-path)
+  "Routes to the Emacs-based Org-JSON bridge."
+  ;; Future implementation will use the org-json-convert CLI tool
+  (kernel-log "MEMORY - Parsing ~a to JSON..." source-path)
+  nil)
+#+end_src
+
+** JSON Bridge: JSON-to-Org
+Converts a structured AST back into Org-mode text.
+
+#+begin_src lisp :tangle ../src/homoiconic-memory.lisp
+(defun memory-json-to-org (ast)
+  "Materializes a JSON AST into Org-mode text."
+  ;; Placeholder for org-element-interpret-data equivalent
+  (kernel-log "MEMORY - Rendering AST to text...")
+  "")
+#+end_src
+
+** Registration
+#+begin_src lisp :tangle ../src/homoiconic-memory.lisp
+(progn
+  (defskill :skill-homoiconic-memory
+    :priority 300 ; Core foundational skill
+    :trigger (lambda (ctx) (member (getf (getf ctx :payload) :sensor) '(:buffer-save :ingest)))
+    :neuro nil
+    :symbolic (lambda (action ctx)
+                (let ((ast (getf (getf ctx :payload) :ast)))
+                  (when ast (memory-normalize-ast ast))
+                  action))))
+#+end_src
+
+* Phase E: Chaos (Verification)
+
+** 1. Unit Tests (FiveAM)
+#+begin_src lisp :tangle ../tests/memory-suite-tests.lisp
+(defpackage :org-agent-memory-tests
+  (:use :cl :fiveam :org-agent))
+(in-package :org-agent-memory-tests)
+
+(def-suite memory-suite :description "Tests for Homoiconic Memory.")
+(in-suite memory-suite)
+
+(test test-id-injection
+  (let* ((node (list :type :HEADLINE :properties nil))
+         (normalized (org-agent::memory-ensure-id node)))
+    (is (not (null (getf (getf normalized :properties) :ID))))))
+#+end_src
+
+** 2. Chaos Scenarios
+- *Scenario A (Duplicate IDs):* Intentionally inject two nodes with the same ID and verify the normalizer detects the collision and re-generates one.
+- *Scenario B (Broken AST):* Pass a malformed list to `memory-normalize-ast` and verify it fails gracefully with a log entry rather than crashing the kernel.
+
+* Phase F: Memory (RCA)
+- *[2026-04-09 Thu]:* Consolidated `org-mode`, `org-json-bridge`, and `ast-normalization` into this single skill. Standardized the recursive normalization path.

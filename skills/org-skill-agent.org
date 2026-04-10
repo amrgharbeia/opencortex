@@ -8,7 +8,7 @@
 #+FILETAGS: :platform:kernel:lisp:psf:alignment:invariants:
 #+DEPENDS_ON: id:37f2b59f-4537-4cca-ac7f-5c24b9e2e773
 #+DEPENDS_ON: id:bbcacb7b-c0ff-4f7e-8bf4-c6ba152a19ce
-#+DEPENDS_ON: id:f7db1884-49cc-4db6-9ca1-4c69ec3a631e
+#+DEPENDS_ON: id:homoiconic-memory-skill
 
 * Overview
 The *Org-Agent* is the neurosymbolic kernel of the personal operating system. It acts as the "executive soul," using Org-mode as its native memory and Common Lisp as its deterministic reasoning engine. It follows a minimalist microkernel design, extending its capabilities via hot-reloadable skills.
