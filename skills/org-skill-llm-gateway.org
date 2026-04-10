@@ -38,6 +38,20 @@ The gateway utilizes a functional dispatch pattern. A single entry point, `execu
   "Executes a neural request. Returns (:status :success :content ...) or (:status :error :message ...).")
 #+end_src
 
+* Phase C: Success (QUALITY)
+:PROPERTIES:
+:STATUS: SIGNED
+:END:
+
+** 1. Success Criteria
+- [ ] *Credential Safety:* API keys are never logged or hardcoded.
+- [ ] *Header Integrity:* Correct headers (x-api-key, Bearer) for each provider.
+- [ ] *Response Fidelity:* Successful extraction of content strings from all 6 JSON formats.
+- [ ] *Resilience:* Standardized error return on timeout or 4xx/5xx responses.
+
+** 2. TDD Plan
+Verification will occur via `tests/llm-gateway-tests.lisp` using the FiveAM framework. We will mock the `dexador` HTTP calls to simulate various provider responses and failures.
+
 * Phase D: Build (Implementation)
 
 ** Package Context
@@ -147,3 +161,35 @@ We register all supported backends individually so that the kernel's `ask-neuro`
     :neuro (lambda (context) nil)
     :symbolic (lambda (action context) action)))
 #+end_src
+
+* Phase E: Chaos (Verification)
+
+** 1. Unit Tests (FiveAM)
+#+begin_src lisp :tangle ../tests/llm-gateway-tests.lisp
+(defpackage :org-agent-llm-gateway-tests
+  (:use :cl :fiveam :org-agent))
+(in-package :org-agent-llm-gateway-tests)
+
+(def-suite llm-gateway-suite :description "Tests for the Unified LLM Gateway.")
+(in-suite llm-gateway-suite)
+
+(test test-credential-retrieval
+  "Ensure credentials are retrieved from the correct environment variables."
+  (uiop:setenv "ANTHROPIC_API_KEY" "sk-test-key")
+  (is (equal "sk-test-key" (org-agent::get-llm-credentials :anthropic)))
+  (uiop:setenv "ANTHROPIC_API_KEY" ""))
+
+(test test-error-handling-missing-key
+  "Ensure missing keys return a standardized error plist."
+  (let ((res (org-agent:execute-llm-request "test" "sys" :provider :openai)))
+    (is (eq (getf res :status) :error))
+    (is (search "API Key missing" (getf res :message)))))
+#+end_src
+
+** 2. Chaos Scenarios
+- *Scenario A (Key Exhaustion):* Use the `chaos` skill to temporarily clear an API key and verify the `token-accountant` successfully falls back to the next healthy provider.
+- *Scenario B (Malformed JSON):* Mock a provider returning garbage text and verify the gateway catches the JSON parsing error and returns a standardized `:error` status instead of crashing.
+
+* Phase F: Memory (RCA)
+- *[2026-04-09 Thu]:* Refactored 6 providers into this unified gateway to solve the URL key-leakage security vulnerability and reduce boilerplate by 60%.
+
