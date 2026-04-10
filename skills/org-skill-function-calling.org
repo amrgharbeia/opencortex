@@ -6,7 +6,7 @@
 #+TITLE: SKILL: Native Function Calling (Universal Literate Note)
 #+STARTUP: content
 #+FILETAGS: :llm:tools:json-schema:reliability:psf:
-#+DEPENDS_ON: org-skill-org-json-bridge
+#+DEPENDS_ON: id:homoiconic-memory-skill
 
 * Overview
 The *Native Function Calling* skill provides the translation layer between the system's deterministic Lisp interfaces and the LLM's neural tool-calling capabilities. It ensures that System 1 (the LLM) interacts with the world via structured, validated schemas rather than raw text plists, virtually eliminating "formatting hallucinations."

@@ -6,7 +6,7 @@
 #+TITLE: SKILL: Token Accountant Agent (Universal Literate Note)
 #+STARTUP: content
 #+FILETAGS: :infrastructure:budget:llm:psf:economics:
-#+DEPENDS_ON: skill-router
+#+DEPENDS_ON: id:event-orchestrator-skill
 
 * Overview
 The *Token Accountant* is the governor of the Neural Engine. It manages the cost, reliability, and routing of LLM providers. Its primary mission is to ensure the PSF operates at maximum intelligence with minimum marginal cost by aggressively prioritizing subsidized free models when appropriate.

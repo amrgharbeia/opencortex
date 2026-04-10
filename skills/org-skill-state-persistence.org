@@ -5,7 +5,6 @@
 #+TITLE: SKILL: State Persistence Layer (Universal Literate Note)
 #+STARTUP: content
 #+FILETAGS: :memory:persistence:closos:ipfs:psf:
-#+DEPENDS_ON: id:e8b500e2-3f26-4c8e-8558-528061e178ca
 
 * Overview
 The *State Persistence Layer* ensures the durability and sovereignty of the agent's memory. It unifies local, high-performance Lisp image dumps with decentralized, immutable IPFS checkpointing. This dual-path approach provides both rapid operational recovery and long-term historical integrity.

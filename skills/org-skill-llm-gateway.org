@@ -5,7 +5,7 @@
 #+TITLE: SKILL: Unified LLM Gateway (Universal Literate Note)
 #+STARTUP: content
 #+FILETAGS: :llm:gateway:infrastructure:psf:
-#+DEPENDS_ON: id:ab7f8ca4-5589-44ed-b797-1389ceeaf39c
+#+DEPENDS_ON: id:credentials-vault-skill
 
 * Overview
 The *Unified LLM Gateway* is the single sensory and reasoning interface for all neural backends. It consolidates the previously fragmented provider skills into a high-integrity dispatch layer, standardizing credential management, error handling, and payload formatting.

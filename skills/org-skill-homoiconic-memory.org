@@ -5,7 +5,7 @@
 #+TITLE: SKILL: Homoiconic Memory (Universal Literate Note)
 #+STARTUP: content
 #+FILETAGS: :org-mode:ast:json:normalization:psf:
-#+DEPENDS_ON: id:e8b500e2-3f26-4c8e-8558-528061e178ca
+#+DEPENDS_ON: id:state-persistence-skill
 
 * Overview
 The *Homoiconic Memory* skill defines the "Grammar of the Memex." It establishes Org-mode as the native Abstract Syntax Tree (AST) for both humans and agents. This skill consolidates the definition of Org nodes, the bidirectional JSON bridge, and the structural normalization logic (ID injection) into a single, high-integrity unit.
