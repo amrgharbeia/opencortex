@@ -7,6 +7,10 @@
         :content content
         :contents children))
 
+(defun org-id-get-create ()
+  "Generates a new unique ID for an Org node. This is the system-wide standard."
+  (format nil "node-~a" (get-universal-time)))
+
 (defun memory-ensure-id (node)
   "Injects a unique ID into an Org node if missing, using the standard org-id-get-create mechanism."
   (let* ((props (getf node :properties))

@@ -122,15 +122,6 @@ We register tools for kernel introspection and state management.
 ** The Executive Soul Skill
 This skill acts as the default "Moral Compass" for the agent.
 
-** ID Generation (org-id-get-create)
-Mandated standard for ID creation. This function ensures that every node in the Memex has a unique, deterministic identifier.
-
-#+begin_src lisp
-(defun org-id-get-create ()
-  "Generates a new unique ID for an Org node. This is the system-wide standard."
-  (format nil "node-~a" (get-universal-time)))
-#+end_src
-
 #+begin_src lisp
 (org-agent:defskill :skill-agent
   :priority 1000 ; Absolute highest priority

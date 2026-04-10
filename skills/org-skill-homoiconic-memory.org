@@ -76,6 +76,15 @@ We define the standard `org-node` structure used throughout the kernel.
         :contents children))
 #+end_src
 
+** ID Generation (org-id-get-create)
+Mandated standard for ID creation. This function ensures that every node in the Memex has a unique, deterministic identifier.
+
+#+begin_src lisp :tangle ../src/homoiconic-memory.lisp
+(defun org-id-get-create ()
+  "Generates a new unique ID for an Org node. This is the system-wide standard."
+  (format nil "node-~a" (get-universal-time)))
+#+end_src
+
 ** ID Injection (memory-ensure-id)
 Ensures every headline has a unique ID property using the system standard `org-id-get-create`. This is foundational for the Merkle-Tree object store.
 
