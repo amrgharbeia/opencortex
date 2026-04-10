@@ -41,8 +41,8 @@ Maintain a state-aware provider cascade that routes around "pain" (failures) and
   (kernel-log "ACCOUNTANT - Provider ~a de-prioritized due to failure." provider))
 
 (defun token-accountant-get-cascade (context)
-  "Returns a dynamic list of providers, routing around pained ones."
-  (let ((all-providers '(:openrouter :groq :gemini))
+  "Returns a dynamic list of providers, routing around pained ones. Uses standardized gateway keywords."
+  (let ((all-providers '(:openrouter :groq :gemini-api :ollama))
         (healthy nil)
         (pained nil)
         (now (get-universal-time)))
@@ -65,7 +65,7 @@ Maintain a state-aware provider cascade that routes around "pain" (failures) and
        (case complexity
          (:REASONING "llama-3.3-70b-versatile")
          (t "llama-3.1-8b-instant")))
-      (:gemini
+      (:gemini-api
        "gemini-1.5-flash-latest")
       (t nil))))
 

@@ -81,26 +81,42 @@ Define a high-integrity, recursive security sandbox for Lisp execution.
     t nil quote function))
 #+end_src
 
+** Dynamic Symbol Registration
+We allow other skills to register safe symbols for the harness.
+
+#+begin_src lisp
+(defvar *safety-registry* nil
+  "List of dynamically registered safe symbols.")
+
+(defun safety-harness-register (symbols)
+  "Adds symbols to the global safety registry."
+  (setf *safety-registry* (append *safety-registry* (if (listp symbols) symbols (list symbols))))
+  (kernel-log "SAFETY HARNESS: Registered ~a new safe symbols." (length (if (listp symbols) symbols (list symbols)))))
+
+(defun safety-harness-is-safe (symbol)
+  "Checks if a symbol is in the static whitelist or the dynamic registry."
+  (or (member symbol *safety-whitelist* :test #'string-equal)
+      (member symbol *safety-registry* :test #'string-equal)))
+#+end_src
+
 ** Recursive AST Walker
-#+begin_src lisp :tangle ../src/safety-harness.lisp
+#+begin_src lisp
 (defun safety-harness-ast-walk (form)
   "Recursively walks the Lisp AST. Returns T if safe, NIL if unsafe."
   (cond
     ;; Self-evaluating objects (strings, numbers, keywords) are safe.
     ((or (stringp form) (numberp form) (keywordp form) (characterp form))
      t)
-    ;; Symbols must be in the whitelist
+    ;; Symbols used as variables (in non-function position)
     ((symbolp form)
-     (if (member form *safety-whitelist* :test #'string-equal)
-         t
-         t)) ;; We allow symbols as potential variables
+     (safety-harness-is-safe form))
     ;; Lists represent function calls or special forms.
     ((listp form)
      (let ((head (car form)))
        (cond
          ((eq head 'quote) t)
          ((not (symbolp head)) nil)
-         ((member head *safety-whitelist* :test #'string-equal)
+         ((safety-harness-is-safe head)
           (every #'safety-harness-ast-walk (cdr form)))
          (t 
           (kernel-log "SAFETY HARNESS: Blocked call to non-whitelisted function ~a" head)
@@ -108,27 +124,39 @@ Define a high-integrity, recursive security sandbox for Lisp execution.
     (t nil)))
 #+end_src
 
-** Validation Entry Point
-#+begin_src lisp :tangle ../src/safety-harness.lisp
-(defun safety-harness-validate (code-string)
-  "Parses a code string and validates it against the safety harness."
-  (handler-case
-      (let* ((*read-eval* nil)
-             (form (read-from-string code-string)))
-        (safety-harness-ast-walk form))
-    (error (c)
-      (kernel-log "SAFETY HARNESS ERROR: Syntax or read error during validation: ~a" c)
-      nil)))
+** Cognitive Tools
+#+begin_src lisp
+(org-agent:def-cognitive-tool :security-telemetry "Returns security-related telemetry, including blocked actions and harness status."
+  :parameters nil
+  :body (lambda (args)
+          (declare (ignore args))
+          (format nil "SAFETY HARNESS STATUS:
+- Static Whitelist: ~a symbols
+- Dynamic Registry: ~a symbols
+- Total Blocked Actions: ~a"
+                  (length *safety-whitelist*)
+                  (length *safety-registry*)
+                  "Not implemented")))
 #+end_src
 
 ** Skill Definition
-#+begin_src lisp :tangle ../src/safety-harness.lisp
-(defskill :skill-safety-harness
-  :priority 90
-  :trigger (lambda (ctx) nil)
-  :neuro nil
-  :symbolic nil)
+#+begin_src lisp
+(org-agent:defskill :skill-safety-harness
+  :priority 900 ; High priority, before most skills
+  :trigger (lambda (ctx) 
+             ;; Check if any proposed action is an :eval or :shell call
+             (let ((candidate (getf ctx :candidate)))
+               (when candidate
+                 (let ((payload (getf candidate :payload)))
+                   (member (getf payload :action) '(:eval :shell))))))
+  :neuro nil ; Purely symbolic/safety skill
+  :symbolic (lambda (action context)
+              ;; The decide-gate already calls safety-harness-validate via global logic,
+              ;; but this skill can provide additional context or logging.
+              (kernel-log "SYSTEM 2 [Safety]: Intercepted critical action for validation.")
+              action))
 #+end_src
+
 
 * Phase E: Chaos (Verification)
 #+begin_src lisp :tangle ../tests/safety-harness-tests.lisp

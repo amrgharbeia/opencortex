@@ -1,0 +1,149 @@
+:PROPERTIES:
+:ID:       llm-gateway-skill
+:CREATED:  [2026-04-09 Thu]
+:END:
+#+TITLE: SKILL: Unified LLM Gateway (Universal Literate Note)
+#+STARTUP: content
+#+FILETAGS: :llm:gateway:infrastructure:psf:
+#+DEPENDS_ON: id:ab7f8ca4-5589-44ed-b797-1389ceeaf39c
+
+* Overview
+The *Unified LLM Gateway* is the single sensory and reasoning interface for all neural backends. It consolidates the previously fragmented provider skills into a high-integrity dispatch layer, standardizing credential management, error handling, and payload formatting.
+
+* Phase A: Demand (PRD)
+:PROPERTIES:
+:STATUS: SIGNED
+:END:
+
+** 1. Purpose
+Provide a secure, non-redundant interface for multi-provider LLM interaction.
+
+** 2. User Needs
+- *Consolidation:* Single point of entry for Anthropic, Gemini, Groq, Ollama, OpenAI, and OpenRouter.
+- *Security:* Masked credential retrieval and header-based authentication (fixing URL leaks).
+- *Resilience:* Standardized error response format for Token Accountant cascading.
+- *Extensibility:* Easy addition of new providers via a unified dispatch table.
+
+* Phase B: Blueprint (PROTOCOL)
+:PROPERTIES:
+:STATUS: SIGNED
+:END:
+
+** 1. Architectural Intent
+The gateway utilizes a functional dispatch pattern. A single entry point, `execute-llm-request`, resolves the provider-specific nuances (URLs, headers, JSON structures) while exposing a uniform interface to the kernel.
+
+** 2. Semantic Interfaces
+#+begin_src lisp
+(defun execute-llm-request (prompt system-prompt &key provider model)
+  "Executes a neural request. Returns (:status :success :content ...) or (:status :error :message ...).")
+#+end_src
+
+* Phase D: Build (Implementation)
+
+** Package Context
+#+begin_src lisp :tangle ../src/llm-gateway.lisp
+(in-package :org-agent)
+#+end_src
+
+** Helper: Secure Credential Retrieval
+The `get-llm-credentials` function abstracts the retrieval of sensitive API keys from the host environment. By centralizing this, we ensure that keys are only accessed when needed and are never hardcoded in the Lisp image.
+
+#+begin_src lisp :tangle ../src/llm-gateway.lisp
+(defun get-llm-credentials (provider)
+  "Retrieves the API key for the provider from the environment, ensuring it is not logged."
+  (let ((var (case provider
+               (:anthropic "ANTHROPIC_API_KEY")
+               (:gemini-api "GEMINI_API_KEY")
+               (:groq "GROQ_API_KEY")
+               (:openai "OPENAI_API_KEY")
+               (:openrouter "OPENROUTER_API_KEY")
+               (t nil))))
+    (when var (uiop:getenv var))))
+#+end_src
+
+** Unified Request Executor (execute-llm-request)
+This is the primary actuator for neural reasoning. It handles the specific JSON payload formats and HTTP headers required by each provider (e.g., Anthropic's `x-api-key` vs. OpenAI's `Bearer` token).
+
+#+begin_src lisp :tangle ../src/llm-gateway.lisp
+(defun execute-llm-request (prompt system-prompt &key provider model)
+  "Unified entry point for all LLM providers."
+  (let ((api-key (get-llm-credentials provider))
+        (full-prompt (format nil "~a~%~%Prompt: ~a" system-prompt prompt)))
+    
+    (case provider
+      (:gemini-web
+       (let ((res (uiop:symbol-call :org-agent.skills.org-skill-web-research :ask-gemini-web full-prompt)))
+         (if res (list :status :success :content res) (list :status :error :message "Web Research Failure"))))
+      
+      (:ollama
+       (let* ((host (or (uiop:getenv "OLLAMA_HOST") "localhost:11434"))
+              (url (format nil "http://~a/api/generate" host))
+              (body (cl-json:encode-json-to-string `((model . ,(or model "llama3")) (prompt . ,full-prompt) (stream . :false)))))
+         (handler-case 
+             (let* ((response (dex:post url :headers '(("Content-Type" . "application/json")) :content body :connect-timeout 5 :read-timeout 60))
+                    (json (cl-json:decode-json-from-string response)))
+               (list :status :success :content (cdr (assoc :response json))))
+           (error (c) (list :status :error :message (format nil "Ollama Failure: ~a" c))))))
+
+      (t ;; Cloud Providers (Anthropic, Gemini API, Groq, OpenAI, OpenRouter)
+       (unless api-key (return-from execute-llm-request (list :status :error :message (format nil "API Key missing for ~a" provider))))
+       (let* ((endpoint (case provider
+                          (:anthropic "https://api.anthropic.com/v1/messages")
+                          (:gemini-api (format nil "https://generativelanguage.googleapis.com/v1/models/~a:generateContent" (or model "gemini-1.5-flash-latest")))
+                          (:groq "https://api.groq.com/openai/v1/chat/completions")
+                          (:openai "https://api.openai.com/v1/chat/completions")
+                          (:openrouter "https://openrouter.ai/api/v1/chat/completions")))
+              (headers (case provider
+                         (:anthropic `(("Content-Type" . "application/json") ("x-api-key" . ,api-key) ("anthropic-version" . "2023-06-01")))
+                         (:gemini-api `(("Content-Type" . "application/json") ("x-goog-api-key" . ,api-key)))
+                         (:openrouter `(("Content-Type" . "application/json") ("Authorization" . ,(format nil "Bearer ~a" api-key)) 
+                                        ("HTTP-Referer" . "https://github.com/amr/org-agent") ("X-Title" . "org-agent Sovereign Kernel")))
+                         (t `(("Content-Type" . "application/json") ("Authorization" . ,(format nil "Bearer ~a" api-key))))))
+              (body (case provider
+                      (:anthropic (cl-json:encode-json-to-string `((model . ,(or model "claude-3-5-sonnet-20240620")) (max_tokens . 4096) (system . ,system-prompt) (messages . (( (role . "user") (content . ,prompt) ))))))
+                      (:gemini-api (cl-json:encode-json-to-string `((contents . ((parts . ((text . ,full-prompt))))))))
+                      (t (cl-json:encode-json-to-string `((model . ,(or model (case provider (:groq "llama-3.3-70b-versatile") (:openai "gpt-4o") (t "openrouter/auto"))))
+                                                         (messages . (( (role . "system") (content . ,system-prompt) ) ( (role . "user") (content . ,prompt) )))))))))
+         (handler-case 
+             (let* ((response (dex:post endpoint :headers headers :content body :connect-timeout 10 :read-timeout 30))
+                    (json (cl-json:decode-json-from-string response)))
+               (list :status :success :content 
+                     (case provider
+                       (:anthropic (cdr (assoc :text (car (cdr (assoc :content json))))))
+                       (:gemini-api (cdr (assoc :text (cdr (assoc :parts (car (cdr (assoc :parts (car (cdr (assoc :candidates json)))))))))))
+                       (t (cdr (assoc :content (cdr (assoc :message (car (cdr (assoc :choices json)))))))))))
+           (error (c) (list :status :error :message (format nil "LLM Gateway Failure (~a): ~a" provider c)))))))))
+#+end_src
+
+** Cognitive Tools
+The `:ask-llm` tool exposes the gateway's power to System 1, allowing it to explicitly request reasoning from a specific provider when the default cascade is insufficient.
+
+#+begin_src lisp :tangle ../src/llm-gateway.lisp
+(def-cognitive-tool :ask-llm "Queries an LLM provider via the unified gateway."
+  :parameters ((:prompt :type :string :description "The user prompt.")
+               (:system-prompt :type :string :description "The system instructions.")
+               (:provider :type :keyword :description "The provider (e.g., :gemini-api, :anthropic, :groq, :openai, :openrouter, :ollama, :gemini-web).")
+               (:model :type :string :description "Optional specific model ID."))
+  :body (lambda (args)
+          (execute-llm-request (getf args :prompt) 
+                               (or (getf args :system-prompt) "You are a helpful assistant.")
+                               :provider (getf args :provider)
+                               :model (getf args :model))))
+#+end_src
+
+** Registration
+We register all supported backends individually so that the kernel's `ask-neuro` loop can continue to address them by their semantic keywords while routing through the unified logic.
+
+#+begin_src lisp :tangle ../src/llm-gateway.lisp
+(progn
+  ;; Register all supported backends with the kernel
+  (dolist (p '(:anthropic :gemini-api :gemini-web :groq :ollama :openai :openrouter))
+    (org-agent:register-neuro-backend p (lambda (prompt system-prompt &key model)
+                                          (execute-llm-request prompt system-prompt :provider p :model model))))
+  
+  (defskill :skill-llm-gateway
+    :priority 150 ; Higher than individual old skills
+    :trigger (lambda (context) nil)
+    :neuro (lambda (context) nil)
+    :symbolic (lambda (action context) action)))
+#+end_src

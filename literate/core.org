@@ -6,15 +6,17 @@
 * The Cognitive Loop (core.lisp)
 ** Deep Reasoning: Beyond Asynchronous Recursion
 The original `cognitive-loop` used asynchronous recursion to handle stimuli. While responsive, it led to deep Lisp stacks and made multi-backend consensus difficult to implement.
-- **The Signal Pipeline:** We have evolved the kernel into a functional transformation pipeline. Every event—be it a keystroke, a timer pulse, or a neural proposal—is a **Signal**.
+- **The Circuit Board Model:** We have evolved the kernel into a functional transformation pipeline. Every event—be it a keystroke, a timer pulse, or a neural proposal—is a **Signal**.
+- **Consensus Gates:** By treating reasoning as a signal moving through a pipe, we can "split" the pipe to ask multiple LLMs simultaneously. A **Consensus Gate** later in the pipe compares the proposals and selects the most mathematically consistent one.
+- **Multi-Modal Fusion:** The pipeline can blend disparate signals (e.g. *User Prompt* + *Low Battery Alert* or *Heartbeat*) into a single coherent cognitive event.
 - **Flat Execution:** By using a feedback-loop orchestrator (`process-signal`), we flatten the execution stack. Tool outputs and errors are re-injected as new signals rather than creating nested function calls.
-- **Observability:** Each "Gate" in the pipeline is a discrete, traceable stage, making it easier to debug the agent's internal reasoning process.
 
 ** The Signal Pipeline (Architecture)
 #+begin_src mermaid
-graph LR
-    S1[Signal: Raw Event] --> P[Perceive Gate]
-    P --> N[Neuro Gate: System 1]
+graph TD
+    S1[Signal: User Message] --> P[Perceive Gate]
+    S2[Signal: Heartbeat] --> P
+    P --> N[Neuro Gate: Multi-Backend]
     N --> C[Consensus Gate]
     C --> V[Validation Gate: System 2]
     V --> D[Dispatch Gate: Actuators]

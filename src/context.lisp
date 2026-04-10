@@ -47,28 +47,47 @@
   "Returns performance and execution data for a specific skill."
   (bt:with-lock-held (*telemetry-lock*) (gethash (string-downcase skill-name) *skill-telemetry*)))
 
-(defun context-render-to-org (obj &key (depth 1) (foveal-id nil))
-  "Recursively renders an org-object and its children to an Org string."
-  (let* ((is-foveal (equal (org-object-id obj) foveal-id))
+(defun context-render-to-org (obj &key (depth 1) (foveal-id nil) (semantic-threshold 0.75) (foveal-vector nil))
+  "Recursively renders an org-object and its children to an Org string using a Foveal-Peripheral Hybrid model."
+  (let* ((id (org-object-id obj))
+         (is-foveal (equal id foveal-id))
          (title (or (getf (org-object-attributes obj) :TITLE) "Untitled"))
-         (id (org-object-id obj))
          (content (org-object-content obj))
          (children (org-object-children obj))
          (stars (make-string depth :initial-element #\*))
-         (output (format nil "~a ~a~%:PROPERTIES:~%:ID: ~a~%:END:~%" stars title id)))
+         (obj-vector (org-object-vector obj))
+         (similarity (if (and foveal-vector obj-vector (not is-foveal))
+                         (cosine-similarity foveal-vector obj-vector)
+                         0.0))
+         (is-semantically-relevant (>= similarity semantic-threshold))
+         ;; We always render depth 1 and 2 (Projects and main tasks).
+         ;; We always render the foveal node and its immediate children.
+         ;; We render deeper nodes ONLY if they are semantically relevant.
+         (should-render (or (<= depth 2) is-foveal is-semantically-relevant))
+         (output ""))
     
-    ;; Only include content if this is the foveal focus
-    (when (and is-foveal content)
-      (setf output (concatenate 'string output content (string #\Newline))))
-    
-    ;; Recursively render children
-    (dolist (child-id children)
-      (let ((child-obj (lookup-object child-id)))
-        (when child-obj
-          (setf output (concatenate 'string output 
-                                    (context-render-to-org child-obj 
-                                                           :depth (1+ depth) 
-                                                           :foveal-id foveal-id))))))
+    (when should-render
+      (setf output (format nil "~a ~a~%:PROPERTIES:~%:ID: ~a~%" stars title id))
+      (when is-semantically-relevant
+        (setf output (concatenate 'string output (format nil ":SEMANTIC_SCORE: ~,2f~%" similarity))))
+      (setf output (concatenate 'string output (format nil ":END:~%")))
+      
+      ;; Only include full body content if this is the Foveal focus or highly relevant
+      (when (and content (or is-foveal is-semantically-relevant))
+        (setf output (concatenate 'string output content (string #\Newline))))
+      
+      ;; Recursively render children
+      (dolist (child-id children)
+        (let ((child-obj (lookup-object child-id)))
+          (when child-obj
+            ;; If the current node is Foveal, its children should be rendered (depth effectively resets)
+            (let ((next-foveal (if is-foveal child-id foveal-id)))
+              (setf output (concatenate 'string output 
+                                        (context-render-to-org child-obj 
+                                                               :depth (1+ depth) 
+                                                               :foveal-id next-foveal
+                                                               :semantic-threshold semantic-threshold
+                                                               :foveal-vector foveal-vector))))))))
     output))
 
 (defun context-resolve-path (path-string)

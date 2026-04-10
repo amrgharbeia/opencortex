@@ -49,26 +49,63 @@ Interfaces for state dumping and restoration. Source of truth is the RAM-residen
 * Phase D: Build (Implementation)
 
 ** Image Serialization
-#+begin_src lisp :tangle ../projects/org-skill-object-store-persistence/src/persistence-logic.lisp
+We serialize the `*history-store*` (immutable objects) and the current `*object-store*` root pointers.
+
+#+begin_src lisp
 (defun memory-dump-image ()
+  "Serializes the entire history store and current pointers to a Lisp image."
   (let* ((state-dir (or (uiop:getenv "SYSTEM_DIR") "system/"))
          (image-file (merge-pathnames "state/memory-image.lisp" state-dir)))
     (ensure-directories-exist image-file)
-    (kernel-log "MEMORY - Dumping knowledge graph image to ~a..." (uiop:native-namestring image-file))
+    (org-agent:kernel-log "MEMORY - Dumping Merkle-Tree history to ~a..." (uiop:native-namestring image-file))
     (with-open-file (out image-file :direction :output :if-exists :supersede)
-      ;; We serialize the hash table entries as a list of forms
+      (format out "(in-package :org-agent)~%")
+      ;; 1. Dump all immutable objects in the history store
+      (maphash (lambda (hash obj)
+                 (print `(setf (gethash ,hash *history-store*) ,obj) out))
+               org-agent:*history-store*)
+      ;; 2. Dump the current active pointers (the object store)
       (maphash (lambda (id obj)
-                 (declare (ignore id))
-                 (print `(setf (gethash ,(org-agent:org-object-id obj) org-agent:*object-store*) ,obj) out))
+                 (print `(setf (gethash ,id *object-store*) (gethash ,(org-agent:org-object-hash obj) *history-store*)) out))
                org-agent:*object-store*))
-    '(:target :system :payload (:action :message :text "Memory image dumped."))))
+    '(:target :system :payload (:action :message :text "Merkle-Tree image dumped."))))
+
+(defun memory-load-image ()
+  "Loads the memory image from disk."
+  (let* ((state-dir (or (uiop:getenv "SYSTEM_DIR") "system/"))
+         (image-file (merge-pathnames "state/memory-image.lisp" state-dir)))
+    (if (uiop:file-exists-p image-file)
+        (progn
+          (org-agent:kernel-log "MEMORY - Loading knowledge graph image...")
+          (load image-file)
+          t)
+        (progn
+          (org-agent:kernel-log "MEMORY ERROR - Image file not found.")
+          nil))))
 #+end_src
 
-* Registration
+** Cognitive Tools
 #+begin_src lisp
-(defskill :skill-object-store-persistence
-  :priority 100 ; Foundational infrastructure
+(org-agent:def-cognitive-tool :persist-memory "Saves the current state of the Memex (Object Store + History) to disk."
+  :parameters nil
+  :body (lambda (args)
+          (declare (ignore args))
+          (memory-dump-image)
+          "MEMORY PERSISTED SUCCESSFUL."))
+
+(org-agent:def-cognitive-tool :rollback-memory "Reverts the in-memory state to a previous snapshot."
+  :parameters ((:index :type :integer :description "The snapshot index to roll back to (0 is most recent)"))
+  :body (lambda (args)
+          (org-agent:rollback-object-store (getf args :index))
+          "ROLLBACK COMPLETE."))
+#+end_src
+
+** Registration
+#+begin_src lisp
+(org-agent:defskill :skill-object-store-persistence
+  :priority 100
   :trigger (lambda (context) (eq (getf (getf context :payload) :sensor) :heartbeat))
   :neuro (lambda (context) nil)
   :symbolic (lambda (action context) (memory-dump-image)))
 #+end_src
+

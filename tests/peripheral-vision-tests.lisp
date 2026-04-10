@@ -1,5 +1,6 @@
 (defpackage :org-agent-peripheral-vision-tests
-  (:use :cl :fiveam :org-agent))
+  (:use :cl :fiveam :org-agent)
+  (:export #:vision-suite))
 (in-package :org-agent-peripheral-vision-tests)
 
 (def-suite vision-suite

@@ -43,9 +43,14 @@
                  (result (if model 
                              (funcall backend-fn prompt system-prompt :model model)
                              (funcall backend-fn prompt system-prompt))))
-            (if (and (stringp result) (search ":LOG" result) (or (search "Failure" result) (search "missing" result)))
-                (kernel-log "SYSTEM 1: Backend ~a failed. Falling back..." backend)
-                (return-from ask-neuro result))))))
+            (cond
+              ((listp result)
+               (if (eq (getf result :status) :success)
+                   (return-from ask-neuro (getf result :content))
+                   (kernel-log "SYSTEM 1: Backend ~a failed: ~a" backend (getf result :message))))
+              ((and (stringp result) (search ":LOG" result) (or (search "Failure" result) (search "missing" result)))
+               (kernel-log "SYSTEM 1: Backend ~a failed. Falling back..." backend))
+              (t (return-from ask-neuro result))))))
     "(:type :LOG :payload (:text \"Neural Cascade Failure\"))"))
 
 ;; --- Sovereign Service Fallbacks ---
