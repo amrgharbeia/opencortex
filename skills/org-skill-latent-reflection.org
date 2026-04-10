@@ -5,7 +5,7 @@
 #+TITLE: SKILL: Latent Reflection (Proactive Gardening)
 #+STARTUP: content
 #+FILETAGS: :memory:gardening:reflection:psf:
-#+DEPENDS_ON: id:e8b500e2-3f26-4c8e-8558-528061e178ca
+#+DEPENDS_ON: id:state-persistence-skill
 
 * Overview
 The *Latent Reflection* skill utilizes the idle cycles of the heartbeat to proactively garden the Memex. By randomly sampling the knowledge graph, it surfaces forgotten connections and synthesizes new insights without direct user prompting. This mimics the human default mode network, fostering creativity and serendipity.

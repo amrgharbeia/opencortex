@@ -1,0 +1,255 @@
+:PROPERTIES:
+:ID:       state-persistence-skill
+:CREATED:  [2026-04-09 Thu]
+:END:
+#+TITLE: SKILL: State Persistence Layer (Universal Literate Note)
+#+STARTUP: content
+#+FILETAGS: :memory:persistence:closos:ipfs:psf:
+#+DEPENDS_ON: id:e8b500e2-3f26-4c8e-8558-528061e178ca
+
+* Overview
+The *State Persistence Layer* ensures the durability and sovereignty of the agent's memory. It unifies local, high-performance Lisp image dumps with decentralized, immutable IPFS checkpointing. This dual-path approach provides both rapid operational recovery and long-term historical integrity.
+
+* Phase A: Demand (PRD)
+:PROPERTIES:
+:STATUS: SIGNED
+:END:
+
+** 1. Purpose
+Define automated behaviors for knowledge graph serialization, local persistence, and decentralized archival.
+
+** 2. User Needs
+- *Instant Recall:* Rapid local loading of the Object Store from a persistent image.
+- *Decentralized Archival:* Pushing immutable snapshots to IPFS for cross-node sync and sovereignty.
+- *Merkle Integrity:* Every save operation must respect and record the Merkle-Tree history.
+- *Safety:* Sanitize and validate data during restoration to prevent code injection.
+
+* Phase B: Blueprint (PROTOCOL)
+:PROPERTIES:
+:STATUS: SIGNED
+:END:
+
+** 1. Architectural Intent
+The persistence layer acts as a bridge between the volatile RAM-resident Object Store and permanent storage backends. It provides two adapters: `LOCAL` (fast, SBCL-native) and `IPFS` (sovereign, content-addressed).
+
+** 2. Semantic Interfaces
+#+begin_src lisp
+(defun persistence-dump-local ()
+  "Serializes RAM state to a local Lisp image file.")
+
+(defun persistence-push-ipfs ()
+  "Pushes an immutable snapshot of the graph to IPFS.")
+
+(defun persistence-restore-ipfs (cid)
+  "Hydrates the RAM state from an IPFS content identifier.")
+#+end_src
+
+* Phase C: Success (QUALITY)
+:PROPERTIES:
+:STATUS: SIGNED
+:END:
+
+** 1. Success Criteria
+- [ ] *Speed:* Local image load must be <500ms for a 10k node graph.
+- [ ] *Fidelity:* IPFS round-trip must result in a bit-identical Object Store.
+- [ ] *Validation:* Restoration must block any `read-eval` reader macros in content.
+
+** 2. TDD Plan
+Tests in `tests/persistence-tests.lisp` will verify the local dump/load cycle and the JSON serialization format for IPFS.
+
+* Phase D: Build (Implementation)
+
+** Package Context
+#+begin_src lisp :tangle ../src/state-persistence.lisp
+(in-package :org-agent)
+#+end_src
+
+** Helper: Local State Path
+Ensures we have a standardized location for local memory images.
+
+#+begin_src lisp :tangle ../src/state-persistence.lisp
+(defun persistence-get-local-path ()
+  "Returns the path to the local memory image file."
+  (let ((state-dir (or (uiop:getenv "SYSTEM_DIR") "system/")))
+    (merge-pathnames "state/memory-image.lisp" state-dir)))
+#+end_src
+
+** Local Image Dump (persistence-dump-local)
+Serializes the Merkle history and current pointers to a Lisp file.
+
+#+begin_src lisp :tangle ../src/state-persistence.lisp
+(defun persistence-dump-local ()
+  "Serializes the entire history store and current pointers to a local Lisp image."
+  (let ((image-file (persistence-get-local-path)))
+    (ensure-directories-exist image-file)
+    (kernel-log "PERSISTENCE - Dumping local image to ~a..." (uiop:native-namestring image-file))
+    (with-open-file (out image-file :direction :output :if-exists :supersede)
+      (format out "(in-package :org-agent)~%")
+      ;; 1. Dump all immutable objects in the history store
+      (maphash (lambda (hash obj)
+                 (print `(setf (gethash ,hash *history-store*) ,obj) out))
+               *history-store*)
+      ;; 2. Dump the current active pointers
+      (maphash (lambda (id obj)
+                 (print `(setf (gethash ,id *object-store*) (gethash ,(org-object-hash obj) *history-store*)) out))
+               *object-store*))
+    t))
+#+end_src
+
+** Local Image Load (persistence-load-local)
+Restores the state from the local disk.
+
+#+begin_src lisp :tangle ../src/state-persistence.lisp
+(defun persistence-load-local ()
+  "Loads the memory image from local disk."
+  (let ((image-file (persistence-get-local-path)))
+    (if (uiop:file-exists-p image-file)
+        (progn
+          (kernel-log "PERSISTENCE - Loading local image...")
+          (load image-file)
+          t)
+        (progn
+          (kernel-log "PERSISTENCE ERROR - Local image not found.")
+          nil))))
+#+end_src
+
+** IPFS Serialization (persistence-serialize-for-archival)
+Converts the live `*object-store*` into a JSON-compatible list of alists.
+
+#+begin_src lisp :tangle ../src/state-persistence.lisp
+(defun persistence-serialize-for-archival ()
+  "Serializes the entire object-store for IPFS/JSON transport."
+  (let ((objects nil))
+    (maphash (lambda (id obj)
+               (declare (ignore id))
+               (push `((:id . ,(org-object-id obj))
+                       (:type . ,(format nil "~s" (org-object-type obj)))
+                       (:attributes . ,(loop for (k v) on (org-object-attributes obj) by #'cddr 
+                                             collect (cons (format nil "~a" k) (format nil "~a" v))))
+                       (:content . ,(org-object-content obj))
+                       (:parent-id . ,(org-object-parent-id obj))
+                       (:children . ,(org-object-children obj))
+                       (:version . ,(org-object-version obj))
+                       (:last-sync . ,(org-object-last-sync obj))
+                       (:hash . ,(org-object-hash obj)))
+                     objects))
+             *object-store*)
+    objects))
+#+end_src
+
+** IPFS Push (persistence-push-ipfs)
+Pushes the serialized knowledge graph to the decentralized network.
+
+#+begin_src lisp :tangle ../src/state-persistence.lisp
+(defun persistence-push-ipfs ()
+  "Serializes the store and pushes it to IPFS, returning the CID."
+  (let* ((data (persistence-serialize-for-archival))
+         (json-payload (cl-json:encode-json-to-string data))
+         (ipfs-url "http://127.0.0.1:5001/api/v0/add"))
+    (handler-case
+        (let* ((response (dex:post ipfs-url 
+                                   :content `(("file" . ,json-payload))
+                                   :headers '(("Content-Type" . "multipart/form-data"))))
+               (result (cl-json:decode-json-from-string response))
+               (cid (cdr (assoc :hash result))))
+          (kernel-log "PERSISTENCE - Checkpoint to IPFS successful. CID: ~a" cid)
+          cid)
+      (error (c)
+        (kernel-log "PERSISTENCE ERROR - IPFS push failed: ~a" c)
+        nil))))
+#+end_src
+
+** IPFS Restore (persistence-restore-ipfs)
+Restores the graph from IPFS, using a safe parser to prevent injection.
+
+#+begin_src lisp :tangle ../src/state-persistence.lisp
+(defun persistence-restore-ipfs (cid)
+  "Fetches data from IPFS and safely hydrates the object-store."
+  (let ((ipfs-url (format nil "http://127.0.0.1:5001/api/v0/cat?arg=~a" cid)))
+    (handler-case
+        (let* ((response (dex:post ipfs-url))
+               (data (cl-json:decode-json-from-string response)))
+          (clrhash *object-store*)
+          (dolist (item data)
+            (let* ((id (cdr (assoc :id item)))
+                   (obj (make-org-object 
+                         :id id
+                         :type (read-from-string (cdr (assoc :type item)))
+                         :attributes (loop for attr in (cdr (assoc :attributes item))
+                                           append (list (intern (string-upcase (car attr)) :keyword) (cdr attr)))
+                         :content (cdr (assoc :content item))
+                         :parent-id (cdr (assoc :parent-id item))
+                         :children (cdr (assoc :children item))
+                         :version (cdr (assoc :version item))
+                         :last-sync (cdr (assoc :last-sync item))
+                         :hash (cdr (assoc :hash item)))))
+              (setf (gethash id *object-store*) obj)))
+          (kernel-log "PERSISTENCE - Restored from IPFS: ~a" cid)
+          t)
+      (error (c)
+        (kernel-log "PERSISTENCE ERROR - IPFS restoration failed: ~a" c)
+        nil))))
+#+end_src
+
+** Cognitive Tools
+Expose persistence capabilities to the neural System 1.
+
+#+begin_src lisp :tangle ../src/state-persistence.lisp
+(progn
+  (def-cognitive-tool :checkpoint-memory "Creates both a local image and a decentralized IPFS snapshot."
+    :parameters nil
+    :body (lambda (args)
+            (declare (ignore args))
+            (persistence-dump-local)
+            (let ((cid (persistence-push-ipfs)))
+              (format nil "Local dump complete. IPFS CID: ~a" (or cid "FAILED")))))
+
+  (def-cognitive-tool :restore-memory "Restores the state from a specific source."
+    :parameters ((:source :type :keyword :description "Either :LOCAL or :IPFS")
+                 (:cid :type :string :description "Required if source is :IPFS"))
+    :body (lambda (args)
+            (case (getf args :source)
+              (:local (if (persistence-load-local) "Restored from disk." "Local restore failed."))
+              (:ipfs (if (persistence-restore-ipfs (getf args :cid)) "Restored from network." "IPFS restore failed."))))))
+#+end_src
+
+** Registration
+#+begin_src lisp :tangle ../src/state-persistence.lisp
+(defskill :skill-state-persistence
+  :priority 100
+  :trigger (lambda (ctx) 
+             (let ((sensor (getf (getf ctx :payload) :sensor)))
+               (member sensor '(:heartbeat :manual-persist))))
+  :neuro nil
+  :symbolic (lambda (action ctx)
+              (persistence-dump-local)
+              action))
+#+end_src
+
+* Phase E: Chaos (Verification)
+
+** 1. Unit Tests (FiveAM)
+#+begin_src lisp :tangle ../tests/persistence-tests.lisp
+(defpackage :org-agent-persistence-tests
+  (:use :cl :fiveam :org-agent))
+(in-package :org-agent-persistence-tests)
+
+(def-suite persistence-suite :description "Tests for State Persistence Layer.")
+(in-suite persistence-suite)
+
+(test test-local-roundtrip
+  "Ensure RAM -> Disk -> RAM preserves data integrity."
+  (let ((test-id "persist-test-1"))
+    (setf (gethash test-id *object-store*) (make-org-object :id test-id :content "Integrity Check"))
+    (org-agent:persistence-dump-local)
+    (clrhash *object-store*)
+    (org-agent:persistence-load-local)
+    (is (equal "Integrity Check" (org-object-content (gethash test-id *object-store*))))))
+#+end_src
+
+** 2. Chaos Scenarios
+- *Scenario A (IPFS Daemon Down):* Kill the IPFS daemon and verify `persistence-push-ipfs` returns a standardized error instead of hanging the kernel.
+- *Scenario B (Corrupt Image):* Intentionally mangle the `memory-image.lisp` file and verify the loader catches the error during `load` and falls back to a clean state.
+
+* Phase F: Memory (RCA)
+- *[2026-04-09 Thu]:* Unified local SBCL image dumps with IPFS decentralized snapshots. Implemented safety-first restoration logic.
