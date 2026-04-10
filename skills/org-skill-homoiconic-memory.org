@@ -77,18 +77,18 @@ We define the standard `org-node` structure used throughout the kernel.
 #+end_src
 
 ** ID Injection (memory-ensure-id)
-Ensures every headline has a unique ID property. This is foundational for the Merkle-Tree object store.
+Ensures every headline has a unique ID property using the system standard `org-id-get-create`. This is foundational for the Merkle-Tree object store.
 
 #+begin_src lisp :tangle ../src/homoiconic-memory.lisp
 (defun memory-ensure-id (node)
-  "Injects a unique ID into an Org node if missing."
+  "Injects a unique ID into an Org node if missing, using the standard org-id-get-create mechanism."
   (let* ((props (getf node :properties))
          (id (getf props :ID)))
     (if (and id (not (equal id "")))
         node
-        (let ((new-id (org-id-new)))
+        (let ((new-id (org-agent:org-id-get-create)))
           (setf (getf node :properties) (append props (list :ID new-id)))
-          (kernel-log "MEMORY - Injected ID ~a" new-id)
+          (kernel-log "MEMORY - Injected standard ID ~a" new-id)
           node))))
 #+end_src
 

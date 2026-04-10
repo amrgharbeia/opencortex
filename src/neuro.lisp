@@ -56,23 +56,6 @@
 ;; --- Sovereign Service Fallbacks ---
 
 (defun token-accountant-route-task (context)
-  "Generic fallback for routing. Overridden by skill-token-accountant."
-  (declare (ignore context))
-  '(:openrouter :gemini))
-
-(defun org-id-new ()
-  "Generic fallback for ID generation. Overridden by skill-ast-normalization."
-  (format nil "node-~a" (get-universal-time)))
-
-(defun get-org-timestamp ()
-  "Returns a current Org-mode active timestamp."
-  (multiple-value-bind (sec min hour day month year day-of-week) (decode-universal-time (get-universal-time))
-    (declare (ignore sec))
-    (let ((day-names '("Mon" "Tue" "Wed" "Thu" "Fri" "Sat" "Sun")))
-      (format nil "[~4,'0d-~2,'0d-~2,'0d ~a ~2,'0d:~2,'0d]" 
-              year month day (nth day-of-week day-names) hour min))))
-
-(defun think (context)
   "Invokes the neural System 1 engine to propose a Lisp action based on context."
   (let ((active-skill (find-triggered-skill context))
         (tool-belt (generate-tool-belt-prompt))
