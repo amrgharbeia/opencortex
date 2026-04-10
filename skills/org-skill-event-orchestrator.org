@@ -1,0 +1,206 @@
+:PROPERTIES:
+:ID:       event-orchestrator-skill
+:CREATED:  [2026-04-09 Thu]
+:END:
+#+TITLE: SKILL: Event Orchestrator (Universal Literate Note)
+#+STARTUP: content
+#+FILETAGS: :system:control:event-driven:cron:hooks:routing:psf:
+#+DEPENDS_ON: id:state-persistence-skill
+
+* Overview
+The *Event Orchestrator* is the central nervous system of the Org-Agent. It unifies three previously fragmented domains of system control:
+1. **Cron (Temporal Control):** Triggering tasks based on time and heartbeats.
+2. **Hooks (Lifecycle Control):** Enabling event-driven extensibility at specific code points.
+3. **Routing (Cognitive Control):** Classifying incoming stimuli into complexity tiers for optimal resource allocation.
+
+By consolidating these into a single unit, we ensure that all system automation is auditable, Merkle-integrated, and follows a uniform safety standard.
+
+* Phase A: Demand (PRD)
+:PROPERTIES:
+:STATUS: SIGNED
+:END:
+
+** 1. Purpose
+Provide a unified, high-integrity interface for background automation and stimulus classification.
+
+** 2. User Needs
+- *Predictable Scheduling:* Precise execution of tasks based on cron-strings or intervals.
+- *Reactive Extensions:* Ability to "hook" into system events (save, boot, ingest).
+- *Intelligent Dispatch:* Automated complexity tiering to prevent wasted compute.
+- *Durable Registry:* All registered hooks and cron-jobs must be persisted to the Object Store.
+
+* Phase B: Blueprint (PROTOCOL)
+:PROPERTIES:
+:STATUS: SIGNED
+:END:
+
+** 1. Architectural Intent
+The orchestrator maintains three internal registries (Hooks, Cron, Routing Rules). It provides a standard API for registration and triggering, using the `LOCAL` persistence adapter to ensure these registries survive reboots.
+
+** 2. Semantic Interfaces
+#+begin_src lisp
+(defun orchestrator-register-hook (hook-name fn)
+  "Adds a function to a system hook.")
+
+(defun orchestrator-schedule-task (task-id schedule fn)
+  "Schedules a recurring task.")
+
+(defun orchestrator-classify-stimulus (context)
+  "Assigns a complexity tier (:REFLEX, :COGNITION, :REASONING) to a stimulus.")
+#+end_src
+
+* Phase C: Success (QUALITY)
+:PROPERTIES:
+:STATUS: SIGNED
+:END:
+
+** 1. Success Criteria
+- [ ] *Hook Latency:* Triggering a hook with 10 functions must complete in <1ms.
+- [ ] *Cron Precision:* Scheduled tasks must fire within 1s of their target window.
+- [ ] *Merkle Persistence:* Adding a hook or cron-job must increment the Object Store version.
+- [ ] *Classification Accuracy:* Routine system events must always be classified as `:REFLEX`.
+
+** 2. TDD Plan
+Tests in `tests/orchestrator-tests.lisp` will verify hook execution order, cron-job triggering via a mocked heartbeat, and the routing classification logic.
+
+* Phase D: Build (Implementation)
+
+** Package Context
+#+begin_src lisp :tangle ../src/event-orchestrator.lisp
+(in-package :org-agent)
+#+end_src
+
+** Registry State
+We maintain our internal registries in hash-tables, which will be serialized via the State Persistence layer.
+
+#+begin_src lisp :tangle ../src/event-orchestrator.lisp
+(defvar *hook-registry* (make-hash-table :test 'equal)
+  "Maps hook-names (symbols) to lists of functions.")
+
+(defvar *cron-registry* (make-hash-table :test 'equal)
+  "Maps task-ids to plists containing schedule and function.")
+#+end_src
+
+** Hook: Registration
+Allows external skills to register logic at system lifecycle points.
+
+#+begin_src lisp :tangle ../src/event-orchestrator.lisp
+(defun orchestrator-register-hook (hook-name fn)
+  "Registers a function for a named hook. Triggers a Merkle snapshot."
+  (pushnew fn (gethash hook-name *hook-registry*))
+  (kernel-log "ORCHESTRATOR - Registered hook function for ~a" hook-name)
+  (snapshot-object-store)
+  t)
+#+end_src
+
+** Hook: Triggering
+Executes all functions associated with a specific hook.
+
+#+begin_src lisp :tangle ../src/event-orchestrator.lisp
+(defun orchestrator-trigger-hook (hook-name &rest args)
+  "Executes all registered functions for the given hook name."
+  (let ((functions (gethash hook-name *hook-registry*)))
+    (dolist (fn functions)
+      (handler-case (apply fn args)
+        (error (c) (kernel-log "ORCHESTRATOR ERROR - Hook ~a failed: ~a" hook-name c))))))
+#+end_src
+
+** Cron: Task Scheduling
+Registers a recurring task to be executed during heartbeats.
+
+#+begin_src lisp :tangle ../src/event-orchestrator.lisp
+(defun orchestrator-schedule-task (task-id schedule fn)
+  "Schedules a task for execution. Schedule can be an interval (integer seconds) or 'heartbeat'."
+  (setf (gethash task-id *cron-registry*) (list :schedule schedule :fn fn :last-run 0))
+  (kernel-log "ORCHESTRATOR - Scheduled task ~a (~a)" task-id schedule)
+  (snapshot-object-store)
+  t)
+#+end_src
+
+** Cron: Heartbeat Processor
+The internal loop that checks the cron-registry during every system pulse.
+
+#+begin_src lisp :tangle ../src/event-orchestrator.lisp
+(defun orchestrator-process-cron ()
+  "Checked by the kernel on every heartbeat."
+  (let ((now (get-universal-time)))
+    (maphash (lambda (id task)
+               (let ((schedule (getf task :schedule))
+                     (last-run (getf task :last-run))
+                     (fn (getf task :fn)))
+                 (when (or (eq schedule :heartbeat)
+                           (and (integerp schedule) (>= (- now last-run) schedule)))
+                   (handler-case (funcall fn)
+                     (error (c) (kernel-log "ORCHESTRATOR ERROR - Cron task ~a failed: ~a" id c)))
+                   (setf (getf (gethash id *cron-registry*) :last-run) now))))
+             *cron-registry*)))
+#+end_src
+
+** Router: Complexity Classification
+Deterministic logic to classify incoming stimuli into complexity tiers.
+
+#+begin_src lisp :tangle ../src/event-orchestrator.lisp
+(defun orchestrator-classify-complexity (context)
+  "Returns the complexity tier (:REFLEX, :COGNITION, :REASONING) for a stimulus."
+  (let* ((payload (getf context :payload))
+         (sensor (getf payload :sensor))
+         (skill (find-triggered-skill context))
+         (skill-name (when skill (skill-name skill))))
+    (cond
+      ;; reasoning: generative or architectural
+      ((member skill-name '("skill-architect" "skill-tech-analyst" "skill-scientist" "skill-self-fix") :test #'string-equal) :REASONING)
+      ((member sensor '(:user-command)) :REASONING)
+      
+      ;; cognition: human interaction or semantic data
+      ((member sensor '(:chat-message :delegation)) :COGNITION)
+      ((member skill-name '("skill-scribe" "skill-web-research") :test #'string-equal) :COGNITION)
+      
+      ;; reflex: system infrastructure and background automation
+      (t :REFLEX))))
+#+end_src
+
+** Registration
+We register the orchestrator as a core skill and hot-patch the kernel's routing hook to use our classification logic.
+
+#+begin_src lisp :tangle ../src/event-orchestrator.lisp
+(progn
+  ;; Hook into kernel routing
+  (setf org-agent::*model-selector-fn* #'orchestrator-classify-complexity)
+  
+  (defskill :skill-event-orchestrator
+    :priority 400 ; Foundational control layer
+    :trigger (lambda (ctx) (eq (getf (getf ctx :payload) :sensor) :heartbeat))
+    :neuro nil
+    :symbolic (lambda (action ctx)
+                (orchestrator-process-cron)
+                action)))
+#+end_src
+
+* Phase E: Chaos (Verification)
+
+** 1. Unit Tests (FiveAM)
+#+begin_src lisp :tangle ../tests/orchestrator-tests.lisp
+(defpackage :org-agent-orchestrator-tests
+  (:use :cl :fiveam :org-agent))
+(in-package :org-agent-orchestrator-tests)
+
+(def-suite orchestrator-suite :description "Tests for Event Orchestrator.")
+(in-suite orchestrator-suite)
+
+(test test-hook-execution
+  (let ((test-val 0))
+    (org-agent:orchestrator-register-hook :test-hook (lambda () (setf test-val 1)))
+    (org-agent:orchestrator-trigger-hook :test-hook)
+    (is (= 1 test-val))))
+
+(test test-routing-reflex
+  (let ((ctx '(:payload (:sensor :heartbeat))))
+    (is (eq :REFLEX (org-agent:orchestrator-classify-complexity ctx)))))
+#+end_src
+
+** 2. Chaos Scenarios
+- *Scenario A (Infinite Hook Loop):* Register two hooks that call each other and verify the orchestrator's recursion limit or handler-case prevents a kernel stack-overflow.
+- *Scenario B (Cron Stall):* Register a cron-job that performs a long synchronous sleep and verify the `kernel-log` identifies the delay in the heartbeat pulse.
+
+* Phase F: Memory (RCA)
+- *[2026-04-09 Thu]:* Consolidated Cron, Hook Manager, and Cognitive Router into a single orchestrator. Fixed the lack of implementation for Cron and Hooks.
