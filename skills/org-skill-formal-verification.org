@@ -26,7 +26,7 @@ Define a logic-based verification layer for high-integrity decision making.
 * Phase D: Build (Implementation)
 
 ** Invariants Registry
-#+begin_src lisp :tangle projects/org-skill-formal-verification/src/verification-logic.lisp
+#+begin_src lisp :tangle ../src/verification-logic.lisp
 (defparameter *security-invariants* 
   '((:name "Path-Safety" :formula "(assert (forall ((p String)) (=> (is-write-op p) (str.prefixof \"/home/user/memex\" p))))")))
 

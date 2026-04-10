@@ -1,63 +1,8 @@
-:PROPERTIES:
-:ID:       4829cb25-efcb-4e0f-9285-7a045213d8b9
-:CREATED:  [2026-03-30 Mon 21:16]
-:EDITED:   [2026-04-07 Tue 13:42]
-:END:
-#+TITLE: SKILL: Chat Agent (Universal Literate Note)
-#+STARTUP: content
-#+FILETAGS: :chat:conversational:ui:psf:
-
-* Overview
-The *Chat Agent* provides a dedicated conversational interface within Emacs (`*org-agent-chat*`). It enables fluid dialogue while maintaining strict persona alignment and contextual awareness.
-
-* Phase A: Demand (PRD)
-:PROPERTIES:
-:STATUS: FROZEN
-:END:
-
-** 1. Purpose
-Define the interfaces for direct human-to-agent conversational interaction.
-
-** 2. User Needs
-- *Direct Interaction:* Specialized handler for `:chat-message` events.
-- *Persona Alignment:* Consistency with the Identity Agent's definitions.
-- *Contextual Awareness:* Reference to chat history for dialogue continuity.
-- *Structural Output:* Responses formatted as valid Org-mode subtrees.
-
-** 3. Success Criteria
-*** TODO Chat Event Triggering
-*** TODO Persona-Driven Response Generation
-*** TODO Emacs Buffer Insertion Verification
-
-* Phase B: Blueprint (PROTOCOL)
-:PROPERTIES:
-:STATUS: SIGNED
-:END:
-
-** 1. Architectural Intent
-Interfaces for conversational event handling and UI integration. Source of truth is the dynamic chat buffer and the Identity skill.
-
-** 2. Semantic Interfaces
-#+begin_src lisp
-(defun trigger-skill-chat (context)
-  "Triggers on :sensor :chat-message.")
-
-(defun verify-skill-chat (proposed-action context)
-  "Ensures response is targeted to the correct Emacs buffer.")
-#+end_src
-
-* Phase D: Build (Implementation)
-
-** Event Perception
-#+begin_src lisp :tangle ../src/chat-logic.lisp
 (defun trigger-skill-chat (context)
   (let* ((payload (getf context :payload))
          (sensor (getf payload :sensor)))
     (eq sensor :chat-message)))
-#+end_src
 
-** Symbolic Verification
-#+begin_src lisp :tangle ../src/chat-logic.lisp
 (defun verify-skill-chat (proposed-action context)
   (let* ((payload (getf proposed-action :payload))
          (action (or (getf payload :action) (getf proposed-action :action)))
@@ -73,12 +18,7 @@ Interfaces for conversational event handling and UI integration. Source of truth
         proposed-action
         (let ((err-text (format nil "\n\n*System Error:* Chat agent returned invalid action: ~s" proposed-action)))
           `(:type :request :target :emacs :payload (:action :insert-at-end :buffer "*org-agent-chat*" :text ,err-text))))))
-#+end_src
 
-** Neural Response Generation
-The Chat skill acts as the conversational UI. Because the ~org-agent~ kernel evaluates LLM output via ~read-from-string~ (expecting a valid s-expression) and the chat verifier strictly expects an Emacs ~:insert-at-end~ actuation, we must explicitly mandate that the LLM wraps its conversational output in a Common Lisp property list.
-
-#+begin_src lisp :tangle ../src/chat-logic.lisp
 (defun neuro-skill-chat (context)
   "Generates a conversational response, stripping system errors from context."
   (let* ((payload (getf context :payload))
@@ -96,13 +36,3 @@ STRICT RULE: Never output the strings 'Unknown request' or 'System Error'.
 REQUIRED FORMATS:
 - To reply: (:type :REQUEST :target :emacs :action :insert-at-end :buffer \"*org-agent-chat*\" :text \"* <Response>\")
 - To use a tool: (:type :REQUEST :target :tool :action :call :tool \"<name>\" :args (...))")))
-#+end_src
-
-* Registration
-#+begin_src lisp
-(defskill :skill-chat
-  :priority 100
-  :trigger #'trigger-skill-chat
-  :neuro #'neuro-skill-chat
-  :symbolic #'verify-skill-chat)
-#+end_src

@@ -30,7 +30,7 @@ Maintain a state-aware provider cascade that routes around "pain" (failures) and
 ** 2. Semantic Interfaces
 
 *** Routing and Pain Management
-#+begin_src lisp :tangle ../projects/org-skill-token-accountant/src/accountant-logic.lisp
+#+begin_src lisp :tangle ../src/accountant-logic.lisp
 (in-package :org-agent)
 
 (defvar *provider-pain-table* (make-hash-table :test 'equal))

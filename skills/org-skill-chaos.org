@@ -28,7 +28,7 @@ Verify the system's stability and error-handling capabilities under stress.
 * Phase D: Build (Implementation)
 
 ** Chaos Injection Logic
-#+begin_src lisp :tangle ../projects/org-skill-chaos/src/chaos-logic.lisp
+#+begin_src lisp :tangle ../src/chaos-logic.lisp
 (defun chaos-inject-error (sensor-type)
   "Injects a synthetic error into a specific sensor pipeline."
   (org-agent:kernel-log "CHAOS - Injecting synthetic error into ~a sensor..." sensor-type)

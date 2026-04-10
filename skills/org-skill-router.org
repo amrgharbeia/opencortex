@@ -38,7 +38,7 @@ Implement a deterministic classifier for known sensors and a neural fallback for
 - =:REASONING=: Generative tasks (coding, blueprinting, debugging).
 
 *** Routing Logic
-#+begin_src lisp :tangle ../projects/org-skill-router/src/router-logic.lisp
+#+begin_src lisp :tangle ../src/router-logic.lisp
 (in-package :org-agent)
 
 (defun router-classify-complexity (context)

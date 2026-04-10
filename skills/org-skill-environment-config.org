@@ -34,7 +34,7 @@ Define a standardized `CONFIG` object type in the Object Store. Provide getter/s
 ** 2. Semantic Interfaces
 
 *** Fleet Configuration
-#+begin_src lisp :tangle ../projects/org-skill-environment-config/src/config-logic.lisp
+#+begin_src lisp :tangle ../src/config-logic.lisp
 (in-package :org-agent)
 
 (defun set-llm-model (provider model-id)

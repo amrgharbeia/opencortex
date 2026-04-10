@@ -3,7 +3,9 @@
 (defun get-env (var &optional default) (or (uiop:getenv var) default))
 
 (defvar *auth-providers* (make-hash-table :test 'equal))
+
 (defun register-auth-provider (name fn) (setf (gethash name *auth-providers*) fn))
+
 (defun get-provider-auth (provider)
   "Retrieves authentication credentials for a provider."
   (let ((auth (gethash provider *auth-providers*)))
@@ -25,6 +27,7 @@
 
 (defvar *neuro-backends* (make-hash-table :test 'equal))
 (defvar *provider-cascade* '(:openrouter :gemini))
+
 (defun register-neuro-backend (name fn) (setf (gethash name *neuro-backends*) fn))
 
 (defvar *model-selector-fn* nil "A function called with (provider context) to return a model ID.")
@@ -43,19 +46,17 @@
                  (result (if model 
                              (funcall backend-fn prompt system-prompt :model model)
                              (funcall backend-fn prompt system-prompt))))
-            (cond
-              ((listp result)
-               (if (eq (getf result :status) :success)
-                   (return-from ask-neuro (getf result :content))
-                   (kernel-log "SYSTEM 1: Backend ~a failed: ~a" backend (getf result :message))))
-              ((and (stringp result) (search ":LOG" result) (or (search "Failure" result) (search "missing" result)))
-               (kernel-log "SYSTEM 1: Backend ~a failed. Falling back..." backend))
-              (t (return-from ask-neuro result))))))
+            (if (and (stringp result) (search ":LOG" result) (or (search "Failure" result) (search "missing" result)))
+                (kernel-log "SYSTEM 1: Backend ~a failed. Falling back..." backend)
+                (return-from ask-neuro result))))))
     "(:type :LOG :payload (:text \"Neural Cascade Failure\"))"))
 
-;; --- Sovereign Service Fallbacks ---
-
 (defun token-accountant-route-task (context)
+  "Generic fallback for routing. Overridden by skill-token-accountant."
+  (declare (ignore context))
+  '(:openrouter :gemini))
+
+(defun think (context)
   "Invokes the neural System 1 engine to propose a Lisp action based on context."
   (let ((active-skill (find-triggered-skill context))
         (tool-belt (generate-tool-belt-prompt))

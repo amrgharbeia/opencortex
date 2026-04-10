@@ -1,58 +1,3 @@
-:PROPERTIES:
-:ID:       0ae190ec-5658-4630-aed8-a5e9ffbbea0e
-:CREATED:  [2026-03-30 Mon 21:16]
-:EDITED:   [2026-04-07 Tue 13:42]
-:END:
-#+TITLE: SKILL: Shell Actuator Agent (Universal Literate Note)
-#+STARTUP: content
-#+FILETAGS: :shell:actuator:system:psf:
-
-* Overview
-The *Shell Actuator Agent* provides the bridge to the host operating system. It enables secure command execution while maintaining a strict security posture through whitelisting and diagnostic feedback loops.
-
-* Phase A: Demand (PRD)
-:PROPERTIES:
-:STATUS: FROZEN
-:END:
-
-** 1. Purpose
-Define a secure, diagnostic-rich interface for host OS interaction.
-
-** 2. User Needs
-- *Secure Actuation:* Strict whitelist of permitted commands.
-- *Diagnostic Feedback:* Capture STDOUT, STDERR, and exit codes.
-- *Loop Closure:* Automatic neural analysis of command results.
-- *Resilience:* Graceful handling of blocked or failed commands.
-
-** 3. Success Criteria
-*** TODO Whitelist Enforcement
-*** TODO Diagnostic Capture
-*** TODO Result Analysis Loop
-
-* Phase B: Blueprint (PROTOCOL)
-:PROPERTIES:
-:STATUS: SIGNED
-:END:
-
-** 1. Architectural Intent
-Interfaces for secure system calls. State is event-driven via the core kernel bus.
-
-** 2. Semantic Interfaces
-#+begin_src lisp
-(defun execute-shell-safely (action)
-  "Verifies command against whitelist and captures diagnostics.")
-
-(defun trigger-skill-shell-actuator (context)
-  "Monitors for shell-response events.")
-
-(defun neuro-skill-shell-actuator (context)
-  "Neural interpretation of command diagnostics.")
-#+end_src
-
-* Phase D: Build (Implementation)
-
-** Whitelisting & Execution
-#+begin_src lisp :tangle ../src/shell-logic.lisp
 (defparameter *allowed-commands* '("ls" "git" "rg" "grep" "date" "echo" "cat" "node" "python3" "sbcl"))
 
 (defun execute-shell-safely (action context)
@@ -98,19 +43,13 @@ Interfaces for secure system calls. State is event-driven via the core kernel bu
   (kernel-log "SECURITY [Hardware] - Provisioning MicroVM ~a (CPU: ~a, RAM: ~aMB)..." id cpu ram)
   ;; Future implementation: Wraps 'fcvm' or 'firecracker' CLI calls.
   (format nil "vm-~a-provisioned" id))
-#+end_src
 
-** Feedback Perception
-#+begin_src lisp :tangle ../src/shell-logic.lisp
 (defun trigger-skill-shell-actuator (context)
   (let ((type (getf context :type))
         (payload (getf context :payload)))
     (and (eq type :EVENT)
          (eq (getf payload :sensor) :shell-response))))
-#+end_src
 
-** Neuro-Cognitive Analysis
-#+begin_src lisp :tangle ../src/shell-logic.lisp
 (defun neuro-skill-shell-actuator (context)
   (let* ((p (getf context :payload))
          (cmd (getf p :cmd))
@@ -132,15 +71,3 @@ Interfaces for secure system calls. State is event-driven via the core kernel bu
         (let ((result-text (format nil "* Shell Command Result\n- Command: ~a\n- Exit Code: ~a\n\n** STDOUT\n#+begin_example\n~a\n#+end_example\n\n** STDERR\n#+begin_example\n~a\n#+end_example"
                                    cmd exit-code stdout stderr)))
           `(:type :request :target :emacs :payload (:action :insert-at-end :buffer "*org-agent-chat*" :text ,result-text))))))
-#+end_src
-
-* Registration
-#+begin_src lisp
-(org-agent:register-actuator :shell #'execute-shell-safely)
-
-(defskill :skill-shell-actuator
-  :priority 80
-  :trigger #'trigger-skill-shell-actuator
-  :neuro #'neuro-skill-shell-actuator
-  :symbolic (lambda (action context) action))
-#+end_src

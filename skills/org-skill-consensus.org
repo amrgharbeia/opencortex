@@ -27,7 +27,7 @@ Enable reliable, cross-instance coordination without a central master.
 * Phase D: Build (Implementation)
 
 ** Consensus Algorithm (Simplified Raft)
-#+begin_src lisp :tangle projects/org-skill-consensus/src/consensus-logic.lisp
+#+begin_src lisp :tangle ../src/consensus-logic.lisp
 (defun consensus-propose-vote (proposal)
   "Broadcasts a proposal to the peer swarm and collects votes.
    Implements PSF Social Consensus Protocol."
