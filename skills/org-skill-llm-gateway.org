@@ -58,33 +58,20 @@ Verification will occur via `tests/llm-gateway-tests.lisp` using the FiveAM fram
 #+begin_src lisp :tangle ../src/llm-gateway.lisp
 (in-package :org-agent)
 #+end_src
-
-** Helper: Secure Credential Retrieval
-The `get-llm-credentials` function abstracts the retrieval of sensitive API keys from the host environment. By centralizing this, we ensure that keys are only accessed when needed and are never hardcoded in the Lisp image.
-
-#+begin_src lisp :tangle ../src/llm-gateway.lisp
-(defun get-llm-credentials (provider)
-  "Retrieves the API key for the provider from the environment, ensuring it is not logged."
-  (let ((var (case provider
-               (:anthropic "ANTHROPIC_API_KEY")
-               (:gemini-api "GEMINI_API_KEY")
-               (:groq "GROQ_API_KEY")
-               (:openai "OPENAI_API_KEY")
-               (:openrouter "OPENROUTER_API_KEY")
-               (t nil))))
-    (when var (uiop:getenv var))))
-#+end_src
-
 ** Unified Request Executor (execute-llm-request)
-This is the primary actuator for neural reasoning. It handles the specific JSON payload formats and HTTP headers required by each provider (e.g., Anthropic's `x-api-key` vs. OpenAI's `Bearer` token).
+This is the primary actuator for neural reasoning. It handles the specific JSON payload formats and HTTP headers required by each provider. It retrieves secrets from the [[file:org-skill-credentials-vault.org][Credentials Vault]], ensuring that API keys are masked in all diagnostic output.
 
 #+begin_src lisp :tangle ../src/llm-gateway.lisp
 (defun execute-llm-request (prompt system-prompt &key provider model)
   "Unified entry point for all LLM providers."
-  (let ((api-key (get-llm-credentials provider))
+  (let ((api-key (vault-get-secret provider :type :api-key))
         (full-prompt (format nil "~a~%~%Prompt: ~a" system-prompt prompt)))
-    
+
+    (kernel-log "SYSTEM 1: Requesting ~a (Model: ~a) [Key: ~a]" 
+                provider (or model "default") (vault-mask-string api-key))
+
     (case provider
+...
       (:gemini-web
        (let ((res (uiop:symbol-call :org-agent.skills.org-skill-web-research :ask-gemini-web full-prompt)))
          (if res (list :status :success :content res) (list :status :error :message "Web Research Failure"))))
