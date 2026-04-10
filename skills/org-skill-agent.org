@@ -37,6 +37,12 @@ Prioritize local, energy-efficient, and offline-first architectures. The "Memex"
 ** 6. Literate Granularity (One Function per Block)
 To maintain the highest quality of literate programming, every Lisp function or macro must reside in its own dedicated `#+begin_src lisp` block. This ensures that each piece of logic can be surrounded by rich narrative explaining the "Why" and "How" of its specific implementation.
 
+** 7. Commit Before Modification
+To ensure perfect reversibility and system integrity, the agent MUST commit and push the current state of the workspace BEFORE initiating any new file modifications. This ensures that every evolutionary step has a known-good recovery point.
+
+** 8. Continuous QA (Chaos & Testing)
+No change is complete without verification. Every new function must be accompanied by a FiveAM test case. Furthermore, the agent must use the 'Chaos Gauntlet' to simulate failures and verify the system's resilience after every significant architectural shift.
+
 * Phase A: Demand (PRD)
 :PROPERTIES:
 :STATUS: FROZEN
