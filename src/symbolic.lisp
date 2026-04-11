@@ -14,6 +14,20 @@
           (return-from task-integrity-check "Blocked by Task Integrity: Active children exist."))))
     nil))
 
+(defun bouncer-check (action)
+  "Checks if an action requires manual authorization."
+  (let* ((payload (getf action :payload))
+         (target (getf action :target))
+         (act (or (getf payload :action) (getf action :action)))
+         (tool (or (getf payload :tool) (getf action :tool)))
+         (approved (getf action :approved)))
+    (when (and (not approved)
+               (or (and (eq target :tool) (equal tool "shell"))
+                   (and (eq target :emacs) (eq act :eval))
+                   (and (eq target :tool) (equal tool "repair-file"))))
+      (return-from bouncer-check t))
+    nil))
+
 (defun decide (proposed-action context)
   "The System 2 Safety Gate: validates or rejects proposed neural actions."
   ;; 1. Task Integrity Check (GTD Semantics)
@@ -22,7 +36,14 @@
       (kernel-log "SYSTEM 2 [INTEGRITY]: ~a~%" integrity-error)
       (return-from decide (list :type :LOG :payload (list :text integrity-error)))))
 
-  ;; 2. Skill-specific and Safety Checks
+  ;; 2. Bouncer Check (Authorization Gate)
+  (when (bouncer-check proposed-action)
+    (kernel-log "SYSTEM 2 [BOUNCER]: Action requires manual approval.~%")
+    (return-from decide 
+      (list :type :EVENT 
+            :payload (list :sensor :approval-required :action proposed-action))))
+
+  ;; 3. Skill-specific and Safety Checks
   (let ((active-skill (find-triggered-skill context)))
     (if (and proposed-action (listp proposed-action) active-skill)
         (let* ((symbolic-gate (skill-symbolic-fn active-skill))
