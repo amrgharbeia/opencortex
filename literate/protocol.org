@@ -16,10 +16,18 @@ We begin by ensuring we are in the correct package.
 (in-package :org-agent)
 #+end_src
 
+** Actuator Registry
+Global registry mapping target keywords to their physical actuator functions.
+
 #+begin_src lisp :tangle ../src/protocol.lisp
 (defvar *actuator-registry* (make-hash-table :test 'equal)
   "Global registry mapping target keywords to their physical actuator functions.")
+#+end_src
 
+** Actuator Registration
+Registers an actuator function. Actuators receive two arguments: (ACTION CONTEXT).
+
+#+begin_src lisp :tangle ../src/protocol.lisp
 (defun register-actuator (name fn) 
   "Registers an actuator function. Actuators receive two arguments: (ACTION CONTEXT)."
   (setf (gethash name *actuator-registry*) fn))

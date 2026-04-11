@@ -108,7 +108,7 @@ REQUIRED FORMATS:
 #+end_src
 
 * Registration
-#+begin_src lisp
+#+begin_src lisp :tangle ../src/chat-logic.lisp
 (defskill :skill-chat
   :priority 100
   :trigger #'trigger-skill-chat

@@ -28,16 +28,52 @@ graph TD
 (in-package :org-agent)
 #+end_src
 
-** Global Kernel State
-The kernel maintains several thread-safe global variables for logging, telemetry, and execution control.
+** System Logs
+Rolling buffer of kernel diagnostics.
 
 #+begin_src lisp :tangle ../src/core.lisp
 (defvar *system-logs* nil)
+#+end_src
+
+** Logs Lock
+Thread-safety for logging operations.
+
+#+begin_src lisp :tangle ../src/core.lisp
 (defvar *logs-lock* (bt:make-lock "kernel-logs-lock"))
+#+end_src
+
+** Max Log History
+The maximum number of diagnostic lines to retain in memory.
+
+#+begin_src lisp :tangle ../src/core.lisp
 (defvar *max-log-history* 100)
+#+end_src
+
+** Interrupt Flag
+Atomic flag used to halt the reasoning loop.
+
+#+begin_src lisp :tangle ../src/core.lisp
 (defvar *interrupt-flag* nil)
+#+end_src
+
+** Interrupt Lock
+Thread-safety for loop interruption.
+
+#+begin_src lisp :tangle ../src/core.lisp
 (defvar *interrupt-lock* (bt:make-lock "kernel-interrupt-lock"))
+#+end_src
+
+** Skill Telemetry
+Hash table tracking execution metrics per skill.
+
+#+begin_src lisp :tangle ../src/core.lisp
 (defvar *skill-telemetry* (make-hash-table :test 'equal))
+#+end_src
+
+** Telemetry Lock
+Thread-safety for metric updates.
+
+#+begin_src lisp :tangle ../src/core.lisp
 (defvar *telemetry-lock* (bt:make-lock "kernel-telemetry-lock"))
 #+end_src
 

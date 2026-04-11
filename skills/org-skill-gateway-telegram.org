@@ -42,13 +42,32 @@ The gateway operates as an autonomous background service. It uses `dexador` for 
 (in-package :org-agent)
 #+end_src
 
-** State & Config
+** State: Update Tracking
+Tracks the last processed message ID to prevent duplicates.
+
 #+begin_src lisp :tangle ../src/gateway-telegram.lisp
 (defvar *telegram-last-update-id* 0)
+#+end_src
+
+** State: Polling Thread
+Reference to the background thread responsible for message reception.
+
+#+begin_src lisp :tangle ../src/gateway-telegram.lisp
 (defvar *telegram-polling-thread* nil)
+#+end_src
+
+** State: Authorized Chats
+Whitelist of chat IDs permitted to interact with the agent.
+
+#+begin_src lisp :tangle ../src/gateway-telegram.lisp
 (defvar *telegram-authorized-chats* nil 
   "List of chat IDs allowed to interact with the bot. Hydrated from environment.")
+#+end_src
 
+** Token Retrieval
+Fetches the Bot API token from the secure vault.
+
+#+begin_src lisp :tangle ../src/gateway-telegram.lisp
 (defun get-telegram-token () (vault-get-secret :telegram))
 #+end_src
 
@@ -102,7 +121,9 @@ The gateway operates as an autonomous background service. It uses `dexador` for 
         (error (c) (kernel-log "TELEGRAM POLL ERROR: ~a" c))))))
 #+end_src
 
-** Background Polling Loop
+** Start Polling
+Initializes the Telegram background thread.
+
 #+begin_src lisp :tangle ../src/gateway-telegram.lisp
 (defun start-telegram-gateway ()
   "Initializes the Telegram background thread."
@@ -115,24 +136,39 @@ The gateway operates as an autonomous background service. It uses `dexador` for 
                (sleep 3)))
            :name "org-agent-telegram-gateway"))
     (kernel-log "TELEGRAM: Gateway polling active.")))
+#+end_src
 
+** Stop Polling
+Gracefully terminates the background thread.
+
+#+begin_src lisp :tangle ../src/gateway-telegram.lisp
 (defun stop-telegram-gateway ()
   (when (and *telegram-polling-thread* (bt:thread-alive-p *telegram-polling-thread*))
     (bt:destroy-thread *telegram-polling-thread*)
     (setf *telegram-polling-thread* nil)))
 #+end_src
 
-** Skill Definition & Registration
+** Registration: Actuator
+Register the Telegram channel as a physical actuator.
+
 #+begin_src lisp :tangle ../src/gateway-telegram.lisp
-(progn
-  (register-actuator :telegram #'execute-telegram-action)
-  
-  (defskill :skill-gateway-telegram
-    :priority 150
-    :trigger (lambda (ctx) (declare (ignore ctx)) nil) ;; Passive, handles its own loop
-    :neuro nil
-    :symbolic (lambda (action ctx) (declare (ignore ctx)) action))
-  
-  ;; Initialize the background polling loop
-  (start-telegram-gateway))
+(register-actuator :telegram #'execute-telegram-action)
+#+end_src
+
+** Registration: Skill
+Define the passive skill entry for the gateway.
+
+#+begin_src lisp :tangle ../src/gateway-telegram.lisp
+(defskill :skill-gateway-telegram
+  :priority 150
+  :trigger (lambda (ctx) (declare (ignore ctx)) nil) ;; Passive, handles its own loop
+  :neuro nil
+  :symbolic (lambda (action ctx) (declare (ignore ctx)) action))
+#+end_src
+
+** Initialization
+Trigger the polling loop upon loading.
+
+#+begin_src lisp :tangle ../src/gateway-telegram.lisp
+(start-telegram-gateway)
 #+end_src

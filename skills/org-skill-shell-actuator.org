@@ -75,18 +75,34 @@ Interfaces for secure system calls. State is event-driven via the core kernel bu
 
 * Phase D: Build (Implementation)
 
-** Whitelisting & Execution
-#+begin_src lisp :tangle ../src/shell-logic.lisp
-(in-package :org-agent)
+** Allowed Commands
+Whitelist of permitted host binaries.
 
+#+begin_src lisp :tangle ../src/shell-logic.lisp
 (defparameter *allowed-commands* '("ls" "git" "rg" "grep" "date" "echo" "cat" "node" "python3" "sbcl"))
+#+end_src
+
+** Shell Metacharacters
+Dangerous characters that are banned to prevent command injection.
+
+#+begin_src lisp :tangle ../src/shell-logic.lisp
 (defparameter *shell-metacharacters* '(#\; #\& #\| #\> #\< #\$ #\` #\\ #\!)
   "Characters that are banned in shell commands to prevent injection.")
+#+end_src
 
+** Safety Check (shell-command-safe-p)
+Predicate to verify a command string is free of metacharacters.
+
+#+begin_src lisp :tangle ../src/shell-logic.lisp
 (defun shell-command-safe-p (cmd-string)
   "Returns T if the command string contains no dangerous metacharacters."
   (not (some (lambda (char) (find char cmd-string)) *shell-metacharacters*)))
+#+end_src
 
+** Shell Execution (execute-shell-safely)
+The primary secure actuator for host system calls.
+
+#+begin_src lisp :tangle ../src/shell-logic.lisp
 (defun execute-shell-safely (action context)
   (let* ((cmd-string (getf (getf action :payload) :cmd))
          (executable (car (uiop:split-string (string-trim " " cmd-string) :separator '(#\Space)))))
@@ -112,6 +128,11 @@ Interfaces for secure system calls. State is event-driven via the core kernel bu
           `(:type :EVENT :payload (:sensor :shell-response :cmd ,cmd-string :stdout ,(or stdout "") :stderr ,(or stderr "") :exit-code ,exit-code))
           :stream (getf context :reply-stream)))))))
 #+end_src
+
+** Script Synthesis (execute-sandboxed-script)
+Executes a synthesized script (Python/Lisp/JS) in a controlled directory.
+
+#+begin_src lisp :tangle ../src/shell-logic.lisp
 (defun execute-sandboxed-script (action context)
   "Executes a synthesized script (Python/Lisp/JS) in a controlled directory.
    This enables SOTA-level Tool Synthesis and Iterative Fixing."
@@ -135,7 +156,12 @@ Interfaces for secure system calls. State is event-driven via the core kernel bu
         (org-agent:inject-stimulus 
          `(:type :EVENT :payload (:sensor :shell-response :cmd ,cmd :stdout ,(or stdout "") :stderr ,(or stderr "") :exit-code ,exit-code :synthesis-p t))
          :stream (getf context :reply-stream))))))
+#+end_src
 
+** Infrastructure: MicroVM Provisioning
+Hardware-Level Isolation for future security evolution.
+
+#+begin_src lisp :tangle ../src/shell-logic.lisp
 (defun provision-microvm (id &key (cpu 1) (ram 512))
   "Hardware-Level Isolation: Provisions an ephemeral Firecracker MicroVM.
    This is the high-security evolution of directory-based sandboxing."
@@ -179,12 +205,21 @@ Interfaces for secure system calls. State is event-driven via the core kernel bu
 #+end_src
 
 * Registration
-#+begin_src lisp
-(org-agent:register-actuator :shell #'execute-shell-safely)
 
+** Registration: Actuator
+Register the shell channel as a physical actuator.
+
+#+begin_src lisp :tangle ../src/shell-logic.lisp
+(org-agent:register-actuator :shell #'execute-shell-safely)
+#+end_src
+
+** Registration: Skill
+Define the skill entry for the shell actuator.
+
+#+begin_src lisp :tangle ../src/shell-logic.lisp
 (defskill :skill-shell-actuator
   :priority 80
   :trigger #'trigger-skill-shell-actuator
   :neuro #'neuro-skill-shell-actuator
-  :symbolic (lambda (action context) action))
+  :symbolic (lambda (action context) (declare (ignore context)) action))
 #+end_src

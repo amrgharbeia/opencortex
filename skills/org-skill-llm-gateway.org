@@ -155,21 +155,24 @@ The `:ask-llm` tool exposes the gateway's power to System 1, allowing it to expl
                                :model (getf args :model))))
 #+end_src
 
-** Registration
-We register all supported backends individually so that the kernel's `ask-neuro` loop can continue to address them by their semantic keywords while routing through the unified logic.
+** Registration: Backends
+Register each supported provider with the kernel's neural registry.
 
 #+begin_src lisp :tangle ../src/llm-gateway.lisp
-(progn
-  ;; Register all supported backends with the kernel
-  (dolist (p '(:anthropic :gemini-api :gemini-web :groq :ollama :openai :openrouter))
-    (org-agent:register-neuro-backend p (lambda (prompt system-prompt &key model)
-                                          (execute-llm-request prompt system-prompt :provider p :model model))))
-  
-  (defskill :skill-llm-gateway
-    :priority 150 ; Higher than individual old skills
-    :trigger (lambda (context) nil)
-    :neuro (lambda (context) nil)
-    :symbolic (lambda (action context) action)))
+(dolist (p '(:anthropic :gemini-api :gemini-web :groq :ollama :openai :openrouter))
+  (org-agent:register-neuro-backend p (lambda (prompt system-prompt &key model)
+                                        (execute-llm-request prompt system-prompt :provider p :model model))))
+#+end_src
+
+** Registration: Skill
+Define the foundational skill entry for the gateway.
+
+#+begin_src lisp :tangle ../src/llm-gateway.lisp
+(defskill :skill-llm-gateway
+  :priority 150 ; Higher than individual old skills
+  :trigger (lambda (context) (declare (ignore context)) nil)
+  :neuro (lambda (context) (declare (ignore context)) nil)
+  :symbolic (lambda (action context) (declare (ignore context)) action))
 #+end_src
 
 * Phase E: Chaos (Verification)

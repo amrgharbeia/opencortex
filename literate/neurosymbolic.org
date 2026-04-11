@@ -22,14 +22,24 @@ This module handles the interaction with Large Language Models, providing a unif
 (defun get-env (var &optional default) (or (uiop:getenv var) default))
 #+end_src
 
-** Authentication Registry
+** Auth Providers Registry
 Tracks API keys and authentication functions for various providers.
 
 #+begin_src lisp :tangle ../src/neuro.lisp
 (defvar *auth-providers* (make-hash-table :test 'equal))
+#+end_src
 
+** Register Auth Provider
+Registers a function or list to provide authentication for a specific backend.
+
+#+begin_src lisp :tangle ../src/neuro.lisp
 (defun register-auth-provider (name fn) (setf (gethash name *auth-providers*) fn))
+#+end_src
 
+** Get Provider Auth
+Retrieves authentication credentials for a provider, falling back to environment variables if not found in the registry.
+
+#+begin_src lisp :tangle ../src/neuro.lisp
 (defun get-provider-auth (provider)
   "Retrieves authentication credentials for a provider."
   (let ((auth (gethash provider *auth-providers*)))
@@ -50,15 +60,31 @@ Tracks API keys and authentication functions for various providers.
                  (list :api-key legacy)))))))))
 #+end_src
 
-** Backend Registry and Cascade
-The kernel supports a "cascade" of providers. If the primary provider (e.g. OpenRouter) fails, it automatically falls back to the secondary (e.g. Gemini).
+** Neuro Backends Registry
+Tracks the actual implementation functions for each LLM provider.
 
 #+begin_src lisp :tangle ../src/neuro.lisp
 (defvar *neuro-backends* (make-hash-table :test 'equal))
+#+end_src
+
+** Provider Cascade
+The ordered list of backends to attempt for neural reasoning.
+
+#+begin_src lisp :tangle ../src/neuro.lisp
 (defvar *provider-cascade* '(:openrouter :gemini))
+#+end_src
 
+** Register Neuro Backend
+Maps a keyword identifier to a backend implementation function.
+
+#+begin_src lisp :tangle ../src/neuro.lisp
 (defun register-neuro-backend (name fn) (setf (gethash name *neuro-backends*) fn))
+#+end_src
 
+** Model Selector Function
+A hook for dynamic model selection based on the current context.
+
+#+begin_src lisp :tangle ../src/neuro.lisp
 (defvar *model-selector-fn* nil "A function called with (provider context) to return a model ID.")
 #+end_src
 

@@ -1,6 +1,7 @@
 (in-package :org-agent)
 
 (defparameter *allowed-commands* '("ls" "git" "rg" "grep" "date" "echo" "cat" "node" "python3" "sbcl"))
+
 (defparameter *shell-metacharacters* '(#\; #\& #\| #\> #\< #\$ #\` #\\ #\!)
   "Characters that are banned in shell commands to prevent injection.")
 
@@ -91,3 +92,11 @@
         (let ((result-text (format nil "* Shell Command Result\n- Command: ~a\n- Exit Code: ~a\n\n** STDOUT\n#+begin_example\n~a\n#+end_example\n\n** STDERR\n#+begin_example\n~a\n#+end_example"
                                    cmd exit-code stdout stderr)))
           `(:type :request :target :emacs :payload (:action :insert-at-end :buffer "*org-agent-chat*" :text ,result-text))))))
+
+(org-agent:register-actuator :shell #'execute-shell-safely)
+
+(defskill :skill-shell-actuator
+  :priority 80
+  :trigger #'trigger-skill-shell-actuator
+  :neuro #'neuro-skill-shell-actuator
+  :symbolic (lambda (action context) (declare (ignore context)) action))
