@@ -1,0 +1,30 @@
+#+TITLE: Root Cause Analysis: Containerized Infrastructure (Docker)
+#+DATE: 2026-04-11
+#+FILETAGS: :rca:docker:deployment:infrastructure:psf:
+
+* Executive Summary
+Standardized the `org-agent` execution environment by creating a production-grade Docker infrastructure. This ensures that all system dependencies, including the Lisp runtime and external binaries like `signal-cli`, are locked down and portable.
+
+* 1. Architectural Intent: The "Clean Room" Model
+** Problem
+The `org-agent` was relying on host-local binaries (`sbcl`, `signal-cli`) and manually configured Quicklisp dists. This made deployment to other environments (e.g., a VPS or a Sovereign Home Server) fragile and prone to version drift.
+** Solution
+1. **Dockerfile:** Created a multi-step build process that installs Debian Bookworm, SBCL, Java, and `signal-cli 0.14.0`.
+2. **Pre-Caching:** The build process triggers a `ql:quickload` of the `:org-agent` system, ensuring all Lisp dependencies are pre-downloaded and stored in the image layer, drastically reducing startup time.
+3. **Compose Orchestration:** Standardized the runtime via `docker-compose.yml`, which handles volume mounting of the user's `memex` directory and injection of `.env` secrets.
+
+* 2. Volume Mapping & Persistence
+** Strategy
+To maintain the "Sovereign" mandate, the agent's code is isolated, but its memory (the `memex`) remains on the host. 
+- **Mapping:** `../..` (host) -> `/memex` (container).
+- **State:** Created a named Docker volume `signal-state` to ensure that `signal-cli` identities and cryptographic keys survive container restarts and image updates.
+
+* 3. Alignment with PSF Mandates
+** Evolutionary Completion
+By moving to Docker, we have achieved "Evolutionary Completion" for the deployment track. The system is no longer a collection of scripts; it is a deployable appliance.
+** Documentation
+A new `Deployment Guide` was added to `docs/deployment.org` to ensure standard operating procedures are preserved.
+
+* 4. Permanent Learnings
+- **Lisp Build Layers:** Always push the system to the ASDF registry and quickload during Docker build to bake dependencies into the image.
+- **Compose Locality:** Placing the `docker-compose.yml` inside the `projects/org-agent/` folder keeps infrastructure code close to the implementation logic.

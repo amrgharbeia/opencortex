@@ -1,0 +1,58 @@
+# ORG-AGENT v1.0 Production Environment
+FROM debian:bookworm-slim
+
+# Prevent interactive prompts during build
+ENV DEBIAN_FRONTEND=noninteractive
+
+# 1. Install System Dependencies
+# - sbcl: The Lisp Runtime
+# - curl/git/unzip: Standard tools for Quicklisp and binaries
+# - default-jre: Required by signal-cli
+RUN apt-get update && apt-get install -y \
+    sbcl \
+    curl \
+    git \
+    unzip \
+    default-jre \
+    libsqlite3-0 \
+    && rm -rf /var/lib/apt/lists/*
+
+# 2. Install signal-cli (v0.14.0)
+ENV SIGNAL_CLI_VERSION=0.14.0
+RUN curl -L https://github.com/AsamK/signal-cli/releases/download/v${SIGNAL_CLI_VERSION}/signal-cli-${SIGNAL_CLI_VERSION}-Linux.tar.gz | tar xz -C /opt \
+    && ln -s /opt/signal-cli-${SIGNAL_CLI_VERSION}/bin/signal-cli /usr/local/bin/signal-cli
+
+# 3. Install Quicklisp
+WORKDIR /root
+RUN curl -O https://beta.quicklisp.org/quicklisp.lisp \
+    && sbcl --non-interactive \
+        --load quicklisp.lisp \
+        --eval '(quicklisp-quickstart:install)' \
+        --eval '(let ((ql-util::*quicklisp-home* (merge-pathnames "quicklisp/" (user-homedir-pathname)))) (ql-dist:install-dist "http://beta.quicklisp.org/dist/quicklisp.txt" :prompt nil))'
+
+# 4. Configure SBCL to load Quicklisp on startup
+RUN echo '(let ((quicklisp-init (merge-pathnames "quicklisp/setup.lisp" (user-homedir-pathname)))) (when (probe-file quicklisp-init) (load quicklisp-init)))' > /root/.sbclrc
+
+# 5. Setup Application Directory
+WORKDIR /app
+COPY . /app/projects/org-agent
+
+# 6. Pre-cache Lisp Dependencies
+# This minimizes startup time by downloading dexador, cl-json, etc. during build
+RUN sbcl --non-interactive \
+    --eval '(push #p"/app/projects/org-agent/" asdf:*central-registry*)' \
+    --eval '(ql:quickload :org-agent)'
+
+# 7. Environment & Volumes
+# The host's memex root should be mounted to /memex
+ENV MEMEX_DIR=/memex
+VOLUME ["/memex"]
+
+# Default Ports
+EXPOSE 9105 8080
+
+# Entrypoint
+CMD ["sbcl", "--non-interactive", \
+     "--eval", "(push #p\"/app/projects/org-agent/\" asdf:*central-registry*)", \
+     "--eval", "(ql:quickload :org-agent)", \
+     "--eval", "(org-agent:main)"]

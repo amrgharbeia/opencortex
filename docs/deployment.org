@@ -1,0 +1,36 @@
+#+TITLE: Deployment Guide: Containerized Org-Agent
+#+AUTHOR: Amr
+#+DATE: [2026-04-11 Sat]
+#+FILETAGS: :deployment:docker:infrastructure:
+
+* Overview
+The ~org-agent~ is designed to run within a Docker container to ensure system dependencies (SBCL, Quicklisp, signal-cli) are perfectly matched across different host environments.
+
+* Prerequisites
+- Docker Engine
+- Docker Compose
+- A valid ~.env~ file in the ~projects/org-agent/~ directory (refer to ~.env.example~).
+
+* Quick Start
+** 1. Build and Start
+From the ~projects/org-agent/~ directory:
+#+begin_src bash
+docker-compose up --build -d
+#+end_src
+
+** 2. Check Logs
+#+begin_src bash
+docker-compose logs -f
+#+end_src
+
+* Volume Mapping
+The ~docker-compose.yml~ file automatically mounts your host's ~memex~ directory to ~/memex~ inside the container. This allows the agent to:
+1. Read/Write to your Zettelkasten and GTD files.
+2. Maintain its local state (Object Store, snapshots).
+
+* Troubleshooting
+** signal-cli Identity
+If using the Signal gateway, ensure you have registered your number via the host's ~signal-cli~ or within the container. The state is preserved in the ~signal-state~ Docker volume.
+
+** Re-loading Skills
+The container pre-caches dependencies during the build. If you modify core Lisp logic, you must rebuild the image (~--build~). If you only modify ~.org~ skills in your memex, the agent can reload them dynamically if they are part of the startup scan.
