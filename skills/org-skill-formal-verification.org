@@ -10,6 +10,15 @@
 * Overview
 The *Formal Verification Gate* replaces heuristic whitelisting with symbolic logic proofs. It ensures that every action proposed by System 1 is *provably safe* against the kernel's core security invariants using a Lisp-native symbolic prover.
 
+** Deep Reasoning: The Sandbox of Intent
+This gate is the first line of defense against both "Inside Threats" (maliciously modified skill files) and "Hallucination Threats" (LLMs generating unsafe commands). 
+
+1. **Isolation from Implementation:** The Prover does not trust the logic inside a skill. It sits between the skill's proposal and the physical world.
+2. **Structural Enforcement:** Even if a skill is compromised and attempts to execute a command like `rm -rf /`, the Prover identifies the violation of the `path-confinement` invariant and blocks it before it hits the OS.
+3. **Prover vs. Bouncer:**
+   - **The Prover (Static):** Focuses on *Structure*. "Is this path legal? Is this tool allowed?"
+   - **The Bouncer (Runtime):** Focuses on *Content*. "Is this message leaking my API keys? Is this network packet unauthorized?"
+
 * Phase A: Demand (PRD)
 :PROPERTIES:
 :STATUS: SIGNED
