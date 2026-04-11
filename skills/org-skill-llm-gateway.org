@@ -1,6 +1,7 @@
 :PROPERTIES:
 :ID:       llm-gateway-skill
 :CREATED:  [2026-04-09 Thu]
+:EDITED:   [2026-04-11 Sat]
 :END:
 #+TITLE: SKILL: Unified LLM Gateway (Universal Literate Note)
 #+STARTUP: content
@@ -58,6 +59,26 @@ Verification will occur via `tests/llm-gateway-tests.lisp` using the FiveAM fram
 #+begin_src lisp :tangle ../src/llm-gateway.lisp
 (in-package :org-agent)
 #+end_src
+
+** Nested Extraction Helper (get-nested)
+A robust utility to navigate deeply nested JSON alists produced by `cl-json`, handling both objects and arrays.
+
+#+begin_src lisp :tangle ../src/llm-gateway.lisp
+(defun get-nested (alist &rest keys)
+  "Recursively extracts nested values from an alist, handling both objects and arrays."
+  (let ((val alist))
+    (dolist (k keys)
+      ;; If val is an array (a list where the first element is a list but NOT a pair),
+      ;; descend into the first element.
+      (when (and (listp val) (listp (car val)) (not (keywordp (caar val))))
+        (setf val (car val)))
+      (let ((pair (assoc k val)))
+        (if pair
+            (setf val (cdr pair))
+            (return-from get-nested nil))))
+    val))
+#+end_src
+
 ** Unified Request Executor (execute-llm-request)
 This is the primary actuator for neural reasoning. It handles the specific JSON payload formats and HTTP headers required by each provider. It retrieves secrets from the [[file:org-skill-credentials-vault.org][Credentials Vault]], ensuring that API keys are masked in all diagnostic output.
 
@@ -71,7 +92,6 @@ This is the primary actuator for neural reasoning. It handles the specific JSON 
                 provider (or model "default") (vault-mask-string api-key))
 
     (case provider
-...
       (:gemini-web
        (let ((res (uiop:symbol-call :org-agent.skills.org-skill-web-research :ask-gemini-web full-prompt)))
          (if res (list :status :success :content res) (list :status :error :message "Web Research Failure"))))
@@ -87,7 +107,8 @@ This is the primary actuator for neural reasoning. It handles the specific JSON 
            (error (c) (list :status :error :message (format nil "Ollama Failure: ~a" c))))))
 
       (t ;; Cloud Providers (Anthropic, Gemini API, Groq, OpenAI, OpenRouter)
-       (unless api-key (return-from execute-llm-request (list :status :error :message (format nil "API Key missing for ~a" provider))))
+       (when (or (null api-key) (string= api-key ""))
+         (return-from execute-llm-request (list :status :error :message (format nil "API Key missing for ~a" provider))))
        (let* ((endpoint (case provider
                           (:anthropic "https://api.anthropic.com/v1/messages")
                           (:gemini-api (format nil "https://generativelanguage.googleapis.com/v1/models/~a:generateContent" (or model "gemini-1.5-flash-latest")))
@@ -102,17 +123,19 @@ This is the primary actuator for neural reasoning. It handles the specific JSON 
                          (t `(("Content-Type" . "application/json") ("Authorization" . ,(format nil "Bearer ~a" api-key))))))
               (body (case provider
                       (:anthropic (cl-json:encode-json-to-string `((model . ,(or model "claude-3-5-sonnet-20240620")) (max_tokens . 4096) (system . ,system-prompt) (messages . (( (role . "user") (content . ,prompt) ))))))
-                      (:gemini-api (cl-json:encode-json-to-string `((contents . ((parts . ((text . ,full-prompt))))))))
+                      (:gemini-api (cl-json:encode-json-to-string `((contents . (((parts . (((text . ,full-prompt))))))))))
                       (t (cl-json:encode-json-to-string `((model . ,(or model (case provider (:groq "llama-3.3-70b-versatile") (:openai "gpt-4o") (t "openrouter/auto"))))
                                                          (messages . (( (role . "system") (content . ,system-prompt) ) ( (role . "user") (content . ,prompt) )))))))))
          (handler-case 
              (let* ((response (dex:post endpoint :headers headers :content body :connect-timeout 10 :read-timeout 30))
                     (json (cl-json:decode-json-from-string response)))
-               (list :status :success :content 
-                     (case provider
-                       (:anthropic (cdr (assoc :text (car (cdr (assoc :content json))))))
-                       (:gemini-api (cdr (assoc :text (cdr (assoc :parts (car (cdr (assoc :parts (car (cdr (assoc :candidates json)))))))))))
-                       (t (cdr (assoc :content (cdr (assoc :message (car (cdr (assoc :choices json)))))))))))
+               (let ((content (case provider
+                                (:anthropic (get-nested json :content :text))
+                                (:gemini-api (get-nested json :candidates :parts :text))
+                                (t (get-nested json :choices :message :content)))))
+                 (if content
+                     (list :status :success :content content)
+                     (list :status :error :message (format nil "Failed to parse ~a response structure." provider)))))
            (error (c) (list :status :error :message (format nil "LLM Gateway Failure (~a): ~a" provider c)))))))))
 #+end_src
 
@@ -152,26 +175,7 @@ We register all supported backends individually so that the kernel's `ask-neuro`
 * Phase E: Chaos (Verification)
 
 ** 1. Unit Tests (FiveAM)
-#+begin_src lisp :tangle ../tests/llm-gateway-tests.lisp
-(defpackage :org-agent-llm-gateway-tests
-  (:use :cl :fiveam :org-agent))
-(in-package :org-agent-llm-gateway-tests)
-
-(def-suite llm-gateway-suite :description "Tests for the Unified LLM Gateway.")
-(in-suite llm-gateway-suite)
-
-(test test-credential-retrieval
-  "Ensure credentials are retrieved from the correct environment variables."
-  (uiop:setenv "ANTHROPIC_API_KEY" "sk-test-key")
-  (is (equal "sk-test-key" (org-agent::get-llm-credentials :anthropic)))
-  (uiop:setenv "ANTHROPIC_API_KEY" ""))
-
-(test test-error-handling-missing-key
-  "Ensure missing keys return a standardized error plist."
-  (let ((res (org-agent:execute-llm-request "test" "sys" :provider :openai)))
-    (is (eq (getf res :status) :error))
-    (is (search "API Key missing" (getf res :message)))))
-#+end_src
+Verification is performed in `tests/llm-gateway-tests.lisp` by mocking the `dex:post` client.
 
 ** 2. Chaos Scenarios
 - *Scenario A (Key Exhaustion):* Use the `chaos` skill to temporarily clear an API key and verify the `token-accountant` successfully falls back to the next healthy provider.
@@ -179,4 +183,4 @@ We register all supported backends individually so that the kernel's `ask-neuro`
 
 * Phase F: Memory (RCA)
 - *[2026-04-09 Thu]:* Refactored 6 providers into this unified gateway to solve the URL key-leakage security vulnerability and reduce boilerplate by 60%.
-
+- *[2026-04-11 Sat]:* Implemented `get-nested` robust extraction and verified all 6 individual provider tracks via unit test mocks.

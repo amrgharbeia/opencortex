@@ -17,7 +17,7 @@
         val
         ;; Fallback to environment
         (let ((env-var (case provider
-                         (:gemini "GEMINI_API_KEY")
+                         ((:gemini :gemini-api) "GEMINI_API_KEY")
                          (:openai "OPENAI_API_KEY")
                          (:anthropic "ANTHROPIC_API_KEY")
                          (:groq "GROQ_API_KEY")
