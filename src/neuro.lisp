@@ -129,7 +129,13 @@ To call a tool, you MUST use:
                                   (let ((regs (nth-value 1 (cl-ppcre:scan-to-strings "(?s)```(?:lisp)?\\n?(.*?)\\n?```" raw-thought))))
                                     (if (and regs (> (length regs) 0)) (elt regs 0) raw-thought))
                                   (string-trim '(#\Space #\Newline #\Tab) raw-thought))))
-                           (suggestion (ignore-errors (read-from-string cleaned-thought))))
+                           (suggestion (handler-case (read-from-string cleaned-thought)
+                                         (error (c)
+                                           ;; EMIT ASYNCHRONOUS REPAIR STIMULUS
+                                           (list :type :EVENT :payload 
+                                                 (list :sensor :syntax-error 
+                                                       :code cleaned-thought 
+                                                       :error (format nil "~a" c)))))))
                       (kernel-log "SYSTEM 1 Suggestion: ~a~%" cleaned-thought)
                       (when (and suggestion (listp suggestion))
                         (push suggestion suggestions))))
