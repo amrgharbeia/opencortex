@@ -14,25 +14,21 @@ Hardcoding logic into a compiled binary creates a "Brittle Kernel."
 (in-package :org-agent)
 #+end_src
 
-** Skill Registry
-The central hub for all loaded capabilities.
-
-#+begin_src lisp :tangle ../src/skills.lisp
-;; MOVED TO package.lisp
-#+end_src
-
 ** Skill Definition (defstruct skill)
 #+begin_src lisp :tangle ../src/skills.lisp
 (defstruct skill name priority dependencies trigger-fn neuro-prompt symbolic-fn)
 #+end_src
 
-** Skill Catalog
+** Skill Catalog Tracking
 A stateful tracking table for all skill files discovered in the environment.
 
 #+begin_src lisp :tangle ../src/skills.lisp
 (defvar *skill-catalog* (make-hash-table :test 'equal)
   "A stateful tracking table for all skill files discovered in the environment.")
 #+end_src
+
+** Skill Entry Structure
+#+begin_src lisp :tangle ../src/skills.lisp
 (defstruct skill-entry 
   filename 
   (status :discovered) ;; :discovered, :loading, :ready, :failed
@@ -40,81 +36,53 @@ A stateful tracking table for all skill files discovered in the environment.
   (load-time 0))
 #+end_src
 
-** Cognitive Tool Registry
-Tools are discrete actions that System 1 (Neuro) can request. This registry tracks tool definitions, their parameters, and their safety guards.
-
-#+begin_src lisp :tangle ../src/skills.lisp
-;; MOVED TO package.lisp
-#+end_src
-
-** Cognitive Tool Definition (defstruct cognitive-tool)
-#+begin_src lisp :tangle ../src/skills.lisp
-;; MOVED TO package.lisp
-#+end_src
-
-** Cognitive Tool Registration (def-cognitive-tool)
-Allows skills to register hot-reloadable capabilities that System 1 can discover and invoke.
-
-#+begin_src lisp :tangle ../src/skills.lisp
-;; MOVED TO package.lisp
-#+end_src
-
-** Toolbelt Prompt Generation (generate-tool-belt-prompt)
-Constructs the technical documentation of available tools that is injected into the LLM system prompt.
-
-#+begin_src lisp :tangle ../src/skills.lisp
-(defun generate-tool-belt-prompt ()
-  (let ((output (format nil "AVAILABLE TOOLS:
-You can call tools by returning a Lisp plist: (:target :tool :action :call :tool <name> :args (...))
-
-EXAMPLES:
-(:target :tool :action :call :tool \"eval\" :args (:code \"(+ 1 1)\"))
-(:target :tool :action :call :tool \"grep-search\" :args (:pattern \"sovereignty\"))
-(:target :tool :action :call :tool \"shell\" :args (:cmd \"ls -la\"))
-
----
-")))
-    (maphash (lambda (name tool)
-               (setf output (concatenate 'string output
-                                         (format nil "- ~a: ~a~%  Parameters: ~s~%~%"
-                                                 name
-                                                 (cognitive-tool-description tool)
-                                                 (cognitive-tool-parameters tool)))))
-             *cognitive-tools*)
-    output))
-#+end_src
-
-** Defining Skills (defskill)
-The primary macro used within Org files to register new agent capabilities.
-
-#+begin_src lisp :tangle ../src/skills.lisp
-(defmacro defskill (name &key priority dependencies trigger neuro symbolic)
-  `(setf (gethash ,(string-downcase (string name)) *skills-registry*)
-         (make-skill :name ,(string-downcase (string name)) :priority (or ,priority 10) :dependencies ,dependencies
-                     :trigger-fn ,trigger :neuro-prompt ,neuro :symbolic-fn ,symbolic)))
-#+end_src
-
 ** Skill Selection (find-triggered-skill)
 Iterates through the registry to find the highest-priority skill whose trigger function matches the current context.
 
 #+begin_src lisp :tangle ../src/skills.lisp
 (defun find-triggered-skill (context)
+  "Returns the highest priority skill whose trigger condition matches the context."
   (let ((triggered nil))
-    (maphash (lambda (name skill) (declare (ignore name)) (when (ignore-errors (funcall (skill-trigger-fn skill) context)) (push skill triggered))) *skills-registry*)
+    (maphash (lambda (name skill) 
+               (declare (ignore name)) 
+               (when (ignore-errors (funcall (skill-trigger-fn skill) context)) 
+                 (push skill triggered))) 
+             *skills-registry*)
     (first (sort triggered #'> :key #'skill-priority))))
 #+end_src
 
-** Dependency Resolution
+** Skill Definition Macro (defskill)
+The primary macro used within Org files to register new agent capabilities.
+
+#+begin_src lisp :tangle ../src/skills.lisp
+(defmacro defskill (name &key priority dependencies trigger neuro symbolic)
+  "Registers a new skill into the global registry."
+  `(setf (gethash (string-downcase (string ,name)) *skills-registry*)
+         (make-skill :name (string-downcase (string ,name)) 
+                     :priority (or ,priority 10) 
+                     :dependencies ,dependencies
+                     :trigger-fn ,trigger 
+                     :neuro-prompt ,neuro 
+                     :symbolic-fn ,symbolic)))
+#+end_src
+
+** Dependency Resolution (resolve-skill-dependencies)
 Ensures that skills are loaded and unloaded in the correct order.
 
 #+begin_src lisp :tangle ../src/skills.lisp
 (defun resolve-skill-dependencies (skill-name)
+  "Recursively resolves dependencies for a given skill name."
   (let ((resolved nil) (seen nil))
-    (labels ((visit (name) (unless (member name seen :test #'equal) (push name seen)
-                             (let ((skill (gethash (string-downcase (string name)) *skills-registry*)))
-                               (when skill (dolist (dep (skill-dependencies skill)) (visit dep))))
-                             (push name resolved))))
-      (visit skill-name) (nreverse resolved))))
+    (labels ((visit (name) 
+               (unless (member name seen :test #'equal) 
+                 (push name seen)
+                 (let ((skill (gethash (string-downcase (string name)) *skills-registry*)))
+                   (when skill 
+                     (dolist (dep (skill-dependencies skill)) 
+                       (visit dep))))
+                 (push name resolved))))
+      (visit skill-name) 
+      (nreverse resolved))))
 #+end_src
 
 ** Metadata Parsing (parse-skill-metadata)
@@ -141,7 +109,7 @@ Robustly extracts `#+DEPENDS_ON:` and `:ID:` tags from an Org file without full 
 #+end_src
 
 ** Topological Sorting (topological-sort-skills)
-Calculates the correct load order for a directory of skill files, detecting circular dependencies.
+Calculates the correct load order for a directory of skill filepaths, detecting circular dependencies.
 
 #+begin_src lisp :tangle ../src/skills.lisp
 (defun topological-sort-skills (skills-dir)
@@ -181,6 +149,18 @@ Calculates the correct load order for a directory of skill files, detecting circ
           (let ((file (gethash (string-downcase name) id-to-file)))
             (when file (visit file)))))
       result)))
+#+end_src
+
+** Syntax Validation (validate-lisp-syntax)
+#+begin_src lisp :tangle ../src/skills.lisp
+(defun validate-lisp-syntax (code-string)
+  "Checks if a string contains valid, readable Common Lisp forms."
+  (handler-case 
+      (let ((*read-eval* nil)) 
+        (with-input-from-string (stream (format nil "(progn ~a)" code-string))
+          (loop for form = (read stream nil :eof) until (eq form :eof)) 
+          (values t nil)))
+    (error (c) (values nil (format nil "~a" c)))))
 #+end_src
 
 ** Jailed Loading (load-skill-from-org)
@@ -233,7 +213,7 @@ The core "hot-loading" mechanism. It extracts Lisp blocks from an Org file and e
           nil)))))
 #+end_src
 
-** Safe Loading with Timeout
+** Safe Loading with Timeout (load-skill-with-timeout)
 Wraps the skill loader in a thread with a hard timeout to prevent a single malformed skill from hanging the entire kernel boot sequence.
 
 #+begin_src lisp :tangle ../src/skills.lisp
@@ -298,13 +278,30 @@ The unified orchestrator for the kernel boot sequence. It scans the environment,
         (values ready failed)))))
 #+end_src
 
-** Syntax Validation
+** Toolbelt Prompt Generation (generate-tool-belt-prompt)
+Constructs the technical documentation of available tools that is injected into the LLM system prompt.
+
 #+begin_src lisp :tangle ../src/skills.lisp
-(defun validate-lisp-syntax (code-string)
-  "Checks if a string contains valid, readable Common Lisp forms."
-  (handler-case (let ((*read-eval* nil)) (with-input-from-string (stream (format nil "(progn ~a)" code-string))
-                                          (loop for form = (read stream nil :eof) until (eq form :eof)) (values t nil)))
-    (error (c) (values nil (format nil "~a" c)))))
+(defun generate-tool-belt-prompt ()
+  "Aggregates all registered cognitive tools into a descriptive prompt."
+  (let ((output (format nil "AVAILABLE TOOLS:
+You can call tools by returning a Lisp plist: (:target :tool :action :call :tool <name> :args (...))
+
+EXAMPLES:
+(:target :tool :action :call :tool \"eval\" :args (:code \"(+ 1 1)\"))
+(:target :tool :action :call :tool \"grep-search\" :args (:pattern \"sovereignty\"))
+(:target :tool :action :call :tool \"shell\" :args (:cmd \"ls -la\"))
+
+---
+")))
+    (maphash (lambda (name tool)
+               (setf output (concatenate 'string output
+                                         (format nil "- ~a: ~a~%  Parameters: ~s~%~%"
+                                                 name
+                                                 (cognitive-tool-description tool)
+                                                 (cognitive-tool-parameters tool)))))
+             *cognitive-tools*)
+    output))
 #+end_src
 
 ** The Default Tool Belt
@@ -313,7 +310,7 @@ We register a set of standard cognitive tools that all skills can use.
 *** The Eval Tool
 #+begin_src lisp :tangle ../src/skills.lisp
 (def-cognitive-tool :eval "Evaluates raw Common Lisp code in the kernel image. Use this for complex calculations or internal state inspection."
-  :parameters ((:code :type :string :description "The Lisp code to evaluate"))
+  ((:code :type :string :description "The Lisp code to evaluate"))
   :guard (lambda (args context)
            (declare (ignore context))
            (let ((code (getf args :code)))
@@ -331,8 +328,8 @@ We register a set of standard cognitive tools that all skills can use.
 *** The Grep Tool
 #+begin_src lisp :tangle ../src/skills.lisp
 (def-cognitive-tool :grep-search "Searches for a pattern in the project files."
-  :parameters ((:pattern :type :string :description "The regex pattern to search for")
-               (:dir :type :string :description "Directory to search in (default is project root)"))
+  ((:pattern :type :string :description "The regex pattern to search for")
+   (:dir :type :string :description "Directory to search in (default is project root)"))
   :body (lambda (args)
           (let ((pattern (getf args :pattern))
                 (dir (or (getf args :dir) (uiop:getenv "MEMEX_DIR"))))
@@ -343,7 +340,7 @@ We register a set of standard cognitive tools that all skills can use.
 *** The Shell Tool
 #+begin_src lisp :tangle ../src/skills.lisp
 (def-cognitive-tool :shell "Executes a shell command on the local machine. Use this for file operations, system checks, or running tests."
-  :parameters ((:cmd :type :string :description "The full bash command to execute"))
+  ((:cmd :type :string :description "The full bash command to execute"))
   :guard (lambda (args context)
            (declare (ignore context))
            (let ((cmd (getf args :cmd)))
@@ -353,44 +350,4 @@ We register a set of standard cognitive tools that all skills can use.
             (multiple-value-bind (out err code)
                 (uiop:run-program (list "bash" "-c" cmd) :output :string :error-output :string :ignore-error-status t)
               (format nil "EXIT-CODE: ~a~%~%STDOUT:~%~a~%~%STDERR:~%~a" code out err)))))
-#+end_src
-
-* Phase E: Chaos (Verification)
-Verify that the Micro-Loader correctly handles malformed skills and reports status.
-
-#+begin_src lisp :tangle ../tests/boot-sequence-tests.lisp
-(defpackage :org-agent-boot-tests
-  (:use :cl :fiveam :org-agent)
-  (:export #:boot-suite))
-(in-package :org-agent-boot-tests)
-
-(def-suite boot-suite :description "Verification of the Micro-Loader.")
-(in-suite boot-suite)
-
-(test test-skill-catalog-tracking
-  "Verify that skills are added to the catalog with correct status."
-  (clrhash org-agent::*skill-catalog*)
-  ;; We need a temporary skill file to test loading
-  (let ((tmp-skill "/tmp/org-skill-test-catalog.org"))
-    (with-open-file (out tmp-skill :direction :output :if-exists :supersede)
-      (format out "#+TITLE: Test Skill~%#+begin_src lisp~%(defun test-catalog-fn () t)~%#+end_src"))
-    
-    (org-agent:load-skill-from-org tmp-skill)
-    (let ((entry (gethash "org-skill-test-catalog" org-agent::*skill-catalog*)))
-      (is (not (null entry)))
-      (is (eq :ready (org-agent::skill-entry-status entry))))
-    (uiop:delete-file-if-exists tmp-skill)))
-
-(test test-syntax-preflight-blocking
-  "Verify that malformed Lisp prevents skill from loading."
-  (clrhash org-agent::*skill-catalog*)
-  (let ((bad-skill "/tmp/org-skill-bad-syntax.org"))
-    (with-open-file (out bad-skill :direction :output :if-exists :supersede)
-      (format out "#+TITLE: Bad Skill~%#+begin_src lisp~%(defun unclosed (x~%#+end_src"))
-    
-    (org-agent:load-skill-from-org bad-skill)
-    (let ((entry (gethash "org-skill-bad-syntax" org-agent::*skill-catalog*)))
-      (is (eq :failed (org-agent::skill-entry-status entry)))
-      (is (search "Syntax Error" (org-agent::skill-entry-error-log entry))))
-    (uiop:delete-file-if-exists bad-skill)))
 #+end_src

@@ -1,0 +1,42 @@
+#+TITLE: Root Cause Analysis: Micro-Loader & Deterministic Boot Sequence
+#+DATE: 2026-04-11
+#+FILETAGS: :rca:boot:loader:topological-sort:psf:
+
+* Executive Summary
+Refactored the arbitrary skill loading mechanism into a robust **Micro-Loader**. The system now calculates a deterministic boot sequence based on `#+DEPENDS_ON:` tags and protects the kernel from malformed or hanging skills via package-based jailing and execution timeouts.
+
+* 1. Issue: Fragile Load Order
+** Symptoms
+Skills that depended on functions or variables from other skills would randomly fail to load depending on the filesystem's directory traversal order.
+** Root Cause
+`initialize-all-skills` used a simple `dolist` over `uiop:directory-files`, which has no semantic awareness of inter-skill dependencies.
+** Resolution
+1. **Metadata Scanning:** Implemented `parse-skill-metadata` to extract `:ID:` and `#+DEPENDS_ON:` without executing code.
+2. **Topological Sort:** Implemented a DFS-based `topological-sort-skills` to guarantee that prerequisites are loaded before their dependents.
+3. **Circular Detection:** Added explicit detection and error reporting for circular dependency loops.
+
+* 2. Issue: Shared State Corruption (Brain Rot)
+** Symptoms
+Variables or functions with the same name in different skills would silently overwrite each other, causing unpredictable behavior.
+** Root Cause
+All skills were being evaluated directly into the `org-agent` package.
+** Resolution
+**Package-Based Jailing:** Each skill is now evaluated within its own dedicated, shadowed package (e.g., `ORG-AGENT.SKILLS.ORG-SKILL-CHAT`). This ensures logical isolation while still allowing access to kernel exports.
+
+* 3. Issue: Boot Stall (The Hanging Skill)
+** Symptoms
+A single skill with an infinite loop or heavy synchronous initialization could hang the entire agent during startup.
+** Root Cause
+Skill loading was strictly synchronous and blocking on the main thread.
+** Resolution
+**Execution Timeouts:** Implemented `load-skill-with-timeout`, which wraps the loader in a monitored thread. If a skill takes longer than 5 seconds to initialize, the loader terminates the thread, jails the failure, and continues with the rest of the boot sequence.
+
+* 4. PSF Mandate Alignment
+** Evolutionary Kernel
+The boot sequence is now a verifiable, mathematical process rather than a side-effect of filesystem organization.
+** Literate Granularity
+The `org-skill-skills.org` source was refactored into a strictly granular "one definition per block" format.
+
+* 5. Permanent Learnings
+- **Reverse Topological Order:** Remember that a DFS-based sort with `push` needs an `nreverse` to place dependencies at the front of the list.
+- **Path Portability:** Use `uiop:getcwd` instead of `pwd` for more reliable path resolution across different Lisp implementations and OSes.
