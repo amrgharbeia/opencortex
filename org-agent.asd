@@ -24,7 +24,8 @@
                (:file "src/core")
                (:file "src/gateway-telegram")
                (:file "src/gateway-signal")
-               (:file "src/gateway-matrix"))
+               (:file "src/gateway-matrix")
+               (:file "src/playwright"))
   :build-operation "program-op"
   :build-pathname "org-agent-server"
   :entry-point "org-agent:main")
@@ -47,6 +48,7 @@
                (:file "tests/gateway-telegram-tests")
                (:file "tests/gateway-signal-tests")
                (:file "tests/gateway-matrix-tests")
+               (:file "tests/playwright-tests")
                (:file "tests/chaos-qa"))
   :perform (test-op (o s) 
              (uiop:symbol-call :fiveam :run! (uiop:find-symbol* :oacp-suite :org-agent-tests))
@@ -66,4 +68,5 @@
              (uiop:symbol-call :fiveam :run! (uiop:find-symbol* :gateway-telegram-suite :org-agent-gateway-telegram-tests))
              (uiop:symbol-call :fiveam :run! (uiop:find-symbol* :gateway-signal-suite :org-agent-gateway-signal-tests))
              (uiop:symbol-call :fiveam :run! (uiop:find-symbol* :gateway-matrix-suite :org-agent-gateway-matrix-tests))
+             (uiop:symbol-call :fiveam :run! (uiop:find-symbol* :playwright-suite :org-agent-playwright-tests))
              (uiop:symbol-call :fiveam :run! (uiop:find-symbol* :chaos-suite :org-agent-chaos-qa))))
