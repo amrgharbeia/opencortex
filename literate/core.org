@@ -26,34 +26,15 @@ graph TD
 ** Package Context
 #+begin_src lisp :tangle ../src/core.lisp
 (in-package :org-agent)
-#+end_src
 
-** System Logs
-Rolling buffer of kernel diagnostics.
-
-#+begin_src lisp :tangle ../src/core.lisp
-(defvar *system-logs* nil)
+(defvar *interrupt-flag* nil)
 #+end_src
 
 ** Logs Lock
 Thread-safety for logging operations.
 
 #+begin_src lisp :tangle ../src/core.lisp
-(defvar *logs-lock* (bt:make-lock "kernel-logs-lock"))
-#+end_src
-
-** Max Log History
-The maximum number of diagnostic lines to retain in memory.
-
-#+begin_src lisp :tangle ../src/core.lisp
-(defvar *max-log-history* 100)
-#+end_src
-
-** Interrupt Flag
-Atomic flag used to halt the reasoning loop.
-
-#+begin_src lisp :tangle ../src/core.lisp
-(defvar *interrupt-flag* nil)
+;; MOVED TO package.lisp
 #+end_src
 
 ** Interrupt Lock
@@ -67,14 +48,14 @@ Thread-safety for loop interruption.
 Hash table tracking execution metrics per skill.
 
 #+begin_src lisp :tangle ../src/core.lisp
-(defvar *skill-telemetry* (make-hash-table :test 'equal))
+;; MOVED TO package.lisp
 #+end_src
 
 ** Telemetry Lock
 Thread-safety for metric updates.
 
 #+begin_src lisp :tangle ../src/core.lisp
-(defvar *telemetry-lock* (bt:make-lock "kernel-telemetry-lock"))
+;; MOVED TO package.lisp
 #+end_src
 
 ** Physical Dispatch (dispatch-action)
@@ -240,9 +221,11 @@ The System 2 safety gate. Validates the candidate action against formal rules an
   "System 2: Safety and validation."
   (let ((candidate (getf signal :candidate)))
     (if candidate
-        (let ((approved (decide candidate signal)))
-          (setf (getf signal :approved-action) approved)
-          (unless approved (kernel-log "GATE [Decide]: REJECTED by System 2")))
+        (let ((decision (decide candidate signal)))
+          ;; If decision is different from candidate, it's an interception (EVENT or LOG)
+          (setf (getf signal :approved-action) decision)
+          (unless (equal decision candidate)
+            (kernel-log "GATE [Decide]: Intercepted/Rejected by System 2")))
         (setf (getf signal :approved-action) nil))
     (setf (getf signal :status) :decided)
     signal))

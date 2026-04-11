@@ -44,10 +44,11 @@
         (rollback-object-store 0)
         nil))))
 
-(def-cognitive-tool :repair-file "Applies a surgical code modification to a file and reloads the skill if applicable."
-  :parameters ((:file :type :string :description "Path to the target file")
-               (:old :type :string :description "The literal code block to find")
-               (:new :type :string :description "The literal code block to replace it with"))
+(def-cognitive-tool :repair-file 
+  "Applies a surgical code modification to a file and reloads the skill if applicable."
+  ((:file :type :string :description "Path to the target file")
+   (:old :type :string :description "The literal code block to find")
+   (:new :type :string :description "The literal code block to replace it with"))
   :body (lambda (args)
           (if (self-fix-apply (list :payload args) nil)
               "REPAIR SUCCESSFUL."

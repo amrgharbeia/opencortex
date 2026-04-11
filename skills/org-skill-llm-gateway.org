@@ -141,21 +141,22 @@ This is the primary actuator for neural reasoning. It handles the specific JSON 
 
 ** Cognitive Tools
 The `:ask-llm` tool exposes the gateway's power to System 1, allowing it to explicitly request reasoning from a specific provider when the default cascade is insufficient.
+** Registration: Tool
+Register the unified gateway as a cognitive tool.
 
 #+begin_src lisp :tangle ../src/llm-gateway.lisp
-(def-cognitive-tool :ask-llm "Queries an LLM provider via the unified gateway."
-  :parameters ((:prompt :type :string :description "The user prompt.")
-               (:system-prompt :type :string :description "The system instructions.")
-               (:provider :type :keyword :description "The provider (e.g., :gemini-api, :anthropic, :groq, :openai, :openrouter, :ollama, :gemini-web).")
-               (:model :type :string :description "Optional specific model ID."))
+(def-cognitive-tool :ask-llm 
+  "Queries an LLM provider via the unified gateway."
+  ((:prompt :type :string :description "The user prompt.")
+   (:system-prompt :type :string :description "The system instructions.")
+   (:provider :type :keyword :description "The provider (e.g., :gemini-api, :anthropic, :groq, :openai, :openrouter, :ollama, :gemini-web).")
+   (:model :type :string :description "Optional specific model ID."))
   :body (lambda (args)
           (execute-llm-request (getf args :prompt) 
                                (or (getf args :system-prompt) "You are a helpful assistant.")
                                :provider (getf args :provider)
                                :model (getf args :model))))
 #+end_src
-
-** Registration: Backends
 Register each supported provider with the kernel's neural registry.
 
 #+begin_src lisp :tangle ../src/llm-gateway.lisp

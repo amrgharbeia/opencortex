@@ -69,11 +69,12 @@
                      (list :status :error :message (format nil "Failed to parse ~a response structure." provider)))))
            (error (c) (list :status :error :message (format nil "LLM Gateway Failure (~a): ~a" provider c)))))))))
 
-(def-cognitive-tool :ask-llm "Queries an LLM provider via the unified gateway."
-  :parameters ((:prompt :type :string :description "The user prompt.")
-               (:system-prompt :type :string :description "The system instructions.")
-               (:provider :type :keyword :description "The provider (e.g., :gemini-api, :anthropic, :groq, :openai, :openrouter, :ollama, :gemini-web).")
-               (:model :type :string :description "Optional specific model ID."))
+(def-cognitive-tool :ask-llm 
+  "Queries an LLM provider via the unified gateway."
+  ((:prompt :type :string :description "The user prompt.")
+   (:system-prompt :type :string :description "The system instructions.")
+   (:provider :type :keyword :description "The provider (e.g., :gemini-api, :anthropic, :groq, :openai, :openrouter, :ollama, :gemini-web).")
+   (:model :type :string :description "Optional specific model ID."))
   :body (lambda (args)
           (execute-llm-request (getf args :prompt) 
                                (or (getf args :system-prompt) "You are a helpful assistant.")

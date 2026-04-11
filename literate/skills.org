@@ -18,13 +18,21 @@ Hardcoding logic into a compiled binary creates a "Brittle Kernel."
 The central hub for all loaded capabilities.
 
 #+begin_src lisp :tangle ../src/skills.lisp
-(defvar *skills-registry* (make-hash-table :test 'equal))
+;; MOVED TO package.lisp
+#+end_src
 
+** Skill Definition (defstruct skill)
+#+begin_src lisp :tangle ../src/skills.lisp
 (defstruct skill name priority dependencies trigger-fn neuro-prompt symbolic-fn)
+#+end_src
 
+** Skill Catalog
+A stateful tracking table for all skill files discovered in the environment.
+
+#+begin_src lisp :tangle ../src/skills.lisp
 (defvar *skill-catalog* (make-hash-table :test 'equal)
   "A stateful tracking table for all skill files discovered in the environment.")
-
+#+end_src
 (defstruct skill-entry 
   filename 
   (status :discovered) ;; :discovered, :loading, :ready, :failed
@@ -36,17 +44,19 @@ The central hub for all loaded capabilities.
 Tools are discrete actions that System 1 (Neuro) can request. This registry tracks tool definitions, their parameters, and their safety guards.
 
 #+begin_src lisp :tangle ../src/skills.lisp
-(defvar *cognitive-tools* (make-hash-table :test 'equal))
+;; MOVED TO package.lisp
+#+end_src
 
-(defstruct cognitive-tool name description parameters guard body)
+** Cognitive Tool Definition (defstruct cognitive-tool)
+#+begin_src lisp :tangle ../src/skills.lisp
+;; MOVED TO package.lisp
+#+end_src
 
-(defmacro def-cognitive-tool (name description &key parameters guard body)
-  `(setf (gethash (string-downcase (string ,name)) *cognitive-tools*)
-         (make-cognitive-tool :name (string-downcase (string ,name))
-                             :description ,description
-                             :parameters ',parameters
-                             :guard ,guard
-                             :body ,body)))
+** Cognitive Tool Registration (def-cognitive-tool)
+Allows skills to register hot-reloadable capabilities that System 1 can discover and invoke.
+
+#+begin_src lisp :tangle ../src/skills.lisp
+;; MOVED TO package.lisp
 #+end_src
 
 ** Toolbelt Prompt Generation (generate-tool-belt-prompt)

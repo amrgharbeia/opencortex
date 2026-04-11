@@ -1,12 +1,8 @@
 (in-package :org-agent)
 
-(defvar *system-logs* nil)
-(defvar *logs-lock* (bt:make-lock "kernel-logs-lock"))
-(defvar *max-log-history* 100)
 (defvar *interrupt-flag* nil)
+
 (defvar *interrupt-lock* (bt:make-lock "kernel-interrupt-lock"))
-(defvar *skill-telemetry* (make-hash-table :test 'equal))
-(defvar *telemetry-lock* (bt:make-lock "kernel-telemetry-lock"))
 
 (defun dispatch-action (action context)
   "Routes an approved action to its registered physical actuator."
@@ -17,86 +13,54 @@
           (funcall actuator-fn action context) 
           (kernel-log "DISPATCH ERROR: No actuator for ~a" target)))))
 
-(defun kernel-track-telemetry (skill-name duration status)
-  "Updates performance metrics for a specific skill."
-  (when skill-name (bt:with-lock-held (*telemetry-lock*)
-                     (let ((entry (or (gethash skill-name *skill-telemetry*) (list :executions 0 :total-time 0 :failures 0))))
-                       (incf (getf entry :executions)) (incf (getf entry :total-time) duration)
-                       (when (eq status :rejected) (incf (getf entry :failures))) (setf (gethash skill-name *skill-telemetry*) entry)))))
+(defun inject-stimulus (stimulus &key stream)
+  "Entry point for all external stimuli."
+  (let ((signal (list :type (getf stimulus :type)
+                      :payload (getf stimulus :payload)
+                      :status :inbound
+                      :reply-stream stream
+                      :depth 0)))
+    (bt:make-thread (lambda () (process-signal signal)) :name "signal-processor")))
 
-(defun kernel-log (fmt &rest args)
-  "Records a formatted message to the system log and standard output."
-  (let ((msg (apply #'format nil fmt args)))
-    (bt:with-lock-held (*logs-lock*) (push msg *system-logs*) (when (> (length *system-logs*) *max-log-history*) (setf *system-logs* (subseq *system-logs* 0 *max-log-history*))))
-    (format t "~a~%" msg) (finish-output)))
-
-(defun inject-stimulus (raw-message &key stream (depth 0))
-  "Enqueues a raw message into the reactive signal pipeline, handling async/sync execution and recovery."
-  (let* ((payload (getf raw-message :payload)) 
-         (sensor (getf payload :sensor))
-         ;; Force Chat and Delegation to be async
-         (async-p (or (getf payload :async-p) (member sensor '(:chat-message :delegation :user-command)))))
-    (when stream (setf (getf raw-message :reply-stream) stream))
-    (if async-p (bt:make-thread (lambda () (restart-case (handler-bind ((error (lambda (c) (kernel-log "ASYNC ERROR: ~a" c) (invoke-restart 'skip-event))))
-                                                           (process-signal raw-message)) (skip-event () nil))) :name "org-agent-async-task")
-        (restart-case (handler-bind ((error (lambda (c) (kernel-log "SYSTEM ERROR: ~a" c) (invoke-restart 'skip-event)))) (process-signal raw-message))
-          (skip-event () (kernel-log "SYSTEM RECOVERY: Stimulus dropped.~%"))))))
-
-(defun execute-system-action (action context)
-  "Processes internal kernel commands like skill creation or environment updates."
-  (declare (ignore context))
-  (let* ((payload (ignore-errors (getf action :payload))) (cmd (ignore-errors (getf payload :action))))
-    (case cmd
-      (:eval (let ((code (getf payload :code)))
-               (kernel-log "ACTUATOR [System] - Evaluating: ~a" code)
-               (handler-case (let ((result (eval (read-from-string code))))
-                               (kernel-log "ACTUATOR [System] - Result: ~s" result)
-                               result)
-                 (error (c) (kernel-log "ACTUATOR ERROR [System] - Eval failed: ~a" c)))))
-      (:create-skill (let* ((filename (getf payload :filename)) (content (getf payload :content))
-                            (skills-dir (merge-pathnames "skills/" (asdf:system-source-directory :org-agent))) (full-path (merge-pathnames filename skills-dir)))
-                       (kernel-log "ACTUATOR [System] - Creating skill ~a..." filename)
-                       (with-open-file (out full-path :direction :output :if-exists :supersede) (write-string content out))
-                       (load-skill-from-org full-path)))
-      (:set-cascade (setf *provider-cascade* (getf payload :cascade)))
-      (:message (kernel-log "ACTUATOR [System] - ~a" (getf payload :text)))
-      (t (kernel-log "ACTUATOR [System] - Unknown command ~s" cmd)))))
+(defun process-signal (signal)
+  "Iterative signal processing pipeline."
+  (loop
+    (let ((status (getf signal :status)))
+      (case status
+        (:inbound (setq signal (perceive-gate signal)))
+        (:perceived (setq signal (neuro-gate signal)))
+        (:reasoned (setq signal (consensus-gate signal)))
+        (:consensus (setq signal (decide-gate signal)))
+        (:decided (setq signal (dispatch-gate signal)))
+        (:dispatched (return-from process-signal signal))
+        (t (kernel-log "PIPELINE ERROR: Unknown status ~a" status)
+           (return-from process-signal signal))))))
 
 (defun perceive-gate (signal)
-  "Initial processing: Normalizes raw stimuli and updates memory."
+  "Stage 1: Context assembly and signal enrichment."
   (let* ((payload (getf signal :payload))
-         (type (getf signal :type))
          (sensor (getf payload :sensor)))
-    (kernel-log "GATE [Perceive]: ~a (~a)" type (or sensor "no-sensor"))
-    (snapshot-object-store)
-    (cond ((eq type :EVENT)
-           (case sensor
-             (:buffer-update (let ((ast (getf payload :ast))) (when ast (ingest-ast ast))))
-             (:point-update (let ((element (getf payload :element))) (when element (ingest-ast element))))
-             (:interrupt (bt:with-lock-held (*interrupt-lock*) (setf *interrupt-flag* t)))))
-          ((eq type :RESPONSE)
-           (kernel-log "GATE [Perceive]: Act Result -> ~a" (getf payload :status))))
+    (kernel-log "GATE [Perceive]: ~a (~a)" (getf signal :type) (or sensor "no-sensor"))
+    (setf (getf signal :context) (context-assemble-global-awareness))
     (setf (getf signal :status) :perceived)
     signal))
 
 (defun neuro-gate (signal)
-  "System 1: Intuition and proposed actions."
-  (unless (eq (getf signal :type) :EVENT)
-    (return-from neuro-gate signal))
-  (kernel-log "GATE [Neuro]: Consulting System 1...")
-  (let ((thoughts (think signal)))
-    (setf (getf signal :proposals) (if (and thoughts (listp thoughts) (listp (car thoughts))) 
-                                       thoughts 
-                                       (if thoughts (list thoughts) nil)))
-    (setf (getf signal :status) :thought)
+  "Stage 2: Neural reasoning (System 1)."
+  (let* ((context (getf signal :context))
+         (skill (find-triggered-skill signal)))
+    (if skill
+        (let ((neuro-fn (skill-neuro-prompt skill)))
+          (if neuro-fn
+              (let ((proposals (funcall neuro-fn signal)))
+                (setf (getf signal :proposals) (if (listp (first proposals)) proposals (list proposals))))
+              (setf (getf signal :proposals) nil)))
+        (setf (getf signal :proposals) nil))
+    (setf (getf signal :status) :reasoned)
     signal))
 
 (defun resolve-consensus (proposals signal)
-  "Resolves diverging proposals by voting or selecting the safest one."
-  (declare (ignore signal))
-  (kernel-log "CONSENSUS: ~a proposals found. Resolving..." (length proposals))
-  ;; Simplified consensus: Majority vote or first safe one
-  ;; For now, we'll select the proposal that appears most frequently.
+  "Majority rules implementation."
   (let ((counts (make-hash-table :test 'equal)))
     (dolist (p proposals)
       (incf (gethash p counts 0)))
@@ -133,9 +97,11 @@
   "System 2: Safety and validation."
   (let ((candidate (getf signal :candidate)))
     (if candidate
-        (let ((approved (decide candidate signal)))
-          (setf (getf signal :approved-action) approved)
-          (unless approved (kernel-log "GATE [Decide]: REJECTED by System 2")))
+        (let ((decision (decide candidate signal)))
+          ;; If decision is different from candidate, it's an interception (EVENT or LOG)
+          (setf (getf signal :approved-action) decision)
+          (unless (equal decision candidate)
+            (kernel-log "GATE [Decide]: Intercepted/Rejected by System 2")))
         (setf (getf signal :approved-action) nil))
     (setf (getf signal :status) :decided)
     signal))
@@ -149,93 +115,16 @@
     (case type
       (:REQUEST (dispatch-action signal signal))
       (:EVENT 
-       (when approved
-         (let* ((payload (getf approved :payload))
-                (target (getf approved :target))
-                (action (or (getf payload :action) (getf approved :action)))
-                (tool-name (or (getf payload :tool) (getf approved :tool)))
-                (tool-args (or (getf payload :args) (getf approved :args))))
-           (if (and (eq target :tool) (eq action :call))
-               (let ((tool (gethash (string-downcase (string tool-name)) *cognitive-tools*)))
-                 (if tool
-                     (handler-case
-                         (let* ((clean-args (if (and (listp tool-args) (listp (car tool-args))) (car tool-args) tool-args))
-                                (result (funcall (cognitive-tool-body tool) clean-args)))
-                           (setf feedback (list :type :EVENT :depth (1+ depth) :reply-stream (getf signal :reply-stream)
-                                                :payload (list :sensor :tool-output :result result :tool tool-name))))
-                       (error (c)
-                         (setf feedback (list :type :EVENT :depth (1+ depth) :reply-stream (getf signal :reply-stream)
-                                              :payload (list :sensor :tool-error :tool tool-name :message (format nil "~a" c))))))
-                     (setf feedback (list :type :EVENT :depth (1+ depth) :reply-stream (getf signal :reply-stream)
-                                          :payload (list :sensor :tool-error :message "Tool not found")))))
-               (let ((result (dispatch-action approved signal)))
-                 (when (and result (not (member target '(:emacs :system-message))))
-                   (setf feedback (list :type :EVENT :depth (1+ depth) :reply-stream (getf signal :reply-stream)
-                                        :payload (list :sensor :tool-output :result result :tool approved))))))))))
+       (when (and approved (eq (getf approved :type) :REQUEST))
+         (dispatch-action approved signal))))
     (setf (getf signal :status) :dispatched)
-    feedback))
-
-(defun process-signal (signal)
-  "The entry point to the Reactive Signal Pipeline."
-  (let ((current-signal signal))
-    (loop while current-signal do
-      (let ((depth (getf current-signal :depth 0)))
-        (when (> depth 10)
-          (kernel-log "PIPELINE ERROR: Max depth reached.")
-          (return nil))
-        (when (bt:with-lock-held (*interrupt-lock*) *interrupt-flag*)
-          (kernel-log "PIPELINE: Interrupted.")
-          (bt:with-lock-held (*interrupt-lock*) (setf *interrupt-flag* nil))
-          (return nil))
-        
-        (handler-case
-            (progn
-              (setf current-signal (perceive-gate current-signal))
-              (setf current-signal (neuro-gate current-signal))
-              (setf current-signal (consensus-gate current-signal))
-              (setf current-signal (decide-gate current-signal))
-              (setf current-signal (dispatch-gate current-signal)))
-          (error (c)
-            (kernel-log "PIPELINE CRASH: ~a - Initiating Micro-Rollback." c)
-            (rollback-object-store 0)
-            (let ((sensor (ignore-errors (getf (getf current-signal :payload) :sensor))))
-              (if (or (> depth 2) (member sensor '(:loop-error :tool-error)))
-                  (setf current-signal nil)
-                  (setf current-signal (list :type :EVENT :depth (1+ depth) :reply-stream (getf current-signal :reply-stream)
-                                             :payload (list :sensor :loop-error :message (format nil "~a" c) :depth depth)))))))))))
-
-(defvar *heartbeat-thread* nil)
-
-(defun start-heartbeat (&optional (interval 60))
-  "Spawns a thread that periodically injects a heartbeat stimulus."
-  (setf *heartbeat-thread* 
-        (bt:make-thread 
-         (lambda () 
-           (loop 
-             (sleep interval) 
-             (kernel-log "KERNEL: Heartbeat pulse...")
-             (inject-stimulus (list :type :EVENT :payload (list :sensor :heartbeat :unix-time (get-universal-time)))))) 
-         :name "org-agent-heartbeat")))
-
-(defun stop-heartbeat () 
-  "Gracefully terminates the heartbeat pulse thread."
-  (when (and *heartbeat-thread* (bt:thread-alive-p *heartbeat-thread*)) 
-    (bt:destroy-thread *heartbeat-thread*) 
-    (setf *heartbeat-thread* nil)))
-
-(defun load-all-skills ()
-  "Deprecated: use initialize-all-skills. Centralized boot orchestrator."
-  (initialize-all-skills))
+    signal))
 
 (defun main ()
-  "The entry point for the compiled standalone binary."
-  (let* ((home (uiop:getenv "HOME"))
-         (env-file (uiop:merge-pathnames* ".local/share/org-agent/.env" (uiop:ensure-directory-pathname home))))
-    (if (uiop:file-exists-p env-file)
-        (progn
-          (format t "KERNEL: Loading environment from ~a~%" env-file)
-          (cl-dotenv:load-env env-file))
-        (format t "KERNEL ERROR: .env not found at ~a~%" env-file)))
+  "Production entry point for the org-agent daemon."
+  (load-dotenv)
+  (initialize-all-skills)
+  (kernel-log "KERNEL: Org-agent v1.0 starting up...")
   (let ((interval (or (ignore-errors (parse-integer (uiop:getenv "HEARTBEAT_INTERVAL") :junk-allowed t)) 60)))
     (format t "KERNEL: Heartbeat interval set to ~a seconds.~%" interval)
     (start-daemon :interval interval))

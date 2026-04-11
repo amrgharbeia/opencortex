@@ -117,3 +117,42 @@
    ;; --- Environment Config ---
    #:set-llm-model
    #:get-llm-model))
+
+(in-package :org-agent)
+
+(defvar *system-logs* nil)
+(defvar *logs-lock* (bt:make-lock "kernel-logs-lock"))
+(defvar *max-log-history* 100)
+
+(defvar *skills-registry* (make-hash-table :test 'equal)
+  "Global registry of all loaded skills.")
+
+(defvar *skill-telemetry* (make-hash-table :test 'equal))
+(defvar *telemetry-lock* (bt:make-lock "kernel-telemetry-lock"))
+
+(defvar *cognitive-tools* (make-hash-table :test 'equal))
+
+(defstruct cognitive-tool
+  name
+  description
+  parameters
+  guard
+  body)
+
+(defmacro def-cognitive-tool (name description parameters &key guard body)
+  `(setf (gethash (string-downcase (string ',name)) *cognitive-tools*)
+         (make-cognitive-tool :name (string-downcase (string ',name))
+                              :description ,description
+                              :parameters ',parameters
+                              :guard ,guard
+                              :body ,body)))
+
+(defun kernel-log (msg &rest args)
+  "Centralized logging for the kernel."
+  (let ((formatted-msg (apply #'format nil msg args)))
+    (bt:with-lock-held (*logs-lock*)
+      (push formatted-msg *system-logs*)
+      (when (> (length *system-logs*) *max-log-history*)
+        (setq *system-logs* (subseq *system-logs* 0 *max-log-history*))))
+    (format t "~a~%" formatted-msg)
+    (finish-output)))
