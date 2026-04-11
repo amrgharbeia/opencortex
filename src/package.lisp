@@ -33,6 +33,9 @@
    #:rollback-object-store
    #:send-swarm-packet
    
+   ;; --- Self-Fix Agent ---
+   #:self-fix-apply
+   
    ;; --- Context API (Peripheral Vision) ---
    #:context-query-store
    #:context-get-active-projects

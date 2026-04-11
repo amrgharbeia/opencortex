@@ -90,17 +90,50 @@
   (unless (eq (getf signal :type) :EVENT)
     (return-from neuro-gate signal))
   (kernel-log "GATE [Neuro]: Consulting System 1...")
-  (let ((thought (think signal)))
-    (setf (getf signal :proposals) (if thought (list thought) nil))
+  (let ((thoughts (think signal)))
+    (setf (getf signal :proposals) (if (and thoughts (listp thoughts) (listp (car thoughts))) 
+                                       thoughts 
+                                       (if thoughts (list thoughts) nil)))
     (setf (getf signal :status) :thought)
     signal))
+
+(defun resolve-consensus (proposals signal)
+  "Resolves diverging proposals by voting or selecting the safest one."
+  (declare (ignore signal))
+  (kernel-log "CONSENSUS: ~a proposals found. Resolving..." (length proposals))
+  ;; Simplified consensus: Majority vote or first safe one
+  ;; For now, we'll select the proposal that appears most frequently.
+  (let ((counts (make-hash-table :test 'equal)))
+    (dolist (p proposals)
+      (incf (gethash p counts 0)))
+    (let ((winner (first proposals))
+          (max-count 0))
+      (maphash (lambda (p count)
+                 (when (> count max-count)
+                   (setq max-count count
+                         winner p)))
+               counts)
+      (kernel-log "CONSENSUS: Winner selected with ~a votes." max-count)
+      winner)))
 
 (defun consensus-gate (signal)
   "Resolves multiple proposals into a single candidate action."
   (let ((proposals (getf signal :proposals)))
-    (setf (getf signal :candidate) (first proposals))
+    (if (and proposals (cdr proposals))
+        (let ((winner (resolve-consensus proposals signal)))
+          (setf (getf signal :candidate) winner))
+        (setf (getf signal :candidate) (first proposals)))
     (setf (getf signal :status) :consensus)
     signal))
+
+(defun delegate-task (task-id recipient &key context)
+  "Enqueues a task for another agent or background process."
+  (kernel-log "ORCHESTRATOR: Delegating task ~a to ~a" task-id recipient)
+  (inject-stimulus (list :type :EVENT 
+                         :payload (list :sensor :delegation 
+                                        :task-id task-id 
+                                        :recipient recipient 
+                                        :context context))))
 
 (defun decide-gate (signal)
   "System 2: Safety and validation."

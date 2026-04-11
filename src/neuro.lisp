@@ -27,29 +27,60 @@
 
 (defvar *neuro-backends* (make-hash-table :test 'equal))
 (defvar *provider-cascade* '(:openrouter :gemini))
+(defvar *consensus-enabled-p* t "If T, ask-neuro queries all backends in parallel.")
 
 (defun register-neuro-backend (name fn) (setf (gethash name *neuro-backends*) fn))
 
 (defvar *model-selector-fn* nil "A function called with (provider context) to return a model ID.")
 
 (defun ask-neuro (prompt &key (system-prompt "You are the System 1 engine of a Neurosymbolic Lisp Machine.") (cascade nil) (context nil))
-  "Dispatches a neural request through the provider cascade."
+  "Dispatches a neural request through the provider cascade or parallel consensus."
   (let ((backends (cond
                     ((and cascade (listp cascade)) cascade)
                     ((functionp cascade) (funcall cascade context))
                     (t *provider-cascade*))))
-    (dolist (backend backends)
-      (let ((backend-fn (gethash backend *neuro-backends*)))
-        (when backend-fn
-          (kernel-log "SYSTEM 1: Attempting backend ~a..." backend)
-          (let* ((model (when *model-selector-fn* (funcall *model-selector-fn* backend context)))
-                 (result (if model 
-                             (funcall backend-fn prompt system-prompt :model model)
-                             (funcall backend-fn prompt system-prompt))))
-            (if (and (stringp result) (search ":LOG" result) (or (search "Failure" result) (search "missing" result)))
-                (kernel-log "SYSTEM 1: Backend ~a failed. Falling back..." backend)
-                (return-from ask-neuro result))))))
-    "(:type :LOG :payload (:text \"Neural Cascade Failure\"))"))
+    (if *consensus-enabled-p*
+        ;; PARALLEL CONSENSUS MODE
+        (let ((results nil)
+              (threads nil)
+              (lock (bt:make-lock)))
+          (dolist (backend backends)
+            (let ((backend-fn (gethash backend *neuro-backends*)))
+              (when backend-fn
+                (push (bt:make-thread 
+                       (lambda ()
+                         (kernel-log "SYSTEM 1 [Consensus]: Querying backend ~a..." backend)
+                         (let* ((model (when *model-selector-fn* (funcall *model-selector-fn* backend context)))
+                                (result (ignore-errors 
+                                          (if model 
+                                              (funcall backend-fn prompt system-prompt :model model)
+                                              (funcall backend-fn prompt system-prompt)))))
+                           (bt:with-lock-held (lock)
+                             (push result results)))))
+                      threads))))
+          ;; Wait for all threads with a timeout (e.g., 30s)
+          (let ((start-time (get-universal-time)))
+            (loop while (and (< (length results) (length threads))
+                             (< (- (get-universal-time) start-time) 30))
+                  do (sleep 0.1)))
+          ;; Return the list of raw results (filtering out nils or errors)
+          (let ((valid-results (remove-if-not #'stringp results)))
+            (if valid-results
+                (format nil "~{~a~^|CONSENSUS-SEP|~}" valid-results)
+                "(:type :LOG :payload (:text \"Neural Consensus Failure\"))")))
+        
+        ;; SEQUENTIAL CASCADE MODE (Legacy)
+        (or (dolist (backend backends)
+              (let ((backend-fn (gethash backend *neuro-backends*)))
+                (when backend-fn
+                  (kernel-log "SYSTEM 1: Attempting backend ~a..." backend)
+                  (let* ((model (when *model-selector-fn* (funcall *model-selector-fn* backend context)))
+                         (result (if model 
+                                     (funcall backend-fn prompt system-prompt :model model)
+                                     (funcall backend-fn prompt system-prompt))))
+                    (unless (and (stringp result) (search ":LOG" result) (or (search "Failure" result) (search "missing" result)))
+                      (return result))))))
+            "(:type :LOG :payload (:text \"Neural Cascade Failure\"))"))))
 
 (defun token-accountant-route-task (context)
   "Generic fallback for routing. Overridden by skill-token-accountant."
@@ -87,21 +118,24 @@ To call a tool, you MUST use:
 
 ")))
             (if (and raw-prompt (> (length raw-prompt) 1))
-                (let* ((thought (ask-neuro raw-prompt :system-prompt full-system-prompt :context context)))
-                  (kernel-log "SYSTEM 1 RAW: ~a~%" thought)
-                  (let* ((cleaned-thought 
-                          (let ((match (cl-ppcre:scan-to-strings "(?s)```(?:lisp)?\\n?(.*?)\\n?```" thought)))
-                            (if match
-                                (let ((regs (nth-value 1 (cl-ppcre:scan-to-strings "(?s)```(?:lisp)?\\n?(.*?)\\n?```" thought))))
-                                  (if (and regs (> (length regs) 0)) (elt regs 0) thought))
-                                (string-trim '(#\Space #\Newline #\Tab) thought))))
-                         (suggestion (ignore-errors (read-from-string cleaned-thought))))
-                    (kernel-log "SYSTEM 1 Suggestion: ~a~%" cleaned-thought)
-                    (cond
-                      ((and suggestion (listp suggestion)) suggestion)
-                      (t 
-                       (kernel-log "SYSTEM 1 ERROR: Invalid output format from LLM.~%")
-                       nil))))
+                (let* ((thought (ask-neuro raw-prompt :system-prompt full-system-prompt :context context))
+                       (raw-thoughts (cl-ppcre:split (cl-ppcre:quote-meta-chars "|CONSENSUS-SEP|") thought))
+                       (suggestions nil))
+                  (dolist (raw-thought raw-thoughts)
+                    (kernel-log "SYSTEM 1 RAW: ~a~%" raw-thought)
+                    (let* ((cleaned-thought 
+                            (let ((match (cl-ppcre:scan-to-strings "(?s)```(?:lisp)?\\n?(.*?)\\n?```" raw-thought)))
+                              (if match
+                                  (let ((regs (nth-value 1 (cl-ppcre:scan-to-strings "(?s)```(?:lisp)?\\n?(.*?)\\n?```" raw-thought))))
+                                    (if (and regs (> (length regs) 0)) (elt regs 0) raw-thought))
+                                  (string-trim '(#\Space #\Newline #\Tab) raw-thought))))
+                           (suggestion (ignore-errors (read-from-string cleaned-thought))))
+                      (kernel-log "SYSTEM 1 Suggestion: ~a~%" cleaned-thought)
+                      (when (and suggestion (listp suggestion))
+                        (push suggestion suggestions))))
+                  (if (and *consensus-enabled-p* suggestions)
+                      (nreverse suggestions)
+                      (first (nreverse suggestions))))
                 '(:type :LOG :payload (:text "Skill triggered (Deterministic only)")))))
         nil)))
 

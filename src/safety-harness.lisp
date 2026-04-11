@@ -40,3 +40,45 @@
     declare ignore
     ;; Let's also add simple data types
     t nil quote function))
+
+(defvar *safety-registry* nil
+  "List of dynamically registered safe symbols.")
+
+(defun safety-harness-register (symbols)
+  "Adds symbols to the global safety registry."
+  (setf *safety-registry* (append *safety-registry* (if (listp symbols) symbols (list symbols))))
+  (kernel-log "SAFETY HARNESS: Registered ~a new safe symbols." (length (if (listp symbols) symbols (list symbols)))))
+
+(defun safety-harness-is-safe (symbol)
+  "Checks if a symbol is in the static whitelist or the dynamic registry."
+  (or (member symbol *safety-whitelist* :test #'string-equal)
+      (member symbol *safety-registry* :test #'string-equal)))
+
+(defun safety-harness-ast-walk (form)
+  "Recursively walks the Lisp AST. Returns T if safe, NIL if unsafe."
+  (cond
+    ;; Self-evaluating objects (strings, numbers, keywords) are safe.
+    ((or (stringp form) (numberp form) (keywordp form) (characterp form))
+     t)
+    ;; Symbols used as variables (in non-function position)
+    ((symbolp form)
+     (safety-harness-is-safe form))
+    ;; Lists represent function calls or special forms.
+    ((listp form)
+     (let ((head (car form)))
+       (cond
+         ((eq head 'quote) t)
+         ((not (symbolp head)) nil)
+         ((safety-harness-is-safe head)
+          (every #'safety-harness-ast-walk (cdr form)))
+         (t 
+          (kernel-log "SAFETY HARNESS: Blocked call to non-whitelisted function ~a" head)
+          nil))))
+    (t nil)))
+
+(defun safety-harness-validate (code)
+  "Parses and validates a Lisp string or form."
+  (let ((form (if (stringp code) (ignore-errors (read-from-string code)) code)))
+    (if form
+        (safety-harness-ast-walk form)
+        nil)))

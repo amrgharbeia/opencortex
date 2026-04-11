@@ -63,27 +63,59 @@ The kernel supports a "cascade" of providers. If the primary provider (e.g. Open
 #+end_src
 
 ** Neural Dispatch (ask-neuro)
-The primary entry point for System 1. It handles the retry logic and backend selection.
+The primary entry point for System 1. It handles the retry logic and backend selection. It supports a parallel consensus mode where all backends are queried simultaneously.
 
 #+begin_src lisp :tangle ../src/neuro.lisp
+(defvar *consensus-enabled-p* t "If T, ask-neuro queries all backends in parallel.")
+
 (defun ask-neuro (prompt &key (system-prompt "You are the System 1 engine of a Neurosymbolic Lisp Machine.") (cascade nil) (context nil))
-  "Dispatches a neural request through the provider cascade."
+  "Dispatches a neural request through the provider cascade or parallel consensus."
   (let ((backends (cond
                     ((and cascade (listp cascade)) cascade)
                     ((functionp cascade) (funcall cascade context))
                     (t *provider-cascade*))))
-    (dolist (backend backends)
-      (let ((backend-fn (gethash backend *neuro-backends*)))
-        (when backend-fn
-          (kernel-log "SYSTEM 1: Attempting backend ~a..." backend)
-          (let* ((model (when *model-selector-fn* (funcall *model-selector-fn* backend context)))
-                 (result (if model 
-                             (funcall backend-fn prompt system-prompt :model model)
-                             (funcall backend-fn prompt system-prompt))))
-            (if (and (stringp result) (search ":LOG" result) (or (search "Failure" result) (search "missing" result)))
-                (kernel-log "SYSTEM 1: Backend ~a failed. Falling back..." backend)
-                (return-from ask-neuro result))))))
-    "(:type :LOG :payload (:text \"Neural Cascade Failure\"))"))
+    (if *consensus-enabled-p*
+        ;; PARALLEL CONSENSUS MODE
+        (let ((results nil)
+              (threads nil)
+              (lock (bt:make-lock)))
+          (dolist (backend backends)
+            (let ((backend-fn (gethash backend *neuro-backends*)))
+              (when backend-fn
+                (push (bt:make-thread 
+                       (lambda ()
+                         (kernel-log "SYSTEM 1 [Consensus]: Querying backend ~a..." backend)
+                         (let* ((model (when *model-selector-fn* (funcall *model-selector-fn* backend context)))
+                                (result (ignore-errors 
+                                          (if model 
+                                              (funcall backend-fn prompt system-prompt :model model)
+                                              (funcall backend-fn prompt system-prompt)))))
+                           (bt:with-lock-held (lock)
+                             (push result results)))))
+                      threads))))
+          ;; Wait for all threads with a timeout (e.g., 30s)
+          (let ((start-time (get-universal-time)))
+            (loop while (and (< (length results) (length threads))
+                             (< (- (get-universal-time) start-time) 30))
+                  do (sleep 0.1)))
+          ;; Return the list of raw results (filtering out nils or errors)
+          (let ((valid-results (remove-if-not #'stringp results)))
+            (if valid-results
+                (format nil "~{~a~^|CONSENSUS-SEP|~}" valid-results)
+                "(:type :LOG :payload (:text \"Neural Consensus Failure\"))")))
+        
+        ;; SEQUENTIAL CASCADE MODE (Legacy)
+        (or (dolist (backend backends)
+              (let ((backend-fn (gethash backend *neuro-backends*)))
+                (when backend-fn
+                  (kernel-log "SYSTEM 1: Attempting backend ~a..." backend)
+                  (let* ((model (when *model-selector-fn* (funcall *model-selector-fn* backend context)))
+                         (result (if model 
+                                     (funcall backend-fn prompt system-prompt :model model)
+                                     (funcall backend-fn prompt system-prompt))))
+                    (unless (and (stringp result) (search ":LOG" result) (or (search "Failure" result) (search "missing" result)))
+                      (return result))))))
+            "(:type :LOG :payload (:text \"Neural Cascade Failure\"))"))))
 #+end_src
 
 ** Sovereign Service Fallbacks
@@ -101,7 +133,8 @@ Invokes the System 1 engine to generate a proposed Lisp action. It automatically
 
 #+begin_src lisp :tangle ../src/neuro.lisp
 (defun think (context)
-  "Invokes the neural System 1 engine to propose a Lisp action based on context."
+  "Invokes the neural System 1 engine to propose a Lisp action based on context. 
+If consensus is enabled, it returns a list of proposals from different backends."
   (let ((active-skill (find-triggered-skill context))
         (tool-belt (generate-tool-belt-prompt))
         (global-context (context-assemble-global-awareness)))
@@ -131,21 +164,24 @@ To call a tool, you MUST use:
 
 ")))
             (if (and raw-prompt (> (length raw-prompt) 1))
-                (let* ((thought (ask-neuro raw-prompt :system-prompt full-system-prompt :context context)))
-                  (kernel-log "SYSTEM 1 RAW: ~a~%" thought)
-                  (let* ((cleaned-thought 
-                          (let ((match (cl-ppcre:scan-to-strings "(?s)```(?:lisp)?\\n?(.*?)\\n?```" thought)))
-                            (if match
-                                (let ((regs (nth-value 1 (cl-ppcre:scan-to-strings "(?s)```(?:lisp)?\\n?(.*?)\\n?```" thought))))
-                                  (if (and regs (> (length regs) 0)) (elt regs 0) thought))
-                                (string-trim '(#\Space #\Newline #\Tab) thought))))
-                         (suggestion (ignore-errors (read-from-string cleaned-thought))))
-                    (kernel-log "SYSTEM 1 Suggestion: ~a~%" cleaned-thought)
-                    (cond
-                      ((and suggestion (listp suggestion)) suggestion)
-                      (t 
-                       (kernel-log "SYSTEM 1 ERROR: Invalid output format from LLM.~%")
-                       nil))))
+                (let* ((thought (ask-neuro raw-prompt :system-prompt full-system-prompt :context context))
+                       (raw-thoughts (cl-ppcre:split (cl-ppcre:quote-meta-chars "|CONSENSUS-SEP|") thought))
+                       (suggestions nil))
+                  (dolist (raw-thought raw-thoughts)
+                    (kernel-log "SYSTEM 1 RAW: ~a~%" raw-thought)
+                    (let* ((cleaned-thought 
+                            (let ((match (cl-ppcre:scan-to-strings "(?s)```(?:lisp)?\\n?(.*?)\\n?```" raw-thought)))
+                              (if match
+                                  (let ((regs (nth-value 1 (cl-ppcre:scan-to-strings "(?s)```(?:lisp)?\\n?(.*?)\\n?```" raw-thought))))
+                                    (if (and regs (> (length regs) 0)) (elt regs 0) raw-thought))
+                                  (string-trim '(#\Space #\Newline #\Tab) raw-thought))))
+                           (suggestion (ignore-errors (read-from-string cleaned-thought))))
+                      (kernel-log "SYSTEM 1 Suggestion: ~a~%" cleaned-thought)
+                      (when (and suggestion (listp suggestion))
+                        (push suggestion suggestions))))
+                  (if (and *consensus-enabled-p* suggestions)
+                      (nreverse suggestions)
+                      (first (nreverse suggestions))))
                 '(:type :LOG :payload (:text "Skill triggered (Deterministic only)")))))
         nil)))
 #+end_src
@@ -167,12 +203,38 @@ The deterministic gatekeeper that ensures all proposed actions are safe and logi
 (in-package :org-agent)
 #+end_src
 
+** Task Integrity Check
+Enforces high-integrity semantic rules for task management (e.g. blocking closing parent tasks with active children).
+
+#+begin_src lisp :tangle ../src/symbolic.lisp
+(defun task-integrity-check (action)
+  "Enforces semantic GTD integrity rules on proposed actions."
+  (let* ((payload (getf action :payload))
+         (act (or (getf payload :action) (getf action :action)))
+         (id (or (getf payload :id) (getf action :id)))
+         (new-attrs (or (getf payload :attributes) (getf action :attributes))))
+    (when (and (eq act :update-node) (equal (getf new-attrs :TODO) "DONE"))
+      (let ((children (list-objects-with-attribute :PARENT id)))
+        (when (some (lambda (child) (let ((todo (getf (org-object-attributes child) :TODO)))
+                                      (and todo (not (equal todo "DONE")))))
+                    children)
+          (return-from task-integrity-check "Blocked by Task Integrity: Active children exist."))))
+    nil))
+#+end_src
+
 ** Validation Gate (decide)
-The "System 2" supervisor. It intercepts every action proposed by System 1 and runs it through the skill's symbolic gate and the global safety harness.
+The "System 2" supervisor. It intercepts every action proposed by System 1 and runs it through the task integrity check, the skill's symbolic gate, and the global safety harness.
 
 #+begin_src lisp :tangle ../src/symbolic.lisp
 (defun decide (proposed-action context)
   "The System 2 Safety Gate: validates or rejects proposed neural actions."
+  ;; 1. Task Integrity Check (GTD Semantics)
+  (let ((integrity-error (task-integrity-check proposed-action)))
+    (when integrity-error
+      (kernel-log "SYSTEM 2 [INTEGRITY]: ~a~%" integrity-error)
+      (return-from decide (list :type :LOG :payload (list :text integrity-error)))))
+
+  ;; 2. Skill-specific and Safety Checks
   (let ((active-skill (find-triggered-skill context)))
     (if (and proposed-action (listp proposed-action) active-skill)
         (let* ((symbolic-gate (skill-symbolic-fn active-skill))

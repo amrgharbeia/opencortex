@@ -1,7 +1,28 @@
 (in-package :org-agent)
 
+(defun task-integrity-check (action)
+  "Enforces semantic GTD integrity rules on proposed actions."
+  (let* ((payload (getf action :payload))
+         (act (or (getf payload :action) (getf action :action)))
+         (id (or (getf payload :id) (getf action :id)))
+         (new-attrs (or (getf payload :attributes) (getf action :attributes))))
+    (when (and (eq act :update-node) (equal (getf new-attrs :TODO) "DONE"))
+      (let ((children (list-objects-with-attribute :PARENT id)))
+        (when (some (lambda (child) (let ((todo (getf (org-object-attributes child) :TODO)))
+                                      (and todo (not (equal todo "DONE")))))
+                    children)
+          (return-from task-integrity-check "Blocked by Task Integrity: Active children exist."))))
+    nil))
+
 (defun decide (proposed-action context)
   "The System 2 Safety Gate: validates or rejects proposed neural actions."
+  ;; 1. Task Integrity Check (GTD Semantics)
+  (let ((integrity-error (task-integrity-check proposed-action)))
+    (when integrity-error
+      (kernel-log "SYSTEM 2 [INTEGRITY]: ~a~%" integrity-error)
+      (return-from decide (list :type :LOG :payload (list :text integrity-error)))))
+
+  ;; 2. Skill-specific and Safety Checks
   (let ((active-skill (find-triggered-skill context)))
     (if (and proposed-action (listp proposed-action) active-skill)
         (let* ((symbolic-gate (skill-symbolic-fn active-skill))

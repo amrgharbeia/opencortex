@@ -1,0 +1,40 @@
+#+TITLE: Root Cause Analysis: Autonomous Self-Fix Loop Verification
+#+DATE: 2026-04-11
+#+FILETAGS: :rca:self-fix:autonomy:testing:
+
+* Executive Summary
+Verified the autonomous repair capability of the `Self-Fix Agent`. The system successfully detected a deliberate type error in a secondary skill, initiated a repair request, and programmatically patched the source code via the `:repair-file` tool.
+
+* 1. Issue: Self-Fix Mechanism Verification
+** Symptoms
+Manual verification was required to prove that `org-skill-self-fix` could transition from "Thinking" about a bug to "Acting" on the file system.
+** Root Cause
+N/A (Deliberate test injection).
+** Resolution
+Created `self-fix-tests.lisp` which:
+1. Generates `org-skill-broken-math.org` with a `(+ 1 "two")` bug.
+2. Triggers the bug to produce a `PIPELINE CRASH`.
+3. Injects a `:repair-request` stimulus.
+4. Executes `self-fix-apply` to replace the bug with `(+ 1 2)`.
+5. Verifies the file content and successful hot-reload.
+
+* 2. Side-Issue: ASDF Configuration Fragility
+** Symptoms
+Repeated `LOAD-SYSTEM-DEFINITION-ERROR` and "unmatched close parenthesis" errors during test integration.
+** Root Cause
+Complexity in the `:components` nesting of `org-agent.asd` led to repeated syntax errors when using automated editing tools. The deep nesting made manual paren counting prone to "off-by-one" errors.
+** Resolution
+Refactored `org-agent.asd` to use a **Flat Component Structure**. 
+- *Before:* `:components ((:module "src" :components (...)))`
+- *After:* `:components ((:file "src/package") ...)`
+This eliminates unnecessary nesting levels and drastically reduces the surface area for syntax errors.
+
+* 3. PSF Mandate Alignment
+** Invariant Check
+- *Lisp Machine Sovereignty:* Verification utilized hot-reloading (`load-skill-from-org`) without restarting the SBCL image.
+- *Literate Programming:* Updated `org-skill-self-fix.org` to match the finalized `self-fix.lisp` logic.
+- *Institutional Memory:* This RCA documents the decision to flatten the `.asd` structure to prevent future "Parenthesis Hell" incidents.
+
+* 4. Permanent Learnings
+- **Flatten Configuration:** Keep `defsystem` definitions as flat as possible. The overhead of `:module` blocks often outweighs their organizational benefit in a neurosymbolic environment where agents frequently edit these files.
+- **Mocking System 1:** For verifying *loop mechanics*, mocking LLM responses is essential to ensure test determinism, while integration tests can use live LLM calls.
