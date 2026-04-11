@@ -8,12 +8,6 @@
 (defvar *skill-telemetry* (make-hash-table :test 'equal))
 (defvar *telemetry-lock* (bt:make-lock "kernel-telemetry-lock"))
 
-(defvar *actuator-registry* (make-hash-table :test 'equal))
-
-(defun register-actuator (name fn) 
-  "Registers an actuator function. Actuators receive two arguments: (ACTION CONTEXT)."
-  (setf (gethash name *actuator-registry*) fn))
-
 (defun dispatch-action (action context)
   "Routes an approved action to its registered physical actuator."
   (when (and action (listp action))

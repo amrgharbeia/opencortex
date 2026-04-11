@@ -1,5 +1,12 @@
 (in-package :org-agent)
 
+(defvar *actuator-registry* (make-hash-table :test 'equal)
+  "Global registry mapping target keywords to their physical actuator functions.")
+
+(defun register-actuator (name fn) 
+  "Registers an actuator function. Actuators receive two arguments: (ACTION CONTEXT)."
+  (setf (gethash name *actuator-registry*) fn))
+
 (defun frame-message (msg-string)
   "Prefix MSG-STRING with a 6-character hex length (lowercase).
    FUTURE: Will also prefix a 64-char HMAC signature when OACP_ENFORCE_HMAC=true."

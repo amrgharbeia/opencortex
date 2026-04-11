@@ -16,6 +16,15 @@ We begin by ensuring we are in the correct package.
 (in-package :org-agent)
 #+end_src
 
+#+begin_src lisp :tangle ../src/protocol.lisp
+(defvar *actuator-registry* (make-hash-table :test 'equal)
+  "Global registry mapping target keywords to their physical actuator functions.")
+
+(defun register-actuator (name fn) 
+  "Registers an actuator function. Actuators receive two arguments: (ACTION CONTEXT)."
+  (setf (gethash name *actuator-registry*) fn))
+#+end_src
+
 ** Message Framing (frame-message)
 The `frame-message` function is responsible for preparing a string for transmission over the wire. It calculates the length and, if security is enabled via environment variables, appends an HMAC-SHA256 signature to guarantee message integrity.
 

@@ -19,9 +19,9 @@
                (:file "src/safety-harness")
                (:file "src/self-fix")
                (:file "src/lisp-repair")
-               (:file "src/shell-logic")
                (:file "src/bouncer")
-               (:file "src/core"))
+               (:file "src/core")
+               (:file "src/gateway-telegram"))
   :build-operation "program-op"
   :build-pathname "org-agent-server"
   :entry-point "org-agent:main")
@@ -39,7 +39,8 @@
                (:file "tests/self-fix-tests")
                (:file "tests/lisp-repair-tests")
                (:file "tests/bouncer-tests")
-               (:file "tests/shell-actuator-tests")
+               (:file "tests/llm-gateway-tests")
+               (:file "tests/gateway-telegram-tests")
                (:file "tests/chaos-qa"))
   :perform (test-op (o s) 
              (uiop:symbol-call :fiveam :run! (uiop:find-symbol* :oacp-suite :org-agent-tests))
@@ -55,4 +56,5 @@
              (uiop:symbol-call :fiveam :run! (uiop:find-symbol* :bouncer-suite :org-agent-bouncer-tests))
              (uiop:symbol-call :fiveam :run! (uiop:find-symbol* :llm-gateway-suite :org-agent-llm-gateway-tests))
              (uiop:symbol-call :fiveam :run! (uiop:find-symbol* :shell-actuator-suite :org-agent-shell-actuator-tests))
+             (uiop:symbol-call :fiveam :run! (uiop:find-symbol* :gateway-telegram-suite :org-agent-gateway-telegram-tests))
              (uiop:symbol-call :fiveam :run! (uiop:find-symbol* :chaos-suite :org-agent-chaos-qa))))

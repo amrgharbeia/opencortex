@@ -22,6 +22,7 @@
                          (:anthropic "ANTHROPIC_API_KEY")
                          (:groq "GROQ_API_KEY")
                          (:openrouter "OPENROUTER_API_KEY")
+                         (:telegram "TELEGRAM_BOT_TOKEN")
                          (t nil))))
           (when (and env-var (eq type :api-key))
             (uiop:getenv env-var))))))

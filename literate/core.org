@@ -41,17 +41,6 @@ The kernel maintains several thread-safe global variables for logging, telemetry
 (defvar *telemetry-lock* (bt:make-lock "kernel-telemetry-lock"))
 #+end_src
 
-** Actuator Registration
-Actuators are the "hands" of the agent. This registry allows external modules (like Emacs or the Shell) to register functions that the kernel can invoke to perform physical actions.
-
-#+begin_src lisp :tangle ../src/core.lisp
-(defvar *actuator-registry* (make-hash-table :test 'equal))
-
-(defun register-actuator (name fn) 
-  "Registers an actuator function. Actuators receive two arguments: (ACTION CONTEXT)."
-  (setf (gethash name *actuator-registry*) fn))
-#+end_src
-
 ** Physical Dispatch (dispatch-action)
 Routes an approved action to its registered physical actuator.
 
