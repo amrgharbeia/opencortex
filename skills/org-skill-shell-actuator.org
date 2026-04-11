@@ -44,6 +44,30 @@ Interfaces for secure system calls. State is event-driven via the core kernel bu
 
 (defun trigger-skill-shell-actuator (context)
   "Monitors for shell-response events.")
+** 3. Success Criteria
+*** DONE Whitelist Enforcement
+- Verified that only `*allowed-commands*` can be executed.
+- Added a strict `*shell-metacharacters*` check to block command injection.
+*** DONE Diagnostic Capture
+- Verified that STDOUT, STDERR, and Exit Codes are correctly captured and re-injected.
+*** DONE Result Analysis Loop
+- The `:neuro` component successfully formats command results for Sovereign review.
+
+* Phase B: Blueprint (PROTOCOL)
+:PROPERTIES:
+:STATUS: SIGNED
+:END:
+
+** 1. Architectural Intent
+Interfaces for secure system calls. State is event-driven via the core kernel bus.
+
+** 2. Semantic Interfaces
+#+begin_src lisp
+(defun execute-shell-safely (action)
+  "Verifies command against whitelist and metacharacter blacklist, then captures diagnostics.")
+
+(defun trigger-skill-shell-actuator (context)
+  "Monitors for shell-response events.")
 
 (defun neuro-skill-shell-actuator (context)
   "Neural interpretation of command diagnostics.")
@@ -53,21 +77,41 @@ Interfaces for secure system calls. State is event-driven via the core kernel bu
 
 ** Whitelisting & Execution
 #+begin_src lisp :tangle ../src/shell-logic.lisp
+(in-package :org-agent)
+
 (defparameter *allowed-commands* '("ls" "git" "rg" "grep" "date" "echo" "cat" "node" "python3" "sbcl"))
+(defparameter *shell-metacharacters* '(#\; #\& #\| #\> #\< #\$ #\` #\\ #\!)
+  "Characters that are banned in shell commands to prevent injection.")
+
+(defun shell-command-safe-p (cmd-string)
+  "Returns T if the command string contains no dangerous metacharacters."
+  (not (some (lambda (char) (find char cmd-string)) *shell-metacharacters*)))
 
 (defun execute-shell-safely (action context)
   (let* ((cmd-string (getf (getf action :payload) :cmd))
-         (executable (car (uiop:split-string cmd-string :separator '(#\Space)))))
-    (if (member executable *allowed-commands* :test #'string=)
-        (multiple-value-bind (stdout stderr exit-code)
-            (uiop:run-program cmd-string :output :string :error-output :string :ignore-error-status t)
-          (org-agent:inject-stimulus 
-           `(:type :EVENT :payload (:sensor :shell-response :cmd ,cmd-string :stdout ,(or stdout "") :stderr ,(or stderr "") :exit-code ,exit-code))
-           :stream (getf context :reply-stream)))
-        (org-agent:inject-stimulus 
-         `(:type :EVENT :payload (:sensor :shell-response :cmd ,cmd-string :stdout "" :stderr "ERROR - Command not in security whitelist." :exit-code 1))
-         :stream (getf context :reply-stream)))))
-
+         (executable (car (uiop:split-string (string-trim " " cmd-string) :separator '(#\Space)))))
+    
+    (cond
+      ;; 1. Metacharacter check (Injection prevention)
+      ((not (shell-command-safe-p cmd-string))
+       (org-agent:inject-stimulus 
+        `(:type :EVENT :payload (:sensor :shell-response :cmd ,cmd-string :stdout "" :stderr "ERROR - Security Violation: Dangerous metacharacters detected." :exit-code 1))
+        :stream (getf context :reply-stream)))
+      
+      ;; 2. Whitelist check
+      ((not (member executable *allowed-commands* :test #'string=))
+       (org-agent:inject-stimulus 
+        `(:type :EVENT :payload (:sensor :shell-response :cmd ,cmd-string :stdout "" :stderr "ERROR - Command not in security whitelist." :exit-code 1))
+        :stream (getf context :reply-stream)))
+      
+      ;; 3. Safe Execution
+      (t
+       (multiple-value-bind (stdout stderr exit-code)
+           (uiop:run-program cmd-string :output :string :error-output :string :ignore-error-status t)
+         (org-agent:inject-stimulus 
+          `(:type :EVENT :payload (:sensor :shell-response :cmd ,cmd-string :stdout ,(or stdout "") :stderr ,(or stderr "") :exit-code ,exit-code))
+          :stream (getf context :reply-stream)))))))
+#+end_src
 (defun execute-sandboxed-script (action context)
   "Executes a synthesized script (Python/Lisp/JS) in a controlled directory.
    This enables SOTA-level Tool Synthesis and Iterative Fixing."

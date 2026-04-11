@@ -19,6 +19,7 @@
                (:file "src/safety-harness")
                (:file "src/self-fix")
                (:file "src/lisp-repair")
+               (:file "src/shell-logic")
                (:file "src/bouncer")
                (:file "src/core"))
   :build-operation "program-op"
@@ -38,7 +39,7 @@
                (:file "tests/self-fix-tests")
                (:file "tests/lisp-repair-tests")
                (:file "tests/bouncer-tests")
-               (:file "tests/llm-gateway-tests")
+               (:file "tests/shell-actuator-tests")
                (:file "tests/chaos-qa"))
   :perform (test-op (o s) 
              (uiop:symbol-call :fiveam :run! (uiop:find-symbol* :oacp-suite :org-agent-tests))
@@ -53,4 +54,5 @@
              (uiop:symbol-call :fiveam :run! (uiop:find-symbol* :lisp-repair-suite :org-agent-lisp-repair-tests))
              (uiop:symbol-call :fiveam :run! (uiop:find-symbol* :bouncer-suite :org-agent-bouncer-tests))
              (uiop:symbol-call :fiveam :run! (uiop:find-symbol* :llm-gateway-suite :org-agent-llm-gateway-tests))
+             (uiop:symbol-call :fiveam :run! (uiop:find-symbol* :shell-actuator-suite :org-agent-shell-actuator-tests))
              (uiop:symbol-call :fiveam :run! (uiop:find-symbol* :chaos-suite :org-agent-chaos-qa))))

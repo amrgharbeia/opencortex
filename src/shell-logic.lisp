@@ -1,17 +1,37 @@
+(in-package :org-agent)
+
 (defparameter *allowed-commands* '("ls" "git" "rg" "grep" "date" "echo" "cat" "node" "python3" "sbcl"))
+(defparameter *shell-metacharacters* '(#\; #\& #\| #\> #\< #\$ #\` #\\ #\!)
+  "Characters that are banned in shell commands to prevent injection.")
+
+(defun shell-command-safe-p (cmd-string)
+  "Returns T if the command string contains no dangerous metacharacters."
+  (not (some (lambda (char) (find char cmd-string)) *shell-metacharacters*)))
 
 (defun execute-shell-safely (action context)
   (let* ((cmd-string (getf (getf action :payload) :cmd))
-         (executable (car (uiop:split-string cmd-string :separator '(#\Space)))))
-    (if (member executable *allowed-commands* :test #'string=)
-        (multiple-value-bind (stdout stderr exit-code)
-            (uiop:run-program cmd-string :output :string :error-output :string :ignore-error-status t)
-          (org-agent:inject-stimulus 
-           `(:type :EVENT :payload (:sensor :shell-response :cmd ,cmd-string :stdout ,(or stdout "") :stderr ,(or stderr "") :exit-code ,exit-code))
-           :stream (getf context :reply-stream)))
-        (org-agent:inject-stimulus 
-         `(:type :EVENT :payload (:sensor :shell-response :cmd ,cmd-string :stdout "" :stderr "ERROR - Command not in security whitelist." :exit-code 1))
-         :stream (getf context :reply-stream)))))
+         (executable (car (uiop:split-string (string-trim " " cmd-string) :separator '(#\Space)))))
+    
+    (cond
+      ;; 1. Metacharacter check (Injection prevention)
+      ((not (shell-command-safe-p cmd-string))
+       (org-agent:inject-stimulus 
+        `(:type :EVENT :payload (:sensor :shell-response :cmd ,cmd-string :stdout "" :stderr "ERROR - Security Violation: Dangerous metacharacters detected." :exit-code 1))
+        :stream (getf context :reply-stream)))
+      
+      ;; 2. Whitelist check
+      ((not (member executable *allowed-commands* :test #'string=))
+       (org-agent:inject-stimulus 
+        `(:type :EVENT :payload (:sensor :shell-response :cmd ,cmd-string :stdout "" :stderr "ERROR - Command not in security whitelist." :exit-code 1))
+        :stream (getf context :reply-stream)))
+      
+      ;; 3. Safe Execution
+      (t
+       (multiple-value-bind (stdout stderr exit-code)
+           (uiop:run-program cmd-string :output :string :error-output :string :ignore-error-status t)
+         (org-agent:inject-stimulus 
+          `(:type :EVENT :payload (:sensor :shell-response :cmd ,cmd-string :stdout ,(or stdout "") :stderr ,(or stderr "") :exit-code ,exit-code))
+          :stream (getf context :reply-stream)))))))
 
 (defun execute-sandboxed-script (action context)
   "Executes a synthesized script (Python/Lisp/JS) in a controlled directory.
