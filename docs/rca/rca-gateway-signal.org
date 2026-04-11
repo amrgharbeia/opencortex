@@ -1,0 +1,33 @@
+#+TITLE: Root Cause Analysis: Signal Gateway & Multi-Channel Chat
+#+DATE: 2026-04-11
+#+FILETAGS: :rca:gateway:signal:chat:psf:
+
+* Executive Summary
+Successfully implemented the second external communication channel (Signal) using `signal-cli`. Further hardened the multi-channel chat logic and resolved JSON mapping discrepancies between Common Lisp and external CLI outputs.
+
+* 1. Issue: JSON Key Mapping Mismatch
+** Symptoms
+The `TEST-SIGNAL-INBOUND-NORMALIZATION` test failed despite the mock JSON appearing correct.
+** Root Cause
+`cl-json` default behavior for decoding. It converts camelCase keys from JSON (e.g., `dataMessage`) into kebab-case keywords in Lisp (e.g., `:DATA-MESSAGE`). I had incorrectly anticipated `:DATA--MESSAGE` or `:DATA_MESSAGE`.
+** Resolution
+1. **Diagnostic:** Added debug output to the test suite to inspect the exact plist structure returned by `cl-json`.
+2. **Correction:** Updated both the implementation and the literate note to use the correct `:DATA-MESSAGE` and `:SOURCE` keywords.
+
+* 2. Implementation: Signal-CLI Wrapper
+** Strategy
+Unlike Telegram's HTTP API, Signal requires a local binary (`signal-cli`). 
+- **Sensor:** Uses `uiop:run-program` with `receive --json` in a polling loop (5s interval).
+- **Actuator:** Uses `uiop:run-program` with `send -m <text> <recipient>`.
+** Security
+The system uses the pre-configured Signal account `+13322690326` discovered in the user's memex.
+
+* 3. Alignment with PSF Mandates
+** Literate Granularity
+Strictly adhered to the "one definition per block" mandate throughout the new `org-skill-gateway-signal.org` file.
+** Verification
+The `gateway-signal-suite` (10 checks) provides full coverage for inbound parsing and outbound command generation.
+
+* 4. Permanent Learnings
+- **JSON Semantics:** Always verify the specific keyword transformation rules of the JSON library when dealing with external CLI outputs.
+- **Process Robustness:** `uiop:run-program` is the reliable standard for CLI-based gateways in SBCL.
