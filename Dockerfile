@@ -22,13 +22,15 @@ ENV SIGNAL_CLI_VERSION=0.14.0
 RUN curl -L https://github.com/AsamK/signal-cli/releases/download/v${SIGNAL_CLI_VERSION}/signal-cli-${SIGNAL_CLI_VERSION}-Linux.tar.gz | tar xz -C /opt \
     && ln -s /opt/signal-cli-${SIGNAL_CLI_VERSION}/bin/signal-cli /usr/local/bin/signal-cli
 
-# 3. Install Quicklisp
+# 3. Install Quicklisp & Pin Distribution
+# Pinned to 2026-04-01 for bit-rot resistance.
+# Monthly maintenance task in gtd.org handles testing of newer distributions.
 WORKDIR /root
 RUN curl -O https://beta.quicklisp.org/quicklisp.lisp \
     && sbcl --non-interactive \
         --load quicklisp.lisp \
         --eval '(quicklisp-quickstart:install)' \
-        --eval '(let ((ql-util::*quicklisp-home* (merge-pathnames "quicklisp/" (user-homedir-pathname)))) (ql-dist:install-dist "http://beta.quicklisp.org/dist/quicklisp.txt" :prompt nil))'
+        --eval '(ql-dist:install-dist "http://beta.quicklisp.org/dist/quicklisp/2026-04-01/distinfo.txt" :prompt nil :replace t)'
 
 # 4. Configure SBCL to load Quicklisp on startup
 RUN echo '(let ((quicklisp-init (merge-pathnames "quicklisp/setup.lisp" (user-homedir-pathname)))) (when (probe-file quicklisp-init) (load quicklisp-init)))' > /root/.sbclrc
