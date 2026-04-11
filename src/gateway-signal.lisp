@@ -1,6 +1,6 @@
 (in-package :org-agent)
 
-(defvar *signal-account* "+13322690326")
+(defun get-signal-account () (vault-get-secret :signal))
 
 (defvar *signal-polling-thread* nil)
 
@@ -9,40 +9,43 @@
   (declare (ignore context))
   (let* ((payload (getf action :payload))
          (chat-id (or (getf payload :chat-id) (getf action :chat-id)))
-         (text (or (getf payload :text) (getf action :text))))
-    (when (and chat-id text)
+         (text (or (getf payload :text) (getf action :text)))
+         (account (get-signal-account)))
+    (when (and account chat-id text)
       (kernel-log "SIGNAL: Sending message to ~a..." chat-id)
       (handler-case 
-          (uiop:run-program (list "signal-cli" "-u" *signal-account* "send" "-m" text chat-id)
+          (uiop:run-program (list "signal-cli" "-u" account "send" "-m" text chat-id)
                             :output :string :error-output :string)
         (error (c) (kernel-log "SIGNAL ERROR: ~a" c))))))
 
 (defun signal-process-updates ()
   "Polls for new messages via signal-cli and injects them into the kernel."
-  (handler-case
-      (let* ((output (uiop:run-program (list "signal-cli" "-u" *signal-account* "receive" "--json")
-                                       :output :string :error-output :string :ignore-error-status t))
-             (lines (cl-ppcre:split "\\n" output)))
-        (dolist (line lines)
-          (when (and line (> (length line) 0))
-            (let* ((json (ignore-errors (cl-json:decode-json-from-string line)))
-                   (envelope (cdr (assoc :envelope json)))
-                   (source (cdr (assoc :source envelope)))
-                   (data-message (cdr (assoc :data-message envelope)))
-                   (text (cdr (assoc :message data-message))))
-              (when (and source text)
-                (kernel-log "SIGNAL: Received message from ~a" source)
-                (inject-stimulus 
-                 (list :type :EVENT 
-                       :payload (list :sensor :chat-message 
-                                      :channel :signal 
-                                      :chat-id source 
-                                      :text text))))))))
-    (error (c) (kernel-log "SIGNAL POLL ERROR: ~a" c))))
+  (let ((account (get-signal-account)))
+    (when account
+      (handler-case
+          (let* ((output (uiop:run-program (list "signal-cli" "-u" account "receive" "--json")
+                                           :output :string :error-output :string :ignore-error-status t))
+                 (lines (cl-ppcre:split "\\n" output)))
+            (dolist (line lines)
+              (when (and line (> (length line) 0))
+                (let* ((json (ignore-errors (cl-json:decode-json-from-string line)))
+                       (envelope (cdr (assoc :envelope json)))
+                       (source (cdr (assoc :source envelope)))
+                       (data-message (cdr (assoc :data-message envelope)))
+                       (text (cdr (assoc :message data-message))))
+                  (when (and source text)
+                    (kernel-log "SIGNAL: Received message from ~a" source)
+                    (inject-stimulus 
+                     (list :type :EVENT 
+                           :payload (list :sensor :chat-message 
+                                          :channel :signal 
+                                          :chat-id source 
+                                          :text text))))))))
+        (error (c) (kernel-log "SIGNAL POLL ERROR: ~a" c))))))
 
 (defun start-signal-gateway ()
   "Initializes the Signal background thread."
-  (unless (and *signal-polling-thread* (bt:thread-alive-p *signal-polling-thread*))
+  (unless (and *telegram-polling-thread* (bt:thread-alive-p *telegram-polling-thread*))
     (setf *signal-polling-thread*
           (bt:make-thread 
            (lambda ()

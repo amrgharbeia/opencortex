@@ -23,6 +23,7 @@
                          (:groq "GROQ_API_KEY")
                          (:openrouter "OPENROUTER_API_KEY")
                          (:telegram "TELEGRAM_BOT_TOKEN")
+                         (:signal "SIGNAL_ACCOUNT_NUMBER")
                          (t nil))))
           (when (and env-var (eq type :api-key))
             (uiop:getenv env-var))))))
