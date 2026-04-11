@@ -16,7 +16,6 @@
                (:file "src/symbolic")
                (:file "src/safety-harness")
                (:file "src/self-fix")
-               (:file "src/lisp-repair")
                (:file "src/core"))
   :build-operation "program-op"
   :build-pathname "org-agent-server"
@@ -33,7 +32,6 @@
                (:file "tests/immune-system-tests")
                (:file "tests/task-orchestrator-tests")
                (:file "tests/self-fix-tests")
-               (:file "tests/lisp-repair-tests")
                (:file "tests/chaos-qa"))
   :perform (test-op (o s) 
              (uiop:symbol-call :fiveam :run! (uiop:find-symbol* :oacp-suite :org-agent-tests))
@@ -45,5 +43,4 @@
              (uiop:symbol-call :fiveam :run! (uiop:find-symbol* :immune-suite :org-agent-immune-system-tests))
              (uiop:symbol-call :fiveam :run! (uiop:find-symbol* :task-orchestrator-suite :org-agent-task-orchestrator-tests))
              (uiop:symbol-call :fiveam :run! (uiop:find-symbol* :self-fix-suite :org-agent-self-fix-tests))
-             (uiop:symbol-call :fiveam :run! (uiop:find-symbol* :lisp-repair-suite :org-agent-lisp-repair-tests))
              (uiop:symbol-call :fiveam :run! (uiop:find-symbol* :chaos-suite :org-agent-chaos-qa))))
