@@ -36,6 +36,10 @@
    ;; --- Self-Fix Agent ---
    #:self-fix-apply
    
+   ;; --- Lisp Repair Syntax Gate ---
+   #:repair-lisp-syntax
+   #:deterministic-repair
+   
    ;; --- Context API (Peripheral Vision) ---
    #:context-query-store
    #:context-get-active-projects
