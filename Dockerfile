@@ -8,6 +8,7 @@ ENV DEBIAN_FRONTEND=noninteractive
 # - sbcl: The Lisp Runtime
 # - curl/git/unzip: Standard tools for Quicklisp and binaries
 # - default-jre: Required by signal-cli
+# - python3/pip: Required for Playwright bridge
 RUN apt-get update && apt-get install -y \
     sbcl \
     curl \
@@ -15,7 +16,16 @@ RUN apt-get update && apt-get install -y \
     unzip \
     default-jre \
     libsqlite3-0 \
+    python3 \
+    python3-pip \
+    python3-venv \
     && rm -rf /var/lib/apt/lists/*
+
+# 2. Setup Playwright (High-Fidelity Browsing)
+RUN python3 -m venv /opt/venv
+ENV PATH="/opt/venv/bin:$PATH"
+RUN pip install playwright \
+    && playwright install --with-deps chromium
 
 # 2. Install signal-cli (v0.14.0)
 ENV SIGNAL_CLI_VERSION=0.14.0
