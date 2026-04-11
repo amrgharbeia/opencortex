@@ -24,6 +24,8 @@
                          (:openrouter "OPENROUTER_API_KEY")
                          (:telegram "TELEGRAM_BOT_TOKEN")
                          (:signal "SIGNAL_ACCOUNT_NUMBER")
+                         (:matrix-homeserver "MATRIX_HOMESERVER")
+                         (:matrix-token "MATRIX_ACCESS_TOKEN")
                          (t nil))))
           (when (and env-var (eq type :api-key))
             (uiop:getenv env-var))))))

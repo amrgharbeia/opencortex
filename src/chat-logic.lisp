@@ -17,6 +17,8 @@
                                (or (getf payload :chat-id) (getf proposed-action :chat-id)))
                           (and (member target '(:signal :SIGNAL))
                                (or (getf payload :chat-id) (getf proposed-action :chat-id)))
+                          (and (member target '(:matrix :MATRIX))
+                               (or (getf payload :room-id) (getf proposed-action :room-id)))
                           (and (member target '(:shell :SHELL))
                                (or (getf payload :cmd) (getf proposed-action :cmd)))
                           (member target '(:tool :TOOL))))
@@ -41,6 +43,7 @@
           (case channel
             (:telegram (format nil "- To reply via Telegram: (:type :REQUEST :target :telegram :chat-id \"~a\" :text \"<Response>\")" chat-id))
             (:signal (format nil "- To reply via Signal: (:type :REQUEST :target :signal :chat-id \"~a\" :text \"<Response>\")" chat-id))
+            (:matrix (format nil "- To reply via Matrix: (:type :REQUEST :target :matrix :room-id \"~a\" :text \"<Response>\")" chat-id))
             (t "- To reply via Emacs: (:type :REQUEST :target :emacs :action :insert-at-end :buffer \"*org-agent-chat*\" :text \"* <Response>\")"))))
     (ask-neuro trimmed-text :system-prompt (concatenate 'string 
                                                        "ACTUATOR IDENTITY: You are the pure Lisp actuator for the org-agent kernel.
