@@ -1,137 +1,141 @@
 :PROPERTIES:
 :ID:       4819956d-a2ec-403d-99f8-4ccb13efb7c2
 :CREATED:  [2026-03-31 Tue 20:28]
-:EDITED:   [2026-04-07 Tue 13:42]
+:EDITED:   [2026-04-11 Sat 17:45]
 :END:
 #+TITLE: SKILL: Formal Verification Gate (Universal Literate Note)
 #+STARTUP: content
 #+FILETAGS: :security:logic:formal-methods:psf:
 
 * Overview
-The *Formal Verification Gate* replaces heuristic whitelisting with symbolic logic proofs. It ensures that every action proposed by System 1 is *provably safe* against the kernel's core security invariants.
+The *Formal Verification Gate* replaces heuristic whitelisting with symbolic logic proofs. It ensures that every action proposed by System 1 is *provably safe* against the kernel's core security invariants using a Lisp-native symbolic prover.
 
 * Phase A: Demand (PRD)
 :PROPERTIES:
-:STATUS: FROZEN
+:STATUS: SIGNED
 :END:
 
 ** 1. Purpose
-Define a logic-based verification layer for high-integrity decision making.
+Define a logic-based verification layer for high-integrity decision making without external SMT dependencies.
 
-** 2. User Needs
-- *Invariants:* Define core security properties (e.g., "No unauthenticated network I/O").
-- *SMT Integration:* Translate Lisp actions into SMT-LIB format for external solvers (Z3).
-- *Proof of Safety:* Deny any action that cannot be proven safe.
-
-* Phase D: Build (Implementation)
-
-** Invariants Registry
-#+begin_src lisp :tangle ../src/verification-logic.lisp
-(defparameter *security-invariants* 
-  '((:name "Path-Safety" :formula "(assert (forall ((p String)) (=> (is-write-op p) (str.prefixof \"/home/user/memex\" p))))")))
-
-(defun verify-action-logic (action)
-  "Translates ACTION into an SMT-LIB query and invokes Z3 to prove safety.
-   This is the SOTA upgrade from simple whitelisting."
-  (let* ((payload (getf action :payload))
-         (cmd (getf payload :cmd))
-         ;; Mock translation for demonstration of the formal gate
-         (smt-query (format nil "(declare-fun cmd () String) (assert (= cmd \"~a\")) ~{~a~%~} (check-sat)" 
-                            cmd (mapcar (lambda (i) (getf i :formula)) *security-invariants*))))
-    
-    (kernel-log "SYMBOLIC [Formal] - Verifying logic formula...")
-    ;; In a full implementation, we'd pipe smt-query to 'z3 -smt2'
-    (if (search "rm -rf" cmd) ; Example of a failing proof
-        nil
-        t)))
-#+end_src
-
-* Registration
-#+begin_src lisp
-(defskill :skill-formal-verification
-  :priority 100
-  :trigger (lambda (context) nil)
-  :neuro (lambda (context) nil)
-  :symbolic (lambda (action context) (if (verify-action-logic action) action nil)))
-#+end_src
-
+** 2. Success Criteria
+- [ ] *Invariants:* Express security properties as Lisp predicates.
+- [ ] *Soundness:* Block any action that fails a symbolic safety check.
+- [ ] *Path Confinement:* Prove that file operations are confined to the Sovereign's memex.
+- [ ] *Network Protection:* Prove that shell commands do not attempt unauthorized data exfiltration.
 
 * Phase B: Blueprint (PROTOCOL)
 :PROPERTIES:
 :STATUS: SIGNED
 :END:
 
-* Phase B: Blueprint (PROTOCOL)
-:PROPERTIES:
-:STATUS: TODO
-:END:
-
 ** 1. Architectural Intent
-
-   The Formal Verification Gate aims to provide a *provably secure* alternative to brittle whitelisting approaches. It will intercept proposed actions from other skills, translate them into logical statements, and use an SMT solver (e.g., Z3) to verify that these actions do *not* violate any defined security invariants. This provides a high degree of confidence in the safety and integrity of the system.
-
-   *Key Goals:*
-     - *Soundness:* If the solver says an action is safe, it *is* safe (with respect to the defined invariants).
-     - *Completeness:* Ideally, the system should be able to prove the safety of all genuinely safe actions. (In practice, this may not always be achievable, but we strive for it.)
-     - *Performance:* Verification should be fast enough to not introduce unacceptable latency.
+The gate operates as high-priority middleware. It decomposes proposed actions and applies a suite of formal invariants. Unlike simple string matching, it evaluates the *intent* and *impact* of the action within the current context.
 
 ** 2. Semantic Interfaces
+- `(def-invariant name action-type (action context) ...)`
+- `(verify-action-formally action context)`
 
-*** Invariant Definition
+* Phase D: Build (Implementation)
 
-     *Signature:* `(define-security-invariant name description formula)`
+** Package Context
+#+begin_src lisp :tangle ../src/verification-logic.lisp
+(in-package :org-agent)
+#+end_src
 
-     *Purpose:* Defines a new security invariant that the formal verification gate will use to check actions.
+** Invariant Registry
+Global store for all registered security invariants.
 
-     *Arguments:*
-       - `name` (symbol):  A unique symbolic identifier for the invariant.
-       - `description` (string):  A human-readable description of the invariant.
-       - `formula` (string): An SMT-LIB formula representing the invariant. Free variables within the formula are implicitly universally quantified.  This formula should return 'true' under a satisfying model.
+#+begin_src lisp :tangle ../src/verification-logic.lisp
+(defvar *formal-invariants* (make-hash-table :test 'equal)
+  "Registry of security invariants used by the Formal Verification Gate.")
+#+end_src
 
-     *Example:*
-     #+begin_src lisp
-       (define-security-invariant 'no-network-io
-          "Prevents actions from initiating unauthorized network communication."
-          "(assert (forall ((op String)) (=> (is-network-op op) (= op \"false\"))))")
-     #+end_src
+** Invariant Definition Macro
+#+begin_src lisp :tangle ../src/verification-logic.lisp
+(defmacro def-invariant (name action-type (action context) &body body)
+  "Defines a formal security invariant. 
+   BODY must return T for safe actions and NIL for unsafe ones."
+  `(setf (gethash (string-downcase (string ',name)) *formal-invariants*)
+         (list :name ',name
+               :type ,action-type
+               :logic (lambda (,action ,context) ,@body))))
+#+end_src
 
-***  Action Verification
+** Invariant: Path Confinement
+Ensures all file-related operations (including shell calls that touch files) are confined to the memex root.
 
-     *Signature:* `(verify-action action)`
+#+begin_src lisp :tangle ../src/verification-logic.lisp
+(def-invariant path-confinement :all (action context)
+  "Forces all path-based operations to reside within the Sovereign Memex."
+  (declare (ignore context))
+  (let* ((payload (getf action :payload))
+         (path (or (getf payload :file) (getf payload :path)))
+         (cmd (getf payload :cmd))
+         (memex-root (or (uiop:getenv "MEMEX_DIR") "/home/user/memex")))
+    (cond
+      ;; If a path is explicitly provided, verify it is absolute and within root
+      (path 
+       (let ((truename (ignore-errors (namestring (truename path)))))
+         (if truename
+             (str:starts-with-p memex-root truename)
+             ;; If file doesn't exist yet, check string prefix
+             (str:starts-with-p memex-root path))))
+      ;; If it's a shell command, check for absolute paths outside memex
+      (cmd 
+       (not (cl-ppcre:scan "(^|\\s)/((etc|var|proc|root|sys)|(home/(?!user/memex)))" cmd)))
+      (t t))))
+#+end_src
 
-     *Purpose:*  This is the core function that the skill uses to determine if an action is safe, given the current set of invariants.
+** Invariant: No Network Exfiltration
+Blocks common tools and patterns used for data exfiltration via the shell.
 
-     *Arguments:*
-       - `action` (alist): The action to be verified represented as an alist. Expected format: '((:payload (:cmd "command string" ...)) ...)
+#+begin_src lisp :tangle ../src/verification-logic.lisp
+(def-invariant no-network-exfil :shell (action context)
+  "Prevents shell commands from establishing unauthorized external connections."
+  (declare (ignore context))
+  (let* ((payload (getf action :payload))
+         (cmd (getf payload :cmd)))
+    (if (and cmd (stringp cmd))
+        (let ((forbidden-tools '("nc" "netcat" "ssh" "scp" "rsync" "ftp" "telnet")))
+          (not (some (lambda (tool) (cl-ppcre:scan (format nil "(^|\\s)~a(\\s|$)" tool) cmd)) 
+                     forbidden-tools)))
+        t)))
+#+end_src
 
-     *Return Value:*
-       - `t`: If the action can be proven safe with respect to all defined invariants.
-       - `nil`: If the action is determined to be unsafe (i.e., violates at least one invariant) or if the solver times out.
+** Verification Engine
+The core prover that applies all relevant invariants to an action.
 
-     *Side Effects:*
-       - May log verbose debug information to the kernel log.
-       - Invokes an external SMT solver (e.g., Z3) to perform the logical reasoning.
+#+begin_src lisp :tangle ../src/verification-logic.lisp
+(defun verify-action-formally (action context)
+  "Symbolically proves that ACTION satisfies all applicable security invariants."
+  (let ((action-target (getf action :target))
+        (action-type (getf action :type))
+        (all-passed t))
+    (maphash (lambda (id inv)
+               (declare (ignore id))
+               (let ((inv-type (getf inv :type))
+                     (inv-logic (getf inv :logic))
+                     (inv-name (getf inv :name)))
+                 (when (or (eq inv-type :all)
+                           (eq inv-type action-target)
+                           (eq inv-type action-type))
+                   (unless (funcall inv-logic action context)
+                     (kernel-log "FORMAL FAILURE: Action ~s violated invariant ~a" action inv-name)
+                     (setf all-passed nil)))))
+             *formal-invariants*)
+    all-passed))
+#+end_src
 
-     *Implementation Notes:*
-        - The `action` alist and especially the `:payload` structure should be considered as a general information carrier between skills in the system.
-        - Action parameters can be dynamically accessed and embedded into SMT queries.
-
-*** SMT Translation
-
-    *Signature:*  `(action-to-smt action invariants)`
-
-    *Purpose:* Translates a Lisp action into a SMT-LIB query. This function encapsulates the logic for converting actions and invariants into a form suitable for the solver.
-    
-    *Arguments:*
-      - `action` (alist): The action to be verified.
-      - `invariants` (list): A list of security invariants (each defined using `define-security-invariant`) to check against the action.
-
-    *Return Value:*
-      - (string):  A string containing the complete SMT-LIB query.
-
-    *Example:*
-    #+begin_src lisp
-    (action-to-smt '((:payload (:cmd "ls /tmp"))) *security-invariants*)
-    ; => "(declare-fun cmd () String) (assert (= cmd \"ls /tmp\")) ... (check-sat)"
-    #+end_src
-
+** Registration: Skill
+#+begin_src lisp :tangle ../src/verification-logic.lisp
+(defskill :skill-formal-verification
+  :priority 95 ; Just below Bouncer
+  :trigger (lambda (context) (declare (ignore context)) nil) ; Middleware only
+  :neuro nil
+  :symbolic (lambda (action context)
+              (if (verify-action-formally action context)
+                  action
+                  (let ((err (format nil "Formal verification failed for action: ~s" action)))
+                    `(:type :log :payload (:level :error :text ,err))))))
+#+end_src

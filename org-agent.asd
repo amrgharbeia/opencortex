@@ -4,7 +4,7 @@
   :version "0.1.0"
   :license "MIT"
   :description "The Neurosymbolic Lisp Machine Kernel"
-  :depends-on (:usocket :cl-json :bordeaux-threads :dexador :uiop :cl-dotenv :cl-ppcre :hunchentoot :ironclad)
+  :depends-on (:usocket :cl-json :bordeaux-threads :dexador :uiop :cl-dotenv :cl-ppcre :hunchentoot :ironclad :str)
   :serial t
   :components ((:file "src/package")
                (:file "src/protocol")
@@ -20,6 +20,7 @@
                (:file "src/self-fix")
                (:file "src/lisp-repair")
                (:file "src/bouncer")
+               (:file "src/verification-logic")
                (:file "src/core")
                (:file "src/gateway-telegram")
                (:file "src/gateway-signal")
@@ -41,6 +42,7 @@
                (:file "tests/self-fix-tests")
                (:file "tests/lisp-repair-tests")
                (:file "tests/bouncer-tests")
+               (:file "tests/formal-verification-tests")
                (:file "tests/llm-gateway-tests")
                (:file "tests/gateway-telegram-tests")
                (:file "tests/gateway-signal-tests")
@@ -58,6 +60,7 @@
              (uiop:symbol-call :fiveam :run! (uiop:find-symbol* :self-fix-suite :org-agent-self-fix-tests))
              (uiop:symbol-call :fiveam :run! (uiop:find-symbol* :lisp-repair-suite :org-agent-lisp-repair-tests))
              (uiop:symbol-call :fiveam :run! (uiop:find-symbol* :bouncer-suite :org-agent-bouncer-tests))
+             (uiop:symbol-call :fiveam :run! (uiop:find-symbol* :formal-verification-suite :org-agent-formal-verification-tests))
              (uiop:symbol-call :fiveam :run! (uiop:find-symbol* :llm-gateway-suite :org-agent-llm-gateway-tests))
              (uiop:symbol-call :fiveam :run! (uiop:find-symbol* :shell-actuator-suite :org-agent-shell-actuator-tests))
              (uiop:symbol-call :fiveam :run! (uiop:find-symbol* :gateway-telegram-suite :org-agent-gateway-telegram-tests))
