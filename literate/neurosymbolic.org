@@ -4,24 +4,16 @@
 #+STARTUP: content
 
 * The Neurosymbolic Bridge (neuro.lisp & symbolic.lisp)
-** Deep Reasoning: Imagination Checked by Physics
-
-The core of ~org-agent~ is a neurosymbolic hybrid. We acknowledge that Large Language Models (LLMs) possess an unprecedented ability for "creative association"—what we call the **Associative Engine**. However, we also recognize that they are inherently probabilistic and prone to hallucination. To build a sovereign, high-integrity agent, this "imagination" must be checked by the laws of a deterministic system—the **Deliberate Engine** (Common Lisp).
-
-This architecture is directly inspired by Daniel Kahneman's /Thinking, Fast and Slow/:
-- **System 1 (Associative):** Fast, intuitive, creative, but unreliable. (LLM)
-- **System 2 (Deliberate):** Slow, rule-bound, logical, and absolute. (Lisp)
-
 *** The Neurosymbolic Loop
 
-In our loop, System 1 never speaks to the world directly. It only proposes "thoughts" to System 2. System 2, the Lisp kernel, evaluates these thoughts against a chain of symbolic safety gates (Skills) before any action is actually dispatched to an actuator (Emacs, Shell, etc.).
+In our loop, the Associative Engine never speaks to the world directly. It only proposes "thoughts" to the Deliberate Engine. the Deliberate Engine, the Lisp harness, evaluates these thoughts against a chain of symbolic safety gates (Skills) before any action is actually dispatched to an actuator (Emacs, Shell, etc.).
 
 #+begin_src mermaid
 flowchart TD
     Stimulus[External Stimulus/Signal] --> Perceive[Perceive: Skill Trigger]
-    Perceive --> Associative[Associative Engine: System 1/LLM]
+    Perceive --> Associative[Associative Engine: LLM]
     Associative --> Proposal[Lisp Action Proposal]
-    Proposal --> Deliberate[Deliberate Engine: System 2/Lisp Gates]
+    Proposal --> Deliberate[Deliberate Engine: Lisp Gates]
     Deliberate --> Gate1[Safety Gate: Skill A]
     Gate1 --> Gate2[Safety Gate: Skill B]
     Gate2 --> Verified[Verified Action]
@@ -33,12 +25,12 @@ flowchart TD
 
 *** Sovereign Decoupling (The Thin Harness)
 
-The kernel files ~neuro.lisp~ and ~symbolic.lisp~ are intentionally "Thin Harnesses." They do not know how to talk to Google Gemini or Anthropic Claude; they do not know what a "Bouncer" or a "Token Accountant" is. Instead, they provide the **protocol** for these behaviors. 
+The harness files ~neuro.lisp~ and ~symbolic.lisp~ are intentionally "Thin Harnesses." They do not know how to talk to Google Gemini or Anthropic Claude; they do not know what a "Bouncer" or a "Token Accountant" is. Instead, they provide the **protocol** for these behaviors. 
 
-By moving the "Fat" logic (vendor APIs, security rules) into **Skills**, we achieve total sovereign decoupling. You can swap your LLM provider or your security policy without ever touching the kernel.
+By moving the "Fat" logic (vendor APIs, security rules) into **Skills**, we achieve total sovereign decoupling. You can swap your LLM provider or your security policy without ever touching the harness.
 
 * Associative Engine (neuro.lisp)
-The Associative engine is the "System 1" of our Lisp Machine. It handles the interface with LLM providers, providing a unified associative space regardless of the underlying model.
+The Associative engine handles the interface with LLM providers, providing a unified associative space regardless of the underlying model.
 
 ** Package Context
 #+begin_src lisp :tangle ../src/neuro.lisp
@@ -46,7 +38,7 @@ The Associative engine is the "System 1" of our Lisp Machine. It handles the int
 #+end_src
 
 ** Associative Backends Registry
-The kernel maintains a neutral registry of backends. Skills (like the LLM Gateway) register themselves here to provide actual neural reasoning capabilities.
+The harness maintains a neutral registry of backends. Skills (like the LLM Gateway) register themselves here to provide actual neural reasoning capabilities.
 
 #+begin_src lisp :tangle ../src/neuro.lisp
 (defvar *neuro-backends* (make-hash-table :test 'equal))
@@ -74,20 +66,20 @@ A hook for dynamic model selection. A skill might look at the current context an
 #+end_src
 
 ** Associative Dispatch (ask-neuro)
-This is the primary entrance to System 1. It implements two modes of operation:
+This is the primary entrance to the Associative engine. It implements two modes of operation:
 1. **Sequential Cascade:** Attempt backends one by one until success.
 2. **Parallel Consensus:** Query multiple backends simultaneously to resolve hallucinations or select the best "thought."
 
 #+begin_src mermaid
 sequenceDiagram
-    participant Kernel
-    participant ProviderA as OpenRouter
-    participant ProviderB as Gemini
-    Kernel->>ProviderA: Parallel Query
-    Kernel->>ProviderB: Parallel Query
-    ProviderA-->>Kernel: Suggestion A
-    ProviderB-->>Kernel: Suggestion B
-    Kernel->>Kernel: Resolve Consensus
+    participant Harness
+    participant ProviderA as LLM 1
+    participant ProviderB as LLM 2
+    Harness->>ProviderA: Parallel Query
+    Harness->>ProviderB: Parallel Query
+    ProviderA-->>Harness: Suggestion A
+    ProviderB-->>Harness: Suggestion B
+    Harness->>Harness: Resolve Consensus
 #+end_src
 
 #+begin_src lisp :tangle ../src/neuro.lisp
@@ -210,7 +202,7 @@ To call a tool, you MUST use:
 #+end_src
 
 ** Prompt Meta-Cognition (distill-prompt)
-Even System 1 can benefit from introspection. This function allows the agent to observe its own prompts and successful results to distill them into reusable templates.
+Even the Associative engine can benefit from introspection. This function allows the agent to observe its own prompts and successful results to distill them into reusable templates.
 
 #+begin_src lisp :tangle ../src/neuro.lisp
 (defun distill-prompt (full-prompt successful-output)
@@ -220,7 +212,7 @@ Even System 1 can benefit from introspection. This function allows the agent to 
 
 
 * Deliberate Engine (symbolic.lisp)
-The Deliberate engine is the "System 2" of our Lisp Machine. It is the deterministic gatekeeper that ensures all proposed actions—whether from the user or from the neural engine—are safe and logically valid.
+The Deliberate engine is the deterministic gatekeeper that ensures all proposed actions—whether from the user or from the neural engine—are safe and logically valid.
 
 As a "Thin Harness," the Deliberate engine does not contain specific security rules or task integrity checks. Instead, it provides a priority-based dispatcher that iterates through all loaded skills to validate or transform proposed actions.
 
