@@ -45,10 +45,10 @@ The harness maintains a neutral registry of backends. Skills (like the LLM Gatew
 #+end_src
 
 ** Provider Cascade
-Intelligence is often a matter of availability. The cascade defines the order in which backends are attempted. Skills can dynamically override this list to optimize for cost, speed, or privacy.
+The ordered list of backends to attempt for neural reasoning. This list is ~nil~ by default and must be populated by skills (e.g., the LLM Gateway or Token Accountant) during the harness boot sequence.
 
 #+begin_src lisp :tangle ../src/neuro.lisp
-(defvar *provider-cascade* '(:openrouter :gemini-api))
+(defvar *provider-cascade* nil)
 #+end_src
 
 ** Register Associative Backend

@@ -2,7 +2,7 @@
 
 (defvar *neuro-backends* (make-hash-table :test 'equal))
 
-(defvar *provider-cascade* '(:openrouter :gemini-api))
+(defvar *provider-cascade* nil)
 
 (defun register-neuro-backend (name fn) (setf (gethash name *neuro-backends*) fn))
 
