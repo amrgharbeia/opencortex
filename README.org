@@ -1,56 +1,56 @@
-# org-agent: A Self-Writing Agentic Environment in Common Lisp
+#+TITLE: org-agent: A Self-Writing Agentic Environment in Common Lisp
 
-**`org-agent`** is a minimalist, extensible AI agent framework designed to manage and continuously organize your personal knowledge base. It transforms a static collection of plaintext notes into a live, programmable [Memex](https://en.wikipedia.org/wiki/Memex)—an automated, personalized memory system where humans and AI collaborate in the exact same workspace.
+*org-agent* is a minimalist, extensible AI agent framework designed to manage and continuously organize your personal knowledge base. It transforms a static collection of plaintext notes into a live, programmable [[https://en.wikipedia.org/wiki/Memex][Memex]]—an automated, personalized memory system where humans and AI collaborate in the exact same workspace.
 
-## The Problem with Current AI Agents
+* The Problem with Current AI Agents
 
 The current ecosystem of AI agents (typically built in Python or TypeScript) is overwhelmingly built on architectural choices that prioritize rapid prototyping over long-term reliability, security, and self-modification:
 
-1. **The Format Trap (Markdown & JSON):** Most agents force a painful translation layer. Humans write in Markdown, which lacks a strict Abstract Syntax Tree (AST)—a rigorous, nested representation of data that machines need to parse context reliably. Machines, in turn, output JSON or YAML, which are hostile formats for human thought and note-taking. The result is a fractured workspace where the agent's memory and the human's memory are fundamentally incompatible. Furthermore, because Markdown cannot be efficiently collapsed, agents are forced to consume massive amounts of tokens by reading entire files just to find a single paragraph.
-2. **The Language Trap (Python & TypeScript):** Python and TypeScript are fantastic for gluing together APIs or training models, but they are poorly suited for an agent that needs to safely read, write, and execute its own code at runtime. Their underlying structures are complex and opaque, making autonomous self-editing incredibly brittle and dangerous.
-3. **The Probabilistic Trap:** Almost all modern agents rely entirely on *probabilistic* reasoning. We ask an AI model to guess a shell command or write a Python script, and then blindly pipe that output to a terminal. Without a rigorous, *deterministic* layer to formally verify the model's proposals before execution, these systems are fundamentally unsafe. 
+1. *The Format Trap (Markdown & JSON):* Most agents force a painful translation layer. Humans write in Markdown, which lacks a strict Abstract Syntax Tree (AST)—a rigorous, nested representation of data that machines need to parse context reliably. Machines, in turn, output JSON or YAML, which are hostile formats for human thought and note-taking. The result is a fractured workspace where the agent's memory and the human's memory are fundamentally incompatible. Furthermore, because Markdown cannot be efficiently collapsed, agents are forced to consume massive amounts of tokens by reading entire files just to find a single paragraph.
+2. *The Language Trap (Python & TypeScript):* Python and TypeScript are fantastic for gluing together APIs or training models, but they are poorly suited for an agent that needs to safely read, write, and execute its own code at runtime. Their underlying structures are complex and opaque, making autonomous self-editing incredibly brittle and dangerous.
+3. *The Probabilistic Trap:* Almost all modern agents rely entirely on /probabilistic/ reasoning. We ask an AI model to guess a shell command or write a Python script, and then blindly pipe that output to a terminal. Without a rigorous, /deterministic/ layer to formally verify the model's proposals before execution, these systems are fundamentally unsafe. 
 
-## The Vision: A Modern, Homoiconic Memex
+* The Vision: A Modern, Homoiconic Memex
 
-`org-agent` abandons these fragile paradigms by returning to first principles and embracing two historically powerful technologies: **Org-mode** and **Common Lisp**. 
+org-agent abandons these fragile paradigms by returning to first principles and embracing two historically powerful technologies: *Org-mode* and *Common Lisp*. 
 
-### 1. Org-mode: The Universal Language
-Instead of wrestling with Markdown parsers or hiding data in opaque databases, `org-agent` mandates that **Org-mode is the native AST for both humans and machines.** 
+** 1. Org-mode: The Universal Language
+Instead of wrestling with Markdown parsers or hiding data in opaque databases, org-agent mandates that *Org-mode is the native AST for both humans and machines.* 
 
 Org-mode is unique because it seamlessly brings together human-readable prose, structured metadata (properties and tags), lifecycle states (TODO/DONE), and executable code blocks into a single plain-text file. The code is the data, and the data is the interface. When the agent "remembers" a fact or schedules a task, it writes an Org headline. You read exactly what the agent reads.
 
-**The Token Advantage:** Because Org-mode is a strict outline, `org-agent` never needs to send an entire document to an AI model. It uses **Sparse Trees** to send a high-level table of contents, zooming in only on the specific headline relevant to the task. This drastically reduces token consumption and eliminates context window overflow.
+*The Token Advantage:* Because Org-mode is a strict outline, org-agent never needs to send an entire document to an AI model. It uses *Sparse Trees* to send a high-level table of contents, zooming in only on the specific headline relevant to the task. This drastically reduces token consumption and eliminates context window overflow.
 
-### 2. Common Lisp: The Engine of Self-Modification
-There is a beautiful irony to `org-agent`: Common Lisp was invented in 1958 specifically to achieve Artificial Intelligence, and it has been waiting nearly 70 years for *this exact moment* in computing history. 
+** 2. Common Lisp: The Engine of Self-Modification
+There is a beautiful irony to org-agent: Common Lisp was invented in 1958 specifically to achieve Artificial Intelligence, and it has been waiting nearly 70 years for /this exact moment/ in computing history. 
 
-Lisp possesses a unique property called **Homoiconicity**: the primary representation of the program is also a data structure (nested lists) within the language itself. Because Lisp code *is* Lisp data, it is trivially easy for an AI to generate, manipulate, and safely evaluate new tools at runtime. This makes Lisp the ultimate, un-brittle language for a "self-writing" agent.
+Lisp possesses a unique property called *Homoiconicity*: the primary representation of the program is also a data structure (nested lists) within the language itself. Because Lisp code /is/ Lisp data, it is trivially easy for an AI to generate, manipulate, and safely evaluate new tools at runtime. This makes Lisp the ultimate, un-brittle language for a "self-writing" agent.
 
-### 3. The Neuro-Protosymbolic Loop
-`org-agent` does not let AI models touch your system directly. Instead, it splits cognition into two distinct engines:
-- **The Associative Engine (The AI Models):** Provides semantic understanding, multimodal translation, and probabilistic creativity. It looks at your Memex and proposes an action by writing a strictly formatted Lisp s-expression.
-- **The Deliberate Engine (Common Lisp):** Provides deterministic logic, physics, and safety. It intercepts the model's Lisp proposal, formally verifies its structure against your security rules, and only executes it if it is mathematically sound.
+** 3. The Neuro-Protosymbolic Loop
+org-agent does not let AI models touch your system directly. Instead, it splits cognition into two distinct engines:
+- *The Associative Engine (The AI Models):* Provides semantic understanding, multimodal translation, and probabilistic creativity. It looks at your Memex and proposes an action by writing a strictly formatted Lisp s-expression.
+- *The Deliberate Engine (Common Lisp):* Provides deterministic logic, physics, and safety. It intercepts the model's Lisp proposal, formally verifies its structure against your security rules, and only executes it if it is mathematically sound.
 
-Crucially, the Deliberate engine is **continuously progressive**. Right now, it starts by acting as a strict security bouncer—enforcing rules and bounding the AI's actions. But as the system matures, the Deliberate engine will progressively take over more and more of the actual reasoning, reducing the AI models' involvement to a mere semantic translation layer for the messy outside world. We are moving from a *neuro-protosymbolic* system today, toward a fully autonomous *neurosymbolic* Lisp machine tomorrow.
+Crucially, the Deliberate engine is *continuously progressive*. Right now, it starts by acting as a strict security bouncer—enforcing rules and bounding the AI's actions. But as the system matures, the Deliberate engine will progressively take over more and more of the actual reasoning, reducing the AI models' involvement to a mere semantic translation layer for the messy outside world. We are moving from a /neuro-protosymbolic/ system today, toward a fully autonomous /neurosymbolic/ Lisp machine tomorrow.
 
-## Architecture: Thin Harness, Fat Skills
+* Architecture: Thin Harness, Fat Skills
 
-To guarantee long-term stability, `org-agent` enforces a strict architectural boundary inspired by the "thin harness, fat skills" philosophy.
+To guarantee long-term stability, org-agent enforces a strict architectural boundary inspired by the "thin harness, fat skills" philosophy.
 
-### The Minimalist Harness
+** The Minimalist Harness
 The Lisp microkernel does almost no actual "work." It is a thin, unbreakable harness strictly responsible for three things:
-1. **The Object Store:** Maintaining the live graph of your Memex in RAM.
-2. **The Communication Protocol:** Managing the secure bridge between the agent and the outside world. While power users can connect natively via Emacs or Vim, the vast majority of users will interact with `org-agent` exclusively through chat clients (like Telegram, Signal, or Matrix), web dashboards, or a Terminal UI (TUI). The harness doesn't care; it just securely routes the messages.
-3. **The Cognitive Loop:** Moving signals through the Perceive -> Associative -> Deliberate -> Dispatch pipeline.
+1. *The Object Store:* Maintaining the live graph of your Memex in RAM.
+2. *The Communication Protocol:* Managing the secure bridge between the agent and the outside world. While power users can connect natively via Emacs or Vim, the vast majority of users will interact with org-agent exclusively through chat clients (like Telegram, Signal, or Matrix), web dashboards, or a Terminal UI (TUI). The harness doesn't care; it just securely routes the messages.
+3. *The Cognitive Loop:* Moving signals through the Perceive -> Associative -> Deliberate -> Dispatch pipeline.
 
-Everything else—AI routing, vector embeddings, shell execution, or web browsing—is pushed entirely out of the harness and into **Fat Skills**.
+Everything else—AI routing, vector embeddings, shell execution, or web browsing—is pushed entirely out of the harness and into *Fat Skills*.
 
-### Literate, Single-File Skills
+** Literate, Single-File Skills
 In standard agent frameworks, adding a new capability (like "Search the Web") requires creating a sprawling folder with a Python script, a JSON configuration file, and a separate text file for the AI prompt. This creates massive structural bloat.
 
-In `org-agent`, a Skill is simply a **single `.org` file**. 
+In org-agent, a Skill is simply a *single .org file*. 
 
-Using **Literate Programming**, this single file contains everything:
+Using *Literate Programming*, this single file contains everything:
 - The human-readable documentation and architectural intent.
 - The system prompt instructions for the Associative Engine.
 - The deterministic Lisp code for the Deliberate engine's safety checks.
@@ -58,63 +58,63 @@ Using **Literate Programming**, this single file contains everything:
 
 When the system boots, it parses these single files, mathematically proves their dependencies, and compiles them directly into the live Lisp image.
 
-### The Anatomy: Three Data Stores
+** The Anatomy: Three Data Stores
 The agent's "mind" is not a transient chat session; it is a durable, stateful architecture consisting of three layers:
-1. **The Linguistic Substrate (Plaintext Files):** The human-readable Source of Truth on your hard drive. You can edit these files in any text editor, and the agent will instantly perceive the changes.
-2. **The Lisp Object Store (RAM):** The "Active Brain," a live, threaded graph of Lisp objects representing every headline, paragraph, and tag in your Memex. It allows the agent to navigate your life instantly without constantly re-reading files.
-3. **The Telemetry Store (External):** A high-volume database for sub-symbolic sensory data (e.g., smart home logs or system metrics), which the agent monitors and distills.
+1. *The Linguistic Substrate (Plaintext Files):* The human-readable Source of Truth on your hard drive. You can edit these files in any text editor, and the agent will instantly perceive the changes.
+2. *The Lisp Object Store (RAM):* The "Active Brain," a live, threaded graph of Lisp objects representing every headline, paragraph, and tag in your Memex. It allows the agent to navigate your life instantly without constantly re-reading files.
+3. *The Telemetry Store (External):* A high-volume database for sub-symbolic sensory data (e.g., smart home logs or system metrics), which the agent monitors and distills.
 
-### The Psychology: The 2x2 Cognitive Matrix
+** The Psychology: The 2x2 Cognitive Matrix
 The agent operates on a matrix that balances cognitive speed with cognitive state:
 
-| | *Associative (Neural/Intuitive)* | *Deliberate (Symbolic/Logical)* |
+| | Associative (Neural/Intuitive) | Deliberate (Symbolic/Logical) |
 | :--- | :--- | :--- |
-| *Foreground (Active)* | *The Interface:* Fast AI models for conversation, multimodal ingestion, and semantic understanding. | *The Steward:* Lisp engine that safely retrieves requested data from the Memex and enforces security rules while the Interface keeps you engaged. |
-| *Background (Passive)* | *The Editor:* Deep AI models finding hidden patterns while you sleep. | *The Librarian:* Lisp engine continuously maintaining data integrity and filing away loose notes. |
+| Foreground (Active) | *The Interface:* Fast AI models for conversation, multimodal ingestion, and semantic understanding. | *The Steward:* Lisp engine that safely retrieves requested data from the Memex and enforces security rules while the Interface keeps you engaged. |
+| Background (Passive) | *The Editor:* Deep AI models finding hidden patterns while you sleep. | *The Librarian:* Lisp engine continuously maintaining data integrity and filing away loose notes. |
 
-### The Physiology: Five Core Processes
-1. **Perception:** Automatically vectorizes your input and sets the "Foreground Focus" so the agent knows exactly what you are looking at or talking about.
-2. **Reasoning:** Uses Lisp-native logic to reconcile contradictions and enforce the physics of the Memex.
-3. **Distillation:** A Background loop that reads your chronological daily logs and automatically extracts concepts into permanent, evergreen notes.
-4. **Reflection:** A heartbeat-driven process that finds forgotten links and maintains the structural health of the system.
-5. **Sensation:** A converter that monitors the raw flood of telemetry data and turns significant anomalies into actionable `TODO` items on your list.
+** The Physiology: Five Core Processes
+1. *Perception:* Automatically vectorizes your input and sets the "Foreground Focus" so the agent knows exactly what you are looking at or talking about.
+2. *Reasoning:* Uses Lisp-native logic to reconcile contradictions and enforce the physics of the Memex.
+3. *Distillation:* A Background loop that reads your chronological daily logs and automatically extracts concepts into permanent, evergreen notes.
+4. *Reflection:* A heartbeat-driven process that finds forgotten links and maintains the structural health of the system.
+5. *Sensation:* A converter that monitors the raw flood of telemetry data and turns significant anomalies into actionable TODO items on your list.
 
-## The Ecosystem: Core Skill Groups
+* The Ecosystem: Core Skill Groups
 
-Because the harness is deliberately thin, every capability of `org-agent` is implemented as a single-file Literate Skill. This allows you to hot-reload, modify, or completely remove features on the fly without restarting the core environment. 
+Because the harness is deliberately thin, every capability of org-agent is implemented as a single-file Literate Skill. This allows you to hot-reload, modify, or completely remove features on the fly without restarting the core environment. 
 
 The ecosystem is divided into five primary skill groups:
 
-### 1. Gateways (How you talk to the agent)
+** 1. Gateways (How you talk to the agent)
 The agent meets you where you are. While it natively integrates with text editors, it features standalone gateway skills for modern interfaces. 
-- **Chat Gateways:** Interact securely from your phone via clients like Matrix, Signal, or Telegram.
-- **Web & TUI Dashboards:** High-level visual overviews of your agent's background processes and telemetry.
+- *Chat Gateways:* Interact securely from your phone via clients like Matrix, Signal, or Telegram.
+- *Web & TUI Dashboards:* High-level visual overviews of your agent's background processes and telemetry.
 
-### 2. Cognition & Memory (How the agent thinks)
-- **Model Routing:** Dynamically routes requests to the best available Associative model (e.g., Anthropic, OpenAI, Local Llama) based on task complexity or privacy needs.
-- **Peripheral Vision & Embeddings:** Manages the vectorization of your notes, ensuring the agent retrieves semantically relevant context via sparse trees.
-- **The Ontology Scribe:** Centralizes all rules regarding Org, GTD, and Org-Roam parsing into a single background subroutine, eliminating parser confusion across the codebase.
+** 2. Cognition & Memory (How the agent thinks)
+- *Model Routing:* Dynamically routes requests to the best available Associative model (e.g., Anthropic, OpenAI, Local Llama) based on task complexity or privacy needs.
+- *Peripheral Vision & Embeddings:* Manages the vectorization of your notes, ensuring the agent retrieves semantically relevant context via sparse trees.
+- *The Ontology Scribe:* Centralizes all rules regarding Org, GTD, and Org-Roam parsing into a single background subroutine, eliminating parser confusion across the codebase.
 
-### 3. Actuators (How the agent affects the world)
-- **The Shell Actuator:** Safely executes whitelisted terminal commands to interact with the host OS.
-- **The Playwright Bridge:** Grants the agent the ability to spin up a headless browser, navigate the web, read documentation, and interact with web applications.
+** 3. Actuators (How the agent affects the world)
+- *The Shell Actuator:* Safely executes whitelisted terminal commands to interact with the host OS.
+- *The Playwright Bridge:* Grants the agent the ability to spin up a headless browser, navigate the web, read documentation, and interact with web applications.
 
-### 4. Security & Alignment (How the agent stays safe)
-- **Formal Verification:** The mathematical gatekeeper that proves a proposed action is safe (e.g., ensuring file writes are confined strictly to your Memex directory) before execution.
-- **The Credentials Vault:** A secure, masked enclave that prevents AI models from ever reading your raw API keys or `.env` files.
+** 4. Security & Alignment (How the agent stays safe)
+- *Formal Verification:* The mathematical gatekeeper that proves a proposed action is safe (e.g., ensuring file writes are confined strictly to your Memex directory) before execution.
+- *The Credentials Vault:* A secure, masked enclave that prevents AI models from ever reading your raw API keys or .env files.
 
-### 5. Background Subroutines (The Autonomous Workers)
-- **The Journal Scribe:** Periodically distills messy chronological logs into clean, permanent notes.
-- **The Gardener:** A heartbeat-driven worker that flags broken links, finds orphaned ideas, and maintains the structural health of your Memex.
+** 5. Background Subroutines (The Autonomous Workers)
+- *The Journal Scribe:* Periodically distills messy chronological logs into clean, permanent notes.
+- *The Gardener:* A heartbeat-driven worker that flags broken links, finds orphaned ideas, and maintains the structural health of your Memex.
 
-## The Long-Term Vision: A Modern Lisp Machine
+* The Long-Term Vision: A Modern Lisp Machine
 
-Today, `org-agent` relies on external tools to interact with the world. We use Python wrappers for web browsing, external binaries for chat, and external AI models for semantic reasoning. 
+Today, org-agent relies on external tools to interact with the world. We use Python wrappers for web browsing, external binaries for chat, and external AI models for semantic reasoning. 
 
 But the long-term trajectory of this project is to progressively pull those boundaries inward. 
 
-As the **Deliberate Engine** grows more sophisticated, it will take on more of the heavy logical reasoning, utilizing native Lisp unification and logic engines. The Associative AI models will be relegated to what they do best: acting as a natural language translation layer to make sense of the messy, unstructured outside world.
+As the *Deliberate Engine* grows more sophisticated, it will take on more of the heavy logical reasoning, utilizing native Lisp unification and logic engines. The Associative AI models will be relegated to what they do best: acting as a natural language translation layer to make sense of the messy, unstructured outside world.
 
-We will systematically rewrite external dependencies in Common Lisp. The endgame of `org-agent` is not just to be an AI assistant, but to resurrect the dream of the **Lisp Machine**: a unified computing environment where the operating system, the text editor, the web browser, and the AI agent all share the exact same memory space, the exact same AST, and the exact same language. 
+We will systematically rewrite external dependencies in Common Lisp. The endgame of org-agent is not just to be an AI assistant, but to resurrect the dream of the *Lisp Machine*: a unified computing environment where the operating system, the text editor, the web browser, and the AI agent all share the exact same memory space, the exact same AST, and the exact same language. 
 
 Zero Inter-Process Communication (IPC). Zero translation latency. Total synergy between human thought and machine actuation.
