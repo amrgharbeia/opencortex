@@ -17,7 +17,7 @@ This architecture is directly inspired by Daniel Kahneman's /Thinking, Fast and 
 In our loop, System 1 never speaks to the world directly. It only proposes "thoughts" to System 2. System 2, the Lisp kernel, evaluates these thoughts against a chain of symbolic safety gates (Skills) before any action is actually dispatched to an actuator (Emacs, Shell, etc.).
 
 #+begin_src mermaid
-graph TD
+flowchart TD
     Stimulus[External Stimulus/Signal] --> Perceive[Perceive: Skill Trigger]
     Perceive --> Associative[Associative Engine: System 1/LLM]
     Associative --> Proposal[Lisp Action Proposal]
@@ -79,7 +79,7 @@ This is the primary entrance to System 1. It implements two modes of operation:
 2. **Parallel Consensus:** Query multiple backends simultaneously to resolve hallucinations or select the best "thought."
 
 #+begin_src mermaid
-sequence-diagram
+sequenceDiagram
     participant Kernel
     participant ProviderA as OpenRouter
     participant ProviderB as Gemini
@@ -238,7 +238,7 @@ This sequential chain allows for multi-layered defense:
 3.  **High Priority Gates:** Absolute security blocks (e.g., the Bouncer blocking shell access).
 
 #+begin_src mermaid
-graph LR
+flowchart LR
     Proposal[Proposal] --> SkillA[Skill A: Priority 10]
     SkillA --> SkillB[Skill B: Priority 50]
     SkillB --> SkillC[Skill C: Priority 100]
