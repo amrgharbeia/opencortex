@@ -42,21 +42,21 @@
       ;; 1. Secret Exposure Vector (Hard Block)
       ((and text (bouncer-scan-secrets text))
        (let ((secret-name (bouncer-scan-secrets text)))
-         (kernel-log "SECURITY VIOLATION: Blocked leak of secret ~a" secret-name)
+         (harness-log "SECURITY VIOLATION: Blocked leak of secret ~a" secret-name)
          `(:type :log :payload (:level :error :text ,(format nil "Action blocked: Potential exposure of ~a" secret-name)))))
 
       ;; 2. Network Exfiltration Vector (Authorization Required)
       ((and (or (eq target :shell) 
                 (and (eq target :tool) (equal (getf payload :tool) "shell")))
             (bouncer-check-network-exfil cmd))
-       (kernel-log "SECURITY WARNING: External network call detected. Queuing for approval.")
+       (harness-log "SECURITY WARNING: External network call detected. Queuing for approval.")
        `(:type :EVENT :payload (:sensor :approval-required :action ,action)))
 
       ;; 3. High-Impact Target Vector (Authorization Required)
       ((or (member target '(:shell))
            (and (eq target :tool) (member (getf payload :tool) '("shell" "repair-file") :test #'string=))
            (and (eq target :emacs) (eq (getf payload :action) :eval)))
-       (kernel-log "SECURITY: High-impact action ~a requires approval." (or (getf payload :tool) target))
+       (harness-log "SECURITY: High-impact action ~a requires approval." (or (getf payload :tool) target))
        `(:type :EVENT :payload (:sensor :approval-required :action ,action)))
 
       ;; 4. Default Pass
@@ -71,7 +71,7 @@
       (let* ((tags (getf (org-object-attributes node) :TAGS))
              (action-str (getf (org-object-attributes node) :ACTION)))
         (when (and (member "FLIGHT_PLAN" tags :test #'string-equal) action-str)
-          (kernel-log "BOUNCER: Found approved flight plan ~a. Re-injecting..." (org-object-id node))
+          (harness-log "BOUNCER: Found approved flight plan ~a. Re-injecting..." (org-object-id node))
           (let ((action (ignore-errors (read-from-string action-str))))
             (when action
               ;; Mark as approved to bypass the gate
@@ -97,7 +97,7 @@
                   (:approval-required
                    (let* ((blocked-action (getf payload :action))
                           (id (org-id-new)))
-                     (kernel-log "BOUNCER: Creating flight plan node...")
+                     (harness-log "BOUNCER: Creating flight plan node...")
                      ;; Create the node in Emacs (or inbox)
                      (list :type :REQUEST :target :emacs :action :insert-node 
                            :id id :attributes `(:TITLE "Flight Plan: High-Risk Action" 

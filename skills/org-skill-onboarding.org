@@ -67,4 +67,4 @@ The Onboarding Protocol aims for a modular, extensible, and interactive configur
     Generates the `.env` file from a template, populating it with the configuration data gathered from the other calibration functions. Returns `T` on success, `NIL` on failure.
 
 *** `validate-env-variables -> plist`
-    Validates .env variables are set and functional for the kernel, actuators, and models. Returns a plist `(:kernel t :actuators t :models t)`. This is the main test before boot.
+    Validates .env variables are set and functional for the harness, actuators, and models. Returns a plist `(:kernel t :actuators t :models t)`. This is the main test before boot.

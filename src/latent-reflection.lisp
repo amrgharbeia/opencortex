@@ -33,7 +33,7 @@
                (if (and (eq sensor :heartbeat)
                         (> (- now *last-reflection-time*) *reflection-interval*))
                    (progn
-                     (kernel-log "GARDENER - Initiating Latent Reflection...")
+                     (harness-log "GARDENER - Initiating Latent Reflection...")
                      (setf *last-reflection-time* now)
                      t)
                    nil)))

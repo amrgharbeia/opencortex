@@ -49,7 +49,7 @@ Define the core functional and security requirements for the neurosymbolic daemo
 - *Homoiconic Memory:* Use Org-mode AST as the primary data structure for both human and machine.
 - *Deterministic Reasoning:* Common Lisp (SBCL) for high-performance, threaded symbolic logic.
 - *Cognitive Loop:* A strict four-stage pipeline: Perceive -> Think (Associative) -> Decide (Deliberate) -> Act.
-- *Minimalist Core:* The kernel handles only the loop, object-store, and communication; all else is a skill.
+- *Minimalist Core:* the harness handles only the loop, object-store, and communication; all else is a skill.
 - *Security by Default:* Reader safety (*read-eval* disabled) and package-based skill jailing.
 
 ** 3. Success Criteria
@@ -64,7 +64,7 @@ Define the core functional and security requirements for the neurosymbolic daemo
 :END:
 
 ** 1. Architectural Intent
-The kernel is transport-agnostic and business-logic-agnostic. It communicates with external actuators (Emacs, Web, Signal) via the Org-Agent Communication Protocol (OACP).
+the harness is transport-agnostic and business-logic-agnostic. It communicates with external actuators (Emacs, Web, Signal) via the Org-Agent Communication Protocol (OACP).
 
 ** 2. Semantic Interfaces
 #+begin_src lisp
@@ -139,7 +139,7 @@ Follow the Core Invariants:
               (let ((payload (getf action :payload)))
                 (if (and payload (search "proprietary" (format nil "~s" payload)))
                     (progn
-                      (org-agent:kernel-log "DELIBERATE [Agent]: Sovereignty violation suspected. Blocking action.")
+                      (org-agent:harness-log "DELIBERATE [Agent]: Sovereignty violation suspected. Blocking action.")
                       nil)
                     action))))
 #+end_src

@@ -30,8 +30,8 @@
     
     ;; Since cognitive-loop is recursive and our core hooks inject a NEW stimulus,
     ;; we can't easily capture it in a single synchronous call without mocking cognitive-loop.
-    ;; However, we can check if kernel-log received the "SYSTEM ERROR" message.
-    (kernel-log "CLEAN LOG")
+    ;; However, we can check if harness-log received the "SYSTEM ERROR" message.
+    (harness-log "CLEAN LOG")
     (org-agent:process-signal stimulus)
     (let ((logs (context-get-system-logs 20)))
       ;; We expect the pipeline to at least acknowledge the tool error
@@ -46,7 +46,7 @@
     :neuro (lambda (ctx) (error "CRITICAL BRAIN FAILURE"))
     :symbolic nil)
   
-  (kernel-log "CLEAN LOG")
+  (harness-log "CLEAN LOG")
   (org-agent:process-signal '(:type :EVENT :payload (:sensor :test)))
   (let ((logs (context-get-system-logs 20)))
     ;; Check for the PIPELINE CRASH log

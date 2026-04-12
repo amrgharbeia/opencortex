@@ -19,7 +19,7 @@
         node
         (let ((new-id (org-agent:org-id-get-create)))
           (setf (getf node :properties) (append props (list :ID new-id)))
-          (kernel-log "MEMORY - Injected standard ID ~a" new-id)
+          (harness-log "MEMORY - Injected standard ID ~a" new-id)
           node))))
 
 (defun memory-normalize-ast (ast)
@@ -40,13 +40,13 @@
 (defun memory-org-to-json (source-path)
   "Routes to the Emacs-based Org-JSON bridge."
   ;; Future implementation will use the org-json-convert CLI tool
-  (kernel-log "MEMORY - Parsing ~a to JSON..." source-path)
+  (harness-log "MEMORY - Parsing ~a to JSON..." source-path)
   nil)
 
 (defun memory-json-to-org (ast)
   "Materializes a JSON AST into Org-mode text."
   ;; Placeholder for org-element-interpret-data equivalent
-  (kernel-log "MEMORY - Rendering AST to text...")
+  (harness-log "MEMORY - Rendering AST to text...")
   "")
 
 (progn

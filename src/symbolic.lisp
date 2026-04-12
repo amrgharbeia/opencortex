@@ -21,7 +21,7 @@
         ;; If any gate returns a LOG or EVENT (blocking/intercepting), stop and return it.
         (when (and (listp current-action) 
                    (member (getf current-action :type) '(:LOG :EVENT :log :event)))
-          (kernel-log "DELIBERATE: Intercepted by skill '~a'~%" (skill-name skill))
+          (harness-log "DELIBERATE: Intercepted by skill '~a'~%" (skill-name skill))
           (return-from decide current-action))))
     
     current-action))

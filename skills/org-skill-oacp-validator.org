@@ -7,7 +7,7 @@
 #+FILETAGS: :protocol:oacp:security:validation:psf:
 
 * Overview
-The *OACP Schema Validator* skill provides deep structural validation for all messages entering the org-agent kernel. It ensures that every property list adheres to a strict schema, preventing malformed data from causing kernel-level errors.
+The *OACP Schema Validator* skill provides deep structural validation for all messages entering the org-agent kernel. It ensures that every property list adheres to a strict schema, preventing malformed data from causing harness-level errors.
 
 * Phase A: Demand (PRD)
 :PROPERTIES:

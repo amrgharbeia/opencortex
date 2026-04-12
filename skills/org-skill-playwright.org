@@ -69,7 +69,7 @@ Invokes the Python bridge and parses its JSON output.
 #+end_src
 
 ** Cognitive Tool: Browser
-Register the high-fidelity browsing tool with the kernel.
+Register the high-fidelity browsing tool with the harness.
 
 #+begin_src lisp :tangle ../src/playwright.lisp
 (def-cognitive-tool :browser 

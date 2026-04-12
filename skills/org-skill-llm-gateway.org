@@ -31,7 +31,7 @@ Provide a secure, non-redundant interface for multi-provider LLM interaction.
 :END:
 
 ** 1. Architectural Intent
-The gateway utilizes a functional dispatch pattern. A single entry point, `execute-llm-request`, resolves the provider-specific nuances (URLs, headers, JSON structures) while exposing a uniform interface to the kernel.
+The gateway utilizes a functional dispatch pattern. A single entry point, `execute-llm-request`, resolves the provider-specific nuances (URLs, headers, JSON structures) while exposing a uniform interface to the harness.
 
 ** 2. Semantic Interfaces
 #+begin_src lisp
@@ -88,7 +88,7 @@ This is the primary actuator for neural reasoning. It handles the specific JSON 
   (let ((api-key (vault-get-secret provider :type :api-key))
         (full-prompt (format nil "~a~%~%Prompt: ~a" system-prompt prompt)))
 
-    (kernel-log "SYSTEM 1: Requesting ~a (Model: ~a) [Key: ~a]" 
+    (harness-log "SYSTEM 1: Requesting ~a (Model: ~a) [Key: ~a]" 
                 provider (or model "default") (vault-mask-string api-key))
 
     (case provider
@@ -157,7 +157,7 @@ Register the unified gateway as a cognitive tool.
                                :provider (getf args :provider)
                                :model (getf args :model))))
 #+end_src
-Register each supported provider with the kernel's neural registry.
+Register each supported provider with the harness's neural registry.
 
 #+begin_src lisp :tangle ../src/llm-gateway.lisp
 (dolist (p '(:anthropic :gemini-api :gemini-web :groq :ollama :openai :openrouter))

@@ -39,7 +39,7 @@
     (if (uiop:file-exists-p full-path) (uiop:read-file-string full-path) nil)))
 
 (defun context-get-system-logs (&optional (limit 20))
-  "Retrieves the most recent lines from the kernel's internal log."
+  "Retrieves the most recent lines from the harness's internal log."
   (bt:with-lock-held (*logs-lock*)
     (let ((count (min limit (length *system-logs*)))) (subseq *system-logs* 0 count))))
 

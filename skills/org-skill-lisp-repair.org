@@ -7,7 +7,7 @@
 #+FILETAGS: :system:repair:syntax:lisp:psf:
 
 * Overview
-The *Lisp Repair Syntax Gate* asynchronously intercepts `:syntax-error` events emitted by the kernel when System 1 (LLM) proposals fail to parse. It performs deterministic or neural repairs and re-injects the corrected action into the pipeline.
+The *Lisp Repair Syntax Gate* asynchronously intercepts `:syntax-error` events emitted by the harness when System 1 (LLM) proposals fail to parse. It performs deterministic or neural repairs and re-injects the corrected action into the pipeline.
 
 * Implementation
 
@@ -56,20 +56,20 @@ Reacts to syntax error events and transforms them into repaired requests.
               (let* ((payload (getf context :payload))
                      (code (getf payload :code))
                      (error-msg (getf payload :error)))
-                (kernel-log "SYNTAX GATE: Reacting to broken Lisp stimulus...")
+                (harness-log "SYNTAX GATE: Reacting to broken Lisp stimulus...")
                 (let ((fast-fix (deterministic-repair code)))
                   (handler-case
                       (let ((repaired (read-from-string fast-fix)))
-                        (kernel-log "SYNTAX GATE: Deterministic repair SUCCESS.")
+                        (harness-log "SYNTAX GATE: Deterministic repair SUCCESS.")
                         repaired)
                     (error ()
-                      (kernel-log "SYNTAX GATE: Deterministic repair failed. Escalating...")
+                      (harness-log "SYNTAX GATE: Deterministic repair failed. Escalating...")
                       (let ((deep-fix (neural-repair code error-msg)))
                         (handler-case
                             (let ((repaired (read-from-string deep-fix)))
-                              (kernel-log "SYNTAX GATE: Neural repair SUCCESS.")
+                              (harness-log "SYNTAX GATE: Neural repair SUCCESS.")
                               repaired)
                           (error ()
-                            (kernel-log "SYNTAX GATE: Neural repair failed.")
+                            (harness-log "SYNTAX GATE: Neural repair failed.")
                             (list :type :LOG :payload (list :text "Lisp Repair Failed.")))))))))))
 #+end_src

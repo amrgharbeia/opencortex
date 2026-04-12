@@ -171,7 +171,7 @@ Hardware-Level Isolation for future security evolution.
 (defun provision-microvm (id &key (cpu 1) (ram 512))
   "Hardware-Level Isolation: Provisions an ephemeral Firecracker MicroVM.
    This is the high-security evolution of directory-based sandboxing."
-  (kernel-log "SECURITY [Hardware] - Provisioning MicroVM ~a (CPU: ~a, RAM: ~aMB)..." id cpu ram)
+  (harness-log "SECURITY [Hardware] - Provisioning MicroVM ~a (CPU: ~a, RAM: ~aMB)..." id cpu ram)
   ;; Future implementation: Wraps 'fcvm' or 'firecracker' CLI calls.
   (format nil "vm-~a-provisioned" id))
 #+end_src

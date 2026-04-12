@@ -7,7 +7,7 @@
 ** Deep Reasoning: Why Hex-Length Framing?
 Streaming raw JSON over a socket is fragile. If a 5MB Org AST is fragmented by the OS network stack, a standard parser will crash or desynchronize. 
 - **Physical Boundary:** By prefixing every message with a 6-character hex length, we create a deterministic physical boundary. 
-- **Actuator-Agnosticism:** This protocol makes the kernel a "Dumb Terminal" host. Any program (Bash, Python, WebSockets) that can calculate a length and send bytes can now become an agentic interface.
+- **Actuator-Agnosticism:** This protocol makes the harness a "Dumb Terminal" host. Any program (Bash, Python, WebSockets) that can calculate a length and send bytes can now become an agentic interface.
 
 ** Package Context
 We begin by ensuring we are in the correct package.
@@ -98,7 +98,7 @@ Parsing is the inverse of framing. This function performs three critical safety 
 #+end_src
 
 ** Handshaking (make-hello-message)
-Every OACP connection begins with a `HELLO` handshake. This function constructs the standard response that the kernel sends to a client to announce its capabilities and version.
+Every OACP connection begins with a `HELLO` handshake. This function constructs the standard response that the harness sends to a client to announce its capabilities and version.
 
 #+begin_src lisp :tangle ../src/protocol.lisp
 (defun make-hello-message (version)

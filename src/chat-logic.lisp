@@ -10,7 +10,7 @@
                :content text
                :version (get-universal-time))))
     (setf (gethash msg-id *object-store*) obj)
-    (kernel-log "CHAT - Message archived: ~a (~a)" msg-id role)
+    (harness-log "CHAT - Message archived: ~a (~a)" msg-id role)
     (snapshot-object-store)
     msg-id))
 

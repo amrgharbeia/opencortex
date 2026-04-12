@@ -10,7 +10,7 @@
                 :content (format nil "Fleet preference for ~a set to ~a" provider model-id)
                 :version (get-universal-time))))
       (setf (gethash config-id *object-store*) obj)
-      (kernel-log "CONFIG - Fleet updated: ~a -> ~a" provider model-id)
+      (harness-log "CONFIG - Fleet updated: ~a -> ~a" provider model-id)
       t)))
 
 (defun get-llm-model (provider &optional default)

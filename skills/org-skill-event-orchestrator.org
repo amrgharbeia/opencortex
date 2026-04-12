@@ -88,7 +88,7 @@ Allows external skills to register logic at system lifecycle points.
 (defun orchestrator-register-hook (hook-name fn)
   "Registers a function for a named hook. Triggers a Merkle snapshot."
   (pushnew fn (gethash hook-name *hook-registry*))
-  (kernel-log "ORCHESTRATOR - Registered hook function for ~a" hook-name)
+  (harness-log "ORCHESTRATOR - Registered hook function for ~a" hook-name)
   (snapshot-object-store)
   t)
 #+end_src
@@ -102,7 +102,7 @@ Executes all functions associated with a specific hook.
   (let ((functions (gethash hook-name *hook-registry*)))
     (dolist (fn functions)
       (handler-case (apply fn args)
-        (error (c) (kernel-log "ORCHESTRATOR ERROR - Hook ~a failed: ~a" hook-name c))))))
+        (error (c) (harness-log "ORCHESTRATOR ERROR - Hook ~a failed: ~a" hook-name c))))))
 #+end_src
 
 ** Cron: Task Scheduling
@@ -112,7 +112,7 @@ Registers a recurring task to be executed during heartbeats.
 (defun orchestrator-schedule-task (task-id schedule fn)
   "Schedules a task for execution. Schedule can be an interval (integer seconds) or 'heartbeat'."
   (setf (gethash task-id *cron-registry*) (list :schedule schedule :fn fn :last-run 0))
-  (kernel-log "ORCHESTRATOR - Scheduled task ~a (~a)" task-id schedule)
+  (harness-log "ORCHESTRATOR - Scheduled task ~a (~a)" task-id schedule)
   (snapshot-object-store)
   t)
 #+end_src
@@ -122,7 +122,7 @@ The internal loop that checks the cron-registry during every system pulse.
 
 #+begin_src lisp :tangle ../src/event-orchestrator.lisp
 (defun orchestrator-process-cron ()
-  "Checked by the kernel on every heartbeat."
+  "Checked by the harness on every heartbeat."
   (let ((now (get-universal-time)))
     (maphash (lambda (id task)
                (let ((schedule (getf task :schedule))
@@ -131,7 +131,7 @@ The internal loop that checks the cron-registry during every system pulse.
                  (when (or (eq schedule :heartbeat)
                            (and (integerp schedule) (>= (- now last-run) schedule)))
                    (handler-case (funcall fn)
-                     (error (c) (kernel-log "ORCHESTRATOR ERROR - Cron task ~a failed: ~a" id c)))
+                     (error (c) (harness-log "ORCHESTRATOR ERROR - Cron task ~a failed: ~a" id c)))
                    (setf (getf (gethash id *cron-registry*) :last-run) now))))
              *cron-registry*)))
 #+end_src
@@ -160,7 +160,7 @@ Deterministic logic to classify incoming stimuli into complexity tiers.
 #+end_src
 
 ** Registration
-We register the orchestrator as a core skill and hot-patch the kernel's routing hook to use our classification logic.
+We register the orchestrator as a core skill and hot-patch the harness's routing hook to use our classification logic.
 
 #+begin_src lisp :tangle ../src/event-orchestrator.lisp
 (progn
@@ -200,7 +200,7 @@ We register the orchestrator as a core skill and hot-patch the kernel's routing 
 
 ** 2. Chaos Scenarios
 - *Scenario A (Infinite Hook Loop):* Register two hooks that call each other and verify the orchestrator's recursion limit or handler-case prevents a kernel stack-overflow.
-- *Scenario B (Cron Stall):* Register a cron-job that performs a long synchronous sleep and verify the `kernel-log` identifies the delay in the heartbeat pulse.
+- *Scenario B (Cron Stall):* Register a cron-job that performs a long synchronous sleep and verify the `harness-log` identifies the delay in the heartbeat pulse.
 
 * Phase F: Memory (RCA)
 - *[2026-04-09 Thu]:* Consolidated Cron, Hook Manager, and Cognitive Router into a single orchestrator. Fixed the lack of implementation for Cron and Hooks.

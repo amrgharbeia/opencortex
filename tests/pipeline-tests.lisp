@@ -85,8 +85,8 @@
     (is (member "mock-dependent" deps :test #'string-equal))))
 
 (test test-log-buffering
-  "Verify that kernel-log correctly populates the system logs."
-  (kernel-log "PSF TEST LOG")
+  "Verify that harness-log correctly populates the system logs."
+  (harness-log "PSF TEST LOG")
   (let ((logs (context-get-system-logs 5)))
     (is (cl:some (lambda (line) (search "PSF TEST LOG" line)) logs))))
 

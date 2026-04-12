@@ -7,9 +7,9 @@ Successfully implemented the first external communication channel (Telegram) and
 
 * 1. Issue: Undefined Foundational Functions
 ** Symptoms
-During compilation, `gateway-telegram.lisp` failed with `UNDEFINED-FUNCTION` for `register-actuator` and `kernel-log`.
+During compilation, `gateway-telegram.lisp` failed with `UNDEFINED-FUNCTION` for `register-actuator` and `harness-log`.
 ** Root Cause
-Poorly scoped foundational functions. These were defined in `core.lisp` (the loop orchestrator), which was loaded *after* the gateways in `org-agent.asd`. This created a "Circular Intention" where the gateways needed the kernel to exist before the kernel could load the gateways.
+Poorly scoped foundational functions. These were defined in `core.lisp` (the loop orchestrator), which was loaded *after* the gateways in `org-agent.asd`. This created a "Circular Intention" where the gateways needed the harness to exist before the harness could load the gateways.
 ** Resolution
 1. **Relocation:** Moved `*actuator-registry*` and `register-actuator` to `protocol.lisp` (the foundation).
 2. **Reordering:** Adjusted `org-agent.asd` to load `core.lisp` (containing the stimulus loop) immediately after the symbolic gates but before the physical sensors (gateways).

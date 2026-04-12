@@ -69,15 +69,15 @@
     (push (list :timestamp (get-universal-time) :data snapshot) *object-store-snapshots*)
     (when (> (length *object-store-snapshots*) 20)
       (setf *object-store-snapshots* (subseq *object-store-snapshots* 0 20)))
-    (kernel-log "MEMORY - CoW Object Store snapshot created.")))
+    (harness-log "MEMORY - CoW Object Store snapshot created.")))
 
 (defun rollback-object-store (&optional (index 0))
   "Restores the Object Store to a previously captured snapshot using immutable history pointers."
   (let ((snapshot (nth index *object-store-snapshots*)))
     (if snapshot
         (progn (setf *object-store* (copy-hash-table (getf snapshot :data)))
-               (kernel-log "MEMORY - Object Store rolled back to snapshot ~a" index))
-        (kernel-log "MEMORY ERROR - Snapshot ~a not found." index))))
+               (harness-log "MEMORY - Object Store rolled back to snapshot ~a" index))
+        (harness-log "MEMORY ERROR - Snapshot ~a not found." index))))
 
 (defun lookup-object (id) 
   "Retrieves an object from the store by its unique ID."

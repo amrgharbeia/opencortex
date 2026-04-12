@@ -9,7 +9,7 @@
   "Serializes the entire history store and current pointers to a local Lisp image."
   (let ((image-file (persistence-get-local-path)))
     (ensure-directories-exist image-file)
-    (kernel-log "PERSISTENCE - Dumping local image to ~a..." (uiop:native-namestring image-file))
+    (harness-log "PERSISTENCE - Dumping local image to ~a..." (uiop:native-namestring image-file))
     (with-open-file (out image-file :direction :output :if-exists :supersede)
       (format out "(in-package :org-agent)~%")
       ;; 1. Dump all immutable objects in the history store
@@ -27,11 +27,11 @@
   (let ((image-file (persistence-get-local-path)))
     (if (uiop:file-exists-p image-file)
         (progn
-          (kernel-log "PERSISTENCE - Loading local image...")
+          (harness-log "PERSISTENCE - Loading local image...")
           (load image-file)
           t)
         (progn
-          (kernel-log "PERSISTENCE ERROR - Local image not found.")
+          (harness-log "PERSISTENCE ERROR - Local image not found.")
           nil))))
 
 (defun persistence-serialize-for-archival ()
@@ -64,10 +64,10 @@
                                    :headers '(("Content-Type" . "multipart/form-data"))))
                (result (cl-json:decode-json-from-string response))
                (cid (cdr (assoc :hash result))))
-          (kernel-log "PERSISTENCE - Checkpoint to IPFS successful. CID: ~a" cid)
+          (harness-log "PERSISTENCE - Checkpoint to IPFS successful. CID: ~a" cid)
           cid)
       (error (c)
-        (kernel-log "PERSISTENCE ERROR - IPFS push failed: ~a" c)
+        (harness-log "PERSISTENCE ERROR - IPFS push failed: ~a" c)
         nil))))
 
 (defun persistence-restore-ipfs (cid)
@@ -91,10 +91,10 @@
                          :last-sync (cdr (assoc :last-sync item))
                          :hash (cdr (assoc :hash item)))))
               (setf (gethash id *object-store*) obj)))
-          (kernel-log "PERSISTENCE - Restored from IPFS: ~a" cid)
+          (harness-log "PERSISTENCE - Restored from IPFS: ~a" cid)
           t)
       (error (c)
-        (kernel-log "PERSISTENCE ERROR - IPFS restoration failed: ~a" c)
+        (harness-log "PERSISTENCE ERROR - IPFS restoration failed: ~a" c)
         nil))))
 
 (progn

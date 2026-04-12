@@ -6,7 +6,7 @@
          (api-key (getf auth :api-key))
          (endpoint "https://generativelanguage.googleapis.com/v1beta/models/text-embedding-004:embedContent"))
     (unless api-key 
-      (kernel-log "EMBEDDING ERROR: No API key for :gemini")
+      (harness-log "EMBEDDING ERROR: No API key for :gemini")
       (return-from get-embedding nil))
     (let* ((url (format nil "~a?key=~a" endpoint api-key)) 
            (headers `(("Content-Type" . "application/json")))
@@ -19,7 +19,7 @@
                  (embedding (getf (getf json :embedding) :values)))
             embedding)
         (error (c) 
-          (kernel-log "EMBEDDING FAILURE: ~a" c) 
+          (harness-log "EMBEDDING FAILURE: ~a" c) 
           nil)))))
 
 (defun dot-product (v1 v2) 

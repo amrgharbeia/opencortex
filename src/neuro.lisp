@@ -26,7 +26,7 @@
               (when backend-fn
                 (push (bt:make-thread 
                        (lambda ()
-                         (kernel-log "ASSOCIATIVE [Consensus]: Querying backend ~a..." backend)
+                         (harness-log "ASSOCIATIVE [Consensus]: Querying backend ~a..." backend)
                          (let* ((model (when *model-selector-fn* (funcall *model-selector-fn* backend context)))
                                 (result (ignore-errors 
                                           (if model 
@@ -50,7 +50,7 @@
         (or (dolist (backend backends)
               (let ((backend-fn (gethash backend *neuro-backends*)))
                 (when backend-fn
-                  (kernel-log "ASSOCIATIVE: Attempting backend ~a..." backend)
+                  (harness-log "ASSOCIATIVE: Attempting backend ~a..." backend)
                   (let* ((model (when *model-selector-fn* (funcall *model-selector-fn* backend context)))
                          (result (if model 
                                      (funcall backend-fn prompt system-prompt :model model)
@@ -67,7 +67,7 @@
         (global-context (context-assemble-global-awareness)))
     (if active-skill
         (progn
-          (kernel-log "ASSOCIATIVE: Engaging skill '~a'~%" (skill-name active-skill))
+          (harness-log "ASSOCIATIVE: Engaging skill '~a'~%" (skill-name active-skill))
           (let* ((prompt-generator (skill-neuro-prompt active-skill)) 
                  (raw-prompt (when prompt-generator (funcall prompt-generator context)))
                  (full-system-prompt (concatenate 'string 
@@ -95,7 +95,7 @@ To call a tool, you MUST use:
                        (raw-thoughts (cl-ppcre:split (cl-ppcre:quote-meta-chars "|CONSENSUS-SEP|") thought))
                        (suggestions nil))
                   (dolist (raw-thought raw-thoughts)
-                    (kernel-log "ASSOCIATIVE RAW: ~a~%" raw-thought)
+                    (harness-log "ASSOCIATIVE RAW: ~a~%" raw-thought)
                     (let* ((cleaned-thought 
                             (let ((match (cl-ppcre:scan-to-strings "(?s)```(?:lisp)?\\n?(.*?)\\n?```" raw-thought)))
                               (if match
@@ -109,7 +109,7 @@ To call a tool, you MUST use:
                                                  (list :sensor :syntax-error 
                                                        :code cleaned-thought 
                                                        :error (format nil "~a" c)))))))
-                      (kernel-log "ASSOCIATIVE Suggestion: ~a~%" cleaned-thought)
+                      (harness-log "ASSOCIATIVE Suggestion: ~a~%" cleaned-thought)
                       (when (and suggestion (listp suggestion))
                         (push suggestion suggestions))))
                   (if (and *consensus-enabled-p* suggestions)

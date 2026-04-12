@@ -167,7 +167,7 @@ Calculates the correct load order for a directory of skill filepaths, detecting 
 The core "hot-loading" mechanism. It extracts Lisp blocks from an Org file and evaluates them within a dedicated package ("Jail").
 
 *** Phase A: Demand
-- *Need:* Safely load skills from `.org` files without evaluating docstrings or kernel-level tangled blocks as logic.
+- *Need:* Safely load skills from `.org` files without evaluating docstrings or harness-level tangled blocks as logic.
 - *Success:* Exclude `#+begin_src lisp :tangle` blocks and ignore `:PROPERTIES:` and `:END:` drawers embedded within src blocks.
 
 *** Phase B: Blueprint
@@ -211,7 +211,7 @@ The loader must actively scan block arguments and filter out those containing `:
                   (unless valid-p
                     (error "Syntax Error: ~a" err)))
                 
-                (kernel-log "KERNEL: Jailing skill '~a' in package ~a" skill-base-name pkg-name)
+                (harness-log "HARNESS: Jailing skill '~a' in package ~a" skill-base-name pkg-name)
                 (unless (find-package pkg-name)
                   (let ((new-pkg (make-package pkg-name :use '(:cl))))
                     (do-external-symbols (sym (find-package :org-agent)) (shadowing-import sym new-pkg))))
@@ -223,7 +223,7 @@ The loader must actively scan block arguments and filter out those containing `:
                 t)))
       (error (c)
         (let ((msg (format nil "~a" c)))
-          (kernel-log "LOADER ERROR in skill '~a': ~a" skill-base-name msg)
+          (harness-log "LOADER ERROR in skill '~a': ~a" skill-base-name msg)
           (setf (skill-entry-status entry) :failed)
           (setf (skill-entry-error-log entry) msg)
           nil)))))
@@ -248,7 +248,7 @@ Wraps the skill loader in a thread with a hard timeout to prevent a single malfo
       (when (eq finished :error) (return :error))
       (unless (bt:thread-alive-p thread) (return :error))
       (when (> (- (get-internal-real-time) start-time) timeout-units)
-        (kernel-log "KERNEL: Timing out skill ~a..." (pathname-name filepath))
+        (harness-log "HARNESS: Timing out skill ~a..." (pathname-name filepath))
         #+sbcl (sb-thread:terminate-thread thread)
         #-sbcl (bt:destroy-thread thread)
         (return :timeout))
@@ -256,7 +256,7 @@ Wraps the skill loader in a thread with a hard timeout to prevent a single malfo
 #+end_src
 
 ** Initializing All Skills (initialize-all-skills)
-The unified orchestrator for the kernel boot sequence. It scans the environment, calculates dependencies, and loads the system brain.
+The unified orchestrator for the harness boot sequence. It scans the environment, calculates dependencies, and loads the system brain.
 
 #+begin_src lisp :tangle ../src/skills.lisp
 (defun initialize-all-skills ()
@@ -267,7 +267,7 @@ The unified orchestrator for the kernel boot sequence. It scans the environment,
          (skills-dir (if resolved-path (uiop:ensure-directory-pathname resolved-path) nil)))
     
     (unless (and skills-dir (uiop:directory-exists-p skills-dir))
-      (kernel-log "KERNEL ERROR: Skills directory not found: ~a" skills-dir-str)
+      (harness-log "HARNESS ERROR: Skills directory not found: ~a" skills-dir-str)
       (return-from initialize-all-skills nil))
 
     (let ((sorted-files (topological-sort-skills skills-dir)))
@@ -275,12 +275,12 @@ The unified orchestrator for the kernel boot sequence. It scans the environment,
       (unless (member "org-skill-agent" sorted-files :key #'pathname-name :test #'string-equal)
         (error "BOOT FAILURE: org-skill-agent.org not found in skills directory."))
       
-      (kernel-log "==================================================")
-      (kernel-log " LOADER: Initializing ~a skills..." (length sorted-files))
+      (harness-log "==================================================")
+      (harness-log " LOADER: Initializing ~a skills..." (length sorted-files))
       
       (dolist (file sorted-files)
         (let ((skill-name (pathname-name file)))
-          (kernel-log " LOADER: Loading ~a..." skill-name)
+          (harness-log " LOADER: Loading ~a..." skill-name)
           (load-skill-with-timeout file 5)))
       
       ;; Final Summary
@@ -289,8 +289,8 @@ The unified orchestrator for the kernel boot sequence. It scans the environment,
                    (declare (ignore k))
                    (if (eq (skill-entry-status v) :ready) (incf ready) (incf failed)))
                  *skill-catalog*)
-        (kernel-log " LOADER: Boot Complete. [Ready: ~a] [Failed: ~a]" ready failed)
-        (kernel-log "==================================================")
+        (harness-log " LOADER: Boot Complete. [Ready: ~a] [Failed: ~a]" ready failed)
+        (harness-log "==================================================")
         (values ready failed)))))
 #+end_src
 
@@ -325,7 +325,7 @@ We register a set of standard cognitive tools that all skills can use.
 
 *** The Eval Tool
 #+begin_src lisp :tangle ../src/skills.lisp
-(def-cognitive-tool :eval "Evaluates raw Common Lisp code in the kernel image. Use this for complex calculations or internal state inspection."
+(def-cognitive-tool :eval "Evaluates raw Common Lisp code in the harness image. Use this for complex calculations or internal state inspection."
   ((:code :type :string :description "The Lisp code to evaluate"))
   :guard (lambda (args context)
            (declare (ignore context))

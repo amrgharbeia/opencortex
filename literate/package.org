@@ -18,7 +18,7 @@ The `package.lisp` file defines the public API of the `org-agent` kernel. It exp
    ;; --- Daemon Lifecycle ---
    #:start-daemon
    #:stop-daemon
-   #:kernel-log
+   #:harness-log
    #:main
    
    ;; --- Object Store (CLOSOS) ---
@@ -133,7 +133,7 @@ The `package.lisp` file defines the public API of the `org-agent` kernel. It exp
 ** Kernel Logging State
 #+begin_src lisp :tangle ../src/package.lisp
 (defvar *system-logs* nil)
-(defvar *logs-lock* (bt:make-lock "kernel-logs-lock"))
+(defvar *logs-lock* (bt:make-lock "harness-logs-lock"))
 (defvar *max-log-history* 100)
 #+end_src
 
@@ -171,8 +171,8 @@ The `package.lisp` file defines the public API of the `org-agent` kernel. It exp
 
 ** Kernel Logging Implementation
 #+begin_src lisp :tangle ../src/package.lisp
-(defun kernel-log (msg &rest args)
-  "Centralized logging for the kernel."
+(defun harness-log (msg &rest args)
+  "Centralized logging for the harness."
   (let ((formatted-msg (apply #'format nil msg args)))
     (bt:with-lock-held (*logs-lock*)
       (push formatted-msg *system-logs*)

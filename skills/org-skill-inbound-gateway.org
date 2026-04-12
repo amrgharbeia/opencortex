@@ -21,14 +21,14 @@ Define a secure and extensible ingress for external communication channels.
 ** 2. User Needs
 - *Multi-Channel Ingress:* Support Signal (via signal-cli), Telegram (via Bot API), and generic Webhooks.
 - *Payload Normalization:* Convert platform-specific JSON into standard Lisp plists.
-- *Security & Authentication:* Verify sender identity before injecting stimuli into the kernel.
+- *Security & Authentication:* Verify sender identity before injecting stimuli into the harness.
 - *Asynchronous Reception:* Non-blocking monitoring of inbound message queues.
 
 ** 3. Success Criteria
 *** TODO Signal-cli message reception and parsing
 *** TODO Telegram Bot API webhook normalization
 *** TODO Sender verification logic (Whitelisting)
-*** TODO Autonomous stimulus injection into the Kernel Bus
+*** TODO Autonomous stimulus injection into the harness Bus
 
 
 * Phase B: Blueprint (PROTOCOL)
@@ -95,6 +95,6 @@ Error handling and logging will be crucial for observability and maintainability
 2.  The raw message is passed to `inbound-message-handler` with `channel` = `:signal`.
 3.  `inbound-message-handler` calls `normalize-message` to convert the Signal payload to a standard plist.
 4.  `inbound-message-handler` calls `authenticate-sender` to verify the sender's identity.
-5.  If authentication succeeds, `inbound-message-handler` calls `inject-stimulus` to inject the message into the Kernel.
+5.  If authentication succeeds, `inbound-message-handler` calls `inject-stimulus` to inject the message into the harness.
 6.  Error handling and logging are performed at each step.
 

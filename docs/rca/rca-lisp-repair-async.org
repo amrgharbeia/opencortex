@@ -30,4 +30,4 @@ Leveraged the pipeline's ability to re-inject `EVENT` signals to flatten the rec
 
 * 4. Permanent Learnings
 - **Emit, Don't Call:** In a microkernel, if a non-fatal error occurs, always emit a signal rather than calling a recovery function. This allows the system to remain asynchronous and modular.
-- **Signal Inspection:** When writing symbolic gates, always verify the exact shape of the `context` signal being passed by the kernel to avoid nesting errors.
+- **Signal Inspection:** When writing symbolic gates, always verify the exact shape of the `context` signal being passed by the harness to avoid nesting errors.

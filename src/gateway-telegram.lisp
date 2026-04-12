@@ -18,16 +18,16 @@
          (token (get-telegram-token))
          (url (format nil "https://api.telegram.org/bot~a/sendMessage" token)))
     (when (and token chat-id text)
-      (kernel-log "TELEGRAM: Sending message to ~a..." chat-id)
+      (harness-log "TELEGRAM: Sending message to ~a..." chat-id)
       (handler-case 
           (dex:post url 
                     :headers '(("Content-Type" . "application/json"))
                     :content (cl-json:encode-json-to-string 
                               `((chat_id . ,chat-id) (text . ,text))))
-        (error (c) (kernel-log "TELEGRAM ERROR: ~a" c))))))
+        (error (c) (harness-log "TELEGRAM ERROR: ~a" c))))))
 
 (defun telegram-process-updates ()
-  "Polls for new messages and injects them into the kernel."
+  "Polls for new messages and injects them into the harness."
   (let* ((token (get-telegram-token))
          (url (format nil "https://api.telegram.org/bot~a/getUpdates?offset=~a" 
                       token (1+ *telegram-last-update-id*))))
@@ -44,14 +44,14 @@
                      (text (cdr (assoc :text message))))
                 (setf *telegram-last-update-id* update-id)
                 (when (and text chat-id)
-                  (kernel-log "TELEGRAM: Received message from ~a" chat-id)
+                  (harness-log "TELEGRAM: Received message from ~a" chat-id)
                   (inject-stimulus 
                    (list :type :EVENT 
                          :payload (list :sensor :chat-message 
                                         :channel :telegram 
                                         :chat-id (format nil "~a" chat-id)
                                         :text text)))))))
-        (error (c) (kernel-log "TELEGRAM POLL ERROR: ~a" c))))))
+        (error (c) (harness-log "TELEGRAM POLL ERROR: ~a" c))))))
 
 (defun start-telegram-gateway ()
   "Initializes the Telegram background thread."
@@ -63,7 +63,7 @@
                (telegram-process-updates)
                (sleep 3)))
            :name "org-agent-telegram-gateway"))
-    (kernel-log "TELEGRAM: Gateway polling active.")))
+    (harness-log "TELEGRAM: Gateway polling active.")))
 
 (defun stop-telegram-gateway ()
   (when (and *telegram-polling-thread* (bt:thread-alive-p *telegram-polling-thread*))

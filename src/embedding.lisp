@@ -10,7 +10,7 @@
       (handler-case (let* ((response (dex:post url :headers headers :content body))
                            (json (cl-json:decode-json-from-string response)))
                       (cdr (assoc :values (cdr (assoc :embedding json)))))
-        (error (c) (kernel-log "EMBEDDING FAILURE: ~a" c) nil)))))
+        (error (c) (harness-log "EMBEDDING FAILURE: ~a" c) nil)))))
 
 (defun dot-product (v1 v2) 
   "Calculates the dot product of two numerical vectors."

@@ -38,7 +38,7 @@ Maintain a state-aware provider cascade that routes around "pain" (failures) and
 (defun token-accountant-record-pain (provider)
   "Marks a provider as 'pained' (failed). It will be de-prioritized."
   (setf (gethash provider *provider-pain-table*) (+ (get-universal-time) 600)) ; 10 min penalty
-  (kernel-log "ACCOUNTANT - Provider ~a de-prioritized due to failure." provider))
+  (harness-log "ACCOUNTANT - Provider ~a de-prioritized due to failure." provider))
 
 (defun token-accountant-get-cascade (context)
   "Returns a dynamic list of providers, routing around pained ones. Uses standardized gateway keywords."
@@ -70,7 +70,7 @@ Maintain a state-aware provider cascade that routes around "pain" (failures) and
       (t nil))))
 
 (defun token-accountant-patch-kernel ()
-  "Hot-patches the kernel's cascade and model selector to use our dynamic logic."
+  "Hot-patches the harness's cascade and model selector to use our dynamic logic."
   (setf org-agent:*provider-cascade* #'token-accountant-get-cascade)
   (setf org-agent::*model-selector-fn* #'token-accountant-get-model-for-provider))
 #+end_src

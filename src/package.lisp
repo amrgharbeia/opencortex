@@ -9,7 +9,7 @@
    ;; --- Daemon Lifecycle ---
    #:start-daemon
    #:stop-daemon
-   #:kernel-log
+   #:harness-log
    #:main
    
    ;; --- Object Store (CLOSOS) ---
@@ -118,7 +118,7 @@
 (in-package :org-agent)
 
 (defvar *system-logs* nil)
-(defvar *logs-lock* (bt:make-lock "kernel-logs-lock"))
+(defvar *logs-lock* (bt:make-lock "harness-logs-lock"))
 (defvar *max-log-history* 100)
 
 (defvar *skills-registry* (make-hash-table :test 'equal)
@@ -144,8 +144,8 @@
                               :guard ,guard
                               :body ,body)))
 
-(defun kernel-log (msg &rest args)
-  "Centralized logging for the kernel."
+(defun harness-log (msg &rest args)
+  "Centralized logging for the harness."
   (let ((formatted-msg (apply #'format nil msg args)))
     (bt:with-lock-held (*logs-lock*)
       (push formatted-msg *system-logs*)

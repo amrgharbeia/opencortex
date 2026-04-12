@@ -146,7 +146,7 @@
                   (unless valid-p
                     (error "Syntax Error: ~a" err)))
                 
-                (kernel-log "KERNEL: Jailing skill '~a' in package ~a" skill-base-name pkg-name)
+                (harness-log "HARNESS: Jailing skill '~a' in package ~a" skill-base-name pkg-name)
                 (unless (find-package pkg-name)
                   (let ((new-pkg (make-package pkg-name :use '(:cl))))
                     (do-external-symbols (sym (find-package :org-agent)) (shadowing-import sym new-pkg))))
@@ -158,7 +158,7 @@
                 t)))
       (error (c)
         (let ((msg (format nil "~a" c)))
-          (kernel-log "LOADER ERROR in skill '~a': ~a" skill-base-name msg)
+          (harness-log "LOADER ERROR in skill '~a': ~a" skill-base-name msg)
           (setf (skill-entry-status entry) :failed)
           (setf (skill-entry-error-log entry) msg)
           nil)))))
@@ -178,7 +178,7 @@
       (when (eq finished :error) (return :error))
       (unless (bt:thread-alive-p thread) (return :error))
       (when (> (- (get-internal-real-time) start-time) timeout-units)
-        (kernel-log "KERNEL: Timing out skill ~a..." (pathname-name filepath))
+        (harness-log "HARNESS: Timing out skill ~a..." (pathname-name filepath))
         #+sbcl (sb-thread:terminate-thread thread)
         #-sbcl (bt:destroy-thread thread)
         (return :timeout))
@@ -192,7 +192,7 @@
          (skills-dir (if resolved-path (uiop:ensure-directory-pathname resolved-path) nil)))
     
     (unless (and skills-dir (uiop:directory-exists-p skills-dir))
-      (kernel-log "KERNEL ERROR: Skills directory not found: ~a" skills-dir-str)
+      (harness-log "HARNESS ERROR: Skills directory not found: ~a" skills-dir-str)
       (return-from initialize-all-skills nil))
 
     (let ((sorted-files (topological-sort-skills skills-dir)))
@@ -200,12 +200,12 @@
       (unless (member "org-skill-agent" sorted-files :key #'pathname-name :test #'string-equal)
         (error "BOOT FAILURE: org-skill-agent.org not found in skills directory."))
       
-      (kernel-log "==================================================")
-      (kernel-log " LOADER: Initializing ~a skills..." (length sorted-files))
+      (harness-log "==================================================")
+      (harness-log " LOADER: Initializing ~a skills..." (length sorted-files))
       
       (dolist (file sorted-files)
         (let ((skill-name (pathname-name file)))
-          (kernel-log " LOADER: Loading ~a..." skill-name)
+          (harness-log " LOADER: Loading ~a..." skill-name)
           (load-skill-with-timeout file 5)))
       
       ;; Final Summary
@@ -214,8 +214,8 @@
                    (declare (ignore k))
                    (if (eq (skill-entry-status v) :ready) (incf ready) (incf failed)))
                  *skill-catalog*)
-        (kernel-log " LOADER: Boot Complete. [Ready: ~a] [Failed: ~a]" ready failed)
-        (kernel-log "==================================================")
+        (harness-log " LOADER: Boot Complete. [Ready: ~a] [Failed: ~a]" ready failed)
+        (harness-log "==================================================")
         (values ready failed)))))
 
 (defun generate-tool-belt-prompt ()
@@ -239,7 +239,7 @@ EXAMPLES:
              *cognitive-tools*)
     output))
 
-(def-cognitive-tool :eval "Evaluates raw Common Lisp code in the kernel image. Use this for complex calculations or internal state inspection."
+(def-cognitive-tool :eval "Evaluates raw Common Lisp code in the harness image. Use this for complex calculations or internal state inspection."
   ((:code :type :string :description "The Lisp code to evaluate"))
   :guard (lambda (args context)
            (declare (ignore context))

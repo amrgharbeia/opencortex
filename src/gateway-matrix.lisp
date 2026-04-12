@@ -19,14 +19,14 @@
          (txn-id (get-universal-time))
          (url (format nil "~a/_matrix/client/v3/rooms/~a/send/m.room.message/~a" hs room-id txn-id)))
     (when (and hs token room-id text)
-      (kernel-log "MATRIX: Sending message to ~a..." room-id)
+      (harness-log "MATRIX: Sending message to ~a..." room-id)
       (handler-case 
           (dex:put url 
                    :headers `(("Authorization" . ,(format nil "Bearer ~a" token))
                               ("Content-Type" . "application/json"))
                    :content (cl-json:encode-json-to-string 
                              `((msgtype . "m.text") (body . ,text))))
-        (error (c) (kernel-log "MATRIX ERROR: ~a" c))))))
+        (error (c) (harness-log "MATRIX ERROR: ~a" c))))))
 
 (defun matrix-process-sync ()
   "Calls Matrix sync and injects new messages."
@@ -57,7 +57,7 @@
                          (sender (cdr (assoc :sender event)))
                          (body (cdr (assoc :body content))))
                     (when (and (string= type "m.room.message") body)
-                      (kernel-log "MATRIX: Received message from ~a in ~a" sender room-id)
+                      (harness-log "MATRIX: Received message from ~a in ~a" sender room-id)
                       (inject-stimulus 
                        (list :type :EVENT 
                              :payload (list :sensor :chat-message 
@@ -65,7 +65,7 @@
                                             :room-id room-id 
                                             :sender sender 
                                             :text body)))))))))
-        (error (c) (kernel-log "MATRIX SYNC ERROR: ~a" c))))))
+        (error (c) (harness-log "MATRIX SYNC ERROR: ~a" c))))))
 
 (defun start-matrix-gateway ()
   "Initializes the Matrix background thread."
@@ -77,7 +77,7 @@
                (matrix-process-sync)
                (sleep 2)))
            :name "org-agent-matrix-gateway"))
-    (kernel-log "MATRIX: Gateway sync active.")))
+    (harness-log "MATRIX: Gateway sync active.")))
 
 (defun stop-matrix-gateway ()
   (when (and *matrix-polling-thread* (bt:thread-alive-p *matrix-polling-thread*))

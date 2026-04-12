@@ -126,7 +126,7 @@ Because objects are stored immutably in the `*history-store*`, a snapshot is no 
     (push (list :timestamp (get-universal-time) :data snapshot) *object-store-snapshots*)
     (when (> (length *object-store-snapshots*) 20)
       (setf *object-store-snapshots* (subseq *object-store-snapshots* 0 20)))
-    (kernel-log "MEMORY - CoW Object Store snapshot created.")))
+    (harness-log "MEMORY - CoW Object Store snapshot created.")))
 #+end_src
 
 ** Memory Rollback (rollback-object-store)
@@ -138,8 +138,8 @@ Restores the state of the Memex from one of the previous snapshots.
   (let ((snapshot (nth index *object-store-snapshots*)))
     (if snapshot
         (progn (setf *object-store* (copy-hash-table (getf snapshot :data)))
-               (kernel-log "MEMORY - Object Store rolled back to snapshot ~a" index))
-        (kernel-log "MEMORY ERROR - Snapshot ~a not found." index))))
+               (harness-log "MEMORY - Object Store rolled back to snapshot ~a" index))
+        (harness-log "MEMORY ERROR - Snapshot ~a not found." index))))
 #+end_src
 
 ** Lookup Utilities

@@ -3,7 +3,7 @@
 #+FILETAGS: :rca:boot:loader:topological-sort:psf:
 
 * Executive Summary
-Refactored the arbitrary skill loading mechanism into a robust **Micro-Loader**. The system now calculates a deterministic boot sequence based on `#+DEPENDS_ON:` tags and protects the kernel from malformed or hanging skills via package-based jailing and execution timeouts.
+Refactored the arbitrary skill loading mechanism into a robust **Micro-Loader**. The system now calculates a deterministic boot sequence based on `#+DEPENDS_ON:` tags and protects the harness from malformed or hanging skills via package-based jailing and execution timeouts.
 
 * 1. Issue: Fragile Load Order
 ** Symptoms

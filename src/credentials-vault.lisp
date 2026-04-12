@@ -34,17 +34,17 @@
   "Securely stores a secret and triggers a Merkle snapshot."
   (let ((key (format nil "~a-~a" provider type)))
     (setf (gethash key *vault-memory*) secret)
-    (kernel-log "VAULT - Updated ~a for ~a. Triggering Merkle snapshot..." type provider)
+    (harness-log "VAULT - Updated ~a for ~a. Triggering Merkle snapshot..." type provider)
     (snapshot-object-store)
     t))
 
 (defun vault-onboard-gemini-web ()
   "Instructions for the Sovereign Cookie Handshake."
-  (kernel-log "--- GEMINI WEB ONBOARDING ---")
-  (kernel-log "1. Visit gemini.google.com")
-  (kernel-log "2. Run the 'Get Gemini Cookies' Bookmarklet.")
-  (kernel-log "   CODE: javascript:(function(){const c=document.cookie.split('; ').reduce((r,v)=>{const [n,val]=v.split('=');r[n]=val;return r},{});const target=['__Secure-1PSID','__Secure-1PSIDTS'];const out=target.map(n=>({name:n,value:c[n]}));prompt('Copy JSON:',JSON.stringify(out));})();")
-  (kernel-log "PLATFORM GUIDE: Chrome/Firefox/Safari all support Bookmarklets via 'Add Page' or 'New Bookmark'.")
+  (harness-log "--- GEMINI WEB ONBOARDING ---")
+  (harness-log "1. Visit gemini.google.com")
+  (harness-log "2. Run the 'Get Gemini Cookies' Bookmarklet.")
+  (harness-log "   CODE: javascript:(function(){const c=document.cookie.split('; ').reduce((r,v)=>{const [n,val]=v.split('=');r[n]=val;return r},{});const target=['__Secure-1PSID','__Secure-1PSIDTS'];const out=target.map(n=>({name:n,value:c[n]}));prompt('Copy JSON:',JSON.stringify(out));})();")
+  (harness-log "PLATFORM GUIDE: Chrome/Firefox/Safari all support Bookmarklets via 'Add Page' or 'New Bookmark'.")
   t)
 
 (progn

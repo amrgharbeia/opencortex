@@ -13,8 +13,8 @@ The *State Persistence Layer* ensures the durability and sovereignty of the agen
 While the *Prover* and *Bouncer* protect against internal skill failures, the Merkle-Tree architecture within the State Layer protects against **External Threats** (e.g., a hacker or virus modifying your `.org` files directly on disk).
 
 1. **Skill Hashing:** Every code block and headline in a skill file has a unique Merkle hash recorded in the Object Store.
-2. **Integrity Verification:** Upon loading or reloading a skill, the Kernel re-calculates the hash and compares it against the "known good" state in the Merkle Tree.
-3. **Automatic Lockdown:** If a file has been tampered with externally, the hash mismatch triggers an immediate lockdown. The Kernel refuses to execute the skill and alerts the Sovereign via Signal/Telegram.
+2. **Integrity Verification:** Upon loading or reloading a skill, the harness re-calculates the hash and compares it against the "known good" state in the Merkle Tree.
+3. **Automatic Lockdown:** If a file has been tampered with externally, the hash mismatch triggers an immediate lockdown. the harness refuses to execute the skill and alerts the Sovereign via Signal/Telegram.
 
 * Phase A: Demand (PRD)
 :PROPERTIES:
@@ -88,7 +88,7 @@ Serializes the Merkle history and current pointers to a Lisp file.
   "Serializes the entire history store and current pointers to a local Lisp image."
   (let ((image-file (persistence-get-local-path)))
     (ensure-directories-exist image-file)
-    (kernel-log "PERSISTENCE - Dumping local image to ~a..." (uiop:native-namestring image-file))
+    (harness-log "PERSISTENCE - Dumping local image to ~a..." (uiop:native-namestring image-file))
     (with-open-file (out image-file :direction :output :if-exists :supersede)
       (format out "(in-package :org-agent)~%")
       ;; 1. Dump all immutable objects in the history store
@@ -111,11 +111,11 @@ Restores the state from the local disk.
   (let ((image-file (persistence-get-local-path)))
     (if (uiop:file-exists-p image-file)
         (progn
-          (kernel-log "PERSISTENCE - Loading local image...")
+          (harness-log "PERSISTENCE - Loading local image...")
           (load image-file)
           t)
         (progn
-          (kernel-log "PERSISTENCE ERROR - Local image not found.")
+          (harness-log "PERSISTENCE ERROR - Local image not found.")
           nil))))
 #+end_src
 
@@ -158,10 +158,10 @@ Pushes the serialized knowledge graph to the decentralized network.
                                    :headers '(("Content-Type" . "multipart/form-data"))))
                (result (cl-json:decode-json-from-string response))
                (cid (cdr (assoc :hash result))))
-          (kernel-log "PERSISTENCE - Checkpoint to IPFS successful. CID: ~a" cid)
+          (harness-log "PERSISTENCE - Checkpoint to IPFS successful. CID: ~a" cid)
           cid)
       (error (c)
-        (kernel-log "PERSISTENCE ERROR - IPFS push failed: ~a" c)
+        (harness-log "PERSISTENCE ERROR - IPFS push failed: ~a" c)
         nil))))
 #+end_src
 
@@ -190,10 +190,10 @@ Restores the graph from IPFS, using a safe parser to prevent injection.
                          :last-sync (cdr (assoc :last-sync item))
                          :hash (cdr (assoc :hash item)))))
               (setf (gethash id *object-store*) obj)))
-          (kernel-log "PERSISTENCE - Restored from IPFS: ~a" cid)
+          (harness-log "PERSISTENCE - Restored from IPFS: ~a" cid)
           t)
       (error (c)
-        (kernel-log "PERSISTENCE ERROR - IPFS restoration failed: ~a" c)
+        (harness-log "PERSISTENCE ERROR - IPFS restoration failed: ~a" c)
         nil))))
 #+end_src
 
@@ -254,7 +254,7 @@ Expose persistence capabilities to the neural System 1.
 #+end_src
 
 ** 2. Chaos Scenarios
-- *Scenario A (IPFS Daemon Down):* Kill the IPFS daemon and verify `persistence-push-ipfs` returns a standardized error instead of hanging the kernel.
+- *Scenario A (IPFS Daemon Down):* Kill the IPFS daemon and verify `persistence-push-ipfs` returns a standardized error instead of hanging the harness.
 - *Scenario B (Corrupt Image):* Intentionally mangle the `memory-image.lisp` file and verify the loader catches the error during `load` and falls back to a clean state.
 
 * Phase F: Memory (RCA)

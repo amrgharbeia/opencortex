@@ -19,7 +19,7 @@ The *Matrix Gateway* provides bi-directional communication via the Matrix Client
 Integrate the Org-Agent into the Matrix federation for secure, distributed chat.
 
 ** 2. Success Criteria
-- [ ] *Inbound:* Messages from Matrix rooms are normalized and injected into the Kernel Bus.
+- [ ] *Inbound:* Messages from Matrix rooms are normalized and injected into the harness Bus.
 - [ ] *Outbound:* The `:matrix` target correctly routes messages to specific room IDs.
 - [ ] *State:* The `since` token is maintained during a session to prevent message loops.
 
@@ -81,14 +81,14 @@ Sends an `m.room.message` to a Matrix room.
          (txn-id (get-universal-time))
          (url (format nil "~a/_matrix/client/v3/rooms/~a/send/m.room.message/~a" hs room-id txn-id)))
     (when (and hs token room-id text)
-      (kernel-log "MATRIX: Sending message to ~a..." room-id)
+      (harness-log "MATRIX: Sending message to ~a..." room-id)
       (handler-case 
           (dex:put url 
                    :headers `(("Authorization" . ,(format nil "Bearer ~a" token))
                               ("Content-Type" . "application/json"))
                    :content (cl-json:encode-json-to-string 
                              `((msgtype . "m.text") (body . ,text))))
-        (error (c) (kernel-log "MATRIX ERROR: ~a" c))))))
+        (error (c) (harness-log "MATRIX ERROR: ~a" c))))))
 #+end_src
 
 ** Sensor: Sync loop & Injection
@@ -124,7 +124,7 @@ Polls the `/sync` endpoint and processes timeline events.
                          (sender (cdr (assoc :sender event)))
                          (body (cdr (assoc :body content))))
                     (when (and (string= type "m.room.message") body)
-                      (kernel-log "MATRIX: Received message from ~a in ~a" sender room-id)
+                      (harness-log "MATRIX: Received message from ~a in ~a" sender room-id)
                       (inject-stimulus 
                        (list :type :EVENT 
                              :payload (list :sensor :chat-message 
@@ -132,7 +132,7 @@ Polls the `/sync` endpoint and processes timeline events.
                                             :room-id room-id 
                                             :sender sender 
                                             :text body)))))))))
-        (error (c) (kernel-log "MATRIX SYNC ERROR: ~a" c))))))
+        (error (c) (harness-log "MATRIX SYNC ERROR: ~a" c))))))
 #+end_src
 
 ** Start Polling
@@ -149,7 +149,7 @@ Initializes the Matrix background thread.
                (matrix-process-sync)
                (sleep 2)))
            :name "org-agent-matrix-gateway"))
-    (kernel-log "MATRIX: Gateway sync active.")))
+    (harness-log "MATRIX: Gateway sync active.")))
 #+end_src
 
 ** Stop Polling

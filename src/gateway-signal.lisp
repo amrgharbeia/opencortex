@@ -12,14 +12,14 @@
          (text (or (getf payload :text) (getf action :text)))
          (account (get-signal-account)))
     (when (and account chat-id text)
-      (kernel-log "SIGNAL: Sending message to ~a..." chat-id)
+      (harness-log "SIGNAL: Sending message to ~a..." chat-id)
       (handler-case 
           (uiop:run-program (list "signal-cli" "-u" account "send" "-m" text chat-id)
                             :output :string :error-output :string)
-        (error (c) (kernel-log "SIGNAL ERROR: ~a" c))))))
+        (error (c) (harness-log "SIGNAL ERROR: ~a" c))))))
 
 (defun signal-process-updates ()
-  "Polls for new messages via signal-cli and injects them into the kernel."
+  "Polls for new messages via signal-cli and injects them into the harness."
   (let ((account (get-signal-account)))
     (when account
       (handler-case
@@ -34,14 +34,14 @@
                        (data-message (cdr (assoc :data-message envelope)))
                        (text (cdr (assoc :message data-message))))
                   (when (and source text)
-                    (kernel-log "SIGNAL: Received message from ~a" source)
+                    (harness-log "SIGNAL: Received message from ~a" source)
                     (inject-stimulus 
                      (list :type :EVENT 
                            :payload (list :sensor :chat-message 
                                           :channel :signal 
                                           :chat-id source 
                                           :text text))))))))
-        (error (c) (kernel-log "SIGNAL POLL ERROR: ~a" c))))))
+        (error (c) (harness-log "SIGNAL POLL ERROR: ~a" c))))))
 
 (defun start-signal-gateway ()
   "Initializes the Signal background thread."
@@ -53,7 +53,7 @@
                (signal-process-updates)
                (sleep 5)))
            :name "org-agent-signal-gateway"))
-    (kernel-log "SIGNAL: Gateway polling active.")))
+    (harness-log "SIGNAL: Gateway polling active.")))
 
 (defun stop-signal-gateway ()
   (when (and *signal-polling-thread* (bt:thread-alive-p *signal-polling-thread*))

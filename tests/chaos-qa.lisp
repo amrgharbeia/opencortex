@@ -10,8 +10,8 @@
 (in-suite chaos-suite)
 
 (test malformed-ast-injection
-  "Verify that injecting a non-list AST doesn't crash the kernel."
-  (kernel-log "CHAOS: Injecting string as AST")
+  "Verify that injecting a non-list AST doesn't crash the harness."
+  (harness-log "CHAOS: Injecting string as AST")
   ;; This should be caught by handler-case in cognitive-loop or perceive
   (let ((malformed-stimulus '(:type :EVENT :payload (:sensor :buffer-update :ast "NOT A LIST"))))
     (finishes (ignore-errors (perceive-gate malformed-stimulus)))
@@ -19,7 +19,7 @@
 
 (test deep-recursion-stimulus
   "Verify that deep recursion is halted by the recursion breaker."
-  (kernel-log "CHAOS: Injecting deep recursion stimulus")
+  (harness-log "CHAOS: Injecting deep recursion stimulus")
   (clrhash org-agent::*skills-registry*)
   ;; Skill that always triggers another instance of itself
   (org-agent::defskill :infinite-skill
@@ -34,7 +34,7 @@
 
 (test missing-actuator-dispatch
   "Verify that dispatching to a non-existent actuator is handled."
-  (kernel-log "CHAOS: Dispatching to missing actuator")
+  (harness-log "CHAOS: Dispatching to missing actuator")
   (let ((action '(:type :REQUEST :target :ghost-actuator :payload (:action :boo))))
     (finishes (org-agent:dispatch-action action nil))))
 

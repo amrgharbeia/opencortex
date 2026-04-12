@@ -28,6 +28,6 @@ RULES:
     (when (eq sensor :heartbeat)
       (let* ((base-dir (or (uiop:getenv "MEMEX_DIR") "/home/user/memex/"))
              (inbox-path (merge-pathnames "inbox.org" base-dir)))
-        (org-agent:kernel-log "INBOX - Scanning ~a for migration..." (uiop:native-namestring inbox-path))
+        (org-agent:harness-log "INBOX - Scanning ~a for migration..." (uiop:native-namestring inbox-path))
         ;; Physical move logic would go here using Org AST parsing
         '(:target :system :payload (:action :message :text "Inbox processing complete (Simulation)."))))))

@@ -8,7 +8,7 @@
 #+FILETAGS: :security:logic:formal-methods:psf:
 
 * Overview
-The *Formal Verification Gate* replaces heuristic whitelisting with symbolic logic proofs. It ensures that every action proposed by System 1 is *provably safe* against the kernel's core security invariants using a Lisp-native symbolic prover.
+The *Formal Verification Gate* replaces heuristic whitelisting with symbolic logic proofs. It ensures that every action proposed by System 1 is *provably safe* against the harness's core security invariants using a Lisp-native symbolic prover.
 
 ** Deep Reasoning: The Sandbox of Intent
 This gate is the first line of defense against both "Inside Threats" (maliciously modified skill files) and "Hallucination Threats" (LLMs generating unsafe commands). 
@@ -130,7 +130,7 @@ The core prover that applies all relevant invariants to an action.
                            (eq inv-type action-target)
                            (eq inv-type action-type))
                    (unless (funcall inv-logic action context)
-                     (kernel-log "FORMAL FAILURE: Action ~s violated invariant ~a" action inv-name)
+                     (harness-log "FORMAL FAILURE: Action ~s violated invariant ~a" action inv-name)
                      (setf all-passed nil)))))
              *formal-invariants*)
     all-passed))

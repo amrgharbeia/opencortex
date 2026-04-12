@@ -56,7 +56,7 @@
                            (eq inv-type action-target)
                            (eq inv-type action-type))
                    (unless (funcall inv-logic action context)
-                     (kernel-log "FORMAL FAILURE: Action ~s violated invariant ~a" action inv-name)
+                     (harness-log "FORMAL FAILURE: Action ~s violated invariant ~a" action inv-name)
                      (setf all-passed nil)))))
              *formal-invariants*)
     all-passed))

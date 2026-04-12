@@ -65,7 +65,7 @@ Tests in `tests/memory-suite-tests.lisp` will verify the round-trip conversion a
 #+end_src
 
 ** Node Structure Definition
-We define the standard `org-node` structure used throughout the kernel.
+We define the standard `org-node` structure used throughout the harness.
 
 #+begin_src lisp :tangle ../src/homoiconic-memory.lisp
 (defun make-memory-node (headline &key content properties children)
@@ -97,7 +97,7 @@ Ensures every headline has a unique ID property using the system standard `org-i
         node
         (let ((new-id (org-agent:org-id-get-create)))
           (setf (getf node :properties) (append props (list :ID new-id)))
-          (kernel-log "MEMORY - Injected standard ID ~a" new-id)
+          (harness-log "MEMORY - Injected standard ID ~a" new-id)
           node))))
 #+end_src
 
@@ -128,7 +128,7 @@ Utilizes the Emacs bridge (or local parser) to convert text to JSON.
 (defun memory-org-to-json (source-path)
   "Routes to the Emacs-based Org-JSON bridge."
   ;; Future implementation will use the org-json-convert CLI tool
-  (kernel-log "MEMORY - Parsing ~a to JSON..." source-path)
+  (harness-log "MEMORY - Parsing ~a to JSON..." source-path)
   nil)
 #+end_src
 
@@ -139,7 +139,7 @@ Converts a structured AST back into Org-mode text.
 (defun memory-json-to-org (ast)
   "Materializes a JSON AST into Org-mode text."
   ;; Placeholder for org-element-interpret-data equivalent
-  (kernel-log "MEMORY - Rendering AST to text...")
+  (harness-log "MEMORY - Rendering AST to text...")
   "")
 #+end_src
 
@@ -175,7 +175,7 @@ Converts a structured AST back into Org-mode text.
 
 ** 2. Chaos Scenarios
 - *Scenario A (Duplicate IDs):* Intentionally inject two nodes with the same ID and verify the normalizer detects the collision and re-generates one.
-- *Scenario B (Broken AST):* Pass a malformed list to `memory-normalize-ast` and verify it fails gracefully with a log entry rather than crashing the kernel.
+- *Scenario B (Broken AST):* Pass a malformed list to `memory-normalize-ast` and verify it fails gracefully with a log entry rather than crashing the harness.
 
 * Phase F: Memory (RCA)
 - *[2026-04-09 Thu]:* Consolidated `org-mode`, `org-json-bridge`, and `ast-normalization` into this single skill. Standardized the recursive normalization path.

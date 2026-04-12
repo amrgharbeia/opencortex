@@ -11,7 +11,7 @@
                         (search "skills/" (namestring target-file)))))
     
     (org-agent:snapshot-object-store)
-    (org-agent:kernel-log "SELF-FIX - Attempting surgical fix on ~a..." target-file)
+    (org-agent:harness-log "SELF-FIX - Attempting surgical fix on ~a..." target-file)
     
     (handler-case
         (if (uiop:file-exists-p target-file)
@@ -23,24 +23,24 @@
                     
                     (if is-skill
                         (progn
-                          (org-agent:kernel-log "SELF-FIX - Reloading modified skill ~a..." target-file)
+                          (org-agent:harness-log "SELF-FIX - Reloading modified skill ~a..." target-file)
                           (if (org-agent:load-skill-from-org target-file)
                               (progn
-                                (org-agent:kernel-log "SELF-FIX SUCCESS - Applied and reloaded.")
+                                (org-agent:harness-log "SELF-FIX SUCCESS - Applied and reloaded.")
                                 t)
                               (progn
-                                (org-agent:kernel-log "SELF-FIX FAILURE - Skill reload failed. Rolling back.")
+                                (org-agent:harness-log "SELF-FIX FAILURE - Skill reload failed. Rolling back.")
                                 (with-open-file (out target-file :direction :output :if-exists :supersede)
                                   (write-string content out))
                                 (org-agent:rollback-object-store 0)
                                 nil)))
                         (progn
-                          (org-agent:kernel-log "SELF-FIX SUCCESS - Applied fix to file.")
+                          (org-agent:harness-log "SELF-FIX SUCCESS - Applied fix to file.")
                           t)))
-                  (progn (org-agent:kernel-log "SELF-FIX FAILURE - Pattern not found.") nil)))
-            (progn (org-agent:kernel-log "SELF-FIX FAILURE - File not found.") nil))
+                  (progn (org-agent:harness-log "SELF-FIX FAILURE - Pattern not found.") nil)))
+            (progn (org-agent:harness-log "SELF-FIX FAILURE - File not found.") nil))
       (error (c)
-        (org-agent:kernel-log "SELF-FIX CRASH - ~a. Rolling back." c)
+        (org-agent:harness-log "SELF-FIX CRASH - ~a. Rolling back." c)
         (org-agent:rollback-object-store 0)
         nil))))
 

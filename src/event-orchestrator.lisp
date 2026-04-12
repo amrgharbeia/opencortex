@@ -9,7 +9,7 @@
 (defun orchestrator-register-hook (hook-name fn)
   "Registers a function for a named hook. Triggers a Merkle snapshot."
   (pushnew fn (gethash hook-name *hook-registry*))
-  (kernel-log "ORCHESTRATOR - Registered hook function for ~a" hook-name)
+  (harness-log "ORCHESTRATOR - Registered hook function for ~a" hook-name)
   (snapshot-object-store)
   t)
 
@@ -18,17 +18,17 @@
   (let ((functions (gethash hook-name *hook-registry*)))
     (dolist (fn functions)
       (handler-case (apply fn args)
-        (error (c) (kernel-log "ORCHESTRATOR ERROR - Hook ~a failed: ~a" hook-name c))))))
+        (error (c) (harness-log "ORCHESTRATOR ERROR - Hook ~a failed: ~a" hook-name c))))))
 
 (defun orchestrator-schedule-task (task-id schedule fn)
   "Schedules a task for execution. Schedule can be an interval (integer seconds) or 'heartbeat'."
   (setf (gethash task-id *cron-registry*) (list :schedule schedule :fn fn :last-run 0))
-  (kernel-log "ORCHESTRATOR - Scheduled task ~a (~a)" task-id schedule)
+  (harness-log "ORCHESTRATOR - Scheduled task ~a (~a)" task-id schedule)
   (snapshot-object-store)
   t)
 
 (defun orchestrator-process-cron ()
-  "Checked by the kernel on every heartbeat."
+  "Checked by the harness on every heartbeat."
   (let ((now (get-universal-time)))
     (maphash (lambda (id task)
                (let ((schedule (getf task :schedule))
@@ -37,7 +37,7 @@
                  (when (or (eq schedule :heartbeat)
                            (and (integerp schedule) (>= (- now last-run) schedule)))
                    (handler-case (funcall fn)
-                     (error (c) (kernel-log "ORCHESTRATOR ERROR - Cron task ~a failed: ~a" id c)))
+                     (error (c) (harness-log "ORCHESTRATOR ERROR - Cron task ~a failed: ~a" id c)))
                    (setf (getf (gethash id *cron-registry*) :last-run) now))))
              *cron-registry*)))
 
