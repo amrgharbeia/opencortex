@@ -2,9 +2,9 @@
   (:use :cl :fiveam :org-agent))
 (in-package :org-agent-tests)
 
-(def-suite oacp-suite
-  :description "Test suite for org-agent Communication Protocol (OACP)")
-(in-suite oacp-suite)
+(def-suite harness-protocol-suite
+  :description "Test suite for org-agent Communication Protocol (Harness Protocol)")
+(in-suite harness-protocol-suite)
 
 (test test-framing
   "Verify that messages are correctly prefixed with a 6-character hex length."

@@ -34,7 +34,7 @@ RUN sbcl --non-interactive \
 # Ensure the binary is executable
 RUN chmod +x /app/org-agent-server
 
-# Expose the OACP and Web Dashboard ports
+# Expose the Harness Protocol and Web Dashboard ports
 EXPOSE 9105 8080
 
 # The app expects the memex to be mounted here

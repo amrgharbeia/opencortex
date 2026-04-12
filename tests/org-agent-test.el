@@ -15,7 +15,7 @@
       (should (string= "000014(:type :EVENT :id 1)" captured-framed)))))
 
 (ert-deftest test-org-agent-parsing ()
-  "Verify that the filter correctly parses OACP framed messages."
+  "Verify that the filter correctly parses Harness Protocol framed messages."
   (let ((mock-buffer (generate-new-buffer " *org-agent-test*"))
         (received-plist nil))
     (cl-letf (((symbol-function 'org-agent--handle-message)

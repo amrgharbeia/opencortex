@@ -37,7 +37,7 @@
 
 (defsystem :org-agent/tests
   :depends-on (:org-agent :fiveam)
-  :components ((:file "tests/oacp-tests")
+  :components ((:file "tests/protocol-tests")
                (:file "tests/pipeline-tests")
                (:file "tests/peripheral-vision-tests")
                (:file "tests/safety-harness-tests")
@@ -56,7 +56,7 @@
                (:file "tests/playwright-tests")
                (:file "tests/chaos-qa"))
   :perform (test-op (o s) 
-             (uiop:symbol-call :fiveam :run! (uiop:find-symbol* :oacp-suite :org-agent-tests))
+             (uiop:symbol-call :fiveam :run! (uiop:find-symbol* :harness-protocol-suite :org-agent-tests))
              (uiop:symbol-call :fiveam :run! (uiop:find-symbol* :pipeline-suite :org-agent-pipeline-tests))
              (uiop:symbol-call :fiveam :run! (uiop:find-symbol* :vision-suite :org-agent-peripheral-vision-tests))
              (uiop:symbol-call :fiveam :run! (uiop:find-symbol* :safety-suite :org-agent-safety-tests))

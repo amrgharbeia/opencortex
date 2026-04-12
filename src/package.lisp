@@ -1,7 +1,7 @@
 (defpackage :org-agent
   (:use :cl)
   (:export 
-   ;; --- OACP Protocol ---
+   ;; --- Harness Protocol Protocol ---
    #:frame-message
    #:parse-message
    #:make-hello-message

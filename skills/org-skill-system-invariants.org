@@ -54,7 +54,7 @@ Define the core functional and security requirements for the neurosymbolic harne
 
 ** 3. Success Criteria
 *** TODO Harness Lisp stability (Heartbeat consistency)
-*** TODO OACP communication reliability
+*** TODO Harness Protocol communication reliability
 *** TODO Org AST-to-Lisp conversion fidelity
 *** TODO Deliberate Safety Gating (The Harness) enforcement
 
@@ -64,7 +64,7 @@ Define the core functional and security requirements for the neurosymbolic harne
 :END:
 
 ** 1. Architectural Intent
-The harness is transport-agnostic and business-logic-agnostic. It communicates with external actuators (Emacs, Web, Signal) via the Org-Agent Communication Protocol (OACP).
+The harness is transport-agnostic and business-logic-agnostic. It communicates with external actuators (Emacs, Web, Signal) via the Org-Agent Communication Protocol (Harness Protocol).
 
 ** 2. Semantic Interfaces
 #+begin_src lisp

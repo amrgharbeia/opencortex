@@ -20,7 +20,7 @@ The *Chaos Gauntlet* is an adversarial testing skill designed to ensure the syst
 Verify the system's stability and error-handling capabilities under stress.
 
 ** 2. User Needs
-- *Failure Simulation:* Ability to inject artificial delays or errors into the OACP bus.
+- *Failure Simulation:* Ability to inject artificial delays or errors into the Harness Protocol bus.
 - *Byzantine Response Testing:* Test how System 2 handles nonsensical or malicious System 1 proposals.
 - *Network Resilience:* Simulate Gitea or LLM provider timeouts.
 - *Recovery Verification:* Ensure the harness can recover from a "skip-event" restart.
