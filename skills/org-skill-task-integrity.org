@@ -36,42 +36,62 @@ Define automated behaviors for GTD state consistency and dependency verification
 :END:
 
 
-* Phase B: Blueprint (PROTOCOL)
-:PROPERTIES:
-:STATUS: DRAFT
-:END:
+* Implementation
 
-** 1. Architectural Intent
-   The Task Integrity Agent will operate as a reactive system, intercepting task state change requests within the Org-mode task management system.  It will validate these requests against predefined semantic rules and dependencies before allowing the change to propagate. It will be implemented using Lisp, leveraging Org-mode's extension capabilities to hook into task state modification events. The goal is to build a system that is both performant and easily extensible with new integrity rules.  Errors will be reported clearly to the user with options for correction.
+** Semantic Mapping
+#+begin_src lisp :tangle ../src/task-integrity.lisp
+(in-package :org-agent)
 
-** 2. Semantic Interfaces (Lisp Signatures)
+(defun semantic-mapping (task-state)
+  "Maps Org-mode task states to semantic categories."
+  (case (intern (string-upcase task-state) :keyword)
+    ((:todo :active :started :wait) :active)
+    ((:done :cancelled :resolved) :resolved)
+    (t :unknown)))
+#+end_src
 
-*** `task-integrity-check (task-id new-state)`
-    - *Purpose:*  Core function to validate a proposed state transition.
-    - *Parameters:*
-      - `task-id`: Unique identifier of the task (e.g., Org-id).
-      - `new-state`: Target state of the task (e.g., 'DONE', 'ACTIVE').
-    - *Returns:* `t` if the transition is valid; `nil` or an error message (string) if invalid.
-    - *Example:* `(task-integrity-check "*TODO Example Task" 'DONE)`
+** Active Children Detection
+#+begin_src lisp :tangle ../src/task-integrity.lisp
+(defun detect-active-children (task-id)
+  "Checks if a task has any child tasks in an active state."
+  (let ((children (list-objects-with-attribute :PARENT task-id)))
+    (remove-if-not (lambda (child)
+                     (let ((todo (getf (org-object-attributes child) :TODO)))
+                       (and todo (eq (semantic-mapping todo) :active))))
+                   children)))
+#+end_src
 
-*** `semantic-mapping (task-state)`
-    - *Purpose:*  Maps Org-mode task states (e.g., 'TODO', 'DONE') to semantic categories (e.g., 'Active', 'Resolved').
-    - *Parameters:*
-      - `task-state`: An Org-mode task state keyword.
-    - *Returns:*  Semantic category symbol (e.g., `:active`, `:resolved`).
-    - *Example:* `(semantic-mapping 'TODO)`  -> `:active`
+** Integrity Check (task-integrity-check)
+Enforces high-integrity semantic rules for task management.
 
-*** `detect-active-children (task-id)`
-    - *Purpose:*  Checks if a task has any child tasks in an active state.
-    - *Parameters:*
-      - `task-id`: Unique identifier of the parent task.
-    - *Returns:*  A list of active child task IDs, or `nil` if no active children exist.
-    - *Example:* `(detect-active-children "*TODO Parent Task")` -> `("*TODO Child Task 1" "*TODO Child Task 2")` (if they are TODO)
+#+begin_src lisp :tangle ../src/task-integrity.lisp
+(defun task-integrity-check (action)
+  "Enforces semantic GTD integrity rules on proposed actions."
+  (let* ((payload (getf action :payload))
+         (act (or (getf payload :action) (getf action :action)))
+         (id (or (getf payload :id) (getf action :id)))
+         (new-attrs (or (getf payload :attributes) (getf action :attributes))))
+    (when (and (eq act :update-node) 
+               (equal (getf new-attrs :TODO) "DONE"))
+      (let ((active-children (detect-active-children id)))
+        (when active-children
+          (return-from task-integrity-check 
+            (format nil "Blocked by Task Integrity: ~a active children exist." (length active-children))))))
+    nil))
+#+begin_src
 
-*** `block-state-transition (task-id error-message)`
-    - *Purpose:*  Prevents a task state transition and displays an error message to the user.
-    - *Parameters:*
-      - `task-id`: Unique identifier of the task.
-      - `error-message`:  String explaining why the transition is blocked.
-    - *Returns:*  `nil` (side effect: displays message).
+** Skill Definition
+#+begin_src lisp :tangle ../src/task-integrity.lisp
+(defskill :skill-task-integrity
+  :priority 90
+  :trigger (lambda (ctx) (declare (ignore ctx)) nil)
+  :neuro nil
+  :symbolic (lambda (action context)
+              (declare (ignore context))
+              (let ((err (task-integrity-check action)))
+                (if err
+                    (list :type :LOG :payload (list :text err))
+                    action))))
+#+end_src
+
 

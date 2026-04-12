@@ -1,3 +1,4 @@
+(in-package :org-agent)
 (defun bouncer-scan-secrets (text)
   "Returns the name of the secret found in TEXT, or NIL if clean."
   (when (and text (stringp text))
@@ -9,6 +10,7 @@
                *vault-memory*)
       found-secret)))
 
+(in-package :org-agent)
 (defun bouncer-check-network-exfil (cmd)
   "Returns T if the command appears to target an unwhitelisted external host."
   (when (and cmd (stringp cmd))
@@ -21,6 +23,7 @@
           (let ((domain (aref regs 1)))
             (not (some (lambda (safe) (search safe domain)) network-whitelist))))))))
 
+(in-package :org-agent)
 (defun bouncer-check (action context)
   "The 5-Vector security gate. Blocks or queues actions based on risk."
   (let* ((target (getf action :target))
@@ -59,6 +62,7 @@
       ;; 4. Default Pass
       (t action))))
 
+(in-package :org-agent)
 (defun bouncer-process-approvals ()
   "Scans the object store for APPROVED flight plans and re-injects their actions."
   (let ((approved-nodes (list-objects-with-attribute :TODO "APPROVED"))
@@ -78,6 +82,7 @@
               (setq found-any t))))))
     found-any))
 
+(in-package :org-agent)
 (defskill :skill-bouncer
   :priority 100
   :trigger (lambda (ctx) 

@@ -37,34 +37,35 @@
     (when (and hs token)
       (handler-case
           (let* ((response (dex:get url :headers `(("Authorization" . ,(format nil "Bearer ~a" token)))))
-               (json (cl-json:decode-json-from-string response))
-               (next-batch (or (cdr (assoc :next-batch json))
-                               (cdr (assoc :next--batch json))))
-               (rooms (cdr (assoc :rooms json)))
-               (joined (cdr (assoc :join rooms))))
-
-          (when next-batch
-            (setf *matrix-since-token* next-batch))
-
-          (dolist (room-entry joined)
-            (let* ((room-id (string-downcase (string (car room-entry))))
-                   (room-data (cdr room-entry))
-                   (timeline (cdr (assoc :timeline room-data)))
-                   (events (cdr (assoc :events timeline))))
-              (dolist (event events)
-                (let* ((type (cdr (assoc :type event)))
-                       (content (cdr (assoc :content event)))
-                       (sender (cdr (assoc :sender event)))
-                       (body (cdr (assoc :body content))))
-                  (when (and (string= type "m.room.message") body)
-                    (kernel-log "MATRIX: Received message from ~a in ~a" sender room-id)
-                    (inject-stimulus 
-                     (list :type :EVENT 
-                           :payload (list :sensor :chat-message 
-                                          :channel :matrix 
-                                          :room-id room-id 
-                                          :sender sender 
-                                          :text body)))))))))        (error (c) (kernel-log "MATRIX SYNC ERROR: ~a" c))))))
+                 (json (cl-json:decode-json-from-string response))
+                 (next-batch (or (cdr (assoc :next-batch json))
+                                 (cdr (assoc :next--batch json))))
+                 (rooms (cdr (assoc :rooms json)))
+                 (joined (cdr (assoc :join rooms))))
+            
+            (when next-batch
+              (setf *matrix-since-token* next-batch))
+            
+            (dolist (room-entry joined)
+              (let* ((room-id (string-downcase (string (car room-entry))))
+                     (room-data (cdr room-entry))
+                     (timeline (cdr (assoc :timeline room-data)))
+                     (events (cdr (assoc :events timeline))))
+                (dolist (event events)
+                  (let* ((type (cdr (assoc :type event)))
+                         (content (cdr (assoc :content event)))
+                         (sender (cdr (assoc :sender event)))
+                         (body (cdr (assoc :body content))))
+                    (when (and (string= type "m.room.message") body)
+                      (kernel-log "MATRIX: Received message from ~a in ~a" sender room-id)
+                      (inject-stimulus 
+                       (list :type :EVENT 
+                             :payload (list :sensor :chat-message 
+                                            :channel :matrix 
+                                            :room-id room-id 
+                                            :sender sender 
+                                            :text body)))))))))
+        (error (c) (kernel-log "MATRIX SYNC ERROR: ~a" c))))))
 
 (defun start-matrix-gateway ()
   "Initializes the Matrix background thread."

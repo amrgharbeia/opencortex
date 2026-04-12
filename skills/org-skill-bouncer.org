@@ -24,6 +24,7 @@ While the *Formal Prover* ensures an action is "legal" (e.g., "Yes, you are allo
 Retrieves all active secrets from the vault and scans the payload for potential leaks.
 
 #+begin_src lisp :tangle ../src/bouncer.lisp
+(in-package :org-agent)
 (defun bouncer-scan-secrets (text)
   "Returns the name of the secret found in TEXT, or NIL if clean."
   (when (and text (stringp text))
@@ -40,6 +41,7 @@ Retrieves all active secrets from the vault and scans the payload for potential 
 Inspects shell commands for unwhitelisted domains or IP addresses.
 
 #+begin_src lisp :tangle ../src/bouncer.lisp
+(in-package :org-agent)
 (defun bouncer-check-network-exfil (cmd)
   "Returns T if the command appears to target an unwhitelisted external host."
   (when (and cmd (stringp cmd))
@@ -57,6 +59,7 @@ Inspects shell commands for unwhitelisted domains or IP addresses.
 The primary entry point for all high-impact actions.
 
 #+begin_src lisp :tangle ../src/bouncer.lisp
+(in-package :org-agent)
 (defun bouncer-check (action context)
   "The 5-Vector security gate. Blocks or queues actions based on risk."
   (let* ((target (getf action :target))
@@ -98,6 +101,7 @@ The primary entry point for all high-impact actions.
 
 ** Approval Processing
 #+begin_src lisp :tangle ../src/bouncer.lisp
+(in-package :org-agent)
 (defun bouncer-process-approvals ()
   "Scans the object store for APPROVED flight plans and re-injects their actions."
   (let ((approved-nodes (list-objects-with-attribute :TODO "APPROVED"))
@@ -120,6 +124,7 @@ The primary entry point for all high-impact actions.
 
 ** Skill Definition
 #+begin_src lisp :tangle ../src/bouncer.lisp
+(in-package :org-agent)
 (defskill :skill-bouncer
   :priority 100
   :trigger (lambda (ctx) 

@@ -38,6 +38,7 @@ Iterate through the inbox. Use System 2 (Symbolic) to identify the tag. If ~@per
 
 ** Helper: Privacy & Archive Checks
 #+begin_src lisp :tangle ../src/processor-logic.lisp
+(in-package :org-agent)
 (defun inbox-is-private-p (tags)
   (member "@personal" tags :test #'string-equal))
 
@@ -47,6 +48,7 @@ Iterate through the inbox. Use System 2 (Symbolic) to identify the tag. If ~@per
 
 ** Neural Stage (Enrichment)
 #+begin_src lisp :tangle ../src/processor-logic.lisp
+(in-package :org-agent)
 (defun neuro-skill-inbox-processor (context)
   (let* ((payload (getf context :payload))
          (content (getf payload :content))
@@ -64,6 +66,7 @@ RULES:
 
 ** Symbolic Stage (The Physical Move)
 #+begin_src lisp :tangle ../src/processor-logic.lisp
+(in-package :org-agent)
 (defun inbox-process-logic (action context)
   (declare (ignore action))
   (let* ((payload (getf context :payload))

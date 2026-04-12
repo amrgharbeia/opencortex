@@ -28,6 +28,7 @@ Enable reliable, cross-instance coordination without a central master.
 
 ** Consensus Algorithm (Simplified Raft)
 #+begin_src lisp :tangle ../src/consensus-logic.lisp
+(in-package :org-agent)
 (defun consensus-propose-vote (proposal)
   "Broadcasts a proposal to the peer swarm and collects votes.
    Implements PSF Social Consensus Protocol."

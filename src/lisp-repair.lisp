@@ -30,11 +30,10 @@ MANDATE: Output EXACTLY ONE valid Common Lisp list. Do not explain. Do not use m
 (defskill :skill-lisp-repair
   :priority 90
   :trigger (lambda (ctx) (eq (getf (getf ctx :payload) :sensor) :syntax-error))
-  :neuro nil
+  :neuro nil ;; Handled deterministically in symbolic or manually via ask-neuro
   :symbolic (lambda (action context)
               (declare (ignore action))
-              (let* ((stimulus (getf context :candidate))
-                     (payload (getf stimulus :payload))
+              (let* ((payload (getf context :payload))
                      (code (getf payload :code))
                      (error-msg (getf payload :error)))
                 (kernel-log "SYNTAX GATE: Reacting to broken Lisp stimulus...")

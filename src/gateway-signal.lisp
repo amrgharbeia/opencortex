@@ -45,7 +45,7 @@
 
 (defun start-signal-gateway ()
   "Initializes the Signal background thread."
-  (unless (and *telegram-polling-thread* (bt:thread-alive-p *telegram-polling-thread*))
+  (unless (and *signal-polling-thread* (bt:thread-alive-p *signal-polling-thread*))
     (setf *signal-polling-thread*
           (bt:make-thread 
            (lambda ()

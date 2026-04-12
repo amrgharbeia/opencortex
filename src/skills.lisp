@@ -26,7 +26,7 @@
   `(setf (gethash (string-downcase (string ,name)) *skills-registry*)
          (make-skill :name (string-downcase (string ,name)) 
                      :priority (or ,priority 10) 
-                     :dependencies ,dependencies
+                     :dependencies ',dependencies
                      :trigger-fn ,trigger 
                      :neuro-prompt ,neuro 
                      :symbolic-fn ,symbolic)))

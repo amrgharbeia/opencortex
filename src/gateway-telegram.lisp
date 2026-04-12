@@ -1,7 +1,9 @@
 (in-package :org-agent)
 
 (defvar *telegram-last-update-id* 0)
+
 (defvar *telegram-polling-thread* nil)
+
 (defvar *telegram-authorized-chats* nil 
   "List of chat IDs allowed to interact with the bot. Hydrated from environment.")
 
@@ -68,14 +70,12 @@
     (bt:destroy-thread *telegram-polling-thread*)
     (setf *telegram-polling-thread* nil)))
 
-(progn
-  (register-actuator :telegram #'execute-telegram-action)
-  
-  (defskill :skill-gateway-telegram
-    :priority 150
-    :trigger (lambda (ctx) (declare (ignore ctx)) nil) ;; Passive, handles its own loop
-    :neuro nil
-    :symbolic (lambda (action ctx) (declare (ignore ctx)) action))
-  
-  ;; Initialize the background polling loop
-  (start-telegram-gateway))
+(register-actuator :telegram #'execute-telegram-action)
+
+(defskill :skill-gateway-telegram
+  :priority 150
+  :trigger (lambda (ctx) (declare (ignore ctx)) nil) ;; Passive, handles its own loop
+  :neuro nil
+  :symbolic (lambda (action ctx) (declare (ignore ctx)) action))
+
+(start-telegram-gateway)

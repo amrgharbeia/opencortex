@@ -10,54 +10,11 @@ Associative (LLM) is creative but hallucination-prone. Deliberate (Lisp) is rigi
 - **Sovereign Decoupling:** By moving the physical API logic into skills, the core remains a neutral "Thinking Engine" that doesn't care if the imagination comes from Google, Anthropic, or a local Llama instance.
 
 * Associative Engine (neuro.lisp)
-This module handles the interaction with Large Language Models, providing a unified interface for multiple backends.
+This module handles the interaction with Large Language Models, providing a unified interface for multiple backends. As a "Thin Harness," it does not handle authentication or specific provider logic; these are delegated to skills.
 
 ** Package Context
 #+begin_src lisp :tangle ../src/neuro.lisp
 (in-package :org-agent)
-#+end_src
-
-** Environment Access
-#+begin_src lisp :tangle ../src/neuro.lisp
-(defun get-env (var &optional default) (or (uiop:getenv var) default))
-#+end_src
-
-** Auth Providers Registry
-Tracks API keys and authentication functions for various providers.
-
-#+begin_src lisp :tangle ../src/neuro.lisp
-(defvar *auth-providers* (make-hash-table :test 'equal))
-#+end_src
-
-** Register Auth Provider
-Registers a function or list to provide authentication for a specific backend.
-
-#+begin_src lisp :tangle ../src/neuro.lisp
-(defun register-auth-provider (name fn) (setf (gethash name *auth-providers*) fn))
-#+end_src
-
-** Get Provider Auth
-Retrieves authentication credentials for a provider, falling back to environment variables if not found in the registry.
-
-#+begin_src lisp :tangle ../src/neuro.lisp
-(defun get-provider-auth (provider)
-  "Retrieves authentication credentials for a provider."
-  (let ((auth (gethash provider *auth-providers*)))
-    (cond
-      ((functionp auth) (funcall auth))
-      ((listp auth) auth)
-      (t 
-       (let ((specific-key (case provider
-                             (:gemini (uiop:getenv "GEMINI_API_KEY"))
-                             (:openrouter (uiop:getenv "OPENROUTER_API_KEY"))
-                             (:anthropic (uiop:getenv "ANTHROPIC_API_KEY"))
-                             (:openai (uiop:getenv "OPENAI_API_KEY"))
-                             (t nil))))
-         (if (and specific-key (> (length specific-key) 0))
-             (list :api-key specific-key)
-             (let ((legacy (uiop:getenv "LLM_API_KEY")))
-               (when (and legacy (> (length legacy) 0))
-                 (list :api-key legacy)))))))))
 #+end_src
 
 ** Associative Backends Registry
@@ -68,10 +25,10 @@ Tracks the actual implementation functions for each LLM provider.
 #+end_src
 
 ** Provider Cascade
-The ordered list of backends to attempt for neural reasoning.
+The ordered list of backends to attempt for neural reasoning. This is a default that can be overridden by skills like the Token Accountant.
 
 #+begin_src lisp :tangle ../src/neuro.lisp
-(defvar *provider-cascade* '(:openrouter :gemini))
+(defvar *provider-cascade* '(:openrouter :gemini-api))
 #+end_src
 
 ** Register Associative Backend
@@ -89,10 +46,10 @@ A hook for dynamic model selection based on the current context.
 #+end_src
 
 ** Associative Dispatch (ask-neuro)
-The primary entry point for Associative. It handles the retry logic and backend selection. It supports a parallel consensus mode where all backends are queried simultaneously.
+The primary entry point for Associative. It handles the retry logic and backend selection. It supports a parallel consensus mode where multiple backends are queried.
 
 #+begin_src lisp :tangle ../src/neuro.lisp
-(defvar *consensus-enabled-p* t "If T, ask-neuro queries all backends in parallel.")
+(defvar *consensus-enabled-p* nil "If T, ask-neuro queries all backends in parallel.")
 
 (defun ask-neuro (prompt &key (system-prompt "You are the Associative engine of a Neurosymbolic Lisp Machine.") (cascade nil) (context nil))
   "Dispatches a neural request through the provider cascade or parallel consensus."
@@ -130,7 +87,7 @@ The primary entry point for Associative. It handles the retry logic and backend 
                 (format nil "~{~a~^|CONSENSUS-SEP|~}" valid-results)
                 "(:type :LOG :payload (:text \"Neural Consensus Failure\"))")))
         
-        ;; SEQUENTIAL CASCADE MODE (Legacy)
+        ;; SEQUENTIAL CASCADE MODE
         (or (dolist (backend backends)
               (let ((backend-fn (gethash backend *neuro-backends*)))
                 (when backend-fn
@@ -139,28 +96,18 @@ The primary entry point for Associative. It handles the retry logic and backend 
                          (result (if model 
                                      (funcall backend-fn prompt system-prompt :model model)
                                      (funcall backend-fn prompt system-prompt))))
-                    (unless (and (stringp result) (search ":LOG" result) (or (search "Failure" result) (search "missing" result)))
+                    (unless (or (null result)
+                                (and (stringp result) (search ":LOG" result) (or (search "Failure" result) (search "missing" result))))
                       (return result))))))
             "(:type :LOG :payload (:text \"Neural Cascade Failure\"))"))))
 #+end_src
 
-** Sovereign Service Fallbacks
-Standard functions that can be overridden by specific skills to provide enhanced functionality.
-
-#+begin_src lisp :tangle ../src/neuro.lisp
-(defun token-accountant-route-task (context)
-  "Generic fallback for routing. Overridden by skill-token-accountant."
-  (declare (ignore context))
-  '(:openrouter :gemini))
-#+end_src
-
 ** Associative Reasoning (think)
-Invokes the Associative engine to generate a proposed Lisp action. It automatically injects the tool documentation and global context into the prompt.
+Invokes the Associative engine to generate a proposed Lisp action based on context. It automatically injects the tool documentation and global context into the prompt.
 
 #+begin_src lisp :tangle ../src/neuro.lisp
 (defun think (context)
-  "Invokes the neural Associative engine to propose a Lisp action based on context. 
-If consensus is enabled, it returns a list of proposals from different backends."
+  "Invokes the neural Associative engine to propose a Lisp action based on context."
   (let ((active-skill (find-triggered-skill context))
         (tool-belt (generate-tool-belt-prompt))
         (global-context (context-assemble-global-awareness)))
@@ -227,96 +174,44 @@ Allows the agent to self-optimize its own prompts.
     (ask-neuro (format nil "PROMPT: ~a~%RESULT: ~a" full-prompt successful-output) :system-prompt system-instr)))
 #+end_src
 
-* Deliberate Logic (symbolic.lisp)
-The deterministic gatekeeper that ensures all proposed actions are safe and logically valid.
+
+* Deliberate Engine (symbolic.lisp)
+The deterministic gatekeeper that ensures all proposed actions are safe and logically valid. As a "Thin Harness," the Deliberate engine does not contain specific security rules; instead, it provides a priority-based dispatcher that iterates through all loaded skills to validate or transform proposed actions.
 
 ** Package Context
 #+begin_src lisp :tangle ../src/symbolic.lisp
 (in-package :org-agent)
 #+end_src
 
-** Task Integrity Check
-Enforces high-integrity semantic rules for task management (e.g. blocking closing parent tasks with active children).
-
-#+begin_src lisp :tangle ../src/symbolic.lisp
-(defun task-integrity-check (action)
-  "Enforces semantic GTD integrity rules on proposed actions."
-  (let* ((payload (getf action :payload))
-         (act (or (getf payload :action) (getf action :action)))
-         (id (or (getf payload :id) (getf action :id)))
-         (new-attrs (or (getf payload :attributes) (getf action :attributes))))
-    (when (and (eq act :update-node) (equal (getf new-attrs :TODO) "DONE"))
-      (let ((children (list-objects-with-attribute :PARENT id)))
-        (when (some (lambda (child) (let ((todo (getf (org-object-attributes child) :TODO)))
-                                      (and todo (not (equal todo "DONE")))))
-                    children)
-          (return-from task-integrity-check "Blocked by Task Integrity: Active children exist."))))
-    nil))
-#+end_src
-
-** Authorization Gate (Bouncer)
-The Bouncer intercepts high-risk or complex actions and requires manual Foreground approval.
-
-#+begin_src lisp :tangle ../src/symbolic.lisp
-(defun bouncer-check (action)
-  "Checks if an action requires manual authorization."
-  (let* ((payload (getf action :payload))
-         (target (getf action :target))
-         (act (or (getf payload :action) (getf action :action)))
-         (tool (or (getf payload :tool) (getf action :tool)))
-         (approved (getf action :approved)))
-    (when (and (not approved)
-               (or (and (eq target :tool) (equal tool "shell"))
-                   (and (eq target :emacs) (eq act :eval))
-                   (and (eq target :tool) (equal tool "repair-file"))))
-      (return-from bouncer-check t))
-    nil))
-#+end_src
-
 ** Validation Gate (decide)
-The "Deliberate" supervisor. It intercepts every action proposed by Associative and runs it through the task integrity check, the bouncer, the skill's symbolic gate, and the global safety harness.
+The "Deliberate" supervisor. It intercepts every action proposed by Associative and runs it through the symbolic gates of all registered skills, sorted by priority.
 
 #+begin_src lisp :tangle ../src/symbolic.lisp
 (defun decide (proposed-action context)
-  "The Deliberate Safety Gate: validates or rejects proposed neural actions."
-  ;; 1. Task Integrity Check (GTD Semantics)
-  (let ((integrity-error (task-integrity-check proposed-action)))
-    (when integrity-error
-      (kernel-log "DELIBERATE [INTEGRITY]: ~a~%" integrity-error)
-      (return-from decide (list :type :LOG :payload (list :text integrity-error)))))
-
-  ;; 2. Bouncer Check (Authorization Gate)
-  (when (bouncer-check proposed-action)
-    (kernel-log "DELIBERATE [BOUNCER]: Action requires manual approval.~%")
-    (return-from decide 
-      (list :type :EVENT 
-            :payload (list :sensor :approval-required :action proposed-action))))
-
-  ;; 3. Skill-specific and Safety Checks
-  (let ((active-skill (find-triggered-skill context)))
-    (if (and proposed-action (listp proposed-action) active-skill)
-        (let* ((symbolic-gate (skill-symbolic-fn active-skill))
-               (payload (getf proposed-action :payload))
-               (action (or (getf payload :action) (getf proposed-action :action)))
-               (code (or (getf payload :code) (getf proposed-action :code))))
-          ;; Global safety harness for EVAL
-          (when (and (member (getf proposed-action :type) '(:request :REQUEST))
-                     (member action '(:eval :EVAL)))
-            (let ((harness-pkg (find-package :org-agent.skills.org-skill-safety-harness)))
-              (when (and code harness-pkg)
-                (unless (ignore-errors (uiop:symbol-call :org-agent.skills.org-skill-safety-harness :safety-harness-validate code))
-                  (kernel-log "DELIBERATE [GLOBAL]: Security violation blocked.~%")
-                  (return-from decide '(:type :LOG :payload (:text "Blocked by Global Safety Harness")))))))
-          ;; Skill-specific verification
-          (if symbolic-gate
-              (let ((decision (funcall symbolic-gate proposed-action context)))
-                (if decision 
-                    (progn (kernel-log "DELIBERATE: Verified by skill '~a'.~%" (skill-name active-skill)) decision)
-                    (progn (kernel-log "DELIBERATE: REJECTED by skill '~a'.~%" (skill-name active-skill))
-                           '(:type :LOG :payload (:text "Action rejected by skill heuristics")))))
-              (progn (kernel-log "DELIBERATE: Verified (Implicitly safe for skill '~a').~%" (skill-name active-skill)) proposed-action)))
-        proposed-action)))
-#+end_src
+  "The Deliberate Safety Gate: iterates through all skill symbolic-gates sorted by priority."
+  (let ((current-action proposed-action)
+        (skills nil))
+    ;; 1. Collect all skills with symbolic gates
+    (maphash (lambda (name skill)
+               (declare (ignore name))
+               (when (skill-symbolic-fn skill)
+                 (push skill skills)))
+             *skills-registry*)
+    
+    ;; 2. Sort skills by priority (highest first)
+    (setf skills (sort skills #'> :key #'skill-priority))
+    
+    ;; 3. Execute symbolic gates sequentially
+    (dolist (skill skills)
+      (let ((gate (skill-symbolic-fn skill)))
+        (setf current-action (funcall gate current-action context))
+        ;; If any gate returns a LOG or EVENT (blocking/intercepting), stop and return it.
+        (when (and (listp current-action) 
+                   (member (getf current-action :type) '(:LOG :EVENT :log :event)))
+          (kernel-log "DELIBERATE: Intercepted by skill '~a'~%" (skill-name skill))
+          (return-from decide current-action))))
+    
+    current-action))
 #+end_src
 
 ** Store Filtering (list-objects-with-attribute)
@@ -326,6 +221,10 @@ A symbolic helper function to find nodes with specific attributes.
 (defun list-objects-with-attribute (attr-key attr-val)
   "Filters the Object Store for nodes having a specific attribute value."
   (let ((results nil))
-    (maphash (lambda (id obj) (declare (ignore id)) (when (equal (getf (org-object-attributes obj) attr-key) attr-val) (push obj results))) *object-store*)
+    (maphash (lambda (id obj) 
+               (declare (ignore id)) 
+               (when (equal (getf (org-object-attributes obj) attr-key) attr-val) 
+                 (push obj results))) 
+             *object-store*)
     results))
 #+end_src

@@ -1,3 +1,4 @@
+(in-package :org-agent)
 (defun consensus-propose-vote (proposal)
   "Broadcasts a proposal to the peer swarm and collects votes.
    Implements PSF Social Consensus Protocol."

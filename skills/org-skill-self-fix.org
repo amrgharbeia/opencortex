@@ -16,6 +16,8 @@ The *Self-Fix Agent* is the system's "Repair Mechanism." It takes failure hypoth
 
 ** Repair Logic
 #+begin_src lisp :tangle ../src/self-fix.lisp
+(in-package :org-agent)
+
 (defun self-fix-apply (action context)
   "Applies a surgical code fix and reloads the modified skill."
   (declare (ignore context))

@@ -1,9 +1,11 @@
+(in-package :org-agent)
 (defun inbox-is-private-p (tags)
   (member "@personal" tags :test #'string-equal))
 
 (defun inbox-is-archive-p (tags)
   (member "!archive" tags :test #'string-equal))
 
+(in-package :org-agent)
 (defun neuro-skill-inbox-processor (context)
   (let* ((payload (getf context :payload))
          (content (getf payload :content))
@@ -18,6 +20,7 @@ RULES:
 4. Return ONLY a Lisp plist with :summary :significance :full-text.
 5. NO conversational filler." is-archive))))
 
+(in-package :org-agent)
 (defun inbox-process-logic (action context)
   (declare (ignore action))
   (let* ((payload (getf context :payload))

@@ -1,39 +1,14 @@
 (in-package :org-agent)
 
-(defun get-env (var &optional default) (or (uiop:getenv var) default))
-
-(defvar *auth-providers* (make-hash-table :test 'equal))
-
-(defun register-auth-provider (name fn) (setf (gethash name *auth-providers*) fn))
-
-(defun get-provider-auth (provider)
-  "Retrieves authentication credentials for a provider."
-  (let ((auth (gethash provider *auth-providers*)))
-    (cond
-      ((functionp auth) (funcall auth))
-      ((listp auth) auth)
-      (t 
-       (let ((specific-key (case provider
-                             (:gemini (uiop:getenv "GEMINI_API_KEY"))
-                             (:openrouter (uiop:getenv "OPENROUTER_API_KEY"))
-                             (:anthropic (uiop:getenv "ANTHROPIC_API_KEY"))
-                             (:openai (uiop:getenv "OPENAI_API_KEY"))
-                             (t nil))))
-         (if (and specific-key (> (length specific-key) 0))
-             (list :api-key specific-key)
-             (let ((legacy (uiop:getenv "LLM_API_KEY")))
-               (when (and legacy (> (length legacy) 0))
-                 (list :api-key legacy)))))))))
-
 (defvar *neuro-backends* (make-hash-table :test 'equal))
 
-(defvar *provider-cascade* '(:openrouter :gemini))
+(defvar *provider-cascade* '(:openrouter :gemini-api))
 
 (defun register-neuro-backend (name fn) (setf (gethash name *neuro-backends*) fn))
 
 (defvar *model-selector-fn* nil "A function called with (provider context) to return a model ID.")
 
-(defvar *consensus-enabled-p* t "If T, ask-neuro queries all backends in parallel.")
+(defvar *consensus-enabled-p* nil "If T, ask-neuro queries all backends in parallel.")
 
 (defun ask-neuro (prompt &key (system-prompt "You are the Associative engine of a Neurosymbolic Lisp Machine.") (cascade nil) (context nil))
   "Dispatches a neural request through the provider cascade or parallel consensus."
@@ -71,7 +46,7 @@
                 (format nil "~{~a~^|CONSENSUS-SEP|~}" valid-results)
                 "(:type :LOG :payload (:text \"Neural Consensus Failure\"))")))
         
-        ;; SEQUENTIAL CASCADE MODE (Legacy)
+        ;; SEQUENTIAL CASCADE MODE
         (or (dolist (backend backends)
               (let ((backend-fn (gethash backend *neuro-backends*)))
                 (when backend-fn
@@ -80,18 +55,13 @@
                          (result (if model 
                                      (funcall backend-fn prompt system-prompt :model model)
                                      (funcall backend-fn prompt system-prompt))))
-                    (unless (and (stringp result) (search ":LOG" result) (or (search "Failure" result) (search "missing" result)))
+                    (unless (or (null result)
+                                (and (stringp result) (search ":LOG" result) (or (search "Failure" result) (search "missing" result))))
                       (return result))))))
             "(:type :LOG :payload (:text \"Neural Cascade Failure\"))"))))
 
-(defun token-accountant-route-task (context)
-  "Generic fallback for routing. Overridden by skill-token-accountant."
-  (declare (ignore context))
-  '(:openrouter :gemini))
-
 (defun think (context)
-  "Invokes the neural Associative engine to propose a Lisp action based on context. 
-If consensus is enabled, it returns a list of proposals from different backends."
+  "Invokes the neural Associative engine to propose a Lisp action based on context."
   (let ((active-skill (find-triggered-skill context))
         (tool-belt (generate-tool-belt-prompt))
         (global-context (context-assemble-global-awareness)))

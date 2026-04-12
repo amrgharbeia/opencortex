@@ -1,14 +1,16 @@
 (in-package :org-agent)
-
 (defparameter *allowed-commands* '("ls" "git" "rg" "grep" "date" "echo" "cat" "node" "python3" "sbcl"))
 
+(in-package :org-agent)
 (defparameter *shell-metacharacters* '(#\; #\& #\| #\> #\< #\$ #\` #\\ #\!)
   "Characters that are banned in shell commands to prevent injection.")
 
+(in-package :org-agent)
 (defun shell-command-safe-p (cmd-string)
   "Returns T if the command string contains no dangerous metacharacters."
   (not (some (lambda (char) (find char cmd-string)) *shell-metacharacters*)))
 
+(in-package :org-agent)
 (defun execute-shell-safely (action context)
   (let* ((cmd-string (getf (getf action :payload) :cmd))
          (executable (car (uiop:split-string (string-trim " " cmd-string) :separator '(#\Space)))))
@@ -34,6 +36,7 @@
           `(:type :EVENT :payload (:sensor :shell-response :cmd ,cmd-string :stdout ,(or stdout "") :stderr ,(or stderr "") :exit-code ,exit-code))
           :stream (getf context :reply-stream)))))))
 
+(in-package :org-agent)
 (defun execute-sandboxed-script (action context)
   "Executes a synthesized script (Python/Lisp/JS) in a controlled directory.
    This enables SOTA-level Tool Synthesis and Iterative Fixing."
@@ -58,6 +61,7 @@
          `(:type :EVENT :payload (:sensor :shell-response :cmd ,cmd :stdout ,(or stdout "") :stderr ,(or stderr "") :exit-code ,exit-code :synthesis-p t))
          :stream (getf context :reply-stream))))))
 
+(in-package :org-agent)
 (defun provision-microvm (id &key (cpu 1) (ram 512))
   "Hardware-Level Isolation: Provisions an ephemeral Firecracker MicroVM.
    This is the high-security evolution of directory-based sandboxing."
@@ -65,36 +69,17 @@
   ;; Future implementation: Wraps 'fcvm' or 'firecracker' CLI calls.
   (format nil "vm-~a-provisioned" id))
 
+(in-package :org-agent)
 (defun trigger-skill-shell-actuator (context)
   (let ((type (getf context :type))
         (payload (getf context :payload)))
     (and (eq type :EVENT)
          (eq (getf payload :sensor) :shell-response))))
 
-(defun neuro-skill-shell-actuator (context)
-  (let* ((p (getf context :payload))
-         (cmd (getf p :cmd))
-         (stdout (getf p :stdout))
-         (stderr (getf p :stderr))
-         (exit-code (getf p :exit-code))
-         (synthesis-p (getf p :synthesis-p)))
-    (if synthesis-p
-        (format nil "
-          TOOL SYNTHESIS RESULT:
-          Command: ~a (Exit: ~a)
-          STDOUT: ~a
-          STDERR: ~a
-          
-          TASK: 
-          If the command failed (Exit != 0), analyze the STDERR and propose a FIX for the script.
-          If it succeeded, use the STDOUT to complete the original goal.
-        " cmd exit-code stdout stderr)
-        (let ((result-text (format nil "* Shell Command Result\n- Command: ~a\n- Exit Code: ~a\n\n** STDOUT\n#+begin_example\n~a\n#+end_example\n\n** STDERR\n#+begin_example\n~a\n#+end_example"
-                                   cmd exit-code stdout stderr)))
-          `(:type :request :target :emacs :payload (:action :insert-at-end :buffer "*org-agent-chat*" :text ,result-text))))))
-
+(in-package :org-agent)
 (org-agent:register-actuator :shell #'execute-shell-safely)
 
+(in-package :org-agent)
 (defskill :skill-shell-actuator
   :priority 80
   :trigger #'trigger-skill-shell-actuator
