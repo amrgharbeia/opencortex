@@ -22,8 +22,8 @@ The design of `org-agent` represents a radical departure from mainstream, fragme
 ** Homoiconic Memory (The Org Mandate)
 Most frameworks break the human-machine interface by forcing humans to read Markdown while machines read JSON. `org-agent` mandates that **Org-mode is the native Abstract Syntax Tree (AST) for both.** The code is the data, and the data is the interface. This ensures the agent's memory is perfectly aligned with the user's, preventing "black box" logic.
 
-** The Neurosymbolic Split (System 1 vs. System 2)
-Relying entirely on LLMs is fragile. `org-agent` assigns the LLM strictly to **System 1** (intuition). Common Lisp acts as **System 2** (logic and safety gating). The system is imaginative but bound by mathematical rigor. It is safe by design.
+** The Neurosymbolic Split (Associative vs. Deliberate)
+Relying entirely on LLMs is fragile. `org-agent` assigns the LLM strictly to **Associative** (intuition). Common Lisp acts as **Deliberate** (logic and safety gating). The system is imaginative but bound by mathematical rigor. It is safe by design.
 
 ** The Sovereign Boundary
 To guarantee a high MTBF (Mean Time Between Failures), the core microkernel manages only the cognitive loop, the Object-Store, and the protocol. Everything else—LLM routing, embeddings, and business logic—is pushed across the **Sovereign Boundary** into user-space Skills.
@@ -45,5 +45,5 @@ The microkernel is divided into core subsystems, each documented as a standalone
 - **[[./literate/core.org][The Cognitive Loop (OODA)]]**: Asynchronous recursion and the perception engine.
 - **[[./literate/skills.org][The Skill Engine]]**: Hot-reloadable jailing and topological dependency sorting.
 - **[[./literate/context.org][Peripheral Vision]]**: Sparse trees, context assembly, and semantic embeddings.
-- **[[./literate/neurosymbolic.org][The Neurosymbolic Bridge]]**: System 1 (LLM) intuition gated by System 2 (Lisp) physics.
+- **[[./literate/neurosymbolic.org][The Neurosymbolic Bridge]]**: Associative (LLM) intuition gated by Deliberate (Lisp) physics.
 - **[[./literate/evolution.org][Evolutionary Roadmap]]**: The Reactive Signal Pipeline and beyond.

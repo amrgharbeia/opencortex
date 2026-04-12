@@ -16,9 +16,9 @@ The original `cognitive-loop` used asynchronous recursion to handle stimuli. Whi
 graph TD
     S1[Signal: User Message] --> P[Perceive Gate]
     S2[Signal: Heartbeat] --> P
-    P --> N[Neuro Gate: Multi-Backend]
+    P --> N[Associative Gate: Multi-Backend]
     N --> C[Consensus Gate]
-    C --> V[Validation Gate: System 2]
+    C --> V[Validation Gate: Deliberate]
     V --> D[Dispatch Gate: Actuators]
     D -- Feedback Signal --> S1
 #+end_src
@@ -162,15 +162,15 @@ Normalizes raw stimuli and updates the Object Store knowledge graph.
     signal))
 #+end_src
 
-*** Neuro Gate
-Invokes the neural System 1 engine to generate intuition-based proposals. If parallel consensus is enabled, this gate returns a list of proposals.
+*** Associative Gate
+Invokes the Associative engine to generate intuition-based proposals. If parallel consensus is enabled, this gate returns a list of proposals.
 
 #+begin_src lisp :tangle ../src/core.lisp
 (defun neuro-gate (signal)
-  "System 1: Intuition and proposed actions."
+  "Associative: Intuition and proposed actions."
   (unless (eq (getf signal :type) :EVENT)
     (return-from neuro-gate signal))
-  (kernel-log "GATE [Neuro]: Consulting System 1...")
+  (kernel-log "GATE [Associative]: Consulting System 1...")
   (let ((thoughts (think signal)))
     (setf (getf signal :proposals) (if (and (listp thoughts) (listp (car thoughts))) 
                                        thoughts 
@@ -214,19 +214,19 @@ Compares multiple proposals (from parallel backends) and selects the most consis
 #+end_src
 
 *** Decide Gate
-The System 2 safety gate. Validates the candidate action against formal rules and PSF invariants.
+The Deliberate safety gate. Validates the candidate action against formal rules and PSF invariants.
 
 **** Phase A: Demand
-- *Need:* Ensure that malformed candidates (e.g., raw strings from System 1) do not crash the `decide` or `safety-harness` logic, which expect property lists.
+- *Need:* Ensure that malformed candidates (e.g., raw strings from Associative) do not crash the `decide` or `safety-harness` logic, which expect property lists.
 - *Success:* Coerce non-list candidates into valid `:RESPONSE` property lists before validation.
 
 **** Phase B: Blueprint
-Before passing the candidate to `decide`, the gate checks its type. If it's a string, it wraps it in `(:type :RESPONSE :payload (:text <string>))`.
+Before passing the candidate to `decide`, the gate checks its type. If it's a string, it wraps it in `(:type :RESPONSE :payload (list :text <string>))`.
 
 **** Phase D: Build
 #+begin_src lisp :tangle ../src/core.lisp
 (defun decide-gate (signal)
-  "System 2: Safety and validation."
+  "Deliberate: Safety and validation."
   (let ((candidate (getf signal :candidate)))
     (if candidate
         (let* ((normalized-candidate (if (listp candidate) candidate (list :type :RESPONSE :payload (list :text candidate))))

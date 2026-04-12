@@ -15,9 +15,12 @@
   :serial t
   :components ((:file "src/package")
                (:file "src/protocol")
+               (:file "src/protocol-validator")
                (:file "src/object-store")
                (:file "src/embedding")
+               (:file "src/embedding-logic")
                (:file "src/context")
+               (:file "src/context-logic")
                (:file "src/skills")
                (:file "src/neuro")
                (:file "src/credentials-vault")

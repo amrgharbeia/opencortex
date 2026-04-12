@@ -5,11 +5,11 @@
 
 * The Neurosymbolic Bridge (neuro.lisp & symbolic.lisp)
 ** Deep Reasoning: Imagination Checked by Physics
-System 1 (LLM) is creative but hallucination-prone. System 2 (Lisp) is rigid but 100% accurate.
-- **The Safety Gate:** We never allow the LLM to talk to the actuators directly. It must propose a Lisp form. System 2 intercepts this form and validates it against mathematical rules and PSF invariants. 
+Associative (LLM) is creative but hallucination-prone. Deliberate (Lisp) is rigid but 100% accurate.
+- **The Safety Gate:** We never allow the LLM to talk to the actuators directly. It must propose a Lisp form. Deliberate intercepts this form and validates it against mathematical rules and PSF invariants. 
 - **Sovereign Decoupling:** By moving the physical API logic into skills, the core remains a neutral "Thinking Engine" that doesn't care if the imagination comes from Google, Anthropic, or a local Llama instance.
 
-* Neural Engine (neuro.lisp)
+* Associative Engine (neuro.lisp)
 This module handles the interaction with Large Language Models, providing a unified interface for multiple backends.
 
 ** Package Context
@@ -60,7 +60,7 @@ Retrieves authentication credentials for a provider, falling back to environment
                  (list :api-key legacy)))))))))
 #+end_src
 
-** Neuro Backends Registry
+** Associative Backends Registry
 Tracks the actual implementation functions for each LLM provider.
 
 #+begin_src lisp :tangle ../src/neuro.lisp
@@ -74,7 +74,7 @@ The ordered list of backends to attempt for neural reasoning.
 (defvar *provider-cascade* '(:openrouter :gemini))
 #+end_src
 
-** Register Neuro Backend
+** Register Associative Backend
 Maps a keyword identifier to a backend implementation function.
 
 #+begin_src lisp :tangle ../src/neuro.lisp
@@ -88,13 +88,13 @@ A hook for dynamic model selection based on the current context.
 (defvar *model-selector-fn* nil "A function called with (provider context) to return a model ID.")
 #+end_src
 
-** Neural Dispatch (ask-neuro)
-The primary entry point for System 1. It handles the retry logic and backend selection. It supports a parallel consensus mode where all backends are queried simultaneously.
+** Associative Dispatch (ask-neuro)
+The primary entry point for Associative. It handles the retry logic and backend selection. It supports a parallel consensus mode where all backends are queried simultaneously.
 
 #+begin_src lisp :tangle ../src/neuro.lisp
 (defvar *consensus-enabled-p* t "If T, ask-neuro queries all backends in parallel.")
 
-(defun ask-neuro (prompt &key (system-prompt "You are the System 1 engine of a Neurosymbolic Lisp Machine.") (cascade nil) (context nil))
+(defun ask-neuro (prompt &key (system-prompt "You are the Associative engine of a Neurosymbolic Lisp Machine.") (cascade nil) (context nil))
   "Dispatches a neural request through the provider cascade or parallel consensus."
   (let ((backends (cond
                     ((and cascade (listp cascade)) cascade)
@@ -110,7 +110,7 @@ The primary entry point for System 1. It handles the retry logic and backend sel
               (when backend-fn
                 (push (bt:make-thread 
                        (lambda ()
-                         (kernel-log "SYSTEM 1 [Consensus]: Querying backend ~a..." backend)
+                         (kernel-log "ASSOCIATIVE [Consensus]: Querying backend ~a..." backend)
                          (let* ((model (when *model-selector-fn* (funcall *model-selector-fn* backend context)))
                                 (result (ignore-errors 
                                           (if model 
@@ -134,7 +134,7 @@ The primary entry point for System 1. It handles the retry logic and backend sel
         (or (dolist (backend backends)
               (let ((backend-fn (gethash backend *neuro-backends*)))
                 (when backend-fn
-                  (kernel-log "SYSTEM 1: Attempting backend ~a..." backend)
+                  (kernel-log "ASSOCIATIVE: Attempting backend ~a..." backend)
                   (let* ((model (when *model-selector-fn* (funcall *model-selector-fn* backend context)))
                          (result (if model 
                                      (funcall backend-fn prompt system-prompt :model model)
@@ -154,19 +154,19 @@ Standard functions that can be overridden by specific skills to provide enhanced
   '(:openrouter :gemini))
 #+end_src
 
-** Neural Reasoning (think)
-Invokes the System 1 engine to generate a proposed Lisp action. It automatically injects the tool documentation and global context into the prompt.
+** Associative Reasoning (think)
+Invokes the Associative engine to generate a proposed Lisp action. It automatically injects the tool documentation and global context into the prompt.
 
 #+begin_src lisp :tangle ../src/neuro.lisp
 (defun think (context)
-  "Invokes the neural System 1 engine to propose a Lisp action based on context. 
+  "Invokes the neural Associative engine to propose a Lisp action based on context. 
 If consensus is enabled, it returns a list of proposals from different backends."
   (let ((active-skill (find-triggered-skill context))
         (tool-belt (generate-tool-belt-prompt))
         (global-context (context-assemble-global-awareness)))
     (if active-skill
         (progn
-          (kernel-log "SYSTEM 1: Engaging skill '~a'~%" (skill-name active-skill))
+          (kernel-log "ASSOCIATIVE: Engaging skill '~a'~%" (skill-name active-skill))
           (let* ((prompt-generator (skill-neuro-prompt active-skill)) 
                  (raw-prompt (when prompt-generator (funcall prompt-generator context)))
                  (full-system-prompt (concatenate 'string 
@@ -194,7 +194,7 @@ To call a tool, you MUST use:
                        (raw-thoughts (cl-ppcre:split (cl-ppcre:quote-meta-chars "|CONSENSUS-SEP|") thought))
                        (suggestions nil))
                   (dolist (raw-thought raw-thoughts)
-                    (kernel-log "SYSTEM 1 RAW: ~a~%" raw-thought)
+                    (kernel-log "ASSOCIATIVE RAW: ~a~%" raw-thought)
                     (let* ((cleaned-thought 
                             (let ((match (cl-ppcre:scan-to-strings "(?s)```(?:lisp)?\\n?(.*?)\\n?```" raw-thought)))
                               (if match
@@ -208,7 +208,7 @@ To call a tool, you MUST use:
                                                  (list :sensor :syntax-error 
                                                        :code cleaned-thought 
                                                        :error (format nil "~a" c)))))))
-                      (kernel-log "SYSTEM 1 Suggestion: ~a~%" cleaned-thought)
+                      (kernel-log "ASSOCIATIVE Suggestion: ~a~%" cleaned-thought)
                       (when (and suggestion (listp suggestion))
                         (push suggestion suggestions))))
                   (if (and *consensus-enabled-p* suggestions)
@@ -227,7 +227,7 @@ Allows the agent to self-optimize its own prompts.
     (ask-neuro (format nil "PROMPT: ~a~%RESULT: ~a" full-prompt successful-output) :system-prompt system-instr)))
 #+end_src
 
-* Symbolic Logic (symbolic.lisp)
+* Deliberate Logic (symbolic.lisp)
 The deterministic gatekeeper that ensures all proposed actions are safe and logically valid.
 
 ** Package Context
@@ -255,7 +255,7 @@ Enforces high-integrity semantic rules for task management (e.g. blocking closin
 #+end_src
 
 ** Authorization Gate (Bouncer)
-The Bouncer intercepts high-risk or complex actions and requires manual Sovereign approval.
+The Bouncer intercepts high-risk or complex actions and requires manual Foreground approval.
 
 #+begin_src lisp :tangle ../src/symbolic.lisp
 (defun bouncer-check (action)
@@ -274,20 +274,20 @@ The Bouncer intercepts high-risk or complex actions and requires manual Sovereig
 #+end_src
 
 ** Validation Gate (decide)
-The "System 2" supervisor. It intercepts every action proposed by System 1 and runs it through the task integrity check, the bouncer, the skill's symbolic gate, and the global safety harness.
+The "Deliberate" supervisor. It intercepts every action proposed by Associative and runs it through the task integrity check, the bouncer, the skill's symbolic gate, and the global safety harness.
 
 #+begin_src lisp :tangle ../src/symbolic.lisp
 (defun decide (proposed-action context)
-  "The System 2 Safety Gate: validates or rejects proposed neural actions."
+  "The Deliberate Safety Gate: validates or rejects proposed neural actions."
   ;; 1. Task Integrity Check (GTD Semantics)
   (let ((integrity-error (task-integrity-check proposed-action)))
     (when integrity-error
-      (kernel-log "SYSTEM 2 [INTEGRITY]: ~a~%" integrity-error)
+      (kernel-log "DELIBERATE [INTEGRITY]: ~a~%" integrity-error)
       (return-from decide (list :type :LOG :payload (list :text integrity-error)))))
 
   ;; 2. Bouncer Check (Authorization Gate)
   (when (bouncer-check proposed-action)
-    (kernel-log "SYSTEM 2 [BOUNCER]: Action requires manual approval.~%")
+    (kernel-log "DELIBERATE [BOUNCER]: Action requires manual approval.~%")
     (return-from decide 
       (list :type :EVENT 
             :payload (list :sensor :approval-required :action proposed-action))))
@@ -305,17 +305,18 @@ The "System 2" supervisor. It intercepts every action proposed by System 1 and r
             (let ((harness-pkg (find-package :org-agent.skills.org-skill-safety-harness)))
               (when (and code harness-pkg)
                 (unless (ignore-errors (uiop:symbol-call :org-agent.skills.org-skill-safety-harness :safety-harness-validate code))
-                  (kernel-log "SYSTEM 2 [GLOBAL]: Security violation blocked.~%")
+                  (kernel-log "DELIBERATE [GLOBAL]: Security violation blocked.~%")
                   (return-from decide '(:type :LOG :payload (:text "Blocked by Global Safety Harness")))))))
           ;; Skill-specific verification
           (if symbolic-gate
               (let ((decision (funcall symbolic-gate proposed-action context)))
                 (if decision 
-                    (progn (kernel-log "SYSTEM 2: Verified by skill '~a'.~%" (skill-name active-skill)) decision)
-                    (progn (kernel-log "SYSTEM 2: REJECTED by skill '~a'.~%" (skill-name active-skill))
+                    (progn (kernel-log "DELIBERATE: Verified by skill '~a'.~%" (skill-name active-skill)) decision)
+                    (progn (kernel-log "DELIBERATE: REJECTED by skill '~a'.~%" (skill-name active-skill))
                            '(:type :LOG :payload (:text "Action rejected by skill heuristics")))))
-              (progn (kernel-log "SYSTEM 2: Verified (Implicitly safe for skill '~a').~%" (skill-name active-skill)) proposed-action)))
+              (progn (kernel-log "DELIBERATE: Verified (Implicitly safe for skill '~a').~%" (skill-name active-skill)) proposed-action)))
         proposed-action)))
+#+end_src
 #+end_src
 
 ** Store Filtering (list-objects-with-attribute)

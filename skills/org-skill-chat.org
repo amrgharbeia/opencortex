@@ -50,10 +50,29 @@ Interfaces for conversational event handling and UI integration. Source of truth
 
 ** Event Perception
 #+begin_src lisp :tangle ../src/chat-logic.lisp
+(in-package :org-agent)
+
+(defun chat-archive-message (text &key (role :user) channel chat-id)
+  "Archives a chat message into the persistent Object Store and triggers a snapshot."
+  (let* ((msg-id (org-id-new))
+         (obj (make-org-object 
+               :id msg-id
+               :type :CHAT-MESSAGE
+               :attributes `(:role ,role :channel ,channel :chat-id ,chat-id :timestamp ,(get-universal-time))
+               :content text
+               :version (get-universal-time))))
+    (setf (gethash msg-id *object-store*) obj)
+    (kernel-log "CHAT - Message archived: ~a (~a)" msg-id role)
+    (snapshot-object-store)
+    msg-id))
+
 (defun trigger-skill-chat (context)
   (let* ((payload (getf context :payload))
          (sensor (getf payload :sensor)))
-    (eq sensor :chat-message)))
+    (when (eq sensor :chat-message)
+      ;; Archive inbound message
+      (chat-archive-message (getf payload :text) :role :user :channel (getf payload :channel) :chat-id (getf payload :chat-id))
+      t)))
 #+end_src
 
 ** Symbolic Verification
@@ -76,7 +95,12 @@ Interfaces for conversational event handling and UI integration. Source of truth
                                (or (getf payload :cmd) (getf proposed-action :cmd)))
                           (member target '(:tool :TOOL))))
                  (member (getf proposed-action :type) '(:response :RESPONSE :log :LOG))))
-        proposed-action
+        (progn
+          ;; Archive outbound response
+          (when (and (member (getf proposed-action :type) '(:request :REQUEST))
+                     (not (eq target :tool)))
+            (chat-archive-message (getf payload :text) :role :agent :channel target :chat-id (or (getf payload :chat-id) (getf payload :room-id))))
+          proposed-action)
         (let ((err-text (format nil "\n\n*System Error:* Chat agent returned invalid action: ~s" proposed-action)))
           `(:type :request :target :emacs :payload (:action :insert-at-end :buffer "*org-agent-chat*" :text ,err-text))))))
 #+end_src

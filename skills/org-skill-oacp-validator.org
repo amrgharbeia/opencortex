@@ -1,0 +1,91 @@
+:PROPERTIES:
+:ID:       org-skill-oacp-validator
+:CREATED:  [2026-04-12 Sun 14:35]
+:END:
+#+TITLE: SKILL: OACP Schema Validator (Universal Literate Note)
+#+STARTUP: content
+#+FILETAGS: :protocol:oacp:security:validation:psf:
+
+* Overview
+The *OACP Schema Validator* skill provides deep structural validation for all messages entering the org-agent kernel. It ensures that every property list adheres to a strict schema, preventing malformed data from causing kernel-level errors.
+
+* Phase A: Demand (PRD)
+:PROPERTIES:
+:STATUS: SIGNED
+:END:
+
+** 1. Purpose
+Enforce a formal grammar for the Org-Agent Control Protocol (OACP).
+
+** 2. User Needs
+- *Type Safety:* Ensure mandatory keys (e.g., `:type`, `:payload`) are present.
+- *Range Validation:* Check that enum values (e.g., `:REQUEST`, `:EVENT`) are valid.
+- *Structural Integrity:* Validate nested payloads based on the message type.
+
+** 3. Success Criteria
+- [ ] Block any message that does not contain a valid `:type`.
+- [ ] Block `:REQUEST` messages that lack a `:target`.
+- [ ] Block `:EVENT` messages that lack a `:payload` with an `:action` or `:sensor`.
+
+* Phase B: Blueprint (PROTOCOL)
+:PROPERTIES:
+:STATUS: SIGNED
+:END:
+
+** 1. Architectural Intent
+Decouple protocol parsing (framing/unframing) from semantic validation.
+
+** 2. Semantic Interfaces
+
+#+begin_src lisp
+(defun validate-oacp-schema (msg)
+  "Returns T if the message is valid, NIL (and signals error) otherwise.")
+#+end_src
+
+* Phase D: Build (Implementation)
+
+** Schema Enforcement
+#+begin_src lisp :tangle ../src/protocol-validator.lisp
+(in-package :org-agent)
+
+(defun validate-oacp-schema (msg)
+  "Strict structural validation for incoming OACP messages."
+  (unless (listp msg)
+    (error "OACP Schema Error: Message must be a property list (got ~s)" (type-of msg)))
+  
+  (let ((type (getf msg :type)))
+    (unless (member type '(:REQUEST :EVENT :RESPONSE :LOG))
+      (error "OACP Schema Error: Invalid message type '~a'" type))
+    
+    (case type
+      (:REQUEST 
+       (unless (getf msg :target)
+         (error "OACP Schema Error: REQUEST missing mandatory :target"))
+       (unless (getf msg :payload)
+         (error "OACP Schema Error: REQUEST missing mandatory :payload")))
+      
+      (:EVENT
+       (let ((payload (getf msg :payload)))
+         (unless (and payload (listp payload))
+           (error "OACP Schema Error: EVENT missing or invalid :payload"))
+         (unless (or (getf payload :action) (getf payload :sensor))
+           (error "OACP Schema Error: EVENT payload must contain :action or :sensor"))))
+      
+      (:RESPONSE
+       (unless (getf msg :payload)
+         (error "OACP Schema Error: RESPONSE missing mandatory :payload"))))
+    
+    t))
+#+end_src
+
+* Registration
+#+begin_src lisp :tangle ../src/protocol-validator.lisp
+(defskill :skill-oacp-validator
+  :priority 95
+  :trigger (lambda (ctx) (member (getf (getf ctx :payload) :sensor) '(:protocol-received)))
+  :neuro nil
+  :symbolic (lambda (action ctx)
+              (declare (ignore ctx))
+              (validate-oacp-schema action)
+              action))
+#+end_src
