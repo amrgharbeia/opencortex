@@ -6,7 +6,7 @@
 * The Cognitive Loop (core.lisp)
 ** Deep Reasoning: Beyond Asynchronous Recursion
 The original `cognitive-loop` used asynchronous recursion to handle stimuli. While responsive, it led to deep Lisp stacks and made multi-backend consensus difficult to implement.
-- **The Circuit Board Model:** We have evolved the kernel into a functional transformation pipeline. Every event—be it a keystroke, a timer pulse, or a neural proposal—is a **Signal**.
+- **The Circuit Board Model:** We have evolved the harness into a functional transformation pipeline. Every event—be it a keystroke, a timer pulse, or a neural proposal—is a **Signal**.
 - **Consensus Gates:** By treating reasoning as a signal moving through a pipe, we can "split" the pipe to ask multiple LLMs simultaneously. A **Consensus Gate** later in the pipe compares the proposals and selects the most mathematically consistent one.
 - **Multi-Modal Fusion:** The pipeline can blend disparate signals (e.g. *User Prompt* + *Low Battery Alert* or *Heartbeat*) into a single coherent cognitive event.
 - **Flat Execution:** By using a feedback-loop orchestrator (`process-signal`), we flatten the execution stack. Tool outputs and errors are re-injected as new signals rather than creating nested function calls.
@@ -24,7 +24,7 @@ graph TD
 #+end_src
 
 ** Package Context
-#+begin_src lisp :tangle ../src/core.lisp
+#+begin_src lisp :tangle ../src/loop.lisp
 (in-package :org-agent)
 
 (defvar *interrupt-flag* nil)
@@ -33,35 +33,35 @@ graph TD
 ** Logs Lock
 Thread-safety for logging operations.
 
-#+begin_src lisp :tangle ../src/core.lisp
+#+begin_src lisp :tangle ../src/loop.lisp
 ;; MOVED TO package.lisp
 #+end_src
 
 ** Interrupt Lock
 Thread-safety for loop interruption.
 
-#+begin_src lisp :tangle ../src/core.lisp
-(defvar *interrupt-lock* (bt:make-lock "kernel-interrupt-lock"))
+#+begin_src lisp :tangle ../src/loop.lisp
+(defvar *interrupt-lock* (bt:make-lock "harness-interrupt-lock"))
 #+end_src
 
 ** Skill Telemetry
 Hash table tracking execution metrics per skill.
 
-#+begin_src lisp :tangle ../src/core.lisp
+#+begin_src lisp :tangle ../src/loop.lisp
 ;; MOVED TO package.lisp
 #+end_src
 
 ** Telemetry Lock
 Thread-safety for metric updates.
 
-#+begin_src lisp :tangle ../src/core.lisp
+#+begin_src lisp :tangle ../src/loop.lisp
 ;; MOVED TO package.lisp
 #+end_src
 
 ** Physical Dispatch (dispatch-action)
 Routes an approved action to its registered physical actuator.
 
-#+begin_src lisp :tangle ../src/core.lisp
+#+begin_src lisp :tangle ../src/loop.lisp
 (defun dispatch-action (action context)
   "Routes an approved action to its registered physical actuator."
   (when (and action (listp action))
@@ -69,14 +69,14 @@ Routes an approved action to its registered physical actuator.
            (actuator-fn (gethash target *actuator-registry*)))
       (if actuator-fn 
           (funcall actuator-fn action context) 
-          (kernel-log "DISPATCH ERROR: No actuator for ~a" target)))))
+          (harness-log "DISPATCH ERROR: No actuator for ~a" target)))))
 #+end_src
 
-** Performance Tracking (kernel-track-telemetry)
+** Performance Tracking (harness-track-telemetry)
 Updates performance metrics for a specific skill, tracking execution counts, total duration, and failure rates.
 
-#+begin_src lisp :tangle ../src/core.lisp
-(defun kernel-track-telemetry (skill-name duration status)
+#+begin_src lisp :tangle ../src/loop.lisp
+(defun harness-track-telemetry (skill-name duration status)
   "Updates performance metrics for a specific skill."
   (when skill-name (bt:with-lock-held (*telemetry-lock*)
                      (let ((entry (or (gethash skill-name *skill-telemetry*) (list :executions 0 :total-time 0 :failures 0))))
@@ -84,11 +84,11 @@ Updates performance metrics for a specific skill, tracking execution counts, tot
                        (when (eq status :rejected) (incf (getf entry :failures))) (setf (gethash skill-name *skill-telemetry*) entry)))))
 #+end_src
 
-** System Logging (kernel-log)
+** System Logging (harness-log)
 A centralized logging function that outputs to standard output and maintains a rolling in-memory buffer for context-aware reasoning.
 
-#+begin_src lisp :tangle ../src/core.lisp
-(defun kernel-log (fmt &rest args)
+#+begin_src lisp :tangle ../src/loop.lisp
+(defun harness-log (fmt &rest args)
   "Records a formatted message to the system log and standard output."
   (let ((msg (apply #'format nil fmt args)))
     (bt:with-lock-held (*logs-lock*) (push msg *system-logs*) (when (> (length *system-logs*) *max-log-history*) (setf *system-logs* (subseq *system-logs* 0 *max-log-history*))))
@@ -96,9 +96,9 @@ A centralized logging function that outputs to standard output and maintains a r
 #+end_src
 
 ** Stimulus Injection (inject-stimulus)
-This is the entry point for all events into the kernel. It initializes a signal and passes it to the `process-signal` pipeline.
+This is the entry point for all events into the harness. It initializes a signal and passes it to the `process-signal` pipeline.
 
-#+begin_src lisp :tangle ../src/core.lisp
+#+begin_src lisp :tangle ../src/loop.lisp
 (defun inject-stimulus (raw-message &key stream (depth 0))
   "Enqueues a raw message into the reactive signal pipeline, handling async/sync execution and recovery."
   (let* ((payload (getf raw-message :payload)) 
@@ -106,50 +106,50 @@ This is the entry point for all events into the kernel. It initializes a signal 
          ;; Force Chat and Delegation to be async
          (async-p (or (getf payload :async-p) (member sensor '(:chat-message :delegation :user-command)))))
     (when stream (setf (getf raw-message :reply-stream) stream))
-    (if async-p (bt:make-thread (lambda () (restart-case (handler-bind ((error (lambda (c) (kernel-log "ASYNC ERROR: ~a" c) (invoke-restart 'skip-event))))
+    (if async-p (bt:make-thread (lambda () (restart-case (handler-bind ((error (lambda (c) (harness-log "ASYNC ERROR: ~a" c) (invoke-restart 'skip-event))))
                                                            (process-signal raw-message)) (skip-event () nil))) :name "org-agent-async-task")
-        (restart-case (handler-bind ((error (lambda (c) (kernel-log "SYSTEM ERROR: ~a" c) (invoke-restart 'skip-event)))) (process-signal raw-message))
-          (skip-event () (kernel-log "SYSTEM RECOVERY: Stimulus dropped.~%"))))))
+        (restart-case (handler-bind ((error (lambda (c) (harness-log "SYSTEM ERROR: ~a" c) (invoke-restart 'skip-event)))) (process-signal raw-message))
+          (skip-event () (harness-log "SYSTEM RECOVERY: Stimulus dropped.~%"))))))
 #+end_src
 
 ** Internal Tool Execution
-The `execute-system-action` function handles kernel-level operations such as hot-loading skills, evaluating raw Lisp, or setting environment variables.
+The `execute-system-action` function handles harness-level operations such as hot-loading skills, evaluating raw Lisp, or setting environment variables.
 
-#+begin_src lisp :tangle ../src/core.lisp
+#+begin_src lisp :tangle ../src/loop.lisp
 (defun execute-system-action (action context)
-  "Processes internal kernel commands like skill creation or environment updates."
+  "Processes internal harness commands like skill creation or environment updates."
   (declare (ignore context))
   (let* ((payload (ignore-errors (getf action :payload))) (cmd (ignore-errors (getf payload :action))))
     (case cmd
       (:eval (let ((code (getf payload :code)))
-               (kernel-log "ACTUATOR [System] - Evaluating: ~a" code)
+               (harness-log "ACTUATOR [System] - Evaluating: ~a" code)
                (handler-case (let ((result (eval (read-from-string code))))
-                               (kernel-log "ACTUATOR [System] - Result: ~s" result)
+                               (harness-log "ACTUATOR [System] - Result: ~s" result)
                                result)
-                 (error (c) (kernel-log "ACTUATOR ERROR [System] - Eval failed: ~a" c)))))
+                 (error (c) (harness-log "ACTUATOR ERROR [System] - Eval failed: ~a" c)))))
       (:create-skill (let* ((filename (getf payload :filename)) (content (getf payload :content))
                             (skills-dir (merge-pathnames "skills/" (asdf:system-source-directory :org-agent))) (full-path (merge-pathnames filename skills-dir)))
-                       (kernel-log "ACTUATOR [System] - Creating skill ~a..." filename)
+                       (harness-log "ACTUATOR [System] - Creating skill ~a..." filename)
                        (with-open-file (out full-path :direction :output :if-exists :supersede) (write-string content out))
                        (load-skill-from-org full-path)))
       (:set-cascade (setf *provider-cascade* (getf payload :cascade)))
-      (:message (kernel-log "ACTUATOR [System] - ~a" (getf payload :text)))
-      (t (kernel-log "ACTUATOR [System] - Unknown command ~s" cmd)))))
+      (:message (harness-log "ACTUATOR [System] - ~a" (getf payload :text)))
+      (t (harness-log "ACTUATOR [System] - Unknown command ~s" cmd)))))
 #+end_src
 
 ** The Reactive Signal Pipeline (process-signal)
-The kernel has evolved into a functional transformation pipeline. Every event—be it a keystroke, a timer pulse, or a neural proposal—is a **Signal**. Signals flow through a series of "Gates" that progressively enrich and validate the event until it is dispatched to an actuator.
+the harness has evolved into a functional transformation pipeline. Every event—be it a keystroke, a timer pulse, or a neural proposal—is a **Signal**. Signals flow through a series of "Gates" that progressively enrich and validate the event until it is dispatched to an actuator.
 
 *** Perceive Gate
 Normalizes raw stimuli and updates the Object Store knowledge graph.
 
-#+begin_src lisp :tangle ../src/core.lisp
+#+begin_src lisp :tangle ../src/loop.lisp
 (defun perceive-gate (signal)
   "Initial processing: Normalizes raw stimuli and updates memory."
   (let* ((payload (getf signal :payload))
          (type (getf signal :type))
          (sensor (getf payload :sensor)))
-    (kernel-log "GATE [Perceive]: ~a (~a)" type (or sensor "no-sensor"))
+    (harness-log "GATE [Perceive]: ~a (~a)" type (or sensor "no-sensor"))
     (snapshot-object-store)
     (cond ((eq type :EVENT)
            (case sensor
@@ -157,7 +157,7 @@ Normalizes raw stimuli and updates the Object Store knowledge graph.
              (:point-update (let ((element (getf payload :element))) (when element (ingest-ast element))))
              (:interrupt (bt:with-lock-held (*interrupt-lock*) (setf *interrupt-flag* t)))))
           ((eq type :RESPONSE)
-           (kernel-log "GATE [Perceive]: Act Result -> ~a" (getf payload :status))))
+           (harness-log "GATE [Perceive]: Act Result -> ~a" (getf payload :status))))
     (setf (getf signal :status) :perceived)
     signal))
 #+end_src
@@ -165,12 +165,12 @@ Normalizes raw stimuli and updates the Object Store knowledge graph.
 *** Associative Gate
 Invokes the Associative engine to generate intuition-based proposals. If parallel consensus is enabled, this gate returns a list of proposals.
 
-#+begin_src lisp :tangle ../src/core.lisp
+#+begin_src lisp :tangle ../src/loop.lisp
 (defun neuro-gate (signal)
   "Associative: Intuition and proposed actions."
   (unless (eq (getf signal :type) :EVENT)
     (return-from neuro-gate signal))
-  (kernel-log "GATE [Associative]: Consulting System 1...")
+  (harness-log "GATE [Associative]: Consulting System 1...")
   (let ((thoughts (think signal)))
     (setf (getf signal :proposals) (if (and (listp thoughts) (listp (car thoughts))) 
                                        thoughts 
@@ -182,11 +182,11 @@ Invokes the Associative engine to generate intuition-based proposals. If paralle
 *** Consensus Gate
 Compares multiple proposals (from parallel backends) and selects the most consistent one.
 
-#+begin_src lisp :tangle ../src/core.lisp
+#+begin_src lisp :tangle ../src/loop.lisp
 (defun resolve-consensus (proposals signal)
   "Resolves diverging proposals by voting or selecting the safest one."
   (declare (ignore signal))
-  (kernel-log "CONSENSUS: ~a proposals found. Resolving..." (length proposals))
+  (harness-log "CONSENSUS: ~a proposals found. Resolving..." (length proposals))
   ;; Simplified consensus: Majority vote or first safe one
   ;; For now, we'll select the proposal that appears most frequently.
   (let ((counts (make-hash-table :test 'equal)))
@@ -199,7 +199,7 @@ Compares multiple proposals (from parallel backends) and selects the most consis
                    (setq max-count count
                          winner p)))
                counts)
-      (kernel-log "CONSENSUS: Winner selected with ~a votes." max-count)
+      (harness-log "CONSENSUS: Winner selected with ~a votes." max-count)
       winner)))
 
 (defun consensus-gate (signal)
@@ -224,7 +224,7 @@ The Deliberate safety gate. Validates the candidate action against formal rules 
 Before passing the candidate to `decide`, the gate checks its type. If it's a string, it wraps it in `(:type :RESPONSE :payload (list :text <string>))`.
 
 **** Phase D: Build
-#+begin_src lisp :tangle ../src/core.lisp
+#+begin_src lisp :tangle ../src/loop.lisp
 (defun decide-gate (signal)
   "Deliberate: Safety and validation."
   (let ((candidate (getf signal :candidate)))
@@ -240,7 +240,7 @@ Before passing the candidate to `decide`, the gate checks its type. If it's a st
 *** Dispatch Gate
 Routes approved actions to actuators. If an action results in new information (like tool output), it returns a FEEDBACK signal to be re-injected.
 
-#+begin_src lisp :tangle ../src/core.lisp
+#+begin_src lisp :tangle ../src/loop.lisp
 (defun dispatch-gate (signal)
   "Final Stage: Actuation and feedback generation."
   (let* ((approved (getf signal :approved-action))
@@ -280,17 +280,17 @@ Routes approved actions to actuators. If an action results in new information (l
 *** Pipeline Orchestrator (process-signal)
 Moves a signal through the gates in a flat loop, handling feedback signals without increasing the Lisp stack depth.
 
-#+begin_src lisp :tangle ../src/core.lisp
+#+begin_src lisp :tangle ../src/loop.lisp
 (defun process-signal (signal)
   "The entry point to the Reactive Signal Pipeline."
   (let ((current-signal signal))
     (loop while current-signal do
       (let ((depth (getf current-signal :depth 0)))
         (when (> depth 10)
-          (kernel-log "PIPELINE ERROR: Max depth reached.")
+          (harness-log "PIPELINE ERROR: Max depth reached.")
           (return nil))
         (when (bt:with-lock-held (*interrupt-lock*) *interrupt-flag*)
-          (kernel-log "PIPELINE: Interrupted.")
+          (harness-log "PIPELINE: Interrupted.")
           (bt:with-lock-held (*interrupt-lock*) (setf *interrupt-flag* nil))
           (return nil))
         
@@ -302,7 +302,7 @@ Moves a signal through the gates in a flat loop, handling feedback signals witho
               (setf current-signal (decide-gate current-signal))
               (setf current-signal (dispatch-gate current-signal)))
           (error (c)
-            (kernel-log "PIPELINE CRASH: ~a - Initiating Micro-Rollback." c)
+            (harness-log "PIPELINE CRASH: ~a - Initiating Micro-Rollback." c)
             (rollback-object-store 0)
             (let ((sensor (ignore-errors (getf (getf current-signal :payload) :sensor))))
               (if (or (> depth 2) (member sensor '(:loop-error :tool-error)))
@@ -314,10 +314,10 @@ Moves a signal through the gates in a flat loop, handling feedback signals witho
 ** Delegation Mechanisms
 Allows the core to hand off tasks to specialized background agents or processes.
 
-#+begin_src lisp :tangle ../src/core.lisp
+#+begin_src lisp :tangle ../src/loop.lisp
 (defun delegate-task (task-id recipient &key context)
   "Enqueues a task for another agent or background process."
-  (kernel-log "ORCHESTRATOR: Delegating task ~a to ~a" task-id recipient)
+  (harness-log "ORCHESTRATOR: Delegating task ~a to ~a" task-id recipient)
   (inject-stimulus (list :type :EVENT 
                          :payload (list :sensor :delegation 
                                         :task-id task-id 
@@ -328,7 +328,7 @@ Allows the core to hand off tasks to specialized background agents or processes.
 ** Heartbeat Mechanism
 Periodically injects a "pulse" into the system to trigger temporal skills (like cron jobs or reminders).
 
-#+begin_src lisp :tangle ../src/core.lisp
+#+begin_src lisp :tangle ../src/loop.lisp
 (defvar *heartbeat-thread* nil)
 
 (defun start-heartbeat (&optional (interval 60))
@@ -338,7 +338,7 @@ Periodically injects a "pulse" into the system to trigger temporal skills (like 
          (lambda () 
            (loop 
              (sleep interval) 
-             (kernel-log "KERNEL: Heartbeat pulse...")
+             (harness-log "HARNESS: Heartbeat pulse...")
              (inject-stimulus (list :type :EVENT :payload (list :sensor :heartbeat :unix-time (get-universal-time)))))) 
          :name "org-agent-heartbeat")))
 
@@ -350,29 +350,29 @@ Periodically injects a "pulse" into the system to trigger temporal skills (like 
 #+end_src
 
 ** Boot Sequence (initialize-all-skills)
-The kernel initialization sequence has been moved to the Micro-Loader in the skills module. It remains exported for consistency.
+The harness initialization sequence has been moved to the Micro-Loader in the skills module. It remains exported for consistency.
 
-#+begin_src lisp :tangle ../src/core.lisp
+#+begin_src lisp :tangle ../src/loop.lisp
 (defun load-all-skills ()
   "Deprecated: use initialize-all-skills. Centralized boot orchestrator."
   (initialize-all-skills))
 #+end_src
 
 ** Main Entry Point
-The execution entry point for the kernel binary.
+The execution entry point for the harness binary.
 
-#+begin_src lisp :tangle ../src/core.lisp
+#+begin_src lisp :tangle ../src/loop.lisp
 (defun main ()
   "The entry point for the compiled standalone binary."
   (let* ((home (uiop:getenv "HOME"))
          (env-file (uiop:merge-pathnames* ".local/share/org-agent/.env" (uiop:ensure-directory-pathname home))))
     (if (uiop:file-exists-p env-file)
         (progn
-          (format t "KERNEL: Loading environment from ~a~%" env-file)
+          (format t "HARNESS: Loading environment from ~a~%" env-file)
           (cl-dotenv:load-env env-file))
-        (format t "KERNEL ERROR: .env not found at ~a~%" env-file)))
+        (format t "HARNESS ERROR: .env not found at ~a~%" env-file)))
   (let ((interval (or (ignore-errors (parse-integer (uiop:getenv "HEARTBEAT_INTERVAL") :junk-allowed t)) 60)))
-    (format t "KERNEL: Heartbeat interval set to ~a seconds.~%" interval)
+    (format t "HARNESS: Heartbeat interval set to ~a seconds.~%" interval)
     (start-daemon :interval interval))
   (loop (sleep 3600)))
 #+end_src
@@ -468,8 +468,8 @@ Following the PSF mandates, the Reactive Signal Pipeline must be empirically ver
     (is (member "mock-dependent" deps :test #'string-equal))))
 
 (test test-log-buffering
-  "Verify that kernel-log correctly populates the system logs."
-  (kernel-log "PSF TEST LOG")
+  "Verify that harness-log correctly populates the system logs."
+  (harness-log "PSF TEST LOG")
   (let ((logs (context-get-system-logs 5)))
     (is (cl:some (lambda (line) (search "PSF TEST LOG" line)) logs))))
 

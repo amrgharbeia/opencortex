@@ -24,7 +24,7 @@
                (:file "src/lisp-repair")
                (:file "src/bouncer")
                (:file "src/verification-logic")
-               (:file "src/core")
+               (:file "src/loop")
                (:file "src/gateway-telegram")
                (:file "src/gateway-signal")
                (:file "src/gateway-matrix")
