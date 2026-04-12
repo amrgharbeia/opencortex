@@ -1,0 +1,85 @@
+:PROPERTIES:
+:ID:       37f2b59f-4537-4cca-ac7f-5c24b9e2e773
+:CREATED:  [2026-03-30 Mon 21:16]
+:EDITED:   [2026-04-12 Sun 18:45]
+:END:
+#+TITLE: SKILL: Engineering Standards (Universal Literate Note)
+#+STARTUP: content
+#+FILETAGS: :engineering:standards:workflow:lisp:git:tdd:
+
+* Overview
+These are the strict **Engineering Standards** for all development within this system. They ensure that every line of code is provably correct, auditable, and maintainable. These standards are enforced both through the agent's instructions and physical Lisp safety gates.
+
+* The Mandates (Operational Standards)
+
+** 1. Commit Before Modify
+You MUST commit and push the current state of the workspace BEFORE initiating any new file modifications. This ensures a clean recovery point. The system physically blocks file modifications if the working tree is dirty.
+
+** 2. Literate Programming (The Single Source of Truth)
+All system logic and skills MUST be implemented as Literate Org files. Weaving documentation and code together ensures that the "Why" (Architectural Intent) is never separated from the "How" (Implementation).
+
+** 3. Literate Granularity
+Every Lisp function, macro, or variable must reside in its own dedicated `#+begin_src lisp` block. This allows for specific narrative explanation for every logical unit.
+
+** 4. Test-Driven Development (Continuous QA)
+No change is complete without verification. Every new function or macro must be accompanied by a FiveAM test case. You must run the test suite and verify success before considering a task complete.
+
+** 5. The Consensus Loop (Plan Mode)
+Major architectural shifts or complex refactors require a formal implementation plan. You must enter Plan Mode, draft a Blueprint (PROTOCOL), and seek formal approval before execution.
+
+* Phase B: Blueprint (PROTOCOL)
+:PROPERTIES:
+:STATUS: SIGNED
+:END:
+
+** 1. Architectural Intent
+The Engineering Standards skill provides the deterministic enforcement of the workflow. It intercepts agent actions and validates them against the git environment and system state.
+
+** 2. Semantic Interfaces
+
+*** `verify-git-clean-p`
+    - Purpose: Checks if the git repository is in a clean state.
+    - Returns: `t` if clean, `nil` if dirty.
+
+* Phase D: Build (Implementation)
+
+** Git Status Enforcement
+#+begin_src lisp :tangle ../src/engineering-standards.lisp
+(in-package :org-agent)
+
+(defun verify-git-clean-p (dir)
+  "Returns T if the git repository at DIR has no uncommitted changes."
+  (let ((status (uiop:run-program (list "git" "-C" (namestring dir) "status" "--porcelain")
+                                  :output :string
+                                  :ignore-error-status t)))
+    (string= "" (string-trim '(#\Space #\Newline #\Tab) status))))
+
+(defun engineering-standards-gate (action context)
+  "Physically enforces the 'Commit Before Modify' rule."
+  (let* ((payload (getf action :payload))
+         (act (or (getf payload :action) (getf action :action)))
+         (target-file (getf payload :file)))
+    
+    ;; If the action involves modifying files, check git status
+    (when (member act '(:modify-file :write-file :replace :rename-file :delete-file))
+      (let ((proj-root (asdf:system-source-directory :org-agent)))
+        (unless (verify-git-clean-p proj-root)
+          (harness-log "DELIBERATE [Standards]: BLOCKING ACTION. Working tree is dirty. Commit changes before modification.")
+          (return-from engineering-standards-gate
+            (list :type :LOG :payload (list :text "Engineering Standard Violation: Working tree dirty. You MUST commit before modifying files."))))))
+    
+    action))
+#+end_src
+
+** Skill Definition
+#+begin_src lisp :tangle ../src/engineering-standards.lisp
+(org-agent:defskill :skill-engineering-standards
+  :priority 900 ; High priority, runs before most skills
+  :trigger (lambda (ctx) t) ; Always active
+  :neuro nil
+  :symbolic #'engineering-standards-gate)
+#+end_src
+
+* See Also
+- [[file:org-skill-system-invariants.org][System Invariants]]
+- [[file:../README.org][org-agent README]]

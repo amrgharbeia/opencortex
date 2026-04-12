@@ -8,6 +8,8 @@
   :serial t
   :components ((:file "src/package")
                (:file "src/skills")
+               (:file "src/system-invariants")
+               (:file "src/engineering-standards")
                (:file "src/protocol-validator")
                (:file "src/protocol")
                (:file "src/object-store")

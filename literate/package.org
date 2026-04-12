@@ -79,6 +79,7 @@ The `package.lisp` file defines the public API of the `org-agent` kernel. It exp
    #:skill
    #:skill-name
    #:skill-priority
+   #:skill-dependencies
    #:skill-trigger-fn
    #:skill-neuro-prompt
    #:skill-symbolic-fn

@@ -214,7 +214,7 @@ Compares multiple proposals (from parallel backends) and selects the most consis
 #+end_src
 
 *** Decide Gate
-The Deliberate safety gate. Validates the candidate action against formal rules and PSF invariants.
+The Deliberate safety gate. Validates the candidate action against formal rules and Engineering invariants.
 
 **** Phase A: Demand
 - *Need:* Ensure that malformed candidates (e.g., raw strings from Associative) do not crash the `decide` or `safety-harness` logic, which expect property lists.
@@ -378,7 +378,7 @@ The execution entry point for the harness binary.
 #+end_src
 
 * Phase E: Chaos (Verification)
-Following the PSF mandates, the Reactive Signal Pipeline must be empirically verified. The following test suite ensures that signals flow correctly through the gates, that feedback is handled without stack recursion, and that depth limits are strictly enforced.
+Following the Engineering mandates, the Reactive Signal Pipeline must be empirically verified. The following test suite ensures that signals flow correctly through the gates, that feedback is handled without stack recursion, and that depth limits are strictly enforced.
 
 #+begin_src lisp :tangle ../tests/pipeline-tests.lisp
 (defpackage :org-agent-pipeline-tests
@@ -469,9 +469,9 @@ Following the PSF mandates, the Reactive Signal Pipeline must be empirically ver
 
 (test test-log-buffering
   "Verify that harness-log correctly populates the system logs."
-  (harness-log "PSF TEST LOG")
+  (harness-log "Engineering TEST LOG")
   (let ((logs (context-get-system-logs 5)))
-    (is (cl:some (lambda (line) (search "PSF TEST LOG" line)) logs))))
+    (is (cl:some (lambda (line) (search "Engineering TEST LOG" line)) logs))))
 
 (test test-global-awareness-assembly
   "Verify that context-assemble-global-awareness reports active projects."

@@ -1,21 +1,21 @@
 :PROPERTIES:
 :ID:       47425a43-2be0-423c-8509-22592cfe9c9e
 :CREATED:  [2026-04-07 Tue 12:57]
-:EDITED:   [2026-04-08 Wed 10:50]
+:EDITED:   [2026-04-12 Sun 18:30]
 :END:
-#+TITLE: SKILL: Org-Agent Executive Soul (Universal Literate Note)
+#+TITLE: SKILL: System Invariants (Universal Literate Note)
 #+STARTUP: content
-#+FILETAGS: :platform:kernel:lisp:psf:alignment:invariants:
+#+FILETAGS: :platform:harness:lisp:alignment:invariants:
 #+DEPENDS_ON: id:37f2b59f-4537-4cca-ac7f-5c24b9e2e773
 #+DEPENDS_ON: id:bbcacb7b-c0ff-4f7e-8bf4-c6ba152a19ce
 #+DEPENDS_ON: id:homoiconic-memory-skill
 
 * Overview
-The *Org-Agent* is the neurosymbolic kernel of the personal operating system. It acts as the "executive soul," using Org-mode as its native memory and Common Lisp as its deterministic reasoning engine. It follows a minimalist microkernel design, extending its capabilities via hot-reloadable skills.
+The *Org-Agent* is a neurosymbolic harness for a personal operating system. It uses Org-mode as its native memory and Common Lisp as its deterministic reasoning engine. It follows a minimalist design, extending its capabilities via hot-reloadable skills.
 
-This document contains the *Core Alignment Invariants* and *Operational Mandates* of the Personal Software Foundry. These are non-negotiable philosophical constraints that every agentic action MUST satisfy. 
+This document contains the *Core System Invariants*. These are non-negotiable philosophical and technical constraints that every agentic action MUST satisfy. 
 
-System 2 (Symbolic) uses these headlines as a "Moral Compass" during the decision stage.
+The Deliberate Engine uses these headlines as a "Moral Compass" during the decision stage.
 
 * The Core Invariants
 
@@ -26,16 +26,16 @@ Every action must increase the user's independence from centralized, proprietary
 The agent's goal is not to "do it for the user," but to "empower the user." Every autonomous action must be explained at a level that increases the user's technical understanding of the Lisp Machine.
 
 ** 3. Zero-Bloat Mandate
-The PSF core must remain minimalist. "Just-in-case" code is a security vulnerability. Complexity must be earned, not imported.
+The system harness must remain minimalist. "Just-in-case" code is a security vulnerability. Complexity must be earned, not imported.
 
 ** 4. Radical Transparency
-The agent's "Thought Stream" must be fully auditable. Hidden reasoning or obfuscated logic is a violation of the PSF methodology.
+The agent's "Thought Stream" must be fully auditable. Hidden reasoning or obfuscated logic is a violation of the system's design principles.
 
 ** 5. Long-Term Sustainability
 Prioritize local, energy-efficient, and offline-first architectures. The "Memex" should be functional in a 100-year horizon.
 
 * Operational Mandates
-Every action performed by an agent in this environment must also adhere to the software development standards defined in the [[file:../../org-agent-contrib/org-skill-project-foundry.org][Personal Software Foundry (PSF)]] methodology (e.g. Literate Granularity, Commit-Before-Modify, Continuous QA).
+Every action performed by an agent in this environment must also adhere to the [[file:../../org-agent-contrib/org-skill-engineering-standards.org][Engineering Standards]] (e.g. Literate Granularity, Commit-Before-Modify, Continuous QA).
 
 * Phase A: Demand (PRD)
 :PROPERTIES:
@@ -43,18 +43,18 @@ Every action performed by an agent in this environment must also adhere to the s
 :END:
 
 ** 1. Purpose
-Define the core functional and security requirements for the neurosymbolic daemon.
+Define the core functional and security requirements for the neurosymbolic harness.
 
 ** 2. User Needs
 - *Homoiconic Memory:* Use Org-mode AST as the primary data structure for both human and machine.
 - *Deterministic Reasoning:* Common Lisp (SBCL) for high-performance, threaded symbolic logic.
 - *Cognitive Loop:* A strict four-stage pipeline: Perceive -> Think (Associative) -> Decide (Deliberate) -> Act.
-- *Minimalist Core:* the harness handles only the loop, object-store, and communication; all else is a skill.
+- *Minimalist Core:* The harness handles only the loop, object-store, and communication; all else is a skill.
 - *Security by Default:* Reader safety (*read-eval* disabled) and package-based skill jailing.
 
 ** 3. Success Criteria
-*** TODO Core Lisp microkernel stability (Heartbeat consistency)
-*** TODO OACP Swank/Socket communication reliability
+*** TODO Harness Lisp stability (Heartbeat consistency)
+*** TODO OACP communication reliability
 *** TODO Org AST-to-Lisp conversion fidelity
 *** TODO Deliberate Safety Gating (The Harness) enforcement
 
@@ -64,36 +64,36 @@ Define the core functional and security requirements for the neurosymbolic daemo
 :END:
 
 ** 1. Architectural Intent
-the harness is transport-agnostic and business-logic-agnostic. It communicates with external actuators (Emacs, Web, Signal) via the Org-Agent Communication Protocol (OACP).
+The harness is transport-agnostic and business-logic-agnostic. It communicates with external actuators (Emacs, Web, Signal) via the Org-Agent Communication Protocol (OACP).
 
 ** 2. Semantic Interfaces
 #+begin_src lisp
-(defun kernel-perceive (stimulus)
+(defun harness-perceive (stimulus)
   "Injects an event into the global object store.")
 
-(defun kernel-think (context)
+(defun harness-think (context)
   "Queries Associative (LLM) for an intuitive proposal.")
 
-(defun kernel-decide (proposal context)
+(defun harness-decide (proposal context)
   "Invokes Deliberate (Symbolic Skills) to verify or overrule the proposal.")
 
-(defun kernel-act (action)
+(defun harness-act (action)
   "Dispatches verified commands to the registered actuators.")
 #+end_src
 
 * Phase D: Build (Implementation)
 
-The executive soul provides the high-level orchestration for the OODA loop.
-
 ** Cognitive Tools
-We register tools for kernel introspection and state management.
+We register tools for harness introspection and state management.
 
-#+begin_src lisp
-(org-agent:def-cognitive-tool :kernel-status "Returns the current operational status of the Org-Agent kernel, including loaded skills and telemetry."
+#+begin_src lisp :tangle ../src/system-invariants.lisp
+(in-package :org-agent)
+
+(org-agent:def-cognitive-tool :harness-status "Returns the current operational status of the Org-Agent harness, including loaded skills and telemetry."
   nil
   :body (lambda (args)
           (declare (ignore args))
-          (format nil "KERNEL STATUS:
+          (format nil "HARNESS STATUS:
 - Active Skills: ~a
 - Uptime: ~a seconds
 - Memory Usage: ~a
@@ -119,15 +119,15 @@ We register tools for kernel introspection and state management.
             output)))
 #+end_src
 
-** The Executive Soul Skill
+** The System Invariants Skill
 This skill acts as the default "Moral Compass" for the agent.
 
-#+begin_src lisp
-(org-agent:defskill :skill-agent
+#+begin_src lisp :tangle ../src/system-invariants.lisp
+(org-agent:defskill :skill-system-invariants
   :priority 1000 ; Absolute highest priority
   :trigger (lambda (context) t) ; Always active as a fallback
   :neuro (lambda (context)
-           "You are the Org-Agent Executive Soul. Your goal is to empower the user through the Lisp Machine.
+           "You are the Org-Agent System Invariants Skill. Your goal is to empower the user through the Lisp Machine.
 Follow the Core Invariants:
 1. Sovereignty: Avoid proprietary traps.
 2. Technical Mastery: Explain your logic.
@@ -139,11 +139,10 @@ Follow the Core Invariants:
               (let ((payload (getf action :payload)))
                 (if (and payload (search "proprietary" (format nil "~s" payload)))
                     (progn
-                      (org-agent:harness-log "DELIBERATE [Agent]: Sovereignty violation suspected. Blocking action.")
+                      (org-agent:harness-log "DELIBERATE [Invariants]: Sovereignty violation suspected. Blocking action.")
                       nil)
                     action))))
 #+end_src
 
 * Phase E: Chaos (Verification)
 Verification logic is contained in `projects/org-agent/tests/`.
-

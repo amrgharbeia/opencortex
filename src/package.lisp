@@ -70,6 +70,7 @@
    #:skill
    #:skill-name
    #:skill-priority
+   #:skill-dependencies
    #:skill-trigger-fn
    #:skill-neuro-prompt
    #:skill-symbolic-fn
