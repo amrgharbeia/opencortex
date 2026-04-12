@@ -3,7 +3,7 @@
   :author "Amr"
   :version "0.1.0"
   :license "MIT"
-  :description "The Neurosymbolic Lisp Machine Kernel"
+  :description "The Neurosymbolic Lisp Machine Harness"
   :depends-on (:usocket :cl-json :bordeaux-threads :dexador :uiop :cl-dotenv :cl-ppcre :hunchentoot :ironclad :str)
   :serial t
   :components ((:file "src/package")

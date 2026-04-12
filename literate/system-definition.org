@@ -1,27 +1,54 @@
 #+TITLE: System Definition (org-agent.asd)
 #+AUTHOR: Amr
-#+FILETAGS: :kernel:system:
+#+FILETAGS: :harness:system:
 #+STARTUP: content
 
-* System Definition
+* System Definition (org-agent.asd)
+** Architectural Intent: The ASDF Skeleton
+
+The ~org-agent.asd~ file is the physical blueprint of the Lisp Machine. It uses **Another System Definition Facility (ASDF)** to orchestrate the compilation and loading of all harness modules. 
+
+Traditional Lisp systems often use complex, non-linear dependency graphs. However, the ~org-agent~ harness mandates a strict, linear bootstrap sequence.
+
+*** 1. Strict Serial Loading (:serial t)
+The harness uses the ~:serial t~ flag. This is a critical design choice that ensures every file is compiled and loaded in the exact order it appears in the ~:components~ list. This eliminates "macro-not-found" errors by guaranteeing that the ~package.lisp~ and ~skills.lisp~ (where the core macros are defined) are always established before any behavioral logic or skills are loaded.
+
+*** 2. Isolation of the Verification Suite
+To maintain a "Zero-Overhead" production environment, the testing logic is isolated into a secondary system: ~:org-agent/tests~. This allows the harness to boot in production without loading the ~FiveAM~ framework or the voluminous test data, keeping the memory footprint minimal and the attack surface small.
+
+** The Build Pipeline
+#+begin_src mermaid
+flowchart TD
+    Org[Literate Org Files] -- Tangle --> Lisp[Source .lisp Files]
+    Lisp --> ASDF[ASDF Manifest: .asd]
+    ASDF --> Loader[SBCL Compiler / Loader]
+    Loader --> Image[Live Harness Image]
+    Image -- Build --> Binary[Standalone Binary]
+#+end_src
+
+** Harness System Definition
+This system defines the core "Thin Harness." It includes the protocol, the object store, and the functional loop.
+
 #+begin_src lisp :tangle ../org-agent.asd
 (defsystem :org-agent
   :name "org-agent"
   :author "Amr"
   :version "0.1.0"
   :license "MIT"
-  :description "The Neurosymbolic Lisp Machine Kernel"
+  :description "The Neurosymbolic Lisp Machine Harness"
   :depends-on (:usocket :cl-json :bordeaux-threads :dexador :uiop :cl-dotenv :cl-ppcre :hunchentoot :ironclad :str)
   :serial t
   :components ((:file "src/package")
-               (:file "src/protocol")
+               (:file "src/skills")
+               (:file "src/system-invariants")
+               (:file "src/engineering-standards")
                (:file "src/protocol-validator")
+               (:file "src/protocol")
                (:file "src/object-store")
                (:file "src/embedding")
                (:file "src/embedding-logic")
                (:file "src/context")
                (:file "src/context-logic")
-               (:file "src/skills")
                (:file "src/neuro")
                (:file "src/credentials-vault")
                (:file "src/llm-gateway")
@@ -39,10 +66,15 @@
   :build-operation "program-op"
   :build-pathname "org-agent-server"
   :entry-point "org-agent:main")
+#+end_src
 
+** Verification Suite Definition
+This system contains the empirical tests required by the Engineering Standards. It depends on ~:org-agent~ and the ~FiveAM~ testing framework.
+
+#+begin_src lisp :tangle ../org-agent.asd
 (defsystem :org-agent/tests
   :depends-on (:org-agent :fiveam)
-  :components ((:file "tests/harness-protocol-tests")
+  :components ((:file "tests/protocol-tests")
                (:file "tests/pipeline-tests")
                (:file "tests/peripheral-vision-tests")
                (:file "tests/safety-harness-tests")
