@@ -1,23 +1,48 @@
-#+TITLE: Peripheral Vision (context.lisp & embedding.lisp)
+#+TITLE: Peripheral Vision (context.lisp)
 #+AUTHOR: Amr
-#+FILETAGS: :kernel:context:embedding:
+#+FILETAGS: :harness:context:
 #+STARTUP: content
 
-* Peripheral Vision (context.lisp & embedding.lisp)
-** Deep Reasoning: Solving the "Lost in the Middle" Problem
-LLMs lose precision when context windows are bloated with irrelevant data.
-- **Sparse Trees:** We use Lisp's deterministic tree-walking to surgically prune the Org AST. We pass the skeletal "peripheral" outline to the LLM, giving it global awareness while keeping its "foveal" focus on the task at hand. This minimizes token burn and maximizes reasoning accuracy.
+* Peripheral Vision (context.lisp)
+** Architectural Intent: Context Optimization & The Foveal-Peripheral Hybrid
+
+A common failure mode for Large Language Models (LLMs) is the "Lost in the Middle" phenomenon, where the model's reasoning accuracy degrades as its context window becomes saturated with irrelevant data. Naive approaches to context management—such as simple character-count truncation or sliding windows—often sever the structural relationships that define an Org-mode Memex.
+
+The ~org-agent~ harness implements a deterministic, tree-aware solution: the **Foveal-Peripheral Hybrid Model**.
+
+*** 1. The Foveal Focus (High Resolution)
+When the harness prepares a prompt for the Associative Engine, it identifies a "Foveal Focus"—typically the specific Org headline or task the user is currently interacting with. This node, along with its immediate children and semantically relevant neighbors, is rendered at "High Resolution," meaning its full body text, properties, and metadata are included in the prompt.
+
+*** 2. The Peripheral Vision (Low Resolution)
+To maintain global awareness without bloating the context window, the rest of the Memex is rendered at "Low Resolution." The harness recursively walks the Object Store and generates a skeletal outline consisting only of titles and IDs. This gives the LLM a "mental map" of the entire system, allowing it to reference other projects or skills without needing to see their full content until they are explicitly brought into focus.
+
+*** 3. Deterministic Tree-Walking
+By leveraging Common Lisp's strengths in recursive tree manipulation, the harness can surgically prune the AST before it ever reaches the LLM. This ensures that the structural hierarchy of the Memex is preserved perfectly, even when the content is compressed.
+
+** The Context Pipeline
+#+begin_src mermaid
+flowchart TD
+    Store[(Object Store)] --> Filter[Context Query Filter]
+    Filter --> Identification{Identify Foveal ID}
+    Identification --> Foveal[Render Focus: Full Content]
+    Identification --> Peripheral[Render Outline: Titles Only]
+    Foveal --> Assembly[Assemble Global Awareness String]
+    Peripheral --> Assembly
+    Assembly --> LLM[Associative Engine Proposal]
+#+end_src
 
 * Context Assembly (context.lisp)
-The `context.lisp` module provides deterministic functions for querying the `*object-store*` and assembling the precise context string sent to System 1.
+The ~context.lisp~ module provides the deterministic functional layer for querying the Object Store and transforming its internal pointers into the precise context strings required for neural reasoning.
 
 ** Package Context
+We begin by ensuring we are executing within the correct isolated package namespace.
+
 #+begin_src lisp :tangle ../src/context.lisp
 (in-package :org-agent)
 #+end_src
 
 ** Querying the Store (context-query-store)
-A generalized filter for the Object Store that supports tags, TODO states, and element types.
+A generalized filter for the Object Store. This function allows skills to perform high-level semantic sweeps of the Memex based on tags, TODO states, or Org element types. It returns a list of ~org-object~ structures.
 
 #+begin_src lisp :tangle ../src/context.lisp
 (defun context-query-store (&key tag todo-state type)
@@ -35,7 +60,7 @@ A generalized filter for the Object Store that supports tags, TODO states, and e
 #+end_src
 
 ** Active Projects (context-get-active-projects)
-Identifies headlines tagged with `project` that are not yet marked as `DONE`.
+Identifies headlines tagged with ~project~ that have not yet reached a terminal ~DONE~ state. This provides the primary high-level structure for the agent's global awareness.
 
 #+begin_src lisp :tangle ../src/context.lisp
 (defun context-get-active-projects ()
@@ -45,7 +70,7 @@ Identifies headlines tagged with `project` that are not yet marked as `DONE`.
 #+end_src
 
 ** Completed Tasks (context-get-recent-completed-tasks)
-Retrieves a list of tasks that have reached the terminal `DONE` state.
+Retrieves a list of tasks that have reached the terminal ~DONE~ state. This is useful for providing the agent with historical context or for generating summaries of recent work.
 
 #+begin_src lisp :tangle ../src/context.lisp
 (defun context-get-recent-completed-tasks () 
@@ -54,7 +79,7 @@ Retrieves a list of tasks that have reached the terminal `DONE` state.
 #+end_src
 
 ** Capability Discovery (context-list-all-skills)
-Provides a sorted list of all currently loaded skills, including their priority and dependencies.
+Provides a sorted list of all currently loaded skills. In a "Self-Writing" environment, the agent must be able to discover and understand its own capabilities. This function provides the metadata necessary for the agent to decide which skill to trigger or how to resolve dependencies.
 
 #+begin_src lisp :tangle ../src/context.lisp
 (defun context-list-all-skills ()
@@ -68,7 +93,7 @@ Provides a sorted list of all currently loaded skills, including their priority 
 #+end_src
 
 ** Skill Inspection (context-get-skill-source)
-Reads the raw literate source of a specific skill. This is crucial for "System 2" meta-reasoning, where the agent needs to understand its own implementation.
+Reads the raw literate Org source of a specific skill. This is a foundational capability for an agent expected to eventually "self-write" or perform its own maintenance. By reading the literate source, the agent can understand the *intent* behind a skill's logic before proposing a modification.
 
 #+begin_src lisp :tangle ../src/context.lisp
 (defun context-get-skill-source (skill-name)
@@ -79,8 +104,8 @@ Reads the raw literate source of a specific skill. This is crucial for "System 2
     (if (uiop:file-exists-p full-path) (uiop:read-file-string full-path) nil)))
 #+end_src
 
-** Kernel Logs (context-get-system-logs)
-Retrieves the most recent lines from the harness's internal log.
+** Harness Logs (context-get-system-logs)
+Retrieves the most recent entries from the harness's internal circular log buffer. This allows the Associative Engine to see recent errors or successful dispatches, enabling it to course-correct or explain failures to the user.
 
 #+begin_src lisp :tangle ../src/context.lisp
 (defun context-get-system-logs (&optional (limit 20))
@@ -90,7 +115,7 @@ Retrieves the most recent lines from the harness's internal log.
 #+end_src
 
 ** Telemetry (context-get-skill-telemetry)
-Provides execution stats for a specific skill.
+Provides execution statistics for a specific skill, including total execution time and failure counts. This enables the harness to monitor for performance regressions or malfunctioning skills.
 
 #+begin_src lisp :tangle ../src/context.lisp
 (defun context-get-skill-telemetry (skill-name)
@@ -99,7 +124,13 @@ Provides execution stats for a specific skill.
 #+end_src
 
 ** AST to Org Rendering (context-render-to-org)
-Transforms the internal Object Store structures back into a human-readable (and LLM-readable) Org-mode string. It supports depth-based indentation and content suppression for peripheral nodes.
+This is the core engine of the Foveal-Peripheral model. It recursively transforms the internal ~org-object~ graph back into an Org-mode string. 
+
+It implements the following deterministic logic:
+1.  **Depth 1 & 2:** Always rendered (High-level mental map).
+2.  **Foveal Node:** Rendered with full body content.
+3.  **Semantic Neighbors:** Rendered with full content if their similarity score exceeds the threshold.
+4.  **Peripheral Nodes:** Rendered as skeletal headlines (titles and IDs only).
 
 #+begin_src lisp :tangle ../src/context.lisp
 (defun context-render-to-org (obj &key (depth 1) (foveal-id nil) (semantic-threshold 0.75) (foveal-vector nil))
@@ -147,7 +178,7 @@ Transforms the internal Object Store structures back into a human-readable (and 
 #+end_src
 
 ** Path Resolution (context-resolve-path)
-Expands environment variables (like `$HOME`) within path strings.
+A utility function that expands environment variables (like ~$HOME~ or ~$MEMEX_ROOT~) within path strings. This ensures that the agent can interact with files across different machine configurations without hardcoding absolute paths.
 
 #+begin_src lisp :tangle ../src/context.lisp
 (defun context-resolve-path (path-string)
@@ -163,7 +194,7 @@ Expands environment variables (like `$HOME`) within path strings.
 #+end_src
 
 ** Global Awareness (context-assemble-global-awareness)
-The primary context generator. It identifies active projects and the current foveal focus, then assembles a pruned Org-mode view of the Memex.
+The primary entry point for context generation. This function identifies active projects and the current user focus, then invokes the recursive renderer to assemble the pruned Org-mode skeletal outline sent to the LLM.
 
 #+begin_src lisp :tangle ../src/context.lisp
 (defun context-assemble-global-awareness (&optional signal)
@@ -182,9 +213,7 @@ The primary context generator. It identifies active projects and the current fov
 #+end_src
 
 * Phase E: Chaos (Verification)
-Verification of the peripheral vision extraction and rendering logic.
-
-Verification of the peripheral vision extraction and rendering logic.
+Following the Engineering Standards, the peripheral vision extraction and rendering logic must be empirically verified. The following test suite ensures that the Foveal-Peripheral model correctly suppresses content for peripheral nodes while preserving focus on the target task.
 
 #+begin_src lisp :tangle ../tests/peripheral-vision-tests.lisp
 (defpackage :org-agent-peripheral-vision-tests
