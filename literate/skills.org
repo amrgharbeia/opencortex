@@ -1,34 +1,62 @@
 #+TITLE: The Skill Engine (skills.lisp)
 #+AUTHOR: Amr
-#+FILETAGS: :kernel:skills:
+#+FILETAGS: :harness:skills:
 #+STARTUP: content
 
 * The Skill Engine (skills.lisp)
-** Deep Reasoning: Late-Binding Intelligence
-Hardcoding logic into a compiled binary creates a "Brittle Kernel."
-- **Institutional Memory:** By using Literate Org files as skills, the "Why" (PRD) and the "How" (Lisp) are unified. 
-- **Hot-Reloading:** The agent can "learn" a new trick (recompile a package) while running. This allows for a continuous evolutionary loop where the agent can eventually rewrite its own skills to fix bugs it perceives.
+** Architectural Intent: Late-Binding Intelligence
+
+A static, hardcoded architecture is inherently fragile. To build a sovereign agent that can evolve alongside its user, the harness must be a "Thin Shell" that delegates its capabilities to dynamic, hot-reloadable modules known as **Skills**.
+
+Skills unify the **"Why"** (Literate Org documentation) and the **"How"** (Functional Lisp implementation). This allows the harness to "learn" new behaviors without a full system restart, enabling a continuous evolutionary loop where the agent can eventually inspect and improve its own code.
+
+*** 1. The Package Jailing Principle
+Every skill is evaluated within its own dedicated Common Lisp package (namespace). This "Jailing" prevents symbol collisions between disparate skills and ensures that a bug in one module cannot easily corrupt the internal state of another.
+
+*** 2. Deterministic Load Ordering
+Skills often depend on one another. The harness implements a deterministic topological sorting algorithm to ensure that dependencies are loaded before the skills that require them.
+
+** Skill Architecture
+#+begin_src mermaid
+flowchart TD
+    Registry[Skills Registry] --> S1[Skill: System Invariants]
+    Registry --> S2[Skill: LLM Gateway]
+    Registry --> S3[Skill: Token Accountant]
+    S2 -- Depends On --> S1
+    S3 -- Depends On --> S2
+    
+    subgraph Jailing[Package Jailing]
+        P1[Package: ORG-AGENT.SKILLS.S1]
+        P2[Package: ORG-AGENT.SKILLS.S2]
+        P3[Package: ORG-AGENT.SKILLS.S3]
+    end
+    
+    S1 --> P1
+    S2 --> P2
+    S3 --> P3
+#+end_src
 
 ** Package Context
+We begin by ensuring we are in the correct isolated harness namespace.
+
 #+begin_src lisp :tangle ../src/skills.lisp
 (in-package :org-agent)
 #+end_src
 
-** Skill Definition (defstruct skill)
+** Skill Metadata (defstruct skill)
+The core data structure representing an agent capability. It includes the trigger condition, the neural prompt generator, and the symbolic safety gate.
+
 #+begin_src lisp :tangle ../src/skills.lisp
 (defstruct skill name priority dependencies trigger-fn neuro-prompt symbolic-fn)
 #+end_src
 
 ** Skill Catalog Tracking
-A stateful tracking table for all skill files discovered in the environment.
+The harness maintains a stateful tracking table for all skill files discovered in the environment (~notes/org-skill-*.org~).
 
 #+begin_src lisp :tangle ../src/skills.lisp
 (defvar *skill-catalog* (make-hash-table :test 'equal)
   "A stateful tracking table for all skill files discovered in the environment.")
-#+end_src
 
-** Skill Entry Structure
-#+begin_src lisp :tangle ../src/skills.lisp
 (defstruct skill-entry 
   filename 
   (status :discovered) ;; :discovered, :loading, :ready, :failed
@@ -37,7 +65,7 @@ A stateful tracking table for all skill files discovered in the environment.
 #+end_src
 
 ** Skill Selection (find-triggered-skill)
-Iterates through the registry to find the highest-priority skill whose trigger function matches the current context.
+The primary dispatcher for the Associative Engine. It iterates through the registry to find the highest-priority skill whose trigger function matches the current cognitive context.
 
 #+begin_src lisp :tangle ../src/skills.lisp
 (defun find-triggered-skill (context)
@@ -52,7 +80,7 @@ Iterates through the registry to find the highest-priority skill whose trigger f
 #+end_src
 
 ** Skill Definition Macro (defskill)
-The primary macro used within Org files to register new agent capabilities.
+The interface used within Org files to register new capabilities. Note that dependencies are explicitly quoted to prevent premature evaluation during the macro expansion phase.
 
 #+begin_src lisp :tangle ../src/skills.lisp
 (defmacro defskill (name &key priority dependencies trigger neuro symbolic)
@@ -67,7 +95,7 @@ The primary macro used within Org files to register new agent capabilities.
 #+end_src
 
 ** Dependency Resolution (resolve-skill-dependencies)
-Ensures that skills are loaded and unloaded in the correct order.
+Recursively flattens the dependency graph for a given skill. This is used during hot-unloading to ensure that dependent skills are also refreshed.
 
 #+begin_src lisp :tangle ../src/skills.lisp
 (defun resolve-skill-dependencies (skill-name)
@@ -86,7 +114,7 @@ Ensures that skills are loaded and unloaded in the correct order.
 #+end_src
 
 ** Metadata Parsing (parse-skill-metadata)
-Robustly extracts `#+DEPENDS_ON:` and `:ID:` tags from an Org file without full AST parsing.
+A robust, low-level scanner that extracts `#+DEPENDS_ON:` and `:ID:` tags from an Org file. This allows the harness to calculate the load order without needing to parse the full Org AST, which would create a boot-time circularity.
 
 #+begin_src lisp :tangle ../src/skills.lisp
 (defun parse-skill-metadata (filepath)
@@ -109,7 +137,12 @@ Robustly extracts `#+DEPENDS_ON:` and `:ID:` tags from an Org file without full 
 #+end_src
 
 ** Topological Sorting (topological-sort-skills)
-Calculates the correct load order for a directory of skill filepaths, detecting circular dependencies.
+This is the core algorithm of the boot sequence. It uses a **Depth-First Search (DFS)** to resolve the skill dependency graph. 
+
+It performs three critical roles:
+1.  **Load Ordering:** Ensures that "foundational" skills (like the LLM Gateway) are loaded before high-level "behavioral" skills.
+2.  **ID Resolution:** Correct maps Org `:ID:` properties to filepaths.
+3.  **Cycle Detection:** It uses a recursion stack to detect circular dependencies (e.g., A depends on B, B depends on A) and errors out safely before the Lisp image hangs.
 
 #+begin_src lisp :tangle ../src/skills.lisp
 (defun topological-sort-skills (skills-dir)
@@ -152,6 +185,8 @@ Calculates the correct load order for a directory of skill filepaths, detecting 
 #+end_src
 
 ** Syntax Validation (validate-lisp-syntax)
+A pre-flight safety check. Before evaluating any code from an Org file, the harness attempts to ~read~ the entire string. If the reader encounters a syntax error (like an unclosed parenthesis), the load is aborted before the Lisp image can crash.
+
 #+begin_src lisp :tangle ../src/skills.lisp
 (defun validate-lisp-syntax (code-string)
   "Checks if a string contains valid, readable Common Lisp forms."
@@ -164,16 +199,13 @@ Calculates the correct load order for a directory of skill filepaths, detecting 
 #+end_src
 
 ** Jailed Loading (load-skill-from-org)
-The core "hot-loading" mechanism. It extracts Lisp blocks from an Org file and evaluates them within a dedicated package ("Jail").
+The core "hot-loading" mechanism. It extracts Lisp blocks from an Org file and evaluates them within a "Jail" (an isolated package).
 
-*** Phase A: Demand
-- *Need:* Safely load skills from `.org` files without evaluating docstrings or harness-level tangled blocks as logic.
-- *Success:* Exclude `#+begin_src lisp :tangle` blocks and ignore `:PROPERTIES:` and `:END:` drawers embedded within src blocks.
+*** The Jailing Algorithm:
+1.  **Isolation:** It generates a package name based on the filename (e.g., ~ORG-AGENT.SKILLS.CORE-LOGIC~).
+2.  **Namespace Protection:** It inherits external symbols from the ~ORG-AGENT~ package, allowing the skill to use the harness API, but keeps its internal helper functions local.
+3.  **Block Filtering:** It explicitly ignores blocks that contain ~:tangle~, ensuring that harness-level code (which is already in ~src/~) is not accidentally re-evaluated as skill logic.
 
-*** Phase B: Blueprint
-The loader must actively scan block arguments and filter out those containing `:tangle`. It also needs to cleanly skip Org properties that Emacs might auto-generate inside src blocks.
-
-*** Phase D: Build
 #+begin_src lisp :tangle ../src/skills.lisp
 (defun load-skill-from-org (filepath)
   "Parses and evaluates Lisp blocks from an Org file into a jailed package."
@@ -230,7 +262,7 @@ The loader must actively scan block arguments and filter out those containing `:
 #+end_src
 
 ** Safe Loading with Timeout (load-skill-with-timeout)
-Wraps the skill loader in a thread with a hard timeout to prevent a single malformed skill from hanging the entire kernel boot sequence.
+Wraps the skill loader in a thread with a hard timeout to prevent a single malformed skill from hanging the entire boot sequence.
 
 #+begin_src lisp :tangle ../src/skills.lisp
 (defun load-skill-with-timeout (filepath timeout-seconds)
@@ -256,7 +288,7 @@ Wraps the skill loader in a thread with a hard timeout to prevent a single malfo
 #+end_src
 
 ** Initializing All Skills (initialize-all-skills)
-The unified orchestrator for the harness boot sequence. It scans the environment, calculates dependencies, and loads the system brain.
+The unified orchestrator for the system boot sequence.
 
 #+begin_src lisp :tangle ../src/skills.lisp
 (defun initialize-all-skills ()
@@ -271,9 +303,9 @@ The unified orchestrator for the harness boot sequence. It scans the environment
       (return-from initialize-all-skills nil))
 
     (let ((sorted-files (topological-sort-skills skills-dir)))
-      ;; MANDATE: The Executive Soul must be present
-      (unless (member "org-skill-agent" sorted-files :key #'pathname-name :test #'string-equal)
-        (error "BOOT FAILURE: org-skill-agent.org not found in skills directory."))
+      ;; MANDATE: The System Invariants must be present for a safe boot
+      (unless (member "org-skill-system-invariants" sorted-files :key #'pathname-name :test #'string-equal)
+        (error "BOOT FAILURE: org-skill-system-invariants.org not found in skills directory."))
       
       (harness-log "==================================================")
       (harness-log " LOADER: Initializing ~a skills..." (length sorted-files))
@@ -295,7 +327,21 @@ The unified orchestrator for the harness boot sequence. It scans the environment
 #+end_src
 
 ** Toolbelt Prompt Generation (generate-tool-belt-prompt)
-Constructs the technical documentation of available tools that is injected into the LLM system prompt.
+Every cognitive tool registered by a skill is automatically documented and injected into the LLM system prompt. This ensures that the agent is always aware of its current physical capabilities.
+
+#+begin_src mermaid
+flowchart LR
+    Registry[(Tool Registry)] --> Generator[Prompt Generator]
+    Generator --> Prompt[Final System Prompt]
+    subgraph Actuators
+        ToolA[Shell]
+        ToolB[Emacs]
+        ToolC[Grep]
+    end
+    ToolA --> Registry
+    ToolB --> Registry
+    ToolC --> Registry
+#+end_src
 
 #+begin_src lisp :tangle ../src/skills.lisp
 (defun generate-tool-belt-prompt ()
@@ -321,9 +367,9 @@ EXAMPLES:
 #+end_src
 
 ** The Default Tool Belt
-We register a set of standard cognitive tools that all skills can use.
+The harness provides a baseline set of cognitive tools that enable core system interaction.
 
-*** The Eval Tool
+*** The Eval Tool (Internal Inspection)
 #+begin_src lisp :tangle ../src/skills.lisp
 (def-cognitive-tool :eval "Evaluates raw Common Lisp code in the harness image. Use this for complex calculations or internal state inspection."
   ((:code :type :string :description "The Lisp code to evaluate"))
@@ -341,7 +387,7 @@ We register a set of standard cognitive tools that all skills can use.
               (error (c) (format nil "ERROR: ~a" c))))))
 #+end_src
 
-*** The Grep Tool
+*** The Grep Tool (File Discovery)
 #+begin_src lisp :tangle ../src/skills.lisp
 (def-cognitive-tool :grep-search "Searches for a pattern in the project files."
   ((:pattern :type :string :description "The regex pattern to search for")
@@ -353,7 +399,7 @@ We register a set of standard cognitive tools that all skills can use.
                               :output :string :ignore-error-status t))))
 #+end_src
 
-*** The Shell Tool
+*** The Shell Tool (Machine Actuation)
 #+begin_src lisp :tangle ../src/skills.lisp
 (def-cognitive-tool :shell "Executes a shell command on the local machine. Use this for file operations, system checks, or running tests."
   ((:cmd :type :string :description "The full bash command to execute"))

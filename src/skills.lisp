@@ -196,9 +196,9 @@
       (return-from initialize-all-skills nil))
 
     (let ((sorted-files (topological-sort-skills skills-dir)))
-      ;; MANDATE: The Executive Soul must be present
-      (unless (member "org-skill-agent" sorted-files :key #'pathname-name :test #'string-equal)
-        (error "BOOT FAILURE: org-skill-agent.org not found in skills directory."))
+      ;; MANDATE: The System Invariants must be present for a safe boot
+      (unless (member "org-skill-system-invariants" sorted-files :key #'pathname-name :test #'string-equal)
+        (error "BOOT FAILURE: org-skill-system-invariants.org not found in skills directory."))
       
       (harness-log "==================================================")
       (harness-log " LOADER: Initializing ~a skills..." (length sorted-files))
