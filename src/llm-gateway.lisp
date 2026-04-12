@@ -81,14 +81,12 @@
                                :provider (getf args :provider)
                                :model (getf args :model))))
 
-(progn
-  ;; Register all supported backends with the kernel
-  (dolist (p '(:anthropic :gemini-api :gemini-web :groq :ollama :openai :openrouter))
-    (org-agent:register-neuro-backend p (lambda (prompt system-prompt &key model)
-                                          (execute-llm-request prompt system-prompt :provider p :model model))))
-  
-  (defskill :skill-llm-gateway
-    :priority 150 ; Higher than individual old skills
-    :trigger (lambda (context) nil)
-    :neuro (lambda (context) nil)
-    :symbolic (lambda (action context) action)))
+(dolist (p '(:anthropic :gemini-api :gemini-web :groq :ollama :openai :openrouter))
+  (org-agent:register-neuro-backend p (lambda (prompt system-prompt &key model)
+                                        (execute-llm-request prompt system-prompt :provider p :model model))))
+
+(defskill :skill-llm-gateway
+  :priority 150 ; Higher than individual old skills
+  :trigger (lambda (context) (declare (ignore context)) nil)
+  :neuro (lambda (context) (declare (ignore context)) nil)
+  :symbolic (lambda (action context) (declare (ignore context)) action))

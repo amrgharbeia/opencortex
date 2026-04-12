@@ -14,34 +14,36 @@
           (return-from task-integrity-check "Blocked by Task Integrity: Active children exist."))))
     nil))
 
+(defun bouncer-check (action)
+  "Checks if an action requires manual authorization."
+  (let* ((payload (getf action :payload))
+         (target (getf action :target))
+         (act (or (getf payload :action) (getf action :action)))
+         (tool (or (getf payload :tool) (getf action :tool)))
+         (approved (getf action :approved)))
+    (when (and (not approved)
+               (or (and (eq target :tool) (equal tool "shell"))
+                   (and (eq target :emacs) (eq act :eval))
+                   (and (eq target :tool) (equal tool "repair-file"))))
+      (return-from bouncer-check t))
+    nil))
+
 (defun decide (proposed-action context)
-  "The System 2 Safety Gate: validates or rejects proposed neural actions."
+  "The Deliberate Safety Gate: validates or rejects proposed neural actions."
   ;; 1. Task Integrity Check (GTD Semantics)
   (let ((integrity-error (task-integrity-check proposed-action)))
     (when integrity-error
-      (kernel-log "SYSTEM 2 [INTEGRITY]: ~a~%" integrity-error)
+      (kernel-log "DELIBERATE [INTEGRITY]: ~a~%" integrity-error)
       (return-from decide (list :type :LOG :payload (list :text integrity-error)))))
 
-  ;; 2. Bouncer Check (DPI & Authorization)
-  ;; All actions pass through the Bouncer skill logic first if it's loaded
-  (let* ((bouncer-skill (gethash "skill-bouncer" *skills-registry*))
-         (bouncer-fn (when bouncer-skill (skill-symbolic-fn bouncer-skill))))
-    (when bouncer-fn
-      (let ((bouncer-decision (funcall bouncer-fn proposed-action context)))
-        (unless (equal bouncer-decision proposed-action)
-          (kernel-log "SYSTEM 2 [BOUNCER]: Action intercepted.~%")
-          (return-from decide bouncer-decision)))))
+  ;; 2. Bouncer Check (Authorization Gate)
+  (when (bouncer-check proposed-action)
+    (kernel-log "DELIBERATE [BOUNCER]: Action requires manual approval.~%")
+    (return-from decide 
+      (list :type :EVENT 
+            :payload (list :sensor :approval-required :action proposed-action))))
 
-  ;; 3. Formal Verification Gate
-  (let* ((formal-skill (gethash "skill-formal-verification" *skills-registry*))
-         (formal-fn (when formal-skill (skill-symbolic-fn formal-skill))))
-    (when formal-fn
-      (let ((formal-decision (funcall formal-fn proposed-action context)))
-        (unless (equal formal-decision proposed-action)
-          (kernel-log "SYSTEM 2 [FORMAL]: Action intercepted.~%")
-          (return-from decide formal-decision)))))
-
-  ;; 4. Skill-specific and Safety Checks
+  ;; 3. Skill-specific and Safety Checks
   (let ((active-skill (find-triggered-skill context)))
     (if (and proposed-action (listp proposed-action) active-skill)
         (let* ((symbolic-gate (skill-symbolic-fn active-skill))
@@ -54,16 +56,16 @@
             (let ((harness-pkg (find-package :org-agent.skills.org-skill-safety-harness)))
               (when (and code harness-pkg)
                 (unless (ignore-errors (uiop:symbol-call :org-agent.skills.org-skill-safety-harness :safety-harness-validate code))
-                  (kernel-log "SYSTEM 2 [GLOBAL]: Security violation blocked.~%")
+                  (kernel-log "DELIBERATE [GLOBAL]: Security violation blocked.~%")
                   (return-from decide '(:type :LOG :payload (:text "Blocked by Global Safety Harness")))))))
           ;; Skill-specific verification
           (if symbolic-gate
               (let ((decision (funcall symbolic-gate proposed-action context)))
                 (if decision 
-                    (progn (kernel-log "SYSTEM 2: Verified by skill '~a'.~%" (skill-name active-skill)) decision)
-                    (progn (kernel-log "SYSTEM 2: REJECTED by skill '~a'.~%" (skill-name active-skill))
+                    (progn (kernel-log "DELIBERATE: Verified by skill '~a'.~%" (skill-name active-skill)) decision)
+                    (progn (kernel-log "DELIBERATE: REJECTED by skill '~a'.~%" (skill-name active-skill))
                            '(:type :LOG :payload (:text "Action rejected by skill heuristics")))))
-              (progn (kernel-log "SYSTEM 2: Verified (Implicitly safe for skill '~a').~%" (skill-name active-skill)) proposed-action)))
+              (progn (kernel-log "DELIBERATE: Verified (Implicitly safe for skill '~a').~%" (skill-name active-skill)) proposed-action)))
         proposed-action)))
 
 (defun list-objects-with-attribute (attr-key attr-val)

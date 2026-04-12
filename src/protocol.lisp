@@ -54,7 +54,9 @@
       
       ;; SECURITY: Prevent Reader Macro Injection (e.g. #. ) during deserialization
       (let ((*read-eval* nil))
-        (read-from-string actual-msg)))))
+        (let ((msg (read-from-string actual-msg)))
+          (validate-oacp-schema msg)
+          msg)))))
 
 (defun make-hello-message (version)
   "Construct the standard HELLO handshake message."

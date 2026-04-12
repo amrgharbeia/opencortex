@@ -99,7 +99,7 @@
         (dolist (name filenames)
           (let ((file (gethash (string-downcase name) id-to-file)))
             (when file (visit file)))))
-      (nreverse result))))
+      result)))
 
 (defun validate-lisp-syntax (code-string)
   "Checks if a string contains valid, readable Common Lisp forms."
@@ -187,16 +187,13 @@
 (defun initialize-all-skills ()
   "Scans the directory defined by SKILLS_DIR and hot-loads skills using topological order."
   (let* ((env-path (uiop:getenv "SKILLS_DIR"))
-         (skills-dir-str (or env-path (namestring (merge-pathnames "projects/org-agent/skills/" (uiop:getcwd)))))
+         (skills-dir-str (or env-path (namestring (merge-pathnames "notes/" (user-homedir-pathname)))))
          (resolved-path (context-resolve-path skills-dir-str))
          (skills-dir (if resolved-path (uiop:ensure-directory-pathname resolved-path) nil)))
     
     (unless (and skills-dir (uiop:directory-exists-p skills-dir))
       (kernel-log "KERNEL ERROR: Skills directory not found: ~a" skills-dir-str)
-      ;; Fallback check
-      (setq skills-dir (uiop:ensure-directory-pathname (merge-pathnames "projects/org-agent/skills/" (uiop:getcwd))))
-      (unless (uiop:directory-exists-p skills-dir)
-        (return-from initialize-all-skills nil)))
+      (return-from initialize-all-skills nil))
 
     (let ((sorted-files (topological-sort-skills skills-dir)))
       ;; MANDATE: The Executive Soul must be present

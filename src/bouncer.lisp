@@ -1,5 +1,3 @@
-(in-package :org-agent)
-
 (defun bouncer-scan-secrets (text)
   "Returns the name of the secret found in TEXT, or NIL if clean."
   (when (and text (stringp text))
