@@ -53,7 +53,7 @@
         (let ((neuro-fn (skill-neuro-prompt skill)))
           (if neuro-fn
               (let ((proposals (funcall neuro-fn signal)))
-                (setf (getf signal :proposals) (if (listp (first proposals)) proposals (list proposals))))
+                (setf (getf signal :proposals) (if (and (listp proposals) (listp (first proposals))) proposals (list proposals))))
               (setf (getf signal :proposals) nil)))
         (setf (getf signal :proposals) nil))
     (setf (getf signal :status) :reasoned)
@@ -94,14 +94,12 @@
                                         :context context))))
 
 (defun decide-gate (signal)
-  "System 2: Safety and validation."
+  "Stage 3: Symbolic verification (System 2)."
   (let ((candidate (getf signal :candidate)))
     (if candidate
-        (let ((decision (decide candidate signal)))
-          ;; If decision is different from candidate, it's an interception (EVENT or LOG)
-          (setf (getf signal :approved-action) decision)
-          (unless (equal decision candidate)
-            (kernel-log "GATE [Decide]: Intercepted/Rejected by System 2")))
+        (let* ((normalized-candidate (if (listp candidate) candidate (list :type :RESPONSE :payload (list :text candidate))))
+               (decision (decide normalized-candidate signal)))
+          (setf (getf signal :approved-action) decision))
         (setf (getf signal :approved-action) nil))
     (setf (getf signal :status) :decided)
     signal))

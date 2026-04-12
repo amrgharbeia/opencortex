@@ -52,17 +52,6 @@ Verify the system's stability and error-handling capabilities under stress.
     (format nil "SUCCESS - Chaos stress test initiated.")))
 #+end_src
 
-* Registration
-#+begin_src lisp
-(defskill :skill-chaos
-  :priority 10 ; Lower priority, used for background testing
-  :trigger (lambda (context) (eq (getf (getf context :payload) :sensor) :chaos-trigger))
-  :neuro (lambda (context) 
-           (let ((p (getf context :payload)))
-             (format nil "A chaos trigger was received (~a). Should I run a stress test?" (getf p :mode))))
-  :symbolic #'chaos-stress-test)
-#+end_src
-
 
 * Phase B: Blueprint (PROTOCOL)
 :PROPERTIES:
@@ -131,3 +120,14 @@ Verify the system's stability and error-handling capabilities under stress.
   (defun chaos-force-skip-event ())
  #+end_src
  
+
+* Registration
+#+begin_src lisp
+(defskill :skill-chaos
+  :priority 10 ; Lower priority, used for background testing
+  :trigger (lambda (context) (eq (getf (getf context :payload) :sensor) :chaos-trigger))
+  :neuro (lambda (context) 
+           (let ((p (getf context :payload)))
+             (format nil "A chaos trigger was received (~a). Should I run a stress test?" (getf p :mode))))
+  :symbolic #'chaos-stress-test)
+#+end_src

@@ -126,9 +126,17 @@
           
           (dolist (line lines)
             (let ((clean-line (string-trim '(#\Space #\Tab #\Return) line)))
-              (cond ((uiop:string-prefix-p "#+begin_src lisp" (string-downcase clean-line)) (setf in-lisp-block t))
-                    ((uiop:string-prefix-p "#+end_src" (string-downcase clean-line)) (setf in-lisp-block nil))
-                    (in-lisp-block (setf lisp-code (concatenate 'string lisp-code line (string #\Newline)))))))
+              (cond ((uiop:string-prefix-p "#+begin_src lisp" (string-downcase clean-line))
+                     ;; Only load blocks that are NOT tangled to src/ or elsewhere
+                     (if (search ":tangle" (string-downcase clean-line))
+                         (setf in-lisp-block nil)
+                         (setf in-lisp-block t)))
+                    ((uiop:string-prefix-p "#+end_src" (string-downcase clean-line))
+                     (setf in-lisp-block nil))
+                    (in-lisp-block 
+                     (unless (or (uiop:string-prefix-p ":PROPERTIES:" (string-upcase clean-line))
+                                 (uiop:string-prefix-p ":END:" (string-upcase clean-line)))
+                       (setf lisp-code (concatenate 'string lisp-code line (string #\Newline))))))))
           
           (if (= (length lisp-code) 0)
               (progn (setf (skill-entry-status entry) :ready) t) ;; Valid empty skill

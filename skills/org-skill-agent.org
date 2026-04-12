@@ -90,7 +90,7 @@ We register tools for kernel introspection and state management.
 
 #+begin_src lisp
 (org-agent:def-cognitive-tool :kernel-status "Returns the current operational status of the Org-Agent kernel, including loaded skills and telemetry."
-  :parameters nil
+  nil
   :body (lambda (args)
           (declare (ignore args))
           (format nil "KERNEL STATUS:
@@ -104,7 +104,7 @@ We register tools for kernel introspection and state management.
                   org-agent:*provider-cascade*)))
 
 (org-agent:def-cognitive-tool :list-skills "Lists all currently loaded skills and their metadata."
-  :parameters nil
+  nil
   :body (lambda (args)
           (declare (ignore args))
           (let ((output "LOADED SKILLS:

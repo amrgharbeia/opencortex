@@ -172,7 +172,7 @@ Invokes the neural System 1 engine to generate intuition-based proposals. If par
     (return-from neuro-gate signal))
   (kernel-log "GATE [Neuro]: Consulting System 1...")
   (let ((thoughts (think signal)))
-    (setf (getf signal :proposals) (if (and thoughts (listp thoughts) (listp (car thoughts))) 
+    (setf (getf signal :proposals) (if (and (listp thoughts) (listp (car thoughts))) 
                                        thoughts 
                                        (if thoughts (list thoughts) nil)))
     (setf (getf signal :status) :thought)
@@ -216,16 +216,22 @@ Compares multiple proposals (from parallel backends) and selects the most consis
 *** Decide Gate
 The System 2 safety gate. Validates the candidate action against formal rules and PSF invariants.
 
+**** Phase A: Demand
+- *Need:* Ensure that malformed candidates (e.g., raw strings from System 1) do not crash the `decide` or `safety-harness` logic, which expect property lists.
+- *Success:* Coerce non-list candidates into valid `:RESPONSE` property lists before validation.
+
+**** Phase B: Blueprint
+Before passing the candidate to `decide`, the gate checks its type. If it's a string, it wraps it in `(:type :RESPONSE :payload (:text <string>))`.
+
+**** Phase D: Build
 #+begin_src lisp :tangle ../src/core.lisp
 (defun decide-gate (signal)
   "System 2: Safety and validation."
   (let ((candidate (getf signal :candidate)))
     (if candidate
-        (let ((decision (decide candidate signal)))
-          ;; If decision is different from candidate, it's an interception (EVENT or LOG)
-          (setf (getf signal :approved-action) decision)
-          (unless (equal decision candidate)
-            (kernel-log "GATE [Decide]: Intercepted/Rejected by System 2")))
+        (let* ((normalized-candidate (if (listp candidate) candidate (list :type :RESPONSE :payload (list :text candidate))))
+               (decision (decide normalized-candidate signal)))
+          (setf (getf signal :approved-action) decision))
         (setf (getf signal :approved-action) nil))
     (setf (getf signal :status) :decided)
     signal))
@@ -503,4 +509,6 @@ Following the PSF mandates, the Reactive Signal Pipeline must be empirically ver
   (let ((obj (lookup-object "node-1")))
     (is (not (null obj)))
     (is (equal (getf (org-object-attributes obj) :TITLE) "State A"))))
+#+end_src
+ual (getf (org-object-attributes obj) :TITLE) "State A"))))
 #+end_src

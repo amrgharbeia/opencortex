@@ -1,0 +1,55 @@
+#+TITLE: Quickstart Guide: The Road to Sovereignty
+#+AUTHOR: Amr
+#+DATE: [2026-04-11 Sat]
+#+FILETAGS: :quickstart:onboarding:guide:
+
+* 1. Introduction
+Welcome to ~org-agent~, the "Executive Soul" of your personal OS. This guide will help you set up and interact with your first neurosymbolic agent.
+
+* 2. Prerequisites
+Before launching the kernel, ensure your host environment has:
+- **Docker & Docker Compose**: The primary enclosure for the Lisp Machine.
+- **LLM API Keys**: At least one key for Gemini, Anthropic, or OpenAI.
+- **Emacs (Optional)**: For the full literate experience via ~org-agent.el~.
+
+* 3. Installation & Enclosure
+** Step 1: Clone the Sovereignty
+#+begin_src bash
+git clone https://github.com/amr/org-agent.git
+cd org-agent
+#+end_src
+
+** Step 2: Secret Configuration
+Copy the example environment file and add your keys.
+#+begin_src bash
+cp .env.example .env
+# Edit .env with your favorite editor
+#+end_src
+
+** Step 3: Launch the Image
+This will build the SBCL environment and start the Micro-Loader.
+#+begin_src bash
+docker-compose up --build -d
+#+end_src
+
+* 4. Interaction Gateways
+Once the kernel is "Ready", you can interact with it via multiple sensors.
+
+** Gateway A: Emacs (OACP)
+If you have configured the ~org-agent~ package in Emacs:
+1. Open a chat buffer: ~M-x org-agent-chat-open~.
+2. Send: "Are you online, agent?"
+
+** Gateway B: External Sensors
+If you enabled Signal or Telegram in ~.env~, send a message directly to your bot.
+
+* 5. Verification (The Chaos Check)
+To ensure the kernel is fully healthy, check the logs for the Micro-Loader summary:
+#+begin_src bash
+docker-compose logs -f org-agent
+#+end_src
+Look for: ~LOADER: Boot Complete. [Ready: 34] [Failed: 0]~
+
+* 6. Next Steps
+- **Extend the Brain**: Read the [[file:skill-creation.org][Skill Creation Guide]] to add custom Lisp skills.
+- **Deep Dive**: Explore the [[file:../literate/][literate/]] directory to understand the kernel's architecture.

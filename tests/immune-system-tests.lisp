@@ -13,6 +13,7 @@
   "Verify that a crashing tool triggers a :tool-error stimulus."
   (clrhash org-agent::*cognitive-tools*)
   (def-cognitive-tool :crashing-tool "Always fails."
+    nil
     :body (lambda (args) (declare (ignore args)) (error "KABOOM")))
   
   (let* ((stimulus '(:type :EVENT :payload (:sensor :user-command :command :trigger-crash)))

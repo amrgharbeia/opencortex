@@ -127,7 +127,7 @@ We allow other skills to register safe symbols for the harness.
 ** Cognitive Tools
 #+begin_src lisp
 (org-agent:def-cognitive-tool :security-telemetry "Returns security-related telemetry, including blocked actions and harness status."
-  :parameters nil
+  nil
   :body (lambda (args)
           (declare (ignore args))
           (format nil "SAFETY HARNESS STATUS:

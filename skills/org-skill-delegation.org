@@ -44,7 +44,7 @@ The Delegation Manager will utilize a message-passing architecture. Tasks are pa
 #+BEGIN_SRC lisp
 ;; Sends a task to a target.  Returns a promise (future) that will eventually resolve
 ;; to the task result.  The :delegation-id is internally managed to track the delegation lifecycle.
-(defun delegate-task (task :priority :context)
+(defun delegate-task (task priority context)
   :returns (promise task-result))
 #+END_SRC
 
@@ -54,7 +54,7 @@ The Delegation Manager will utilize a message-passing architecture. Tasks are pa
 ;; Determines the target agent/skill for a given task.
 ;; It receives the task details and any relevant context.  Returns the ID of the
 ;; targeted agent/skill.  Can return `:error` if no suitable delegation is found.
-(defun resolve-skill (task :context)
+(defun resolve-skill (task context)
   :returns (skill-id or :error))
 #+END_SRC
 
@@ -62,7 +62,7 @@ The Delegation Manager will utilize a message-passing architecture. Tasks are pa
 
 #+BEGIN_SRC lisp
 ;; Reports a delegation failure. This allows for fallback strategies.
-(defun report-delegation-failure (delegation-id :error-message)
+(defun report-delegation-failure (delegation-id error-message)
   :returns nil)
 #+END_SRC
 
@@ -70,7 +70,7 @@ The Delegation Manager will utilize a message-passing architecture. Tasks are pa
 
 #+BEGIN_SRC lisp
 ;; Informs the Delegation Manager that a task has been completed successfully.
-(defun report-task-completion (delegation-id :result)
+(defun report-task-completion (delegation-id result)
   :returns nil)
 #+END_SRC
  

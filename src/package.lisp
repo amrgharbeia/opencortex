@@ -110,8 +110,9 @@
    ;; --- Symbolic Logic ---
    #:list-objects-with-attribute
    #:org-id-new
-   
+
    ;; --- AST Helpers ---
+
    #:find-headline-missing-id
    
    ;; --- Environment Config ---

@@ -164,8 +164,16 @@ Calculates the correct load order for a directory of skill filepaths, detecting 
 #+end_src
 
 ** Jailed Loading (load-skill-from-org)
-The core "hot-loading" mechanism. It extracts Lisp blocks from an Org file and evaluates them within a dedicated package ("Jail"). 
+The core "hot-loading" mechanism. It extracts Lisp blocks from an Org file and evaluates them within a dedicated package ("Jail").
 
+*** Phase A: Demand
+- *Need:* Safely load skills from `.org` files without evaluating docstrings or kernel-level tangled blocks as logic.
+- *Success:* Exclude `#+begin_src lisp :tangle` blocks and ignore `:PROPERTIES:` and `:END:` drawers embedded within src blocks.
+
+*** Phase B: Blueprint
+The loader must actively scan block arguments and filter out those containing `:tangle`. It also needs to cleanly skip Org properties that Emacs might auto-generate inside src blocks.
+
+*** Phase D: Build
 #+begin_src lisp :tangle ../src/skills.lisp
 (defun load-skill-from-org (filepath)
   "Parses and evaluates Lisp blocks from an Org file into a jailed package."
@@ -183,9 +191,17 @@ The core "hot-loading" mechanism. It extracts Lisp blocks from an Org file and e
           
           (dolist (line lines)
             (let ((clean-line (string-trim '(#\Space #\Tab #\Return) line)))
-              (cond ((uiop:string-prefix-p "#+begin_src lisp" (string-downcase clean-line)) (setf in-lisp-block t))
-                    ((uiop:string-prefix-p "#+end_src" (string-downcase clean-line)) (setf in-lisp-block nil))
-                    (in-lisp-block (setf lisp-code (concatenate 'string lisp-code line (string #\Newline)))))))
+              (cond ((uiop:string-prefix-p "#+begin_src lisp" (string-downcase clean-line))
+                     ;; Only load blocks that are NOT tangled to src/ or elsewhere
+                     (if (search ":tangle" (string-downcase clean-line))
+                         (setf in-lisp-block nil)
+                         (setf in-lisp-block t)))
+                    ((uiop:string-prefix-p "#+end_src" (string-downcase clean-line))
+                     (setf in-lisp-block nil))
+                    (in-lisp-block 
+                     (unless (or (uiop:string-prefix-p ":PROPERTIES:" (string-upcase clean-line))
+                                 (uiop:string-prefix-p ":END:" (string-upcase clean-line)))
+                       (setf lisp-code (concatenate 'string lisp-code line (string #\Newline))))))))
           
           (if (= (length lisp-code) 0)
               (progn (setf (skill-entry-status entry) :ready) t) ;; Valid empty skill
