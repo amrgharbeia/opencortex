@@ -27,6 +27,9 @@ No change is complete without verification. Every new function or macro must be 
 ** 5. The Consensus Loop (Plan Mode)
 Major architectural shifts or complex refactors require a formal implementation plan. You must enter Plan Mode, draft a Blueprint (PROTOCOL), and seek formal approval before execution.
 
+** 6. The Stop-and-Wait Mandate (Turn-Yielding)
+You are strictly forbidden from drafting a plan or requesting formal approval in the same conversational turn that you propose an initial strategy or begin file discovery. You MUST propose your strategy in plain text, explicitly state "Waiting for user feedback," and yield the turn. You may only proceed to draft the `.md` plan after the user explicitly replies with agreement.
+
 * Phase B: Blueprint (PROTOCOL)
 :PROPERTIES:
 :STATUS: SIGNED
