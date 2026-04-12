@@ -1,34 +1,34 @@
 #+TITLE: The Object Store (object-store.lisp)
 #+AUTHOR: Amr
-#+FILETAGS: :kernel:memory:
+#+FILETAGS: :harness:memory:
 #+STARTUP: content
 
 * The Object Store (object-store.lisp)
-** Deep Reasoning: The Single Address Space Advantage
-Industry-standard "Vector Databases" or "SQLite Backends" add external complexity and I/O latency.
-- **Pointer-Based Reasoning:** By loading the entire Memex into a live Lisp hash table, we achieve microsecond recollection. The agent doesn't "search a file"; it traverses a memory pointer.
-- **Memory Imaging:** The `memory-image.lisp` snapshot allows the agent to wake up with its entire context already parsed. This solves the "Cold Start" problem of massive Org files.
-- **Merkle-Tree Integrity:** Every node in the Object Store is cryptographically hashed. By hashing the content and the hashes of its children, the root hash provides a single, immutable fingerprint of the entire Memex state.
+** Architectural Intent: The Single Address Space
 
-** The Single Address Space (Architecture)
+Traditional architectures rely on external databases (SQLite, Vector DBs) which introduce I/O latency and structural impedance. The org-agent architecture chooses a different path: the Single Address Space.
+
+- **Pointer-Based Reasoning:** By loading the entire knowledge graph into a live Common Lisp hash table, we achieve microsecond recollection. The harness doesn't "search a file"; it traverses a memory pointer.
+- **Memory Imaging:** The ability to snapshot the Lisp image allows the agent to resume its entire cognitive state instantly, solving the "Cold Start" problem.
+- **Merkle-Tree Integrity:** Every node in the Object Store is cryptographically hashed. By recursively hashing content and children, the root hash provides a single, immutable fingerprint of the entire system state.
+
+** System Architecture
 #+begin_src mermaid
-graph TD
+flowchart TD
     subgraph LispMachine[Lisp Machine]
-        K[Kernel Core] --> OS[(Object Store)]
+        H[Harness Pipeline] --> OS[(Object Store)]
         S1[Skill: Architect] --> OS
         S2[Skill: Analyst] --> OS
         S3[Skill: GTD] --> OS
-        K -- Pointers --> S1
-        K -- Pointers --> S2
+        H -- Pointers --> S1
+        H -- Pointers --> S2
     end
-    subgraph IPCSlow[IPC Slow]
-        E[Emacs / Actuators] -. OACP .-> K
+    subgraph IPCSlow[External Layer]
+        E[Emacs / Actuators] -. OACP .-> H
     end
 #+end_src
 
 ** Package Context
-We begin by establishing the `org-agent` package context.
-
 #+begin_src lisp :tangle ../src/object-store.lisp
 (in-package :org-agent)
 #+end_src
@@ -108,7 +108,7 @@ The `ingest-ast` function is the primary bridge between the external world (Emac
 #+end_src
 
 ** Memory Snapshots (snapshot-object-store)
-Because objects are stored immutably in the `*history-store*`, a snapshot is no longer a heavy, recursive deep-copy of the Memex. It is a lightweight shallow copy of the active `*object-store*` pointers. The system maintains a rolling buffer of 20 snapshots. This allows for near-instant, zero-cost rollback if the agent makes a mistake.
+Because objects are stored immutably in the `*history-store*`, a snapshot is a lightweight shallow copy of the active `*object-store*` pointers. The system maintains a rolling buffer of 20 snapshots, allowing for near-instant, zero-cost rollback.
 
 #+begin_src lisp :tangle ../src/object-store.lisp
 (defvar *object-store-snapshots* nil)
@@ -174,7 +174,7 @@ Utility functions for AST traversal and path resolution.
 #+end_src
 
 * Phase E: Chaos (Verification)
-Following the PSF mandates, the Object Store must be empirically verified through automated testing. The following test suite ensures the mathematical integrity of the Merkle hashes and the behavioral correctness of the immutable versioning and rollback systems.
+Following the Engineering Standards, the Object Store must be empirically verified through automated testing. The following test suite ensures the mathematical integrity of the Merkle hashes and the behavioral correctness of the immutable versioning and rollback systems.
 
 #+begin_src lisp :tangle ../tests/object-store-tests.lisp
 (defpackage :org-agent-object-store-tests
