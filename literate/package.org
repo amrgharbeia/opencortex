@@ -1,19 +1,32 @@
 #+TITLE: System Interface (package.lisp)
 #+AUTHOR: Amr
-#+FILETAGS: :kernel:interface:
+#+FILETAGS: :harness:interface:
 #+STARTUP: content
 
 * System Interface (package.lisp)
-The `package.lisp` file defines the public API of the `org-agent` kernel. It exports all necessary symbols for skills and actuators to interact with the core.
+The ~package.lisp~ file defines the public API of the ~org-agent~ harness. It serves as the primary membrane between the deterministic core modules and the dynamic world of skills and actuators.
 
+** Architectural Intent: The Package Membrane
+By strictly defining the public interface, we ensure that skills remain decoupled from the harness implementation details. This allows for sovereign replacement of any component (e.g., swapping the Object Store or the Associative Engine) without breaking existing skills.
+
+#+begin_src mermaid
+flowchart TD
+    External[Actuators / Clients] -- OACP --> Package[Package Membrane: API]
+    Skills[Dynamic Skills] -- API Calls --> Package
+    Package --> Internal[Harness Internal Modules]
+    style Package fill:#f9f,stroke:#333,stroke-width:4px
+#+end_src
+
+** Public API Export
 #+begin_src lisp :tangle ../src/package.lisp
 (defpackage :org-agent
   (:use :cl)
   (:export 
-   ;; --- Harness Protocol Protocol ---
+   ;; --- Harness Protocol ---
    #:frame-message
    #:parse-message
    #:make-hello-message
+   #:validate-harness-protocol-schema
    
    ;; --- Daemon Lifecycle ---
    #:start-daemon
@@ -26,7 +39,7 @@ The `package.lisp` file defines the public API of the `org-agent` kernel. It exp
    #:lookup-object
    #:list-objects-by-type
    #:*object-store*
-   #: *history-store*
+   #:*history-store*
    #:org-object
    #:org-object-id
    #:org-object-type
@@ -40,7 +53,6 @@ The `package.lisp` file defines the public API of the `org-agent` kernel. It exp
    #:org-object-hash
    #:snapshot-object-store
    #:rollback-object-store
-   #:send-swarm-packet
    
    ;; --- Context API (Peripheral Vision) ---
    #:context-query-store
@@ -49,7 +61,6 @@ The `package.lisp` file defines the public API of the `org-agent` kernel. It exp
    #:context-list-all-skills
    #:context-get-skill-source
    #:context-get-system-logs
-   #:context-filter-sparse-tree
    #:context-resolve-path
    #:context-get-skill-telemetry
    #:context-assemble-global-awareness
@@ -64,7 +75,6 @@ The `package.lisp` file defines the public API of the `org-agent` kernel. It exp
    #:inject-stimulus
    #:dispatch-action
    #:register-actuator
-   #:spawn-task
    
    ;; --- Skill Engine ---
    #:load-skill-from-org
@@ -73,7 +83,6 @@ The `package.lisp` file defines the public API of the `org-agent` kernel. It exp
    #:topological-sort-skills
    #:validate-lisp-syntax
    #:safety-harness-validate
-   #:find-triggered-skill
    #:defskill
    #:*skills-registry*
    #:skill
@@ -100,30 +109,18 @@ The `package.lisp` file defines the public API of the `org-agent` kernel. It exp
    #:register-emacs-client
    #:unregister-emacs-client
 
-   ;; --- Neuro (System 1) ---
-
+   ;; --- Associative Engine ---
    #:ask-neuro
    #:register-neuro-backend
-   #:register-auth-provider
-   #:get-provider-auth
    #:distill-prompt
-   #:get-embedding
-   #:cosine-similarity
-   #:find-most-similar
-   #:openrouter-get-available-models
    #:*provider-cascade*
-   #:token-accountant-route-task
    
    ;; --- Symbolic Logic ---
    #:list-objects-with-attribute
-   #:org-id-new
+   #:decide
    
    ;; --- AST Helpers ---
-   #:find-headline-missing-id
-   
-   ;; --- Environment Config ---
-   #:set-llm-model
-   #:get-llm-model))
+   #:find-headline-missing-id))
 #+end_src
 
 ** Package Implementation
@@ -131,7 +128,9 @@ The `package.lisp` file defines the public API of the `org-agent` kernel. It exp
 (in-package :org-agent)
 #+end_src
 
-** Kernel Logging State
+** Harness Logging State
+The harness maintains a thread-safe circular log buffer to provide context for debugging and neural reasoning.
+
 #+begin_src lisp :tangle ../src/package.lisp
 (defvar *system-logs* nil)
 (defvar *logs-lock* (bt:make-lock "harness-logs-lock"))
@@ -147,10 +146,12 @@ The `package.lisp` file defines the public API of the `org-agent` kernel. It exp
 ** Skill Telemetry State
 #+begin_src lisp :tangle ../src/package.lisp
 (defvar *skill-telemetry* (make-hash-table :test 'equal))
-(defvar *telemetry-lock* (bt:make-lock "kernel-telemetry-lock"))
+(defvar *telemetry-lock* (bt:make-lock "harness-telemetry-lock"))
 #+end_src
 
 ** Cognitive Tool Registry
+The Tool Registry allows the agent to interact with the physical world. Every tool must define a guard (for security) and a body (for execution).
+
 #+begin_src lisp :tangle ../src/package.lisp
 (defvar *cognitive-tools* (make-hash-table :test 'equal))
 
@@ -162,6 +163,7 @@ The `package.lisp` file defines the public API of the `org-agent` kernel. It exp
   body)
 
 (defmacro def-cognitive-tool (name description parameters &key guard body)
+  "Registers a new cognitive tool into the global registry. Parameters must be a list of property lists."
   `(setf (gethash (string-downcase (string ',name)) *cognitive-tools*)
          (make-cognitive-tool :name (string-downcase (string ',name))
                               :description ,description
@@ -170,7 +172,9 @@ The `package.lisp` file defines the public API of the `org-agent` kernel. It exp
                               :body ,body)))
 #+end_src
 
-** Kernel Logging Implementation
+** Harness Logging Implementation
+Centralized logging function. It simultaneously writes to standard output and the in-memory circular buffer.
+
 #+begin_src lisp :tangle ../src/package.lisp
 (defun harness-log (msg &rest args)
   "Centralized logging for the harness."

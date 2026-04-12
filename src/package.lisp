@@ -1,10 +1,11 @@
 (defpackage :org-agent
   (:use :cl)
   (:export 
-   ;; --- Harness Protocol Protocol ---
+   ;; --- Harness Protocol ---
    #:frame-message
    #:parse-message
    #:make-hello-message
+   #:validate-harness-protocol-schema
    
    ;; --- Daemon Lifecycle ---
    #:start-daemon
@@ -17,7 +18,7 @@
    #:lookup-object
    #:list-objects-by-type
    #:*object-store*
-   #: *history-store*
+   #:*history-store*
    #:org-object
    #:org-object-id
    #:org-object-type
@@ -31,7 +32,6 @@
    #:org-object-hash
    #:snapshot-object-store
    #:rollback-object-store
-   #:send-swarm-packet
    
    ;; --- Context API (Peripheral Vision) ---
    #:context-query-store
@@ -40,7 +40,6 @@
    #:context-list-all-skills
    #:context-get-skill-source
    #:context-get-system-logs
-   #:context-filter-sparse-tree
    #:context-resolve-path
    #:context-get-skill-telemetry
    #:context-assemble-global-awareness
@@ -55,7 +54,6 @@
    #:inject-stimulus
    #:dispatch-action
    #:register-actuator
-   #:spawn-task
    
    ;; --- Skill Engine ---
    #:load-skill-from-org
@@ -64,7 +62,6 @@
    #:topological-sort-skills
    #:validate-lisp-syntax
    #:safety-harness-validate
-   #:find-triggered-skill
    #:defskill
    #:*skills-registry*
    #:skill
@@ -91,30 +88,18 @@
    #:register-emacs-client
    #:unregister-emacs-client
 
-   ;; --- Neuro (System 1) ---
-
+   ;; --- Associative Engine ---
    #:ask-neuro
    #:register-neuro-backend
-   #:register-auth-provider
-   #:get-provider-auth
    #:distill-prompt
-   #:get-embedding
-   #:cosine-similarity
-   #:find-most-similar
-   #:openrouter-get-available-models
    #:*provider-cascade*
-   #:token-accountant-route-task
    
    ;; --- Symbolic Logic ---
    #:list-objects-with-attribute
-   #:org-id-new
+   #:decide
    
    ;; --- AST Helpers ---
-   #:find-headline-missing-id
-   
-   ;; --- Environment Config ---
-   #:set-llm-model
-   #:get-llm-model))
+   #:find-headline-missing-id))
 
 (in-package :org-agent)
 
@@ -126,7 +111,7 @@
   "Global registry of all loaded skills.")
 
 (defvar *skill-telemetry* (make-hash-table :test 'equal))
-(defvar *telemetry-lock* (bt:make-lock "kernel-telemetry-lock"))
+(defvar *telemetry-lock* (bt:make-lock "harness-telemetry-lock"))
 
 (defvar *cognitive-tools* (make-hash-table :test 'equal))
 
@@ -138,6 +123,7 @@
   body)
 
 (defmacro def-cognitive-tool (name description parameters &key guard body)
+  "Registers a new cognitive tool into the global registry. Parameters must be a list of property lists."
   `(setf (gethash (string-downcase (string ',name)) *cognitive-tools*)
          (make-cognitive-tool :name (string-downcase (string ',name))
                               :description ,description

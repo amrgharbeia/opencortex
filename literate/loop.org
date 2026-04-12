@@ -1,65 +1,52 @@
-#+TITLE: The Cognitive Loop (core.lisp)
+#+TITLE: The Cognitive Loop (loop.lisp)
 #+AUTHOR: Amr
-#+FILETAGS: :kernel:core:
+#+FILETAGS: :harness:loop:
 #+STARTUP: content
 
-* The Cognitive Loop (core.lisp)
-** Deep Reasoning: Beyond Asynchronous Recursion
-The original `cognitive-loop` used asynchronous recursion to handle stimuli. While responsive, it led to deep Lisp stacks and made multi-backend consensus difficult to implement.
-- **The Circuit Board Model:** We have evolved the harness into a functional transformation pipeline. Every event—be it a keystroke, a timer pulse, or a neural proposal—is a **Signal**.
-- **Consensus Gates:** By treating reasoning as a signal moving through a pipe, we can "split" the pipe to ask multiple LLMs simultaneously. A **Consensus Gate** later in the pipe compares the proposals and selects the most mathematically consistent one.
-- **Multi-Modal Fusion:** The pipeline can blend disparate signals (e.g. *User Prompt* + *Low Battery Alert* or *Heartbeat*) into a single coherent cognitive event.
-- **Flat Execution:** By using a feedback-loop orchestrator (`process-signal`), we flatten the execution stack. Tool outputs and errors are re-injected as new signals rather than creating nested function calls.
+* The Cognitive Loop (loop.lisp)
+** Architectural Intent: The Reactive Signal Pipeline
 
-** The Signal Pipeline (Architecture)
+The core of the ~org-agent~ harness is a functional transformation pipeline. In traditional agent architectures, events are handled through deep, asynchronous recursion, which leads to fragile Lisp stacks and makes it difficult to implement advanced features like multi-model consensus.
+
+We have evolved the harness into a **Reactive Signal Pipeline**. Every event—whether it is a user keystroke, a heartbeat timer pulse, or a suggested action from an LLM—is treated as a discrete **Signal**. 
+
+Signals move through a series of formal **Gates**. Each gate transforms or validates the signal until it is either physically dispatched to an actuator or safely rejected by the Deliberate Engine.
+
+*** Advantages of the Pipeline Model:
+- **Consensus Ready:** By treating reasoning as a signal moving through a pipe, we can "split" the pipe to query multiple LLM backends simultaneously. A Consensus Gate later in the pipe compares these proposals.
+- **Flat Execution:** Using a central orchestrator (~process-signal~) flattens the execution stack. Feedback from tools or errors is re-injected as a new signal rather than creating a nested function call.
+- **Micro-Rollbacks:** Because every signal turn is discrete, the harness can snapshot the Object Store before a turn and instantly roll back if a skill crashes.
+
+** The Signal Pipeline Architecture
 #+begin_src mermaid
-graph TD
-    S1[Signal: User Message] --> P[Perceive Gate]
-    S2[Signal: Heartbeat] --> P
-    P --> N[Associative Gate: Multi-Backend]
+flowchart TD
+    S1[Signal: External Stimulus] --> P[Perceive Gate]
+    S2[Signal: Heartbeat Pulse] --> P
+    P --> N[Associative Gate]
     N --> C[Consensus Gate]
-    C --> V[Validation Gate: Deliberate]
-    V --> D[Dispatch Gate: Actuators]
+    C --> V[Validation Gate]
+    V --> D[Dispatch Gate]
     D -- Feedback Signal --> S1
 #+end_src
 
 ** Package Context
+We ensure we are in the correct isolated namespace.
+
 #+begin_src lisp :tangle ../src/loop.lisp
 (in-package :org-agent)
 
 (defvar *interrupt-flag* nil)
 #+end_src
 
-** Logs Lock
-Thread-safety for logging operations.
-
-#+begin_src lisp :tangle ../src/loop.lisp
-;; MOVED TO package.lisp
-#+end_src
-
 ** Interrupt Lock
-Thread-safety for loop interruption.
+A thread-safe lock used to signal the pipeline to halt execution gracefully.
 
 #+begin_src lisp :tangle ../src/loop.lisp
 (defvar *interrupt-lock* (bt:make-lock "harness-interrupt-lock"))
 #+end_src
 
-** Skill Telemetry
-Hash table tracking execution metrics per skill.
-
-#+begin_src lisp :tangle ../src/loop.lisp
-;; MOVED TO package.lisp
-#+end_src
-
-** Telemetry Lock
-Thread-safety for metric updates.
-
-#+begin_src lisp :tangle ../src/loop.lisp
-;; MOVED TO package.lisp
-#+end_src
-
 ** Physical Dispatch (dispatch-action)
-Routes an approved action to its registered physical actuator.
+The final stage of the pipeline. It routes an approved action to its registered physical actuator (Emacs, Shell, etc.).
 
 #+begin_src lisp :tangle ../src/loop.lisp
 (defun dispatch-action (action context)
@@ -73,7 +60,7 @@ Routes an approved action to its registered physical actuator.
 #+end_src
 
 ** Performance Tracking (harness-track-telemetry)
-Updates performance metrics for a specific skill, tracking execution counts, total duration, and failure rates.
+Updates execution metrics for skills. This allows the harness to monitor which skills are consuming the most time or failing most frequently.
 
 #+begin_src lisp :tangle ../src/loop.lisp
 (defun harness-track-telemetry (skill-name duration status)
@@ -84,19 +71,8 @@ Updates performance metrics for a specific skill, tracking execution counts, tot
                        (when (eq status :rejected) (incf (getf entry :failures))) (setf (gethash skill-name *skill-telemetry*) entry)))))
 #+end_src
 
-** System Logging (harness-log)
-A centralized logging function that outputs to standard output and maintains a rolling in-memory buffer for context-aware reasoning.
-
-#+begin_src lisp :tangle ../src/loop.lisp
-(defun harness-log (fmt &rest args)
-  "Records a formatted message to the system log and standard output."
-  (let ((msg (apply #'format nil fmt args)))
-    (bt:with-lock-held (*logs-lock*) (push msg *system-logs*) (when (> (length *system-logs*) *max-log-history*) (setf *system-logs* (subseq *system-logs* 0 *max-log-history*))))
-    (format t "~a~%" msg) (finish-output)))
-#+end_src
-
 ** Stimulus Injection (inject-stimulus)
-This is the entry point for all events into the harness. It initializes a signal and passes it to the `process-signal` pipeline.
+The entry point for all events into the harness. It enqueues raw messages into the pipeline, handling the transition from asynchronous threads to the synchronous pipeline execution.
 
 #+begin_src lisp :tangle ../src/loop.lisp
 (defun inject-stimulus (raw-message &key stream (depth 0))
@@ -113,7 +89,7 @@ This is the entry point for all events into the harness. It initializes a signal
 #+end_src
 
 ** Internal Tool Execution
-The `execute-system-action` function handles harness-level operations such as hot-loading skills, evaluating raw Lisp, or setting environment variables.
+Handles harness-level operations that are not delegated to external actuators, such as hot-loading skills or evaluating Lisp code for system maintenance.
 
 #+begin_src lisp :tangle ../src/loop.lisp
 (defun execute-system-action (action context)
@@ -138,10 +114,10 @@ The `execute-system-action` function handles harness-level operations such as ho
 #+end_src
 
 ** The Reactive Signal Pipeline (process-signal)
-the harness has evolved into a functional transformation pipeline. Every event—be it a keystroke, a timer pulse, or a neural proposal—is a **Signal**. Signals flow through a series of "Gates" that progressively enrich and validate the event until it is dispatched to an actuator.
+This is the core functional loop. It moves a signal through the gates sequentially.
 
 *** Perceive Gate
-Normalizes raw stimuli and updates the Object Store knowledge graph.
+The Perceive Gate is responsible for data normalization and sensory intake. It takes raw stimulus and updates the global Object Store graph.
 
 #+begin_src lisp :tangle ../src/loop.lisp
 (defun perceive-gate (signal)
@@ -163,14 +139,14 @@ Normalizes raw stimuli and updates the Object Store knowledge graph.
 #+end_src
 
 *** Associative Gate
-Invokes the Associative engine to generate intuition-based proposals. If parallel consensus is enabled, this gate returns a list of proposals.
+The Associative Gate invokes the neural reasoning engine. It takes the current context and generates a list of "intuitions" or proposed actions.
 
 #+begin_src lisp :tangle ../src/loop.lisp
 (defun neuro-gate (signal)
-  "Associative: Intuition and proposed actions."
+  "Associative: Neural intuition and proposed actions."
   (unless (eq (getf signal :type) :EVENT)
     (return-from neuro-gate signal))
-  (harness-log "GATE [Associative]: Consulting System 1...")
+  (harness-log "GATE [Associative]: Consulting LLM...")
   (let ((thoughts (think signal)))
     (setf (getf signal :proposals) (if (and (listp thoughts) (listp (car thoughts))) 
                                        thoughts 
@@ -180,25 +156,17 @@ Invokes the Associative engine to generate intuition-based proposals. If paralle
 #+end_src
 
 *** Consensus Gate
-Compares multiple proposals (from parallel backends) and selects the most consistent one.
+When multiple LLM backends provide diverging thoughts, the Consensus Gate resolves them into a single candidate action.
 
 #+begin_src lisp :tangle ../src/loop.lisp
 (defun resolve-consensus (proposals signal)
-  "Resolves diverging proposals by voting or selecting the safest one."
+  "Resolves diverging proposals by selecting the most consistent one."
   (declare (ignore signal))
   (harness-log "CONSENSUS: ~a proposals found. Resolving..." (length proposals))
-  ;; Simplified consensus: Majority vote or first safe one
-  ;; For now, we'll select the proposal that appears most frequently.
   (let ((counts (make-hash-table :test 'equal)))
-    (dolist (p proposals)
-      (incf (gethash p counts 0)))
-    (let ((winner (first proposals))
-          (max-count 0))
-      (maphash (lambda (p count)
-                 (when (> count max-count)
-                   (setq max-count count
-                         winner p)))
-               counts)
+    (dolist (p proposals) (incf (gethash p counts 0)))
+    (let ((winner (first proposals)) (max-count 0))
+      (maphash (lambda (p count) (when (> count max-count) (setq max-count count winner p))) counts)
       (harness-log "CONSENSUS: Winner selected with ~a votes." max-count)
       winner)))
 
@@ -214,19 +182,11 @@ Compares multiple proposals (from parallel backends) and selects the most consis
 #+end_src
 
 *** Decide Gate
-The Deliberate safety gate. Validates the candidate action against formal rules and Engineering invariants.
+The Decide Gate is the final deterministic safety net. It runs the candidate action through all loaded skill safety gates (The Deliberate Engine) before allowing it to proceed.
 
-**** Phase A: Demand
-- *Need:* Ensure that malformed candidates (e.g., raw strings from Associative) do not crash the `decide` or `safety-harness` logic, which expect property lists.
-- *Success:* Coerce non-list candidates into valid `:RESPONSE` property lists before validation.
-
-**** Phase B: Blueprint
-Before passing the candidate to `decide`, the gate checks its type. If it's a string, it wraps it in `(:type :RESPONSE :payload (list :text <string>))`.
-
-**** Phase D: Build
 #+begin_src lisp :tangle ../src/loop.lisp
 (defun decide-gate (signal)
-  "Deliberate: Safety and validation."
+  "Deliberate: Deterministic safety and validation."
   (let ((candidate (getf signal :candidate)))
     (if candidate
         (let* ((normalized-candidate (if (listp candidate) candidate (list :type :RESPONSE :payload (list :text candidate))))
@@ -238,7 +198,7 @@ Before passing the candidate to `decide`, the gate checks its type. If it's a st
 #+end_src
 
 *** Dispatch Gate
-Routes approved actions to actuators. If an action results in new information (like tool output), it returns a FEEDBACK signal to be re-injected.
+The Dispatch Gate performs the final actuation. If the action produces output (like a tool result), it returns a new signal to be re-injected into the pipeline.
 
 #+begin_src lisp :tangle ../src/loop.lisp
 (defun dispatch-gate (signal)
@@ -278,7 +238,7 @@ Routes approved actions to actuators. If an action results in new information (l
 #+end_src
 
 *** Pipeline Orchestrator (process-signal)
-Moves a signal through the gates in a flat loop, handling feedback signals without increasing the Lisp stack depth.
+This is the entry point to the functional pipeline. It iterates through the gates and handles micro-rollbacks if a pipeline stage crashes.
 
 #+begin_src lisp :tangle ../src/loop.lisp
 (defun process-signal (signal)
@@ -286,14 +246,11 @@ Moves a signal through the gates in a flat loop, handling feedback signals witho
   (let ((current-signal signal))
     (loop while current-signal do
       (let ((depth (getf current-signal :depth 0)))
-        (when (> depth 10)
-          (harness-log "PIPELINE ERROR: Max depth reached.")
-          (return nil))
+        (when (> depth 10) (harness-log "PIPELINE ERROR: Max depth reached.") (return nil))
         (when (bt:with-lock-held (*interrupt-lock*) *interrupt-flag*)
           (harness-log "PIPELINE: Interrupted.")
           (bt:with-lock-held (*interrupt-lock*) (setf *interrupt-flag* nil))
           (return nil))
-        
         (handler-case
             (progn
               (setf current-signal (perceive-gate current-signal))
@@ -312,7 +269,7 @@ Moves a signal through the gates in a flat loop, handling feedback signals witho
 #+end_src
 
 ** Delegation Mechanisms
-Allows the core to hand off tasks to specialized background agents or processes.
+Allows the harness to hand off tasks to specialized background agents or processes.
 
 #+begin_src lisp :tangle ../src/loop.lisp
 (defun delegate-task (task-id recipient &key context)
@@ -326,12 +283,13 @@ Allows the core to hand off tasks to specialized background agents or processes.
 #+end_src
 
 ** Heartbeat Mechanism
-Periodically injects a "pulse" into the system to trigger temporal skills (like cron jobs or reminders).
+Periodically injects a "pulse" into the system to trigger temporal skills.
 
 #+begin_src lisp :tangle ../src/loop.lisp
+(defvar *default-heartbeat-interval* 60 "Default interval for the system heartbeat pulse in seconds.")
 (defvar *heartbeat-thread* nil)
 
-(defun start-heartbeat (&optional (interval 60))
+(defun start-heartbeat (&optional (interval *default-heartbeat-interval*))
   "Spawns a thread that periodically injects a heartbeat stimulus."
   (setf *heartbeat-thread* 
         (bt:make-thread 
@@ -349,15 +307,6 @@ Periodically injects a "pulse" into the system to trigger temporal skills (like 
     (setf *heartbeat-thread* nil)))
 #+end_src
 
-** Boot Sequence (initialize-all-skills)
-The harness initialization sequence has been moved to the Micro-Loader in the skills module. It remains exported for consistency.
-
-#+begin_src lisp :tangle ../src/loop.lisp
-(defun load-all-skills ()
-  "Deprecated: use initialize-all-skills. Centralized boot orchestrator."
-  (initialize-all-skills))
-#+end_src
-
 ** Main Entry Point
 The execution entry point for the harness binary.
 
@@ -371,14 +320,14 @@ The execution entry point for the harness binary.
           (format t "HARNESS: Loading environment from ~a~%" env-file)
           (cl-dotenv:load-env env-file))
         (format t "HARNESS ERROR: .env not found at ~a~%" env-file)))
-  (let ((interval (or (ignore-errors (parse-integer (uiop:getenv "HEARTBEAT_INTERVAL") :junk-allowed t)) 60)))
+  (let ((interval (or (ignore-errors (parse-integer (uiop:getenv "HEARTBEAT_INTERVAL") :junk-allowed t)) *default-heartbeat-interval*)))
     (format t "HARNESS: Heartbeat interval set to ~a seconds.~%" interval)
     (start-daemon :interval interval))
   (loop (sleep 3600)))
 #+end_src
 
 * Phase E: Chaos (Verification)
-Following the Engineering mandates, the Reactive Signal Pipeline must be empirically verified. The following test suite ensures that signals flow correctly through the gates, that feedback is handled without stack recursion, and that depth limits are strictly enforced.
+The Reactive Signal Pipeline must be empirically verified through automated testing to ensure architectural integrity.
 
 #+begin_src lisp :tangle ../tests/pipeline-tests.lisp
 (defpackage :org-agent-pipeline-tests
@@ -392,7 +341,6 @@ Following the Engineering mandates, the Reactive Signal Pipeline must be empiric
 (defun setup-mock-skills ()
   "Register mock skills for testing."
   (clrhash org-agent::*skills-registry*)
-  
   (org-agent::defskill :mock-refactor
     :priority 100
     :trigger (lambda (ctx) (eq (getf (getf ctx :payload) :command) :organize-subtree))
@@ -402,7 +350,6 @@ Following the Engineering mandates, the Reactive Signal Pipeline must be empiric
                   :payload (:action :refactor-subtree 
                             :target-id nil 
                             :properties (("ID" . "node-123"))))))
-
   (org-agent::defskill :mock-safety
     :priority 50
     :trigger (lambda (ctx) t) ; always triggers
@@ -486,29 +433,17 @@ Following the Engineering mandates, the Reactive Signal Pipeline must be empiric
   (clrhash org-agent::*object-store*)
   (clrhash org-agent::*history-store*)
   (setf org-agent::*object-store-snapshots* nil)
-  
   ;; State A
   (ingest-ast (list :type :HEADLINE :properties (list :ID "node-1" :TITLE "State A") :contents nil))
-  
   (setup-mock-skills)
-  ;; Skill that crashes in Symbolic Gate
   (org-agent::defskill :crashing-skill
     :priority 200
     :trigger (lambda (ctx) t)
     :neuro (lambda (ctx) (list :type :REQUEST :payload (list :action :eval :code "(error \"BOOM\")")))
     :symbolic (lambda (action ctx) (error "CRASH IN SYSTEM 2")))
-
-  ;; Run pipeline. This turn will:
-  ;; 1. Perceive (Take snapshot of State A)
-  ;; 2. Neuro (Think)
-  ;; 3. Decide (Crash!)
-  ;; 4. Rollback to State A.
   (process-signal (list :type :EVENT :payload (list :sensor :test)))
-  
   ;; Verify that we are still in State A
   (let ((obj (lookup-object "node-1")))
     (is (not (null obj)))
     (is (equal (getf (org-object-attributes obj) :TITLE) "State A"))))
-#+end_src
-ual (getf (org-object-attributes obj) :TITLE) "State A"))))
 #+end_src

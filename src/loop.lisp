@@ -2,13 +2,7 @@
 
 (defvar *interrupt-flag* nil)
 
-;; MOVED TO package.lisp
-
 (defvar *interrupt-lock* (bt:make-lock "harness-interrupt-lock"))
-
-;; MOVED TO package.lisp
-
-;; MOVED TO package.lisp
 
 (defun dispatch-action (action context)
   "Routes an approved action to its registered physical actuator."
@@ -25,12 +19,6 @@
                      (let ((entry (or (gethash skill-name *skill-telemetry*) (list :executions 0 :total-time 0 :failures 0))))
                        (incf (getf entry :executions)) (incf (getf entry :total-time) duration)
                        (when (eq status :rejected) (incf (getf entry :failures))) (setf (gethash skill-name *skill-telemetry*) entry)))))
-
-(defun harness-log (fmt &rest args)
-  "Records a formatted message to the system log and standard output."
-  (let ((msg (apply #'format nil fmt args)))
-    (bt:with-lock-held (*logs-lock*) (push msg *system-logs*) (when (> (length *system-logs*) *max-log-history*) (setf *system-logs* (subseq *system-logs* 0 *max-log-history*))))
-    (format t "~a~%" msg) (finish-output)))
 
 (defun inject-stimulus (raw-message &key stream (depth 0))
   "Enqueues a raw message into the reactive signal pipeline, handling async/sync execution and recovery."
@@ -82,10 +70,10 @@
     signal))
 
 (defun neuro-gate (signal)
-  "Associative: Intuition and proposed actions."
+  "Associative: Neural intuition and proposed actions."
   (unless (eq (getf signal :type) :EVENT)
     (return-from neuro-gate signal))
-  (harness-log "GATE [Associative]: Consulting System 1...")
+  (harness-log "GATE [Associative]: Consulting LLM...")
   (let ((thoughts (think signal)))
     (setf (getf signal :proposals) (if (and (listp thoughts) (listp (car thoughts))) 
                                        thoughts 
@@ -94,21 +82,13 @@
     signal))
 
 (defun resolve-consensus (proposals signal)
-  "Resolves diverging proposals by voting or selecting the safest one."
+  "Resolves diverging proposals by selecting the most consistent one."
   (declare (ignore signal))
   (harness-log "CONSENSUS: ~a proposals found. Resolving..." (length proposals))
-  ;; Simplified consensus: Majority vote or first safe one
-  ;; For now, we'll select the proposal that appears most frequently.
   (let ((counts (make-hash-table :test 'equal)))
-    (dolist (p proposals)
-      (incf (gethash p counts 0)))
-    (let ((winner (first proposals))
-          (max-count 0))
-      (maphash (lambda (p count)
-                 (when (> count max-count)
-                   (setq max-count count
-                         winner p)))
-               counts)
+    (dolist (p proposals) (incf (gethash p counts 0)))
+    (let ((winner (first proposals)) (max-count 0))
+      (maphash (lambda (p count) (when (> count max-count) (setq max-count count winner p))) counts)
       (harness-log "CONSENSUS: Winner selected with ~a votes." max-count)
       winner)))
 
@@ -123,7 +103,7 @@
     signal))
 
 (defun decide-gate (signal)
-  "Deliberate: Safety and validation."
+  "Deliberate: Deterministic safety and validation."
   (let ((candidate (getf signal :candidate)))
     (if candidate
         (let* ((normalized-candidate (if (listp candidate) candidate (list :type :RESPONSE :payload (list :text candidate))))
@@ -173,14 +153,11 @@
   (let ((current-signal signal))
     (loop while current-signal do
       (let ((depth (getf current-signal :depth 0)))
-        (when (> depth 10)
-          (harness-log "PIPELINE ERROR: Max depth reached.")
-          (return nil))
+        (when (> depth 10) (harness-log "PIPELINE ERROR: Max depth reached.") (return nil))
         (when (bt:with-lock-held (*interrupt-lock*) *interrupt-flag*)
           (harness-log "PIPELINE: Interrupted.")
           (bt:with-lock-held (*interrupt-lock*) (setf *interrupt-flag* nil))
           (return nil))
-        
         (handler-case
             (progn
               (setf current-signal (perceive-gate current-signal))
@@ -206,9 +183,10 @@
                                         :recipient recipient 
                                         :context context))))
 
+(defvar *default-heartbeat-interval* 60 "Default interval for the system heartbeat pulse in seconds.")
 (defvar *heartbeat-thread* nil)
 
-(defun start-heartbeat (&optional (interval 60))
+(defun start-heartbeat (&optional (interval *default-heartbeat-interval*))
   "Spawns a thread that periodically injects a heartbeat stimulus."
   (setf *heartbeat-thread* 
         (bt:make-thread 
@@ -225,10 +203,6 @@
     (bt:destroy-thread *heartbeat-thread*) 
     (setf *heartbeat-thread* nil)))
 
-(defun load-all-skills ()
-  "Deprecated: use initialize-all-skills. Centralized boot orchestrator."
-  (initialize-all-skills))
-
 (defun main ()
   "The entry point for the compiled standalone binary."
   (let* ((home (uiop:getenv "HOME"))
@@ -238,7 +212,7 @@
           (format t "HARNESS: Loading environment from ~a~%" env-file)
           (cl-dotenv:load-env env-file))
         (format t "HARNESS ERROR: .env not found at ~a~%" env-file)))
-  (let ((interval (or (ignore-errors (parse-integer (uiop:getenv "HEARTBEAT_INTERVAL") :junk-allowed t)) 60)))
+  (let ((interval (or (ignore-errors (parse-integer (uiop:getenv "HEARTBEAT_INTERVAL") :junk-allowed t)) *default-heartbeat-interval*)))
     (format t "HARNESS: Heartbeat interval set to ~a seconds.~%" interval)
     (start-daemon :interval interval))
   (loop (sleep 3600)))
