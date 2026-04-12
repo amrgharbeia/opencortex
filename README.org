@@ -22,7 +22,7 @@ Org-mode is unique because it seamlessly brings together human-readable prose, s
 *The Token Advantage:* Because Org-mode is a strict outline, org-agent never needs to send an entire document to an AI model. It uses *Sparse Trees* to send a high-level table of contents, zooming in only on the specific headline relevant to the task. This drastically reduces token consumption and eliminates context window overflow.
 
 ** 2. Common Lisp: The Engine of Self-Modification
-There is a beautiful irony to org-agent: Common Lisp was invented in 1958 specifically to achieve Artificial Intelligence, and it has been waiting nearly 70 years for /this exact moment/ in computing history. 
+There is a beautiful irony to org-agent: Lisp was invented in 1958 specifically to achieve Artificial Intelligence, and it has been waiting nearly 70 years for /this exact moment/ in computing history. 
 
 Lisp possesses a unique property called *Homoiconicity*: the primary representation of the program is also a data structure (nested lists) within the language itself. Because Lisp code /is/ Lisp data, it is trivially easy for an AI to generate, manipulate, and safely evaluate new tools at runtime. This makes Lisp the ultimate, un-brittle language for a "self-writing" agent.
 
