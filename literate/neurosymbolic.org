@@ -5,12 +5,40 @@
 
 * The Neurosymbolic Bridge (neuro.lisp & symbolic.lisp)
 ** Deep Reasoning: Imagination Checked by Physics
-Associative (LLM) is creative but hallucination-prone. Deliberate (Lisp) is rigid but 100% accurate.
-- **The Safety Gate:** We never allow the LLM to talk to the actuators directly. It must propose a Lisp form. Deliberate intercepts this form and validates it against mathematical rules and PSF invariants. 
-- **Sovereign Decoupling:** By moving the physical API logic into skills, the core remains a neutral "Thinking Engine" that doesn't care if the imagination comes from Google, Anthropic, or a local Llama instance.
+
+The core of ~org-agent~ is a neurosymbolic hybrid. We acknowledge that Large Language Models (LLMs) possess an unprecedented ability for "creative association"—what we call the **Associative Engine**. However, we also recognize that they are inherently probabilistic and prone to hallucination. To build a sovereign, high-integrity agent, this "imagination" must be checked by the laws of a deterministic system—the **Deliberate Engine** (Common Lisp).
+
+This architecture is directly inspired by Daniel Kahneman's /Thinking, Fast and Slow/:
+- **System 1 (Associative):** Fast, intuitive, creative, but unreliable. (LLM)
+- **System 2 (Deliberate):** Slow, rule-bound, logical, and absolute. (Lisp)
+
+*** The Neurosymbolic Loop
+
+In our loop, System 1 never speaks to the world directly. It only proposes "thoughts" to System 2. System 2, the Lisp kernel, evaluates these thoughts against a chain of symbolic safety gates (Skills) before any action is actually dispatched to an actuator (Emacs, Shell, etc.).
+
+#+begin_src mermaid
+graph TD
+    Stimulus[External Stimulus/Signal] --> Perceive[Perceive: Skill Trigger]
+    Perceive --> Associative[Associative Engine: System 1/LLM]
+    Associative --> Proposal[Lisp Action Proposal]
+    Proposal --> Deliberate[Deliberate Engine: System 2/Lisp Gates]
+    Deliberate --> Gate1[Safety Gate: Skill A]
+    Gate1 --> Gate2[Safety Gate: Skill B]
+    Gate2 --> Verified[Verified Action]
+    Verified --> Dispatch[Dispatch: Actuator]
+    
+    style Associative fill:#f9f,stroke:#333,stroke-width:2px
+    style Deliberate fill:#bbf,stroke:#333,stroke-width:2px
+#+end_src
+
+*** Sovereign Decoupling (The Thin Harness)
+
+The kernel files ~neuro.lisp~ and ~symbolic.lisp~ are intentionally "Thin Harnesses." They do not know how to talk to Google Gemini or Anthropic Claude; they do not know what a "Bouncer" or a "Token Accountant" is. Instead, they provide the **protocol** for these behaviors. 
+
+By moving the "Fat" logic (vendor APIs, security rules) into **Skills**, we achieve total sovereign decoupling. You can swap your LLM provider or your security policy without ever touching the kernel.
 
 * Associative Engine (neuro.lisp)
-This module handles the interaction with Large Language Models, providing a unified interface for multiple backends. As a "Thin Harness," it does not handle authentication or specific provider logic; these are delegated to skills.
+The Associative engine is the "System 1" of our Lisp Machine. It handles the interface with LLM providers, providing a unified associative space regardless of the underlying model.
 
 ** Package Context
 #+begin_src lisp :tangle ../src/neuro.lisp
@@ -18,35 +46,49 @@ This module handles the interaction with Large Language Models, providing a unif
 #+end_src
 
 ** Associative Backends Registry
-Tracks the actual implementation functions for each LLM provider.
+The kernel maintains a neutral registry of backends. Skills (like the LLM Gateway) register themselves here to provide actual neural reasoning capabilities.
 
 #+begin_src lisp :tangle ../src/neuro.lisp
 (defvar *neuro-backends* (make-hash-table :test 'equal))
 #+end_src
 
 ** Provider Cascade
-The ordered list of backends to attempt for neural reasoning. This is a default that can be overridden by skills like the Token Accountant.
+Intelligence is often a matter of availability. The cascade defines the order in which backends are attempted. Skills can dynamically override this list to optimize for cost, speed, or privacy.
 
 #+begin_src lisp :tangle ../src/neuro.lisp
 (defvar *provider-cascade* '(:openrouter :gemini-api))
 #+end_src
 
 ** Register Associative Backend
-Maps a keyword identifier to a backend implementation function.
+A simple mapping from a keyword identifier to a backend implementation function.
 
 #+begin_src lisp :tangle ../src/neuro.lisp
 (defun register-neuro-backend (name fn) (setf (gethash name *neuro-backends*) fn))
 #+end_src
 
 ** Model Selector Function
-A hook for dynamic model selection based on the current context.
+A hook for dynamic model selection. A skill might look at the current context and decide to use a "cheap" model for summaries and an "expensive" model for coding tasks.
 
 #+begin_src lisp :tangle ../src/neuro.lisp
 (defvar *model-selector-fn* nil "A function called with (provider context) to return a model ID.")
 #+end_src
 
 ** Associative Dispatch (ask-neuro)
-The primary entry point for Associative. It handles the retry logic and backend selection. It supports a parallel consensus mode where multiple backends are queried.
+This is the primary entrance to System 1. It implements two modes of operation:
+1. **Sequential Cascade:** Attempt backends one by one until success.
+2. **Parallel Consensus:** Query multiple backends simultaneously to resolve hallucinations or select the best "thought."
+
+#+begin_src mermaid
+sequence-diagram
+    participant Kernel
+    participant ProviderA as OpenRouter
+    participant ProviderB as Gemini
+    Kernel->>ProviderA: Parallel Query
+    Kernel->>ProviderB: Parallel Query
+    ProviderA-->>Kernel: Suggestion A
+    ProviderB-->>Kernel: Suggestion B
+    Kernel->>Kernel: Resolve Consensus
+#+end_src
 
 #+begin_src lisp :tangle ../src/neuro.lisp
 (defvar *consensus-enabled-p* nil "If T, ask-neuro queries all backends in parallel.")
@@ -103,7 +145,9 @@ The primary entry point for Associative. It handles the retry logic and backend 
 #+end_src
 
 ** Associative Reasoning (think)
-Invokes the Associative engine to generate a proposed Lisp action based on context. It automatically injects the tool documentation and global context into the prompt.
+The ~think~ function is where the "Neuro" meets the "Symbolic." It gathers the global awareness context (Peripheral Vision), the tool definitions (The Tool Belt), and any skill-specific triggers to form the final prompt. 
+
+Crucially, it mandates that the output be a Common Lisp property list, forcing the LLM to "think in Lisp."
 
 #+begin_src lisp :tangle ../src/neuro.lisp
 (defun think (context)
@@ -166,7 +210,7 @@ To call a tool, you MUST use:
 #+end_src
 
 ** Prompt Meta-Cognition (distill-prompt)
-Allows the agent to self-optimize its own prompts.
+Even System 1 can benefit from introspection. This function allows the agent to observe its own prompts and successful results to distill them into reusable templates.
 
 #+begin_src lisp :tangle ../src/neuro.lisp
 (defun distill-prompt (full-prompt successful-output)
@@ -176,7 +220,9 @@ Allows the agent to self-optimize its own prompts.
 
 
 * Deliberate Engine (symbolic.lisp)
-The deterministic gatekeeper that ensures all proposed actions are safe and logically valid. As a "Thin Harness," the Deliberate engine does not contain specific security rules; instead, it provides a priority-based dispatcher that iterates through all loaded skills to validate or transform proposed actions.
+The Deliberate engine is the "System 2" of our Lisp Machine. It is the deterministic gatekeeper that ensures all proposed actions—whether from the user or from the neural engine—are safe and logically valid.
+
+As a "Thin Harness," the Deliberate engine does not contain specific security rules or task integrity checks. Instead, it provides a priority-based dispatcher that iterates through all loaded skills to validate or transform proposed actions.
 
 ** Package Context
 #+begin_src lisp :tangle ../src/symbolic.lisp
@@ -184,7 +230,22 @@ The deterministic gatekeeper that ensures all proposed actions are safe and logi
 #+end_src
 
 ** Validation Gate (decide)
-The "Deliberate" supervisor. It intercepts every action proposed by Associative and runs it through the symbolic gates of all registered skills, sorted by priority.
+This is the **Supervisor**. It intercepts every action proposal and runs it through the symbolic gates of all registered skills, sorted by priority.
+
+This sequential chain allows for multi-layered defense:
+1.  **Low Priority Gates:** Suggest refinements or logging.
+2.  **Medium Priority Gates:** Transform actions (e.g., adding project IDs).
+3.  **High Priority Gates:** Absolute security blocks (e.g., the Bouncer blocking shell access).
+
+#+begin_src mermaid
+graph LR
+    Proposal[Proposal] --> SkillA[Skill A: Priority 10]
+    SkillA --> SkillB[Skill B: Priority 50]
+    SkillB --> SkillC[Skill C: Priority 100]
+    SkillC --> Verified[Verified Action]
+    
+    style SkillC fill:#fbb,stroke:#333
+#+end_src
 
 #+begin_src lisp :tangle ../src/symbolic.lisp
 (defun decide (proposed-action context)
@@ -215,7 +276,7 @@ The "Deliberate" supervisor. It intercepts every action proposed by Associative 
 #+end_src
 
 ** Store Filtering (list-objects-with-attribute)
-A symbolic helper function to find nodes with specific attributes.
+A symbolic helper function to find nodes with specific attributes. This is used by skills to perform complex semantic lookups in the Object Store.
 
 #+begin_src lisp :tangle ../src/symbolic.lisp
 (defun list-objects-with-attribute (attr-key attr-val)
