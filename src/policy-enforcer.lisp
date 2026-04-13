@@ -4,12 +4,12 @@
   :priority 1000 ; Absolute highest priority
   :trigger (lambda (context) t) ; Always active as a fallback
   :neuro (lambda (context)
-           "You are the Org-Agent Policy Enforcer. Your goal is to ensure all actions empower the user through the Lisp Machine and adhere to the System Policy.")
+           \"You are the Org-Agent Policy Enforcer. Your goal is to ensure all actions empower the user through the Lisp Machine and adhere to the System Policy.\")
   :symbolic (lambda (action context)
               ;; Basic invariant check: Block actions that appear to violate sovereignty
               (let ((payload (getf action :payload)))
-                (if (and payload (search "proprietary" (format nil "~s" payload)))
+                (if (and payload (search \"proprietary\" (format nil \"~s\" payload)))
                     (progn
-                      (org-agent:harness-log "DETERMINISTIC [Policy]: Sovereignty violation suspected. Blocking action.")
+                      (org-agent:harness-log \"DETERMINISTIC [Policy]: Sovereignty violation suspected. Blocking action.\")
                       nil)
                     action))))
