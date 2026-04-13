@@ -310,9 +310,15 @@ The unified orchestrator for the system boot sequence.
       (return-from initialize-all-skills nil))
 
     (let ((sorted-files (topological-sort-skills skills-dir)))
-      ;; MANDATE: The System Policy must be present for a safe boot
-      (unless (member "org-skill-policy" sorted-files :key #'pathname-name :test #'string-equal)
-        (error "BOOT FAILURE: org-skill-policy.org not found in skills directory."))
+      ;; MANDATE: Configurable mandatory skills must be present for a safe boot
+      (let* ((mandatory-env (uiop:getenv "MANDATORY_SKILLS"))
+             (mandatory-skills (if mandatory-env 
+                                   (mapcar (lambda (s) (string-trim '(#\Space) s)) 
+                                           (uiop:split-string mandatory-env :separator '(#\,)))
+                                   '("org-skill-policy" "org-skill-bouncer"))))
+        (dolist (req mandatory-skills)
+          (unless (member req sorted-files :key #'pathname-name :test #'string-equal)
+            (error "BOOT FAILURE: Mandatory skill '~a' not found in skills directory." req))))
       
       (harness-log "==================================================")
       (harness-log " LOADER: Initializing ~a skills..." (length sorted-files))

@@ -54,6 +54,7 @@
    #:decide-gate
    #:dispatch-gate
    #:inject-stimulus
+   #:initialize-actuators
    #:dispatch-action
    #:register-actuator
    

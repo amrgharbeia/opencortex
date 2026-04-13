@@ -49,6 +49,7 @@
          (env-file (uiop:merge-pathnames* ".local/share/org-agent/.env" (uiop:ensure-directory-pathname home))))
     (when (uiop:file-exists-p env-file) (cl-dotenv:load-env env-file)))
   
+  (initialize-actuators)
   (initialize-all-skills)
   (start-heartbeat)
   
