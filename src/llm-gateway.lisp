@@ -19,7 +19,7 @@
   (let ((api-key (vault-get-secret provider :type :api-key))
         (full-prompt (format nil "~a~%~%Prompt: ~a" system-prompt prompt)))
 
-    (harness-log "SYSTEM 1: Requesting ~a (Model: ~a) [Key: ~a]" 
+    (harness-log "PROBABILISTIC ENGINE: Requesting ~a (Model: ~a) [Key: ~a]" 
                 provider (or model "default") (vault-mask-string api-key))
 
     (case provider

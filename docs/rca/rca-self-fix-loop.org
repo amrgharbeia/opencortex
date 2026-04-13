@@ -3,13 +3,13 @@
 #+FILETAGS: :rca:self-fix:autonomy:testing:
 
 * Executive Summary
-Verified the autonomous repair capability of the `Self-Fix Agent`. The system successfully detected a deliberate type error in a secondary skill, initiated a repair request, and programmatically patched the source code via the `:repair-file` tool.
+Verified the autonomous repair capability of the `Self-Fix Agent`. The system successfully detected a deterministic type error in a secondary skill, initiated a repair request, and programmatically patched the source code via the `:repair-file` tool.
 
 * 1. Issue: Self-Fix Mechanism Verification
 ** Symptoms
 Manual verification was required to prove that `org-skill-self-fix` could transition from "Thinking" about a bug to "Acting" on the file system.
 ** Root Cause
-N/A (Deliberate test injection).
+N/A (Deterministic test injection).
 ** Resolution
 Created `self-fix-tests.lisp` which:
 1. Generates `org-skill-broken-math.org` with a `(+ 1 "two")` bug.
@@ -37,4 +37,4 @@ This eliminates unnecessary nesting levels and drastically reduces the surface a
 
 * 4. Permanent Learnings
 - **Flatten Configuration:** Keep `defsystem` definitions as flat as possible. The overhead of `:module` blocks often outweighs their organizational benefit in a neurosymbolic environment where agents frequently edit these files.
-- **Mocking System 1:** For verifying *loop mechanics*, mocking LLM responses is essential to ensure test determinism, while integration tests can use live LLM calls.
+- **Mocking Probabilistic Engine:** For verifying *loop mechanics*, mocking LLM responses is essential to ensure test determinism, while integration tests can use live LLM calls.

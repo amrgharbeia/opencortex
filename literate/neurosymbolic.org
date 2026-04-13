@@ -6,21 +6,21 @@
 * The Neurosymbolic Bridge (neuro.lisp & symbolic.lisp)
 *** The Neurosymbolic Loop
 
-In our loop, the Associative Engine never speaks to the world directly. It only proposes "thoughts" to the Deliberate Engine. the Deliberate Engine, the Lisp harness, evaluates these thoughts against a chain of symbolic safety gates (Skills) before any action is actually dispatched to an actuator (Emacs, Shell, etc.).
+In our loop, the Probabilistic Engine never speaks to the world directly. It only proposes "thoughts" to the Deterministic Engine. the Deterministic Engine, the Lisp harness, evaluates these thoughts against a chain of symbolic safety gates (Skills) before any action is actually dispatched to an actuator (Emacs, Shell, etc.).
 
 #+begin_src mermaid
 flowchart TD
     Stimulus[External Stimulus/Signal] --> Perceive[Perceive: Skill Trigger]
-    Perceive --> Associative[Associative Engine: LLM]
-    Associative --> Proposal[Lisp Action Proposal]
-    Proposal --> Deliberate[Deliberate Engine: Lisp Gates]
-    Deliberate --> Gate1[Safety Gate: Skill A]
+    Perceive --> Probabilistic[Probabilistic Engine: LLM]
+    Probabilistic --> Proposal[Lisp Action Proposal]
+    Proposal --> Deterministic[Deterministic Engine: Lisp Gates]
+    Deterministic --> Gate1[Safety Gate: Skill A]
     Gate1 --> Gate2[Safety Gate: Skill B]
     Gate2 --> Verified[Verified Action]
     Verified --> Dispatch[Dispatch: Actuator]
     
-    style Associative fill:#f9f,stroke:#333,stroke-width:2px
-    style Deliberate fill:#bbf,stroke:#333,stroke-width:2px
+    style Probabilistic fill:#f9f,stroke:#333,stroke-width:2px
+    style Deterministic fill:#bbf,stroke:#333,stroke-width:2px
 #+end_src
 
 *** Sovereign Decoupling (The Thin Harness)
@@ -29,15 +29,15 @@ The harness files ~neuro.lisp~ and ~symbolic.lisp~ are intentionally "Thin Harne
 
 By moving the "Fat" logic (vendor APIs, security rules) into **Skills**, we achieve total sovereign decoupling. You can swap your LLM provider or your security policy without ever touching the harness.
 
-* Associative Engine (neuro.lisp)
-The Associative engine handles the interface with LLM providers, providing a unified associative space regardless of the underlying model.
+* Probabilistic Engine (neuro.lisp)
+The Probabilistic engine handles the interface with LLM providers, providing a unified probabilistic space regardless of the underlying model.
 
 ** Package Context
 #+begin_src lisp :tangle ../src/neuro.lisp
 (in-package :org-agent)
 #+end_src
 
-** Associative Backends Registry
+** Probabilistic Backends Registry
 The harness maintains a neutral registry of backends. Skills (like the LLM Gateway) register themselves here to provide actual neural reasoning capabilities.
 
 #+begin_src lisp :tangle ../src/neuro.lisp
@@ -51,7 +51,7 @@ The ordered list of backends to attempt for neural reasoning. This list is ~nil~
 (defvar *provider-cascade* nil)
 #+end_src
 
-** Register Associative Backend
+** Register Probabilistic Backend
 A simple mapping from a keyword identifier to a backend implementation function.
 
 #+begin_src lisp :tangle ../src/neuro.lisp
@@ -65,8 +65,8 @@ A hook for dynamic model selection. A skill might look at the current context an
 (defvar *model-selector-fn* nil "A function called with (provider context) to return a model ID.")
 #+end_src
 
-** Associative Dispatch (ask-neuro)
-This is the primary entrance to the Associative engine. It implements two modes of operation:
+** Probabilistic Dispatch (ask-neuro)
+This is the primary entrance to the Probabilistic engine. It implements two modes of operation:
 1. **Sequential Cascade:** Attempt backends one by one until success.
 2. **Parallel Consensus:** Query multiple backends simultaneously to resolve hallucinations or select the best "thought."
 
@@ -85,7 +85,7 @@ sequenceDiagram
 #+begin_src lisp :tangle ../src/neuro.lisp
 (defvar *consensus-enabled-p* nil "If T, ask-neuro queries all backends in parallel.")
 
-(defun ask-neuro (prompt &key (system-prompt "You are the Associative engine of a Neurosymbolic Lisp Machine.") (cascade nil) (context nil))
+(defun ask-neuro (prompt &key (system-prompt "You are the Probabilistic engine of a Neurosymbolic Lisp Machine.") (cascade nil) (context nil))
   "Dispatches a neural request through the provider cascade or parallel consensus."
   (let ((backends (cond
                     ((and cascade (listp cascade)) cascade)
@@ -101,7 +101,7 @@ sequenceDiagram
               (when backend-fn
                 (push (bt:make-thread 
                        (lambda ()
-                         (harness-log "ASSOCIATIVE [Consensus]: Querying backend ~a..." backend)
+                         (harness-log "PROBABILISTIC [Consensus]: Querying backend ~a..." backend)
                          (let* ((model (when *model-selector-fn* (funcall *model-selector-fn* backend context)))
                                 (result (ignore-errors 
                                           (if model 
@@ -125,7 +125,7 @@ sequenceDiagram
         (or (dolist (backend backends)
               (let ((backend-fn (gethash backend *neuro-backends*)))
                 (when backend-fn
-                  (harness-log "ASSOCIATIVE: Attempting backend ~a..." backend)
+                  (harness-log "PROBABILISTIC: Attempting backend ~a..." backend)
                   (let* ((model (when *model-selector-fn* (funcall *model-selector-fn* backend context)))
                          (result (if model 
                                      (funcall backend-fn prompt system-prompt :model model)
@@ -136,20 +136,20 @@ sequenceDiagram
             "(:type :LOG :payload (:text \"Neural Cascade Failure\"))"))))
 #+end_src
 
-** Associative Reasoning (think)
+** Probabilistic Reasoning (think)
 The ~think~ function is where the "Neuro" meets the "Symbolic." It gathers the global awareness context (Peripheral Vision), the tool definitions (The Tool Belt), and any skill-specific triggers to form the final prompt. 
 
 Crucially, it mandates that the output be a Common Lisp property list, forcing the LLM to "think in Lisp."
 
 #+begin_src lisp :tangle ../src/neuro.lisp
 (defun think (context)
-  "Invokes the neural Associative engine to propose a Lisp action based on context."
+  "Invokes the neural Probabilistic engine to propose a Lisp action based on context."
   (let ((active-skill (find-triggered-skill context))
         (tool-belt (generate-tool-belt-prompt))
         (global-context (context-assemble-global-awareness)))
     (if active-skill
         (progn
-          (harness-log "ASSOCIATIVE: Engaging skill '~a'~%" (skill-name active-skill))
+          (harness-log "PROBABILISTIC: Engaging skill '~a'~%" (skill-name active-skill))
           (let* ((prompt-generator (skill-neuro-prompt active-skill)) 
                  (raw-prompt (when prompt-generator (funcall prompt-generator context)))
                  (full-system-prompt (concatenate 'string 
@@ -177,7 +177,7 @@ To call a tool, you MUST use:
                        (raw-thoughts (cl-ppcre:split (cl-ppcre:quote-meta-chars "|CONSENSUS-SEP|") thought))
                        (suggestions nil))
                   (dolist (raw-thought raw-thoughts)
-                    (harness-log "ASSOCIATIVE RAW: ~a~%" raw-thought)
+                    (harness-log "PROBABILISTIC RAW: ~a~%" raw-thought)
                     (let* ((cleaned-thought 
                             (let ((match (cl-ppcre:scan-to-strings "(?s)```(?:lisp)?\\n?(.*?)\\n?```" raw-thought)))
                               (if match
@@ -191,7 +191,7 @@ To call a tool, you MUST use:
                                                  (list :sensor :syntax-error 
                                                        :code cleaned-thought 
                                                        :error (format nil "~a" c)))))))
-                      (harness-log "ASSOCIATIVE Suggestion: ~a~%" cleaned-thought)
+                      (harness-log "PROBABILISTIC Suggestion: ~a~%" cleaned-thought)
                       (when (and suggestion (listp suggestion))
                         (push suggestion suggestions))))
                   (if (and *consensus-enabled-p* suggestions)
@@ -202,7 +202,7 @@ To call a tool, you MUST use:
 #+end_src
 
 ** Prompt Meta-Cognition (distill-prompt)
-Even the Associative engine can benefit from introspection. This function allows the agent to observe its own prompts and successful results to distill them into reusable templates.
+Even the Probabilistic engine can benefit from introspection. This function allows the agent to observe its own prompts and successful results to distill them into reusable templates.
 
 #+begin_src lisp :tangle ../src/neuro.lisp
 (defun distill-prompt (full-prompt successful-output)
@@ -211,10 +211,10 @@ Even the Associative engine can benefit from introspection. This function allows
 #+end_src
 
 
-* Deliberate Engine (symbolic.lisp)
-The Deliberate engine is the deterministic gatekeeper that ensures all proposed actions—whether from the user or from the neural engine—are safe and logically valid.
+* Deterministic Engine (symbolic.lisp)
+The Deterministic engine is the deterministic gatekeeper that ensures all proposed actions—whether from the user or from the neural engine—are safe and logically valid.
 
-As a "Thin Harness," the Deliberate engine does not contain specific security rules or task integrity checks. Instead, it provides a priority-based dispatcher that iterates through all loaded skills to validate or transform proposed actions.
+As a "Thin Harness," the Deterministic engine does not contain specific security rules or task integrity checks. Instead, it provides a priority-based dispatcher that iterates through all loaded skills to validate or transform proposed actions.
 
 ** Package Context
 #+begin_src lisp :tangle ../src/symbolic.lisp
@@ -241,7 +241,7 @@ flowchart LR
 
 #+begin_src lisp :tangle ../src/symbolic.lisp
 (defun decide (proposed-action context)
-  "The Deliberate Safety Gate: iterates through all skill symbolic-gates sorted by priority."
+  "The Deterministic Safety Gate: iterates through all skill symbolic-gates sorted by priority."
   (let ((current-action proposed-action)
         (skills nil))
     ;; 1. Collect all skills with symbolic gates
@@ -261,7 +261,7 @@ flowchart LR
         ;; If any gate returns a LOG or EVENT (blocking/intercepting), stop and return it.
         (when (and (listp current-action) 
                    (member (getf current-action :type) '(:LOG :EVENT :log :event)))
-          (harness-log "DELIBERATE: Intercepted by skill '~a'~%" (skill-name skill))
+          (harness-log "DETERMINISTIC: Intercepted by skill '~a'~%" (skill-name skill))
           (return-from decide current-action))))
     
     current-action))

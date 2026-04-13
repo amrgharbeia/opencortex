@@ -17,7 +17,7 @@
     (when (member act '(:modify-file :write-file :replace :rename-file :delete-file))
       (let ((proj-root (asdf:system-source-directory :org-agent)))
         (unless (verify-git-clean-p proj-root)
-          (harness-log "DELIBERATE [Standards]: BLOCKING ACTION. Working tree is dirty. Commit changes before modification.")
+          (harness-log "DETERMINISTIC [Standards]: BLOCKING ACTION. Working tree is dirty. Commit changes before modification.")
           (return-from engineering-standards-gate
             (list :type :LOG :payload (list :text "Engineering Standard Violation: Working tree dirty. You MUST commit before modifying files."))))))
     

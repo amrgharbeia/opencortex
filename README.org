@@ -28,10 +28,10 @@ Lisp possesses a unique property called *Homoiconicity*: the primary representat
 
 ** 3. The Neuro-Protosymbolic Loop
 org-agent does not let AI models touch your system directly. Instead, it splits cognition into two distinct engines:
-- *The Associative Engine (The AI Models):* Provides semantic understanding, multimodal translation, and probabilistic creativity. It looks at your Memex and proposes an action by writing a strictly formatted Lisp s-expression.
-- *The Deliberate Engine (Common Lisp):* Provides deterministic logic, physics, and safety. It intercepts the model's Lisp proposal, formally verifies its structure against your security rules, and only executes it if it is mathematically sound.
+- *The Probabilistic Engine (The AI Models):* Provides semantic understanding, multimodal translation, and probabilistic creativity. It looks at your Memex and proposes an action by writing a strictly formatted Lisp s-expression.
+- *The Deterministic Engine (Common Lisp):* Provides deterministic logic, physics, and safety. It intercepts the model's Lisp proposal, formally verifies its structure against your security rules, and only executes it if it is mathematically sound.
 
-Crucially, the Deliberate engine is *continuously progressive*. Right now, it starts by acting as a strict security bouncer—enforcing rules and bounding the AI's actions. But as the system matures, the Deliberate engine will progressively take over more and more of the actual reasoning, reducing the AI models' involvement to a mere semantic translation layer for the messy outside world. We are moving from a /neuro-protosymbolic/ system today, toward a fully autonomous /neurosymbolic/ Lisp machine tomorrow.
+Crucially, the Deterministic engine is *continuously progressive*. Right now, it starts by acting as a strict security bouncer—enforcing rules and bounding the AI's actions. But as the system matures, the Deterministic engine will progressively take over more and more of the actual reasoning, reducing the AI models' involvement to a mere semantic translation layer for the messy outside world. We are moving from a /neuro-protosymbolic/ system today, toward a fully autonomous /neurosymbolic/ Lisp machine tomorrow.
 
 * Architecture: Thin Harness, Fat Skills
 
@@ -41,7 +41,7 @@ To guarantee long-term stability, org-agent enforces a strict architectural boun
 The Lisp microkernel does almost no actual "work." It is a thin, unbreakable harness strictly responsible for three things:
 1. *The Object Store:* Maintaining the live graph of your Memex in RAM.
 2. *The Communication Protocol:* Managing the secure bridge between the agent and the outside world. While power users can connect natively via Emacs or Vim, the vast majority of users will interact with org-agent exclusively through chat clients (like Telegram, Signal, or Matrix), web dashboards, or a Terminal UI (TUI). The harness doesn't care; it just securely routes the messages.
-3. *The Cognitive Loop:* Moving signals through the Perceive -> Associative -> Deliberate -> Dispatch pipeline.
+3. *The Cognitive Loop:* Moving signals through the Perceive -> Probabilistic -> Deterministic -> Dispatch pipeline.
 
 Everything else—AI routing, vector embeddings, shell execution, or web browsing—is pushed entirely out of the harness and into *Fat Skills*.
 
@@ -52,8 +52,8 @@ In org-agent, a Skill is simply a *single .org file*.
 
 Using *Literate Programming*, this single file contains everything:
 - The human-readable documentation and architectural intent.
-- The system prompt instructions for the Associative Engine.
-- The deterministic Lisp code for the Deliberate engine's safety checks.
+- The system prompt instructions for the Probabilistic Engine.
+- The deterministic Lisp code for the Deterministic engine's safety checks.
 - The actual execution logic.
 
 When the system boots, it parses these single files, mathematically proves their dependencies, and compiles them directly into the live Lisp image.
@@ -67,7 +67,7 @@ The agent's "mind" is not a transient chat session; it is a durable, stateful ar
 ** The Psychology: The 2x2 Cognitive Matrix
 The agent operates on a matrix that balances cognitive speed with cognitive state:
 
-| | Associative (Neural/Intuitive) | Deliberate (Symbolic/Logical) |
+| | Probabilistic (Neural/Intuitive) | Deterministic (Symbolic/Logical) |
 | :--- | :--- | :--- |
 | Foreground (Active) | *The Interface:* Fast AI models for conversation, multimodal ingestion, and semantic understanding. | *The Steward:* Lisp engine that safely retrieves requested data from the Memex and enforces security rules while the Interface keeps you engaged. |
 | Background (Passive) | *The Editor:* Deep AI models finding hidden patterns while you sleep. | *The Librarian:* Lisp engine continuously maintaining data integrity and filing away loose notes. |
@@ -91,7 +91,7 @@ The agent meets you where you are. While it natively integrates with text editor
 - *Web & TUI Dashboards:* High-level visual overviews of your agent's background processes and telemetry.
 
 ** 2. Cognition & Memory (How the agent thinks)
-- *Model Routing:* Dynamically routes requests to the best available Associative model (e.g., Anthropic, OpenAI, Local Llama) based on task complexity or privacy needs.
+- *Model Routing:* Dynamically routes requests to the best available Probabilistic model (e.g., Anthropic, OpenAI, Local Llama) based on task complexity or privacy needs.
 - *Peripheral Vision & Embeddings:* Manages the vectorization of your notes, ensuring the agent retrieves semantically relevant context via sparse trees.
 - *The Ontology Scribe:* Centralizes all rules regarding Org, GTD, and Org-Roam parsing into a single background subroutine, eliminating parser confusion across the codebase.
 
@@ -113,7 +113,7 @@ Today, org-agent relies on external tools to interact with the world. We use Pyt
 
 But the long-term trajectory of this project is to progressively pull those boundaries inward. 
 
-As the *Deliberate Engine* grows more sophisticated, it will take on more of the heavy logical reasoning, utilizing native Lisp unification and logic engines. The Associative AI models will be relegated to what they do best: acting as a natural language translation layer to make sense of the messy, unstructured outside world.
+As the *Deterministic Engine* grows more sophisticated, it will take on more of the heavy logical reasoning, utilizing native Lisp unification and logic engines. The Probabilistic AI models will be relegated to what they do best: acting as a natural language translation layer to make sense of the messy, unstructured outside world.
 
 We will systematically rewrite external dependencies in Common Lisp. The endgame of org-agent is not just to be an AI assistant, but to resurrect the dream of the *Lisp Machine*: a unified computing environment where the operating system, the text editor, the web browser, and the AI agent all share the exact same memory space, the exact same AST, and the exact same language. 
 

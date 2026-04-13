@@ -3,7 +3,7 @@
   (:export #:bouncer-suite))
 (in-package :org-agent-bouncer-tests)
 
-(def-suite bouncer-suite :description "Tests for System 2 Bouncer & Authorization Gate.")
+(def-suite bouncer-suite :description "Tests for Deterministic Engine Bouncer & Authorization Gate.")
 (in-suite bouncer-suite)
 
 (test test-bouncer-interception

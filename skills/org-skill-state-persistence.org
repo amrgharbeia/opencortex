@@ -198,7 +198,7 @@ Restores the graph from IPFS, using a safe parser to prevent injection.
 #+end_src
 
 ** Cognitive Tools
-Expose persistence capabilities to the neural System 1.
+Expose persistence capabilities to the neural Probabilistic Engine.
 
 #+begin_src lisp :tangle ../src/state-persistence.lisp
 (progn

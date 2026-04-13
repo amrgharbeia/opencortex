@@ -22,7 +22,7 @@ Architectural myopia. The original chat skill assumed the user was always in fro
 ** Resolution
 Refactored `org-skill-chat` to be **Channel-Aware**:
 - It now extracts `:channel` and `:chat-id` from the inbound stimulus.
-- It dynamically generates the System 1 mandate, instructing the LLM to use the appropriate `:target` (e.g., `:telegram`) based on the conversation context.
+- It dynamically generates the Probabilistic Engine mandate, instructing the LLM to use the appropriate `:target` (e.g., `:telegram`) based on the conversation context.
 
 * 3. Side-Issue: UIOP Portability
 ** Symptoms

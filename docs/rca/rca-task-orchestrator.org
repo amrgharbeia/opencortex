@@ -3,17 +3,17 @@
 #+FILETAGS: :rca:orchestrator:consensus:integrity:
 
 * Executive Summary
-The implementation of Consolidation VI (Task Orchestrator) aimed to introduce parallel multi-backend consensus, GTD task integrity, and delegation. During the build, a critical dependency failure was identified in the `safety-harness` module.
+The implementation of Consolidation VI (Task Orchestrator) aimed to introduce parallel multi-backend consensus, GTD task integrity, and delegation. During the build, a critical dependency failure was identified in the `lisp-validator` module.
 
 * 1. Issue: Undefined `SAFETY-HARNESS-VALIDATE`
 ** Symptoms
 Existing `SAFETY-SUITE` tests failed with `#<UNDEFINED-FUNCTION SAFETY-HARNESS-VALIDATE>`.
 ** Root Cause
-The function `safety-harness-validate` was exported in `package.lisp` but never actually defined in `safety-harness.lisp`. Only the internal recursive walker `safety-harness-ast-walk` existed. This represents a "Hollow Export" bug where the interface was designed but the implementation was truncated or skipped in a previous session.
+The function `lisp-validator-validate` was exported in `package.lisp` but never actually defined in `lisp-validator.lisp`. Only the internal recursive walker `lisp-validator-ast-walk` existed. This represents a "Hollow Export" bug where the interface was designed but the implementation was truncated or skipped in a previous session.
 ** Resolution
-Defined `safety-harness-validate` as a wrapper around `read-from-string` and `safety-harness-ast-walk`.
+Defined `lisp-validator-validate` as a wrapper around `read-from-string` and `lisp-validator-ast-walk`.
 
-* 2. Design Decision: Deliberate Consensus
+* 2. Design Decision: Deterministic Consensus
 ** Requirement
 Multi-backend support to reduce hallucinations and increase reliability.
 ** Solution

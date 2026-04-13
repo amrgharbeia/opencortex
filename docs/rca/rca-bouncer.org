@@ -1,13 +1,13 @@
-#+TITLE: Root Cause Analysis: System 2 Bouncer & Authorization Gate
+#+TITLE: Root Cause Analysis: Deterministic Engine Bouncer & Authorization Gate
 #+DATE: 2026-04-11
 #+FILETAGS: :rca:bouncer:authorization:psf:security:
 
 * Executive Summary
-Implemented the "Planning Mode" Bouncer to intercept high-risk System 1 proposals (e.g., shell commands, Lisp evaluation). The system now forces these actions into an asynchronous "Flight Plan" Org node for manual Sovereign approval, fulfilling the "everything is a node" and high-integrity mandates.
+Implemented the "Planning Mode" Bouncer to intercept high-risk Probabilistic Engine proposals (e.g., shell commands, Lisp evaluation). The system now forces these actions into an asynchronous "Flight Plan" Org node for manual Sovereign approval, fulfilling the "everything is a node" and high-integrity mandates.
 
 * 1. Issue: Automated High-Risk Execution
 ** Symptoms
-System 1 proposals involving `shell` or `eval` were executed immediately upon passing the `decide` gate's safety harness. This lacked human-in-the-loop oversight for irreversible or complex operations.
+Probabilistic Engine proposals involving `shell` or `eval` were executed immediately upon passing the `decide` gate's safety harness. This lacked human-in-the-loop oversight for irreversible or complex operations.
 ** Root Cause
 Architecture gap. The system lacked an authorization state between "Safe" and "Executed".
 ** Resolution

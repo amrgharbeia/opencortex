@@ -10,7 +10,7 @@
 
 (defvar *consensus-enabled-p* nil "If T, ask-neuro queries all backends in parallel.")
 
-(defun ask-neuro (prompt &key (system-prompt "You are the Associative engine of a Neurosymbolic Lisp Machine.") (cascade nil) (context nil))
+(defun ask-neuro (prompt &key (system-prompt "You are the Probabilistic engine of a Neurosymbolic Lisp Machine.") (cascade nil) (context nil))
   "Dispatches a neural request through the provider cascade or parallel consensus."
   (let ((backends (cond
                     ((and cascade (listp cascade)) cascade)
@@ -26,7 +26,7 @@
               (when backend-fn
                 (push (bt:make-thread 
                        (lambda ()
-                         (harness-log "ASSOCIATIVE [Consensus]: Querying backend ~a..." backend)
+                         (harness-log "PROBABILISTIC [Consensus]: Querying backend ~a..." backend)
                          (let* ((model (when *model-selector-fn* (funcall *model-selector-fn* backend context)))
                                 (result (ignore-errors 
                                           (if model 
@@ -50,7 +50,7 @@
         (or (dolist (backend backends)
               (let ((backend-fn (gethash backend *neuro-backends*)))
                 (when backend-fn
-                  (harness-log "ASSOCIATIVE: Attempting backend ~a..." backend)
+                  (harness-log "PROBABILISTIC: Attempting backend ~a..." backend)
                   (let* ((model (when *model-selector-fn* (funcall *model-selector-fn* backend context)))
                          (result (if model 
                                      (funcall backend-fn prompt system-prompt :model model)
@@ -61,13 +61,13 @@
             "(:type :LOG :payload (:text \"Neural Cascade Failure\"))"))))
 
 (defun think (context)
-  "Invokes the neural Associative engine to propose a Lisp action based on context."
+  "Invokes the neural Probabilistic engine to propose a Lisp action based on context."
   (let ((active-skill (find-triggered-skill context))
         (tool-belt (generate-tool-belt-prompt))
         (global-context (context-assemble-global-awareness)))
     (if active-skill
         (progn
-          (harness-log "ASSOCIATIVE: Engaging skill '~a'~%" (skill-name active-skill))
+          (harness-log "PROBABILISTIC: Engaging skill '~a'~%" (skill-name active-skill))
           (let* ((prompt-generator (skill-neuro-prompt active-skill)) 
                  (raw-prompt (when prompt-generator (funcall prompt-generator context)))
                  (full-system-prompt (concatenate 'string 
@@ -95,7 +95,7 @@ To call a tool, you MUST use:
                        (raw-thoughts (cl-ppcre:split (cl-ppcre:quote-meta-chars "|CONSENSUS-SEP|") thought))
                        (suggestions nil))
                   (dolist (raw-thought raw-thoughts)
-                    (harness-log "ASSOCIATIVE RAW: ~a~%" raw-thought)
+                    (harness-log "PROBABILISTIC RAW: ~a~%" raw-thought)
                     (let* ((cleaned-thought 
                             (let ((match (cl-ppcre:scan-to-strings "(?s)```(?:lisp)?\\n?(.*?)\\n?```" raw-thought)))
                               (if match
@@ -109,7 +109,7 @@ To call a tool, you MUST use:
                                                  (list :sensor :syntax-error 
                                                        :code cleaned-thought 
                                                        :error (format nil "~a" c)))))))
-                      (harness-log "ASSOCIATIVE Suggestion: ~a~%" cleaned-thought)
+                      (harness-log "PROBABILISTIC Suggestion: ~a~%" cleaned-thought)
                       (when (and suggestion (listp suggestion))
                         (push suggestion suggestions))))
                   (if (and *consensus-enabled-p* suggestions)

@@ -11,7 +11,7 @@ A common failure mode for Large Language Models (LLMs) is the "Lost in the Middl
 The ~org-agent~ harness implements a deterministic, tree-aware solution: the **Foveal-Peripheral Hybrid Model**.
 
 *** 1. The Foveal Focus (High Resolution)
-When the harness prepares a prompt for the Associative Engine, it identifies a "Foveal Focus"—typically the specific Org headline or task the user is currently interacting with. This node, along with its immediate children and semantically relevant neighbors, is rendered at "High Resolution," meaning its full body text, properties, and metadata are included in the prompt.
+When the harness prepares a prompt for the Probabilistic Engine, it identifies a "Foveal Focus"—typically the specific Org headline or task the user is currently interacting with. This node, along with its immediate children and semantically relevant neighbors, is rendered at "High Resolution," meaning its full body text, properties, and metadata are included in the prompt.
 
 *** 2. The Peripheral Vision (Low Resolution)
 To maintain global awareness without bloating the context window, the rest of the Memex is rendered at "Low Resolution." The harness recursively walks the Object Store and generates a skeletal outline consisting only of titles and IDs. This gives the LLM a "mental map" of the entire system, allowing it to reference other projects or skills without needing to see their full content until they are explicitly brought into focus.
@@ -28,7 +28,7 @@ flowchart TD
     Identification --> Peripheral[Render Outline: Titles Only]
     Foveal --> Assembly[Assemble Global Awareness String]
     Peripheral --> Assembly
-    Assembly --> LLM[Associative Engine Proposal]
+    Assembly --> LLM[Probabilistic Engine Proposal]
 #+end_src
 
 * Context Assembly (context.lisp)
@@ -105,7 +105,7 @@ Reads the raw literate Org source of a specific skill. This is a foundational ca
 #+end_src
 
 ** Harness Logs (context-get-system-logs)
-Retrieves the most recent entries from the harness's internal circular log buffer. This allows the Associative Engine to see recent errors or successful dispatches, enabling it to course-correct or explain failures to the user.
+Retrieves the most recent entries from the harness's internal circular log buffer. This allows the Probabilistic Engine to see recent errors or successful dispatches, enabling it to course-correct or explain failures to the user.
 
 #+begin_src lisp :tangle ../src/context.lisp
 (defun context-get-system-logs (&optional (limit 20))

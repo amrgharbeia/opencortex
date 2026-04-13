@@ -196,7 +196,7 @@
       (return-from initialize-all-skills nil))
 
     (let ((sorted-files (topological-sort-skills skills-dir)))
-      ;; MANDATE: The System Invariants must be present for a safe boot
+      ;; MANDATE: The System Policy must be present for a safe boot
       (unless (member "org-skill-system-invariants" sorted-files :key #'pathname-name :test #'string-equal)
         (error "BOOT FAILURE: org-skill-system-invariants.org not found in skills directory."))
       
@@ -244,9 +244,9 @@ EXAMPLES:
   :guard (lambda (args context)
            (declare (ignore context))
            (let ((code (getf args :code)))
-             (let ((harness-pkg (find-package :org-agent.skills.org-skill-safety-harness)))
+             (let ((harness-pkg (find-package :org-agent.skills.org-skill-lisp-validator)))
                (if harness-pkg 
-                   (uiop:symbol-call :org-agent.skills.org-skill-safety-harness :safety-harness-validate code)
+                   (uiop:symbol-call :org-agent.skills.org-skill-lisp-validator :lisp-validator-validate code)
                    t))))
   :body (lambda (args)
           (let ((code (getf args :code)))

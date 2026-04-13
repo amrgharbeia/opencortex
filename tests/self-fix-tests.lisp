@@ -23,7 +23,7 @@
   :neuro nil
   :symbolic (lambda (action context)
               (declare (ignore action context))
-              (+ 1 \"two\"))) ; DELIBERATE BUG
+              (+ 1 \"two\"))) ; DETERMINISTIC BUG
 #+end_src
 ")))
 

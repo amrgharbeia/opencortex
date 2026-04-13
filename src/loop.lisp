@@ -70,10 +70,10 @@
     signal))
 
 (defun neuro-gate (signal)
-  "Associative: Neural intuition and proposed actions."
+  "Probabilistic: Neural intuition and proposed actions."
   (unless (eq (getf signal :type) :EVENT)
     (return-from neuro-gate signal))
-  (harness-log "GATE [Associative]: Consulting LLM...")
+  (harness-log "GATE [Probabilistic]: Consulting LLM...")
   (let ((thoughts (think signal)))
     (setf (getf signal :proposals) (if (and (listp thoughts) (listp (car thoughts))) 
                                        thoughts 
@@ -103,7 +103,7 @@
     signal))
 
 (defun decide-gate (signal)
-  "Deliberate: Deterministic safety and validation."
+  "Deterministic: Deterministic safety and validation."
   (let ((candidate (getf signal :candidate)))
     (if candidate
         (let* ((normalized-candidate (if (listp candidate) candidate (list :type :RESPONSE :payload (list :text candidate))))

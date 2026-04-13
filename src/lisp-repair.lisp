@@ -17,7 +17,7 @@
         code)))
 
 (defun neural-repair (code error-message)
-  "Uses System 1 to deeply repair the syntax structure."
+  "Uses Probabilistic Engine to deeply repair the syntax structure."
   (let ((prompt (format nil "The following Lisp code failed to parse. 
 ERROR: ~a
 CODE: ~a

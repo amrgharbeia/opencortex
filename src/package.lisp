@@ -61,7 +61,7 @@
    #:load-skill-with-timeout
    #:topological-sort-skills
    #:validate-lisp-syntax
-   #:safety-harness-validate
+   #:lisp-validator-validate
    #:defskill
    #:*skills-registry*
    #:skill
@@ -88,7 +88,7 @@
    #:register-emacs-client
    #:unregister-emacs-client
 
-   ;; --- Associative Engine ---
+   ;; --- Probabilistic Engine ---
    #:ask-neuro
    #:register-neuro-backend
    #:distill-prompt

@@ -23,7 +23,7 @@ Updated the `Dockerfile` to:
 3. Install the `playwright` package and execute `playwright install --with-deps chromium` during the image build. This ensures the production container is ready for high-fidelity browsing immediately upon startup.
 
 * 3. Cognitive Tooling
-Created the `:browser` cognitive tool, which exposes three primary capabilities to System 1:
+Created the `:browser` cognitive tool, which exposes three primary capabilities to Probabilistic Engine:
 - **Navigation:** Full JS rendering and waiting for network idle.
 - **Extraction:** Targeted text retrieval via CSS selectors.
 - **Vision:** Base64-encoded screenshot capture for future multimodal processing.

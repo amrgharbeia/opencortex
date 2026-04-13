@@ -8,7 +8,7 @@
 #+FILETAGS: :security:logic:formal-methods:psf:
 
 * Overview
-The *Formal Verification Gate* replaces heuristic whitelisting with symbolic logic proofs. It ensures that every action proposed by System 1 is *provably safe* against the harness's core security invariants using a Lisp-native symbolic prover.
+The *Formal Verification Gate* replaces heuristic whitelisting with symbolic logic proofs. It ensures that every action proposed by Probabilistic Engine is *provably safe* against the harness's core security invariants using a Lisp-native symbolic prover.
 
 ** Deep Reasoning: The Sandbox of Intent
 This gate is the first line of defense against both "Inside Threats" (maliciously modified skill files) and "Hallucination Threats" (LLMs generating unsafe commands). 

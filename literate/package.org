@@ -7,7 +7,7 @@
 The ~package.lisp~ file defines the public API of the ~org-agent~ harness. It serves as the primary membrane between the deterministic core modules and the dynamic world of skills and actuators.
 
 ** Architectural Intent: The Package Membrane
-By strictly defining the public interface, we ensure that skills remain decoupled from the harness implementation details. This allows for sovereign replacement of any component (e.g., swapping the Object Store or the Associative Engine) without breaking existing skills.
+By strictly defining the public interface, we ensure that skills remain decoupled from the harness implementation details. This allows for sovereign replacement of any component (e.g., swapping the Object Store or the Probabilistic Engine) without breaking existing skills.
 
 #+begin_src mermaid
 flowchart TD
@@ -82,7 +82,7 @@ flowchart TD
    #:load-skill-with-timeout
    #:topological-sort-skills
    #:validate-lisp-syntax
-   #:safety-harness-validate
+   #:lisp-validator-validate
    #:defskill
    #:*skills-registry*
    #:skill
@@ -109,7 +109,7 @@ flowchart TD
    #:register-emacs-client
    #:unregister-emacs-client
 
-   ;; --- Associative Engine ---
+   ;; --- Probabilistic Engine ---
    #:ask-neuro
    #:register-neuro-backend
    #:distill-prompt

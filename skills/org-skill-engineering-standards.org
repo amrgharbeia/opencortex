@@ -30,6 +30,9 @@ Major architectural shifts or complex refactors require a formal implementation 
 ** 6. The Stop-and-Wait Mandate (Turn-Yielding)
 You are strictly forbidden from drafting a plan or requesting formal approval in the same conversational turn that you propose an initial strategy or begin file discovery. You MUST propose your strategy in plain text, explicitly state "Waiting for user feedback," and yield the turn. You may only proceed to draft the `.md` plan after the user explicitly replies with agreement.
 
+** 7. GTD Synchronization (Roadmap Integrity)
+You are strictly forbidden from considering a task complete without updating `gtd.org`. Every major architectural shift, feature implementation, or refactor MUST be recorded in the project roadmap to ensure technical transparency and historical auditability.
+
 * Phase B: Blueprint (PROTOCOL)
 :PROPERTIES:
 :STATUS: SIGNED
@@ -67,7 +70,7 @@ The Engineering Standards skill provides the deterministic enforcement of the wo
     (when (member act '(:modify-file :write-file :replace :rename-file :delete-file))
       (let ((proj-root (asdf:system-source-directory :org-agent)))
         (unless (verify-git-clean-p proj-root)
-          (harness-log "DELIBERATE [Standards]: BLOCKING ACTION. Working tree is dirty. Commit changes before modification.")
+          (harness-log "DETERMINISTIC [Standards]: BLOCKING ACTION. Working tree is dirty. Commit changes before modification.")
           (return-from engineering-standards-gate
             (list :type :LOG :payload (list :text "Engineering Standard Violation: Working tree dirty. You MUST commit before modifying files."))))))
     
@@ -84,5 +87,5 @@ The Engineering Standards skill provides the deterministic enforcement of the wo
 #+end_src
 
 * See Also
-- [[file:org-skill-system-invariants.org][System Invariants]]
+- [[file:org-skill-system-invariants.org][System Policy]]
 - [[file:../README.org][org-agent README]]

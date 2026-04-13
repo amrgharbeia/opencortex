@@ -2,12 +2,12 @@
 :ID:       bouncer-agent-skill
 :CREATED:  [2026-04-11 Sat 15:20]
 :END:
-#+TITLE: SKILL: System 2 Bouncer (Authorization Gate)
+#+TITLE: SKILL: Deterministic Engine Bouncer (Authorization Gate)
 #+STARTUP: content
 #+FILETAGS: :system:bouncer:authorization:psf:
 
 * Overview
-The *System 2 Bouncer* is the authorization gate for high-risk actions. It serializes intercepted actions into Org nodes ("Flight Plans") and re-injects them once manually approved by the Sovereign.
+The *Deterministic Engine Bouncer* is the authorization gate for high-risk actions. It serializes intercepted actions into Org nodes ("Flight Plans") and re-injects them once manually approved by the Sovereign.
 
 ** Deep Reasoning: Beyond Permission
 While the *Formal Prover* ensures an action is "legal" (e.g., "Yes, you are allowed to send a Matrix message"), the *Bouncer* ensures the action is "safe" by inspecting the payload content via **Deep Packet Inspection (DPI)**.

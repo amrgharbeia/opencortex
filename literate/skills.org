@@ -19,7 +19,7 @@ Skills often depend on one another. The harness implements a deterministic topol
 ** Skill Architecture
 #+begin_src mermaid
 flowchart TD
-    Registry[Skills Registry] --> S1[Skill: System Invariants]
+    Registry[Skills Registry] --> S1[Skill: System Policy]
     Registry --> S2[Skill: LLM Gateway]
     Registry --> S3[Skill: Token Accountant]
     S2 -- Depends On --> S1
@@ -65,7 +65,7 @@ The harness maintains a stateful tracking table for all skill files discovered i
 #+end_src
 
 ** Skill Selection (find-triggered-skill)
-The primary dispatcher for the Associative Engine. It iterates through the registry to find the highest-priority skill whose trigger function matches the current cognitive context.
+The primary dispatcher for the Probabilistic Engine. It iterates through the registry to find the highest-priority skill whose trigger function matches the current cognitive context.
 
 #+begin_src lisp :tangle ../src/skills.lisp
 (defun find-triggered-skill (context)
@@ -303,7 +303,7 @@ The unified orchestrator for the system boot sequence.
       (return-from initialize-all-skills nil))
 
     (let ((sorted-files (topological-sort-skills skills-dir)))
-      ;; MANDATE: The System Invariants must be present for a safe boot
+      ;; MANDATE: The System Policy must be present for a safe boot
       (unless (member "org-skill-system-invariants" sorted-files :key #'pathname-name :test #'string-equal)
         (error "BOOT FAILURE: org-skill-system-invariants.org not found in skills directory."))
       
@@ -376,9 +376,9 @@ The harness provides a baseline set of cognitive tools that enable core system i
   :guard (lambda (args context)
            (declare (ignore context))
            (let ((code (getf args :code)))
-             (let ((harness-pkg (find-package :org-agent.skills.org-skill-safety-harness)))
+             (let ((harness-pkg (find-package :org-agent.skills.org-skill-lisp-validator)))
                (if harness-pkg 
-                   (uiop:symbol-call :org-agent.skills.org-skill-safety-harness :safety-harness-validate code)
+                   (uiop:symbol-call :org-agent.skills.org-skill-lisp-validator :lisp-validator-validate code)
                    t))))
   :body (lambda (args)
           (let ((code (getf args :code)))

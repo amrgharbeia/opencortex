@@ -10,7 +10,7 @@ The core of the ~org-agent~ harness is a functional transformation pipeline. In 
 
 We have evolved the harness into a **Reactive Signal Pipeline**. Every event—whether it is a user keystroke, a heartbeat timer pulse, or a suggested action from an LLM—is treated as a discrete **Signal**. 
 
-Signals move through a series of formal **Gates**. Each gate transforms or validates the signal until it is either physically dispatched to an actuator or safely rejected by the Deliberate Engine.
+Signals move through a series of formal **Gates**. Each gate transforms or validates the signal until it is either physically dispatched to an actuator or safely rejected by the Deterministic Engine.
 
 *** Advantages of the Pipeline Model:
 - **Consensus Ready:** By treating reasoning as a signal moving through a pipe, we can "split" the pipe to query multiple LLM backends simultaneously. A Consensus Gate later in the pipe compares these proposals.
@@ -22,7 +22,7 @@ Signals move through a series of formal **Gates**. Each gate transforms or valid
 flowchart TD
     S1[Signal: External Stimulus] --> P[Perceive Gate]
     S2[Signal: Heartbeat Pulse] --> P
-    P --> N[Associative Gate]
+    P --> N[Probabilistic Gate]
     N --> C[Consensus Gate]
     C --> V[Validation Gate]
     V --> D[Dispatch Gate]
@@ -138,15 +138,15 @@ The Perceive Gate is responsible for data normalization and sensory intake. It t
     signal))
 #+end_src
 
-*** Associative Gate
-The Associative Gate invokes the neural reasoning engine. It takes the current context and generates a list of "intuitions" or proposed actions.
+*** Probabilistic Gate
+The Probabilistic Gate invokes the neural reasoning engine. It takes the current context and generates a list of "intuitions" or proposed actions.
 
 #+begin_src lisp :tangle ../src/loop.lisp
 (defun neuro-gate (signal)
-  "Associative: Neural intuition and proposed actions."
+  "Probabilistic: Neural intuition and proposed actions."
   (unless (eq (getf signal :type) :EVENT)
     (return-from neuro-gate signal))
-  (harness-log "GATE [Associative]: Consulting LLM...")
+  (harness-log "GATE [Probabilistic]: Consulting LLM...")
   (let ((thoughts (think signal)))
     (setf (getf signal :proposals) (if (and (listp thoughts) (listp (car thoughts))) 
                                        thoughts 
@@ -182,11 +182,11 @@ When multiple LLM backends provide diverging thoughts, the Consensus Gate resolv
 #+end_src
 
 *** Decide Gate
-The Decide Gate is the final deterministic safety net. It runs the candidate action through all loaded skill safety gates (The Deliberate Engine) before allowing it to proceed.
+The Decide Gate is the final deterministic safety net. It runs the candidate action through all loaded skill safety gates (The Deterministic Engine) before allowing it to proceed.
 
 #+begin_src lisp :tangle ../src/loop.lisp
 (defun decide-gate (signal)
-  "Deliberate: Deterministic safety and validation."
+  "Deterministic: Deterministic safety and validation."
   (let ((candidate (getf signal :candidate)))
     (if candidate
         (let* ((normalized-candidate (if (listp candidate) candidate (list :type :RESPONSE :payload (list :text candidate))))
@@ -440,7 +440,7 @@ The Reactive Signal Pipeline must be empirically verified through automated test
     :priority 200
     :trigger (lambda (ctx) t)
     :neuro (lambda (ctx) (list :type :REQUEST :payload (list :action :eval :code "(error \"BOOM\")")))
-    :symbolic (lambda (action ctx) (error "CRASH IN SYSTEM 2")))
+    :symbolic (lambda (action ctx) (error "CRASH IN DETERMINISTIC ENGINE")))
   (process-signal (list :type :EVENT :payload (list :sensor :test)))
   ;; Verify that we are still in State A
   (let ((obj (lookup-object "node-1")))

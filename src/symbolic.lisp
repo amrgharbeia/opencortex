@@ -1,7 +1,7 @@
 (in-package :org-agent)
 
 (defun decide (proposed-action context)
-  "The Deliberate Safety Gate: iterates through all skill symbolic-gates sorted by priority."
+  "The Deterministic Safety Gate: iterates through all skill symbolic-gates sorted by priority."
   (let ((current-action proposed-action)
         (skills nil))
     ;; 1. Collect all skills with symbolic gates
@@ -21,7 +21,7 @@
         ;; If any gate returns a LOG or EVENT (blocking/intercepting), stop and return it.
         (when (and (listp current-action) 
                    (member (getf current-action :type) '(:LOG :EVENT :log :event)))
-          (harness-log "DELIBERATE: Intercepted by skill '~a'~%" (skill-name skill))
+          (harness-log "DETERMINISTIC: Intercepted by skill '~a'~%" (skill-name skill))
           (return-from decide current-action))))
     
     current-action))
