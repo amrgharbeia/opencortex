@@ -8,8 +8,7 @@
   :serial t
   :components ((:file "src/package")
                (:file "src/skills")
-               (:file "src/system-invariants")
-               (:file "src/engineering-standards")
+               (:file "src/policy")
                (:file "src/communication-validator")
                (:file "src/communication")
                (:file "src/memory")

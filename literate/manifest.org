@@ -1,9 +1,9 @@
-#+TITLE: System Definition (org-agent.asd)
+#+TITLE: Manifest (org-agent.asd)
 #+AUTHOR: Amr
 #+FILETAGS: :harness:system:
 #+STARTUP: content
 
-* System Definition (org-agent.asd)
+* Manifest (org-agent.asd)
 ** Architectural Intent: The ASDF Skeleton
 
 The ~org-agent.asd~ file is the physical blueprint of the Lisp Machine. It uses **Another System Definition Facility (ASDF)** to orchestrate the compilation and loading of all harness modules. 
@@ -40,8 +40,7 @@ This system defines the core "Thin Harness." It includes the protocol, the objec
   :serial t
   :components ((:file "src/package")
                (:file "src/skills")
-               (:file "src/system-invariants")
-               (:file "src/engineering-standards")
+               (:file "src/policy")
                (:file "src/communication-validator")
                (:file "src/communication")
                (:file "src/memory")

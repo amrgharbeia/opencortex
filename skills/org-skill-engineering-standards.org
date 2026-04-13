@@ -50,8 +50,7 @@ The Engineering Standards skill provides the deterministic enforcement of the wo
 * Phase D: Build (Implementation)
 
 ** Git Status Enforcement
-#+begin_src lisp :tangle ../src/engineering-standards.lisp
-(in-package :org-agent)
+#+begin_src lisp
 
 (defun verify-git-clean-p (dir)
   "Returns T if the git repository at DIR has no uncommitted changes."
@@ -75,15 +74,6 @@ The Engineering Standards skill provides the deterministic enforcement of the wo
             (list :type :LOG :payload (list :text "Engineering Standard Violation: Working tree dirty. You MUST commit before modifying files."))))))
     
     action))
-#+end_src
-
-** Skill Definition
-#+begin_src lisp :tangle ../src/engineering-standards.lisp
-(org-agent:defskill :skill-engineering-standards
-  :priority 900 ; High priority, runs before most skills
-  :trigger (lambda (ctx) t) ; Always active
-  :probabilistic nil
-  :deterministic #'engineering-standards-gate)
 #+end_src
 
 * See Also
