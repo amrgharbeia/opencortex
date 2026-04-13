@@ -18,8 +18,8 @@ You MUST commit and push the current state of the workspace BEFORE initiating an
 ** 2. Literate Programming (The Single Source of Truth)
 All system logic and skills MUST be implemented as Literate Org files. Weaving documentation and code together ensures that the "Why" (Architectural Intent) is never separated from the "How" (Implementation).
 
-** 3. Literate Granularity
-Every Lisp function, macro, or variable must reside in its own dedicated `#+begin_src lisp` block. This allows for specific narrative explanation for every logical unit.
+** 3. Literate Granularity (The Function-Block Rule)
+Every Lisp function, macro, or variable MUST reside in its own dedicated `#+begin_src lisp` block, immediately preceded by its literate explanatory text. This ensures that the logical intent is documented alongside the implementation.
 
 ** 4. Test-Driven Development (Continuous QA)
 No change is complete without verification. Every new function or macro must be accompanied by a FiveAM test case. You must run the test suite and verify success before considering a task complete.
@@ -32,6 +32,9 @@ You are strictly forbidden from drafting a plan or requesting formal approval in
 
 ** 7. GTD Synchronization (Roadmap Integrity)
 You are strictly forbidden from considering a task complete without updating `gtd.org`. Every major architectural shift, feature implementation, or refactor MUST be recorded in the project roadmap to ensure technical transparency and historical auditability.
+
+** 8. Configuration Externalization (Environment-Driven)
+Source code MUST be strictly free of hardcoded configuration values (e.g., ports, rhythms, timeouts). All such values must be extracted to the environment (via `.env`) and documented in `.env.example`. This ensures portability and security.
 
 * Phase B: Blueprint (PROTOCOL)
 :PROPERTIES:
