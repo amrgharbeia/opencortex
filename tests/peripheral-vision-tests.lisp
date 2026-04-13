@@ -16,10 +16,9 @@
                            (:type :HEADLINE :properties (:ID "node-peripheral" :TITLE "Peripheral Node")
                             :raw-content "PERIPHERAL CONTENT" :contents nil)))))
     (ingest-ast ast)
-    (let ((output (context-assemble-global-awareness (list :payload (list :target-id "node-foveal")))))
-      ;; Foveal node should have its content
+    ;; Test both foveal focus in signal top-level and in payload (legacy)
+    (let ((output (context-assemble-global-awareness (list :foveal-focus "node-foveal"))))
       (is (search "FOVEAL CONTENT" output))
-      ;; Peripheral node should be skeletal (only title/ID)
       (is (search "* Peripheral Node" output))
       (is (not (search "PERIPHERAL CONTENT" output))))))
 

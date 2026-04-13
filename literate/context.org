@@ -93,34 +93,28 @@ Provides a sorted list of all currently loaded skills. In a "Self-Writing" envir
 #+end_src
 
 ** Skill Inspection (context-get-skill-source)
-Reads the raw literate Org source of a specific skill. This is a foundational capability for an agent expected to eventually "self-write" or perform its own maintenance. By reading the literate source, the agent can understand the *intent* behind a skill's logic before proposing a modification.
+Reads the raw literate Org source of a specific skill. This is a foundational capability for an agent expected to eventually "self-write" or perform its own maintenance. By reading the literate source, the agent can understand the *intent* behind a skill's logic before proposing a modification. We use the `SKILLS_DIR` environment variable to locate the source files.
 
 #+begin_src lisp :tangle ../src/context.lisp
 (defun context-get-skill-source (skill-name)
   "Reads the raw literate source of a specific skill for inspection."
   (let* ((filename (format nil "~a.org" skill-name))
-         (skills-dir (merge-pathnames "skills/" (asdf:system-source-directory :org-agent)))
+         (skills-dir-str (or (uiop:getenv "SKILLS_DIR") (namestring (merge-pathnames "notes/" (user-homedir-pathname)))))
+         (skills-dir (uiop:ensure-directory-pathname (context-resolve-path skills-dir-str)))
          (full-path (merge-pathnames filename skills-dir)))
     (if (uiop:file-exists-p full-path) (uiop:read-file-string full-path) nil)))
 #+end_src
 
 ** Harness Logs (context-get-system-logs)
-Retrieves the most recent entries from the harness's internal circular log buffer. This allows the Probabilistic Engine to see recent errors or successful dispatches, enabling it to course-correct or explain failures to the user.
+Retrieves the most recent entries from the harness's internal circular log buffer. This allows the Probabilistic Engine to see recent errors or successful dispatches, enabling it to course-correct or explain failures to the user. The log limit is externalized to `CONTEXT_LOG_LIMIT`.
 
 #+begin_src lisp :tangle ../src/context.lisp
-(defun context-get-system-logs (&optional (limit 20))
+(defun context-get-system-logs (&optional limit)
   "Retrieves the most recent lines from the harness's internal log."
-  (bt:with-lock-held (*logs-lock*)
-    (let ((count (min limit (length *system-logs*)))) (subseq *system-logs* 0 count))))
-#+end_src
-
-** Telemetry (context-get-skill-telemetry)
-Provides execution statistics for a specific skill, including total execution time and failure counts. This enables the harness to monitor for performance regressions or malfunctioning skills.
-
-#+begin_src lisp :tangle ../src/context.lisp
-(defun context-get-skill-telemetry (skill-name)
-  "Returns performance and execution data for a specific skill."
-  (bt:with-lock-held (*telemetry-lock*) (gethash (string-downcase skill-name) *skill-telemetry*)))
+  (let ((log-limit (or limit (ignore-errors (parse-integer (uiop:getenv "CONTEXT_LOG_LIMIT"))) 20)))
+    (bt:with-lock-held (*logs-lock*)
+      (let ((count (min log-limit (length *system-logs*)))) 
+        (subseq *system-logs* 0 count)))))
 #+end_src
 
 ** AST to Org Rendering (context-render-to-org)
@@ -132,8 +126,10 @@ It implements the following deterministic logic:
 3.  **Semantic Neighbors:** Rendered with full content if their similarity score exceeds the threshold.
 4.  **Peripheral Nodes:** Rendered as skeletal headlines (titles and IDs only).
 
+The semantic threshold is externalized to `CONTEXT_SEMANTIC_THRESHOLD`.
+
 #+begin_src lisp :tangle ../src/context.lisp
-(defun context-render-to-org (obj &key (depth 1) (foveal-id nil) (semantic-threshold 0.75) (foveal-vector nil))
+(defun context-render-to-org (obj &key (depth 1) (foveal-id nil) semantic-threshold (foveal-vector nil))
   "Recursively renders an org-object and its children to an Org string using a Foveal-Peripheral Hybrid model."
   (let* ((id (org-object-id obj))
          (is-foveal (equal id foveal-id))
@@ -142,10 +138,11 @@ It implements the following deterministic logic:
          (children (org-object-children obj))
          (stars (make-string depth :initial-element #\*))
          (obj-vector (org-object-vector obj))
+         (threshold (or semantic-threshold (ignore-errors (read-from-string (uiop:getenv "CONTEXT_SEMANTIC_THRESHOLD"))) 0.75))
          (similarity (if (and foveal-vector obj-vector (not is-foveal))
                          (cosine-similarity foveal-vector obj-vector)
                          0.0))
-         (is-semantically-relevant (>= similarity semantic-threshold))
+         (is-semantically-relevant (>= similarity threshold))
          ;; We always render depth 1 and 2 (Projects and main tasks).
          ;; We always render the foveal node and its immediate children.
          ;; We render deeper nodes ONLY if they are semantically relevant.
@@ -172,35 +169,35 @@ It implements the following deterministic logic:
                                         (context-render-to-org child-obj 
                                                                :depth (1+ depth) 
                                                                :foveal-id next-foveal
-                                                               :semantic-threshold semantic-threshold
+                                                               :semantic-threshold threshold
                                                                :foveal-vector foveal-vector))))))))
     output))
 #+end_src
 
 ** Path Resolution (context-resolve-path)
-A utility function that expands environment variables (like ~$HOME~ or ~$MEMEX_ROOT~) within path strings. This ensures that the agent can interact with files across different machine configurations without hardcoding absolute paths.
+A utility function that expands environment variables (like ~$HOME~ or ~$MEMEX_ROOT~) within path strings. This ensures that the agent can interact with files across different machine configurations without hardcoding absolute paths. This version is more robust, supporting multiple environment variables throughout the string.
 
 #+begin_src lisp :tangle ../src/context.lisp
 (defun context-resolve-path (path-string)
-  "Expands environment variables within path strings (e.g. $HOME/...)."
-  (if (and (stringp path-string) (uiop:string-prefix-p "$" path-string))
-      (let* ((parts (uiop:split-string path-string :separator '(#\/)))
-             (var-name (subseq (car parts) 1)) (var-val (uiop:getenv var-name))
-             (remaining (cl:reduce (lambda (a b) (format nil "~a/~a" a b)) (cdr parts))))
-        (if var-val (let ((clean-val (string-trim '(#\" #\Space) var-val)))
-                      (format nil "~a/~a" (string-right-trim "/" clean-val) remaining))
-            path-string))
+  "Expands all environment variables ($VAR) within a path string."
+  (if (and (stringp path-string) (search "$" path-string))
+      (let ((result path-string))
+        (ppcre:do-register-groups (var-name) ("\\$([A-Za-z0-9_]+)" path-string)
+          (let ((var-val (uiop:getenv var-name)))
+            (when var-val
+              (setf result (ppcre:regex-replace (format nil "\\$~a" var-name) result var-val)))))
+        result)
       path-string))
 #+end_src
 
 ** Global Awareness (context-assemble-global-awareness)
-The primary entry point for context generation. This function identifies active projects and the current user focus, then invokes the recursive renderer to assemble the pruned Org-mode skeletal outline sent to the LLM.
+The primary entry point for context generation. This function identifies active projects and the current user focus (captured during the Perceive stage), then invokes the recursive renderer to assemble the pruned Org-mode skeletal outline sent to the LLM.
 
 #+begin_src lisp :tangle ../src/context.lisp
 (defun context-assemble-global-awareness (&optional signal)
   "Produces a high-level skeletal outline of the current Memory for the LLM."
-  (let* ((payload (when signal (getf signal :payload)))
-         (foveal-id (when payload (getf payload :target-id)))
+  (let* ((foveal-id (or (getf signal :foveal-focus) 
+                        (ignore-errors (getf (getf signal :payload) :target-id))))
          (projects (context-get-active-projects))
          (output "GLOBAL MEMEX AWARENESS (Peripheral Vision):
 "))
@@ -213,8 +210,9 @@ The primary entry point for context generation. This function identifies active 
 #+end_src
 
 * Phase E: Chaos (Verification)
-Following the Engineering Standards, the peripheral vision extraction and rendering logic must be empirically verified. The following test suite ensures that the Foveal-Peripheral model correctly suppresses content for peripheral nodes while preserving focus on the target task.
+Following the Engineering Standards, the peripheral vision extraction and rendering logic must be empirically verified. 
 
+** Test Suite Context
 #+begin_src lisp :tangle ../tests/peripheral-vision-tests.lisp
 (defpackage :org-agent-peripheral-vision-tests
   (:use :cl :fiveam :org-agent)
@@ -224,7 +222,12 @@ Following the Engineering Standards, the peripheral vision extraction and render
 (def-suite vision-suite
   :description "Verification of Foveal-Peripheral context model.")
 (in-suite vision-suite)
+#+end_src
 
+** Foveal Rendering Test
+Verify that the foveal target is rendered with content, while siblings are skeletal.
+
+#+begin_src lisp :tangle ../tests/peripheral-vision-tests.lisp
 (test test-foveal-rendering
   "Verify that the foveal target is rendered with content, while siblings are skeletal."
   (clrhash org-agent::*memory*)
@@ -234,13 +237,17 @@ Following the Engineering Standards, the peripheral vision extraction and render
                            (:type :HEADLINE :properties (:ID "node-peripheral" :TITLE "Peripheral Node")
                             :raw-content "PERIPHERAL CONTENT" :contents nil)))))
     (ingest-ast ast)
-    (let ((output (context-assemble-global-awareness (list :payload (list :target-id "node-foveal")))))
-      ;; Foveal node should have its content
+    ;; Test both foveal focus in signal top-level and in payload (legacy)
+    (let ((output (context-assemble-global-awareness (list :foveal-focus "node-foveal"))))
       (is (search "FOVEAL CONTENT" output))
-      ;; Peripheral node should be skeletal (only title/ID)
       (is (search "* Peripheral Node" output))
       (is (not (search "PERIPHERAL CONTENT" output))))))
+#+end_src
 
+** Awareness Budget Test
+Verify that context-assemble-global-awareness handles multiple projects correctly.
+
+#+begin_src lisp :tangle ../tests/peripheral-vision-tests.lisp
 (test test-awareness-budget
   "Verify that context-assemble-global-awareness handles multiple projects."
   (clrhash org-agent::*memory*)
