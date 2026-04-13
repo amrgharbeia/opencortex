@@ -17,7 +17,7 @@ Defined `lisp-validator-validate` as a wrapper around `read-from-string` and `li
 ** Requirement
 Multi-backend support to reduce hallucinations and increase reliability.
 ** Solution
-Implemented `bt:make-thread` parallel queries in `ask-neuro`.
+Implemented `bt:make-thread` parallel queries in `ask-probabilistic`.
 ** Trade-off
 Selected "Majority Rules" over "First-to-Finish".
 - *Pros:* Higher accuracy, mathematically consistent.
@@ -29,7 +29,7 @@ Aligns with PSF Mandate 4 (Radical Transparency) and Invariant 2 (Technical Mast
 ** Requirement
 Prevent illegal GTD state transitions.
 ** Solution
-Added `task-integrity-check` in `symbolic.lisp`.
+Added `task-integrity-check` in `deterministic.lisp`.
 ** Invariant Alignment
 Enforces the "High-Integrity Memory" mandate by ensuring the Org-mode AST remains semantically valid according to GTD rules (e.g., no orphaned active tasks).
 
@@ -40,7 +40,7 @@ Enforces the "High-Integrity Memory" mandate by ensuring the Org-mode AST remain
 3. Multi-function edits per block.
 ** Correction
 1. Performed a retrospective commit.
-2. Synchronized `neurosymbolic.org` and `core.org` with source code.
+2. Synchronized `probabilistic-deterministic.org` and `core.org` with source code.
 3. Refactored the Markdown flight plan into an Org-mode flight plan.
 
 * 5. Permanent Learnings

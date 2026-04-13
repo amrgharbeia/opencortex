@@ -37,7 +37,7 @@
                      (setf *last-reflection-time* now)
                      t)
                    nil)))
-  :neuro (lambda (ctx)
+  :probabilistic (lambda (ctx)
            (declare (ignore ctx))
            (let* ((memories (sample-random-memories 3))
                   (context-string "LATENT REFLECTION CANDIDATES:\n"))
@@ -58,7 +58,7 @@ Find hidden connections, suggest new tags, or propose a new insight that bridges
 MANDATE: Output EXACTLY ONE Common Lisp property list starting with (:type :REQUEST).
 Use the :emacs target and :insert-at-end action to write your reflection into the \"*org-agent-chat*\" buffer." 
                      context-string)))
-  :symbolic (lambda (action ctx) 
+  :deterministic (lambda (action ctx) 
               (declare (ignore ctx))
               ;; Approve any safe request
               action))

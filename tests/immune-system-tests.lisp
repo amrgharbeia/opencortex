@@ -21,8 +21,8 @@
          (skill (org-agent::make-skill 
                  :name "crasher" :priority 100 
                  :trigger-fn (lambda (ctx) t)
-                 :neuro-prompt (lambda (ctx) nil)
-                 :symbolic-fn (lambda (action ctx) 
+                 :probabilistic-prompt (lambda (ctx) nil)
+                 :deterministic-fn (lambda (action ctx) 
                                 '(:type :REQUEST :target :tool :payload (:action :call :tool "crashing-tool"))))))
     
     (clrhash org-agent::*skills-registry*)
@@ -43,8 +43,8 @@
   (org-agent::defskill :evil-skill
     :priority 100
     :trigger (lambda (ctx) (eq (getf (getf ctx :payload) :sensor) :test))
-    :neuro (lambda (ctx) (error "CRITICAL BRAIN FAILURE"))
-    :symbolic nil)
+    :probabilistic (lambda (ctx) (error "CRITICAL BRAIN FAILURE"))
+    :deterministic nil)
   
   (harness-log "CLEAN LOG")
   (org-agent:process-signal '(:type :EVENT :payload (:sensor :test)))

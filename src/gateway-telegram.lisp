@@ -75,7 +75,7 @@
 (defskill :skill-gateway-telegram
   :priority 150
   :trigger (lambda (ctx) (declare (ignore ctx)) nil) ;; Passive, handles its own loop
-  :neuro nil
-  :symbolic (lambda (action ctx) (declare (ignore ctx)) action))
+  :probabilistic nil
+  :deterministic (lambda (action ctx) (declare (ignore ctx)) action))
 
 (start-telegram-gateway)

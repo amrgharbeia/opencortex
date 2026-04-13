@@ -25,8 +25,8 @@
   (org-agent::defskill :infinite-skill
     :priority 100
     :trigger (lambda (ctx) t)
-    :neuro (lambda (ctx) nil)
-    :symbolic (lambda (action ctx) 
+    :probabilistic (lambda (ctx) nil)
+    :deterministic (lambda (action ctx) 
                 `(:type :EVENT :payload (:sensor :infinite-trigger))))
   
   ;; The pipeline has (when (> depth 10) ...) check.

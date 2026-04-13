@@ -33,7 +33,7 @@ Provide a standardized interface for converting text into vector representations
 :END:
 
 ** 1. Architectural Intent
-Move heavy neural and mathematical logic out of `core.lisp` and `neuro.lisp` into a dedicated skill.
+Move heavy neural and mathematical logic out of `core.lisp` and `probabilistic.lisp` into a dedicated skill.
 
 ** 2. Semantic Interfaces
 
@@ -108,8 +108,8 @@ Move heavy neural and mathematical logic out of `core.lisp` and `neuro.lisp` int
 (defskill :skill-embedding
   :priority 50
   :trigger (lambda (ctx) (eq (getf (getf ctx :payload) :sensor) :embedding-request))
-  :neuro nil
-  :symbolic (lambda (action ctx)
+  :probabilistic nil
+  :deterministic (lambda (action ctx)
               (declare (ignore ctx))
               (case (getf action :action)
                 (:get-embedding (get-embedding (getf action :text)))

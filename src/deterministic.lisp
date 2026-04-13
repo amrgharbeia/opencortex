@@ -1,22 +1,22 @@
 (in-package :org-agent)
 
 (defun decide (proposed-action context)
-  "The Deterministic Safety Gate: iterates through all skill symbolic-gates sorted by priority."
+  "The Deterministic Safety Gate: iterates through all skill deterministic-gates sorted by priority."
   (let ((current-action proposed-action)
         (skills nil))
-    ;; 1. Collect all skills with symbolic gates
+    ;; 1. Collect all skills with deterministic gates
     (maphash (lambda (name skill)
                (declare (ignore name))
-               (when (skill-symbolic-fn skill)
+               (when (skill-deterministic-fn skill)
                  (push skill skills)))
              *skills-registry*)
     
     ;; 2. Sort skills by priority (highest first)
     (setf skills (sort skills #'> :key #'skill-priority))
     
-    ;; 3. Execute symbolic gates sequentially
+    ;; 3. Execute deterministic gates sequentially
     (dolist (skill skills)
-      (let ((gate (skill-symbolic-fn skill)))
+      (let ((gate (skill-deterministic-fn skill)))
         (setf current-action (funcall gate current-action context))
         ;; If any gate returns a LOG or EVENT (blocking/intercepting), stop and return it.
         (when (and (listp current-action) 

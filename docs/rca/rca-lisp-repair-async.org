@@ -7,7 +7,7 @@ Reimplemented the `org-skill-lisp-repair` to align with the "Sovereign Boundary"
 
 * 1. Issue: Core Bloat & Synchronous Coupling
 ** Symptoms
-The initial implementation of the Lisp Repair gate placed a `handler-case` and a dynamic function call (`repair-lisp-syntax`) directly inside the core `think` function (`neuro.lisp`). This forced the core to wait for repairs and made it "aware" of specific repair logic.
+The initial implementation of the Lisp Repair gate placed a `handler-case` and a dynamic function call (`repair-lisp-syntax`) directly inside the core `think` function (`probabilistic.lisp`). This forced the core to wait for repairs and made it "aware" of specific repair logic.
 ** Root Cause
 Architectural shortcutting. By placing repair logic in the core execution path, we violated the microkernel principle which mandates that the core should be a "dumb" signal processor.
 ** Resolution
@@ -20,7 +20,7 @@ Architectural shortcutting. By placing repair logic in the core execution path, 
 ** Root Cause
 Mismatched expectations of signal nesting. The skill expected the code at `(getf context :payload)`, but in the `decide-gate`, `context` is the full signal, and the error details were nested inside the `:candidate` field of that signal.
 ** Resolution
-Updated the symbolic logic to correctly traverse the nested signal structure: `(getf (getf context :candidate) :payload)`.
+Updated the deterministic logic to correctly traverse the nested signal structure: `(getf (getf context :candidate) :payload)`.
 
 * 3. PSF Mandate Alignment
 ** Sovereign Boundary
@@ -30,4 +30,4 @@ Leveraged the pipeline's ability to re-inject `EVENT` signals to flatten the rec
 
 * 4. Permanent Learnings
 - **Emit, Don't Call:** In a microkernel, if a non-fatal error occurs, always emit a signal rather than calling a recovery function. This allows the system to remain asynchronous and modular.
-- **Signal Inspection:** When writing symbolic gates, always verify the exact shape of the `context` signal being passed by the harness to avoid nesting errors.
+- **Signal Inspection:** When writing deterministic gates, always verify the exact shape of the `context` signal being passed by the harness to avoid nesting errors.

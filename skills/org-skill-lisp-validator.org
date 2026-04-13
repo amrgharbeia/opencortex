@@ -8,7 +8,7 @@
 #+FILETAGS: :security:lisp:ast:psf:
 
 * Overview
-The *Lisp Validator* is the primary structural gate for the Neurosymbolic Lisp Machine. It provides a recursive AST validator that subjects all Lisp proposals from the Probabilistic Engine to a strict "Deny-by-Default" sandbox.
+The *Lisp Validator* is the primary structural gate for the Probabilistic-Deterministic Lisp Machine. It provides a recursive AST validator that subjects all Lisp proposals from the Probabilistic Engine to a strict "Deny-by-Default" sandbox.
 
 * Phase A: Demand (PRD)
 :PROPERTIES:
@@ -22,7 +22,7 @@ Define a high-integrity, recursive security sandbox for Lisp execution.
 - *Recursive Validation:* Every nested function call and variable access MUST be checked.
 - *Deny-by-Default:* Only explicitly whitelisted functions and variables are permitted.
 - *Eval Protection:* Block all forms of `eval`, `load`, or dynamic execution.
-- *Symbolic Preemption:* This skill acts as a mandatory global Deterministic Engine check.
+- *Deterministic Preemption:* This skill acts as a mandatory global Deterministic Engine check.
 
 ** 3. Success Criteria
 *** DONE Implement recursive AST walker in Lisp
@@ -149,8 +149,8 @@ We allow other skills to register safe symbols for the validator.
                (when candidate
                  (let ((payload (getf candidate :payload)))
                    (member (getf payload :action) '(:eval :shell))))))
-  :neuro nil ; Purely deterministic/safety skill
-  :symbolic (lambda (action context)
+  :probabilistic nil ; Purely deterministic/safety skill
+  :deterministic (lambda (action context)
               (harness-log "DETERMINISTIC ENGINE [Lisp-Validator]: Intercepted critical action for structural validation.")
               action))
 #+end_src

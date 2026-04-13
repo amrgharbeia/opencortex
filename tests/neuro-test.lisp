@@ -5,9 +5,9 @@
 (defpackage :org-agent (:use :cl))
 (in-package :org-agent)
 
-;; We need to load the core and neuro files to test them.
+;; We need to load the core and probabilistic files to test them.
 (load "projects/org-agent/src/core.lisp")
-(load "projects/org-agent/src/neuro.lisp")
+(load "projects/org-agent/src/probabilistic.lisp")
 
 ;; Simple testing framework
 (defvar *tests-run* 0)
@@ -33,15 +33,15 @@
              (format t "PASS: ~a~%" (or ,message "Assertion passed")))
            (format t "FAIL: ~a~%  Condition evaluated to NIL~%" (or ,message "Assertion failed"))))))
 
-(format t "--- Running Neuro Microkernel Tests ---~%")
+(format t "--- Running Probabilistic Microkernel Tests ---~%")
 
 ;; Test 1: Graceful failure on empty registry
-(clrhash org-agent::*neuro-backends*)
+(clrhash org-agent::*probabilistic-backends*)
 (setf org-agent::*provider-cascade* '(:nonexistent))
 
-(let ((result (org-agent:ask-neuro "Test prompt")))
+(let ((result (org-agent:ask-probabilistic "Test prompt")))
   (assert-true (and (stringp result) (search ":LOG" result) (search "Neural Cascade Failure" result))
-               "ask-neuro should return a Neural Cascade Failure log when no backends are available."))
+               "ask-probabilistic should return a Neural Cascade Failure log when no backends are available."))
 
 ;; Test 2: Successful delegation to a mock provider
 (defvar *mock-called* nil)
@@ -50,7 +50,7 @@
   (setf *mock-called* t)
   (format nil "MOCK-RESPONSE: ~a" prompt))
 
-(org-agent:register-neuro-backend :mock #'mock-provider-fn)
+(org-agent:register-probabilistic-backend :mock #'mock-provider-fn)
 
 ;; Temporarily mock the token accountant's model selector so it doesn't fail
 (defun mock-model-selector (provider context)
@@ -60,18 +60,18 @@
 
 ;; Test with our mock provider
 (setf org-agent::*provider-cascade* '(:mock))
-(let ((result (org-agent:ask-neuro "Hello Mock")))
-  (assert-equal "MOCK-RESPONSE: Hello Mock" result "ask-neuro should return the exact string from the registered provider")
-  (assert-true *mock-called* "The mock provider function must be called by ask-neuro"))
+(let ((result (org-agent:ask-probabilistic "Hello Mock")))
+  (assert-equal "MOCK-RESPONSE: Hello Mock" result "ask-probabilistic should return the exact string from the registered provider")
+  (assert-true *mock-called* "The mock provider function must be called by ask-probabilistic"))
 
 ;; Test 3: The core should NOT contain execute-openrouter-request, execute-groq-request, or execute-gemini-request
 ;; This is the architectural test. These functions should be UNBOUND or not exist in the org-agent package.
 (assert-true (not (fboundp 'org-agent::execute-openrouter-request))
-             "execute-openrouter-request should be removed from the core neuro.lisp")
+             "execute-openrouter-request should be removed from the core probabilistic.lisp")
 (assert-true (not (fboundp 'org-agent::execute-groq-request))
-             "execute-groq-request should be removed from the core neuro.lisp")
+             "execute-groq-request should be removed from the core probabilistic.lisp")
 (assert-true (not (fboundp 'org-agent::execute-gemini-request))
-             "execute-gemini-request should be removed from the core neuro.lisp")
+             "execute-gemini-request should be removed from the core probabilistic.lisp")
 
 (format t "--- Test Summary ---~%")
 (format t "Tests Run: ~a~%" *tests-run*)

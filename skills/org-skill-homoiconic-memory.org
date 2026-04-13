@@ -149,8 +149,8 @@ Converts a structured AST back into Org-mode text.
   (defskill :skill-homoiconic-memory
     :priority 300 ; Core foundational skill
     :trigger (lambda (ctx) (member (getf (getf ctx :payload) :sensor) '(:buffer-save :ingest)))
-    :neuro nil
-    :symbolic (lambda (action ctx)
+    :probabilistic nil
+    :deterministic (lambda (action ctx)
                 (let ((ast (getf (getf ctx :payload) :ast)))
                   (when ast (memory-normalize-ast ast))
                   action))))

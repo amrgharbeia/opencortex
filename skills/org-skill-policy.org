@@ -8,7 +8,11 @@
 #+FILETAGS: :platform:policy:alignment:
 
 * Overview
-The *Org-Agent* is a neurosymbolic harness for a personal operating system. It uses Org-mode as its native memory and Common Lisp as its deterministic reasoning engine.
+The *Org-Agent* is a probabilistic-deterministic harness for a personal operating system. It uses Org-mode as its native memory and Common Lisp as its deterministic reasoning engine.
+
+#+begin_src lisp :tangle ../src/system-invariants.lisp
+(in-package :org-agent)
+#+end_src
 
 This document contains the *Core System Policy*. These are non-negotiable philosophical and technical constraints that every agentic action MUST satisfy. 
 
@@ -18,6 +22,14 @@ The Deterministic Engine uses these headlines as a "Moral Compass" during the de
 
 ** 1. Sovereignty Above All
 Every action must increase the user's independence from centralized, proprietary platforms. If a tool or library introduces a dependency on a non-sovereign entity, it must be flagged for replacement.
+
+#+begin_src lisp :tangle ../src/system-invariants.lisp
+(defun policy-check-sovereignty (action context)
+  "Ensures the action does not violate the Sovereignty invariant."
+  (declare (ignore context))
+  ;; Implementation placeholder
+  action)
+#+end_src
 
 ** 2. Technical Mastery & Mentorship
 The agent's goal is not to "do it for the user," but to "empower the user." Every autonomous action must be explained at a level that increases the user's technical understanding of the Lisp Machine.
@@ -33,3 +45,11 @@ Prioritize local, energy-efficient, and offline-first architectures. The "Memex"
 
 * Operational Mandates
 Every action performed by an agent in this environment must also adhere to the [[file:../../org-agent-contrib/org-skill-engineering-standards.org][Engineering Standards]].
+
+#+begin_src lisp :tangle ../src/system-invariants.lisp
+(defskill :skill-policy
+  :priority 100
+  :trigger (lambda (ctx) t)
+  :probabilistic nil
+  :deterministic #'policy-check-sovereignty)
+#+end_src

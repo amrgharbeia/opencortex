@@ -17,10 +17,10 @@ Implemented a robust `get-nested` helper function that safely traverses both nes
 ** Symptoms
 Provider logic was present in the codebase but inaccessible during tests and runtime.
 ** Root Cause
-The `credentials-vault.lisp` and `llm-gateway.lisp` files (consolidated in a previous session) were never added to the `org-agent.asd` system definition. Furthermore, an incorrect loading order caused `UNDEFINED-FUNCTION` errors for `register-neuro-backend`.
+The `credentials-vault.lisp` and `llm-gateway.lisp` files (consolidated in a previous session) were never added to the `org-agent.asd` system definition. Furthermore, an incorrect loading order caused `UNDEFINED-FUNCTION` errors for `register-probabilistic-backend`.
 ** Resolution
 1. Added both files to `org-agent.asd`.
-2. Enforced strict loading order: `neuro` (defines registry) -> `credentials-vault` -> `llm-gateway` (uses registry).
+2. Enforced strict loading order: `probabilistic` (defines registry) -> `credentials-vault` -> `llm-gateway` (uses registry).
 
 * 3. Issue: Credential Key Mismatch
 ** Symptoms

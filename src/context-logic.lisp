@@ -64,9 +64,9 @@
   :priority 90
   :dependencies ("org-skill-embedding")
   :trigger (lambda (ctx) (member (getf (getf ctx :payload) :sensor) '(:perceive :context-refresh)))
-  :neuro nil
-  :symbolic (lambda (action ctx)
+  :probabilistic nil
+  :deterministic (lambda (action ctx)
               (declare (ignore action ctx))
               ;; This skill primarily provides the context-assemble-global-awareness function
-              ;; used by the neuro-gate, rather than handling specific actions.
+              ;; used by the probabilistic-gate, rather than handling specific actions.
               nil))

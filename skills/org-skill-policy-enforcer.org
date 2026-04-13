@@ -15,7 +15,7 @@ Unlike traditional software where a "Kernel" might have hardcoded rules, the Org
 
 1. **Topological Bootstrapping:** By declaring a #+DEPENDS_ON: dependency on the Policy file's ID, we ensure the System Policy is always registered in the Lisp image's skill catalog before this enforcer attempts to guard it.
 2. **Priority Preemption:** By setting :priority 1000, this skill registers itself as the very first check in the decide-gate. It effectively "pre-empts" all other skills, ensuring that no action (like a shell command or a file write) is even considered until it has cleared the alignment check.
-3. **Decoupled Enforcement:** The harness does not "know" it is enforcing a policy. It simply executes the highest-priority symbolic functions provided by its skills. This allows the Sovereign to swap out policies or enforcers without ever touching the core harness code.
+3. **Decoupled Enforcement:** The harness does not "know" it is enforcing a policy. It simply executes the highest-priority deterministic functions provided by its skills. This allows the Sovereign to swap out policies or enforcers without ever touching the core harness code.
 
 * Implementation
 
@@ -25,9 +25,9 @@ Unlike traditional software where a "Kernel" might have hardcoded rules, the Org
 (defskill :skill-policy-enforcer
   :priority 1000 ; Absolute highest priority
   :trigger (lambda (context) t) ; Always active as a fallback
-  :neuro (lambda (context)
+  :probabilistic (lambda (context)
            \"You are the Org-Agent Policy Enforcer. Your goal is to ensure all actions empower the user through the Lisp Machine and adhere to the System Policy.\")
-  :symbolic (lambda (action context)
+  :deterministic (lambda (action context)
               ;; Basic invariant check: Block actions that appear to violate sovereignty
               (let ((payload (getf action :payload)))
                 (if (and payload (search \"proprietary\" (format nil \"~s\" payload)))

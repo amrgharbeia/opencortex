@@ -1,5 +1,5 @@
 [Unit]
-Description=org-agent: Neurosymbolic Lisp Machine Kernel
+Description=org-agent: Probabilistic-Deterministic Lisp Machine Kernel
 After=network.target
 
 [Service]

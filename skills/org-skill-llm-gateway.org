@@ -161,7 +161,7 @@ Register each supported provider with the harness's neural registry.
 
 #+begin_src lisp :tangle ../src/llm-gateway.lisp
 (dolist (p '(:anthropic :gemini-api :gemini-web :groq :ollama :openai :openrouter))
-  (org-agent:register-neuro-backend p (lambda (prompt system-prompt &key model)
+  (org-agent:register-probabilistic-backend p (lambda (prompt system-prompt &key model)
                                         (execute-llm-request prompt system-prompt :provider p :model model))))
 #+end_src
 
@@ -172,8 +172,8 @@ Define the foundational skill entry for the gateway.
 (defskill :skill-llm-gateway
   :priority 150 ; Higher than individual old skills
   :trigger (lambda (context) (declare (ignore context)) nil)
-  :neuro (lambda (context) (declare (ignore context)) nil)
-  :symbolic (lambda (action context) (declare (ignore context)) action))
+  :probabilistic (lambda (context) (declare (ignore context)) nil)
+  :deterministic (lambda (action context) (declare (ignore context)) action))
 #+end_src
 
 * Phase E: Chaos (Verification)

@@ -8,7 +8,7 @@
 #+FILETAGS: :gateway:sensors:io:psf:
 
 * Overview
-The *Inbound Multi-Channel Gateway* provides the sensory interface for external messaging. It enables the agent to "hear" the user from various platforms (Signal, Telegram, SMS) by normalizing disparate inbound payloads into standard Neurosymbolic Kernel stimuli.
+The *Inbound Multi-Channel Gateway* provides the sensory interface for external messaging. It enables the agent to "hear" the user from various platforms (Signal, Telegram, SMS) by normalizing disparate inbound payloads into standard Probabilistic-Deterministic Kernel stimuli.
 
 * Phase A: Demand (PRD)
 :PROPERTIES:
@@ -45,7 +45,7 @@ Define a secure and extensible ingress for external communication channels.
 ** 1. Architectural Intent
 The Inbound Gateway should operate as a modular, asynchronous service. 
 Each channel (Signal, Telegram, Webhook) will have its own adapter responsible for receiving and normalizing messages. 
-A central dispatcher will then authenticate and inject these normalized messages as stimuli into the Neurosymbolic Kernel’s message bus.
+A central dispatcher will then authenticate and inject these normalized messages as stimuli into the Probabilistic-Deterministic Kernel’s message bus.
 Error handling and logging will be crucial for observability and maintainability.
 
 ** 2. Semantic Interfaces (Lisp Signatures)
@@ -75,7 +75,7 @@ Error handling and logging will be crucial for observability and maintainability
     - *Returns:* Boolean indicating successful authentication (T) or failure (NIL).  Consider using ACLs (Access Control Lists).
 
 *** `inject-stimulus`
-    - *Purpose:*  Injects a normalized message into the Neurosymbolic Kernel's message bus as a stimulus.
+    - *Purpose:*  Injects a normalized message into the Probabilistic-Deterministic Kernel's message bus as a stimulus.
     - *Signature:* `(inject-stimulus stimulus-plist)`
     - *Arguments:*
         - `stimulus-plist` (plist): The normalized message plist.

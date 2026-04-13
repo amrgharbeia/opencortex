@@ -1,7 +1,7 @@
 (defpackage :org-agent
   (:use :cl)
   (:export 
-   ;; --- Harness Protocol ---
+   ;; --- Harness Communication ---
    #:frame-message
    #:parse-message
    #:make-hello-message
@@ -47,7 +47,7 @@
    ;; --- Reactive Signal Pipeline ---
    #:process-signal
    #:perceive-gate
-   #:neuro-gate
+   #:probabilistic-gate
    #:consensus-gate
    #:decide-gate
    #:dispatch-gate
@@ -69,8 +69,8 @@
    #:skill-priority
    #:skill-dependencies
    #:skill-trigger-fn
-   #:skill-neuro-prompt
-   #:skill-symbolic-fn
+   #:skill-probabilistic-prompt
+   #:skill-deterministic-fn
 
    ;; --- Tool Registry ---
    #:def-cognitive-tool
@@ -89,12 +89,12 @@
    #:unregister-emacs-client
 
    ;; --- Probabilistic Engine ---
-   #:ask-neuro
-   #:register-neuro-backend
+   #:ask-probabilistic
+   #:register-probabilistic-backend
    #:distill-prompt
    #:*provider-cascade*
    
-   ;; --- Symbolic Logic ---
+   ;; --- Deterministic Logic ---
    #:list-objects-with-attribute
    #:decide
    

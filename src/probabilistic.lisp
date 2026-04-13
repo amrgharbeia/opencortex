@@ -1,16 +1,16 @@
 (in-package :org-agent)
 
-(defvar *neuro-backends* (make-hash-table :test 'equal))
+(defvar *probabilistic-backends* (make-hash-table :test 'equal))
 
 (defvar *provider-cascade* nil)
 
-(defun register-neuro-backend (name fn) (setf (gethash name *neuro-backends*) fn))
+(defun register-probabilistic-backend (name fn) (setf (gethash name *probabilistic-backends*) fn))
 
 (defvar *model-selector-fn* nil "A function called with (provider context) to return a model ID.")
 
-(defvar *consensus-enabled-p* nil "If T, ask-neuro queries all backends in parallel.")
+(defvar *consensus-enabled-p* nil "If T, ask-probabilistic queries all backends in parallel.")
 
-(defun ask-neuro (prompt &key (system-prompt "You are the Probabilistic engine of a Neurosymbolic Lisp Machine.") (cascade nil) (context nil))
+(defun ask-probabilistic (prompt &key (system-prompt "You are the Probabilistic engine of a Probabilistic-Deterministic Lisp Machine.") (cascade nil) (context nil))
   "Dispatches a neural request through the provider cascade or parallel consensus."
   (let ((backends (cond
                     ((and cascade (listp cascade)) cascade)
@@ -22,7 +22,7 @@
               (threads nil)
               (lock (bt:make-lock)))
           (dolist (backend backends)
-            (let ((backend-fn (gethash backend *neuro-backends*)))
+            (let ((backend-fn (gethash backend *probabilistic-backends*)))
               (when backend-fn
                 (push (bt:make-thread 
                        (lambda ()
@@ -48,7 +48,7 @@
         
         ;; SEQUENTIAL CASCADE MODE
         (or (dolist (backend backends)
-              (let ((backend-fn (gethash backend *neuro-backends*)))
+              (let ((backend-fn (gethash backend *probabilistic-backends*)))
                 (when backend-fn
                   (harness-log "PROBABILISTIC: Attempting backend ~a..." backend)
                   (let* ((model (when *model-selector-fn* (funcall *model-selector-fn* backend context)))
@@ -68,7 +68,7 @@
     (if active-skill
         (progn
           (harness-log "PROBABILISTIC: Engaging skill '~a'~%" (skill-name active-skill))
-          (let* ((prompt-generator (skill-neuro-prompt active-skill)) 
+          (let* ((prompt-generator (skill-probabilistic-prompt active-skill)) 
                  (raw-prompt (when prompt-generator (funcall prompt-generator context)))
                  (full-system-prompt (concatenate 'string 
                                                  "ACTUATOR IDENTITY: You are the pure Lisp actuator for the org-agent kernel.
@@ -91,7 +91,7 @@ To call a tool, you MUST use:
 
 ")))
             (if (and raw-prompt (> (length raw-prompt) 1))
-                (let* ((thought (ask-neuro raw-prompt :system-prompt full-system-prompt :context context))
+                (let* ((thought (ask-probabilistic raw-prompt :system-prompt full-system-prompt :context context))
                        (raw-thoughts (cl-ppcre:split (cl-ppcre:quote-meta-chars "|CONSENSUS-SEP|") thought))
                        (suggestions nil))
                   (dolist (raw-thought raw-thoughts)
@@ -120,4 +120,4 @@ To call a tool, you MUST use:
 
 (defun distill-prompt (full-prompt successful-output)
   (let ((system-instr "You are a Meta-Cognitive Prompt Architect. DISTILL into template."))
-    (ask-neuro (format nil "PROMPT: ~a~%RESULT: ~a" full-prompt successful-output) :system-prompt system-instr)))
+    (ask-probabilistic (format nil "PROMPT: ~a~%RESULT: ~a" full-prompt successful-output) :system-prompt system-instr)))

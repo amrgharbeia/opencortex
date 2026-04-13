@@ -12,8 +12,8 @@
   (org-agent::defskill :mock-refactor
     :priority 100
     :trigger (lambda (ctx) (eq (getf (getf ctx :payload) :command) :organize-subtree))
-    :neuro (lambda (ctx) "Mock neuro prompt")
-    :symbolic (lambda (action ctx) 
+    :probabilistic (lambda (ctx) "Mock probabilistic prompt")
+    :deterministic (lambda (action ctx) 
                 `(:type :REQUEST :id 123 
                   :payload (:action :refactor-subtree 
                             :target-id nil 
@@ -21,8 +21,8 @@
   (org-agent::defskill :mock-safety
     :priority 50
     :trigger (lambda (ctx) t) ; always triggers
-    :neuro (lambda (ctx) "Mock neuro")
-    :symbolic (lambda (action ctx) nil))) ; rejects everything
+    :probabilistic (lambda (ctx) "Mock probabilistic")
+    :deterministic (lambda (action ctx) nil))) ; rejects everything
 
 (test test-perceive-gate
   "Perceive gate should update the object store and normalize signal."
@@ -76,8 +76,8 @@
     :priority 10
     :dependencies (list "mock-safety")
     :trigger (lambda (ctx) nil)
-    :neuro nil
-    :symbolic nil)
+    :probabilistic nil
+    :deterministic nil)
   (let ((deps (org-agent::resolve-skill-dependencies "mock-dependent")))
     (is (member "mock-safety" deps :test #'string-equal))
     (is (member "mock-dependent" deps :test #'string-equal))))
@@ -107,8 +107,8 @@
   (org-agent::defskill :crashing-skill
     :priority 200
     :trigger (lambda (ctx) t)
-    :neuro (lambda (ctx) (list :type :REQUEST :payload (list :action :eval :code "(error \"BOOM\")")))
-    :symbolic (lambda (action ctx) (error "CRASH IN DETERMINISTIC ENGINE")))
+    :probabilistic (lambda (ctx) (list :type :REQUEST :payload (list :action :eval :code "(error \"BOOM\")")))
+    :deterministic (lambda (action ctx) (error "CRASH IN DETERMINISTIC ENGINE")))
   (process-signal (list :type :EVENT :payload (list :sensor :test)))
   ;; Verify that we are still in State A
   (let ((obj (lookup-object "node-1")))

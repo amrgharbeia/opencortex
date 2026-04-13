@@ -11,8 +11,8 @@ During compilation, `gateway-telegram.lisp` failed with `UNDEFINED-FUNCTION` for
 ** Root Cause
 Poorly scoped foundational functions. These were defined in `core.lisp` (the loop orchestrator), which was loaded *after* the gateways in `org-agent.asd`. This created a "Circular Intention" where the gateways needed the harness to exist before the harness could load the gateways.
 ** Resolution
-1. **Relocation:** Moved `*actuator-registry*` and `register-actuator` to `protocol.lisp` (the foundation).
-2. **Reordering:** Adjusted `org-agent.asd` to load `core.lisp` (containing the stimulus loop) immediately after the symbolic gates but before the physical sensors (gateways).
+1. **Relocation:** Moved `*actuator-registry*` and `register-actuator` to `communication.lisp` (the foundation).
+2. **Reordering:** Adjusted `org-agent.asd` to load `core.lisp` (containing the stimulus loop) immediately after the deterministic gates but before the physical sensors (gateways).
 
 * 2. Issue: Hardcoded Chat UI
 ** Symptoms

@@ -31,7 +31,7 @@
         (tool-belt (generate-tool-belt-prompt))
         (global-context (context-assemble-global-awareness)))
     (if active-skill
-        (let* ((prompt-generator (skill-neuro-prompt active-skill))
+        (let* ((prompt-generator (skill-probabilistic-prompt active-skill))
                (raw-prompt (when prompt-generator (funcall prompt-generator context)))
                (system-prompt (concatenate 'string "IDENTITY: Actuator for org-agent. MANDATE: ONE Lisp plist. " global-context " " tool-belt)))
           (if (and raw-prompt (> (length raw-prompt) 1))
@@ -45,13 +45,13 @@
 ;; --- 2. Deterministic Mechanisms ---
 
 (defun deterministic-verify (proposed-action context)
-  "Iterates through all skill symbolic-gates sorted by priority."
+  "Iterates through all skill deterministic-gates sorted by priority."
   (let ((current-action proposed-action)
         (skills nil))
-    (maphash (lambda (name skill) (declare (ignore name)) (when (skill-symbolic-fn skill) (push skill skills))) *skills-registry*)
+    (maphash (lambda (name skill) (declare (ignore name)) (when (skill-deterministic-fn skill) (push skill skills))) *skills-registry*)
     (setf skills (sort skills #'> :key #'skill-priority))
     (dolist (skill skills)
-      (let ((gate (skill-symbolic-fn skill)))
+      (let ((gate (skill-deterministic-fn skill)))
         (setf current-action (funcall gate current-action context))
         (when (and (listp current-action) (member (getf current-action :type) '(:LOG :EVENT)))
           (harness-log "DETERMINISTIC: Intercepted by skill '~a'" (skill-name skill))

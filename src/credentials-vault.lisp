@@ -51,7 +51,7 @@
   (defskill :skill-credentials-vault
     :priority 200 ; High priority, foundational
     :trigger (lambda (ctx) (eq (getf (getf ctx :payload) :sensor) :onboarding-request))
-    :neuro nil
-    :symbolic (lambda (action ctx) 
+    :probabilistic nil
+    :deterministic (lambda (action ctx) 
                 (vault-onboard-gemini-web)
                 action)))

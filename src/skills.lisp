@@ -1,6 +1,6 @@
 (in-package :org-agent)
 
-(defstruct skill name priority dependencies trigger-fn neuro-prompt symbolic-fn)
+(defstruct skill name priority dependencies trigger-fn probabilistic-prompt deterministic-fn)
 
 (defvar *skill-catalog* (make-hash-table :test 'equal)
   "A stateful tracking table for all skill files discovered in the environment.")
@@ -21,15 +21,15 @@
              *skills-registry*)
     (first (sort triggered #'> :key #'skill-priority))))
 
-(defmacro defskill (name &key priority dependencies trigger neuro symbolic)
+(defmacro defskill (name &key priority dependencies trigger probabilistic deterministic)
   "Registers a new skill into the global registry."
   `(setf (gethash (string-downcase (string ,name)) *skills-registry*)
          (make-skill :name (string-downcase (string ,name)) 
                      :priority (or ,priority 10) 
                      :dependencies ',dependencies
                      :trigger-fn ,trigger 
-                     :neuro-prompt ,neuro 
-                     :symbolic-fn ,symbolic)))
+                     :probabilistic-prompt ,probabilistic 
+                     :deterministic-fn ,deterministic)))
 
 (defun resolve-skill-dependencies (skill-name)
   "Recursively resolves dependencies for a given skill name."
@@ -46,27 +46,26 @@
       (nreverse resolved))))
 
 (defun parse-skill-metadata (filepath)
-  "Extracts ID and DEPENDS_ON tags using robust line-scanning."
+  "Extracts ID and DEPENDS_ON tags using robust regex scanning."
   (let ((dependencies nil)
-        (id nil))
-    (with-open-file (stream filepath)
-      (loop for line = (read-line stream nil :eof)
-            until (eq line :eof)
-            do (let ((clean (string-trim '(#\Space #\Tab #\Return #\Newline) line)))
-                 (cond
-                   ((uiop:string-prefix-p "#+DEPENDS_ON:" (string-upcase clean))
-                    (let* ((deps-part (string-trim " " (subseq clean 13))))
-                      (setf dependencies (append dependencies 
-                                                 (mapcar (lambda (s) (string-trim "[] " s))
-                                                         (uiop:split-string deps-part :separator '(#\Space #\Tab)))))))
-                   ((uiop:string-prefix-p ":ID:" (string-upcase clean))
-                    (setf id (string-trim '(#\Space #\Tab) (subseq clean 4))))))))
+        (id nil)
+        (content (uiop:read-file-string filepath)))
+    ;; Extract ID
+    (multiple-value-bind (match regs)
+        (ppcre:scan-to-strings "(?im:^:ID:\\s*([^\\s\\r\\n]+))" content)
+      (when match (setf id (aref regs 0))))
+    ;; Extract all DEPENDS_ON lines
+    (ppcre:do-register-groups (deps-string)
+        ("(?im:^#\\+DEPENDS_ON:\\s*(.*))" content)
+      (let ((deps (ppcre:split "\\s+" (string-trim " " deps-string))))
+        (setf dependencies (append dependencies (mapcar (lambda (s) (string-trim "[] " s)) deps)))))
     (values id (remove-if (lambda (s) (= 0 (length s))) dependencies))))
 
 (defun topological-sort-skills (skills-dir)
   "Returns a list of skill filepaths sorted by dependency (dependencies first)."
   (let ((files (uiop:directory-files skills-dir "org-skill-*.org"))
         (adj (make-hash-table :test 'equal))
+        (name-to-file (make-hash-table :test 'equal))
         (id-to-file (make-hash-table :test 'equal))
         (result nil)
         (visited (make-hash-table :test 'equal))
@@ -74,7 +73,7 @@
     (dolist (file files)
       (let ((filename (pathname-name file)))
         (multiple-value-bind (id deps) (parse-skill-metadata file)
-          (setf (gethash (string-downcase filename) id-to-file) file)
+          (setf (gethash (string-downcase filename) name-to-file) file)
           (when id (setf (gethash (string-downcase id) id-to-file) file))
           (setf (gethash (string-downcase filename) adj) deps))))
     (labels ((visit (file)
@@ -83,10 +82,12 @@
                  (unless (gethash node-key visited)
                    (setf (gethash node-key stack) t)
                    (dolist (dep (gethash node-key adj))
-                     (let* ((dep-id (if (and (> (length dep) 3) (uiop:string-prefix-p "id:" (string-downcase dep)))
-                                        (subseq dep 3)
-                                        dep))
-                            (dep-file (gethash (string-downcase dep-id) id-to-file)))
+                     (let* ((is-id-p (uiop:string-prefix-p "id:" (string-downcase dep)))
+                            (dep-key (string-downcase (if is-id-p (subseq dep 3) dep)))
+                            (dep-file (if is-id-p 
+                                          (gethash dep-key id-to-file)
+                                          (or (gethash dep-key id-to-file)
+                                              (gethash dep-key name-to-file)))))
                        (when dep-file
                          (let ((dep-filename (pathname-name dep-file)))
                            (if (gethash (string-downcase dep-filename) stack)
@@ -97,9 +98,9 @@
                    (push file result)))))
       (let ((filenames (sort (mapcar #'pathname-name files) #'string<)))
         (dolist (name filenames)
-          (let ((file (gethash (string-downcase name) id-to-file)))
+          (let ((file (gethash (string-downcase name) name-to-file)))
             (when file (visit file)))))
-      result)))
+      (nreverse result))))
 
 (defun validate-lisp-syntax (code-string)
   "Checks if a string contains valid, readable Common Lisp forms."
@@ -197,8 +198,8 @@
 
     (let ((sorted-files (topological-sort-skills skills-dir)))
       ;; MANDATE: The System Policy must be present for a safe boot
-      (unless (member "org-skill-system-invariants" sorted-files :key #'pathname-name :test #'string-equal)
-        (error "BOOT FAILURE: org-skill-system-invariants.org not found in skills directory."))
+      (unless (member "org-skill-policy" sorted-files :key #'pathname-name :test #'string-equal)
+        (error "BOOT FAILURE: org-skill-policy.org not found in skills directory."))
       
       (harness-log "==================================================")
       (harness-log " LOADER: Initializing ~a skills..." (length sorted-files))

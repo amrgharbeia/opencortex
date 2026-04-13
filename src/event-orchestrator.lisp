@@ -66,7 +66,7 @@
   (defskill :skill-event-orchestrator
     :priority 400 ; Foundational control layer
     :trigger (lambda (ctx) (eq (getf (getf ctx :payload) :sensor) :heartbeat))
-    :neuro nil
-    :symbolic (lambda (action ctx)
+    :probabilistic nil
+    :deterministic (lambda (action ctx)
                 (orchestrator-process-cron)
                 action)))

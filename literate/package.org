@@ -11,7 +11,7 @@ By strictly defining the public interface, we ensure that skills remain decouple
 
 #+begin_src mermaid
 flowchart TD
-    External[Actuators / Clients] -- Harness Protocol --> Package[Package Membrane: API]
+    External[Actuators / Clients] -- Harness Communication --> Package[Package Membrane: API]
     Skills[Dynamic Skills] -- API Calls --> Package
     Package --> Internal[Harness Internal Modules]
     style Package fill:#f9f,stroke:#333,stroke-width:4px
@@ -22,7 +22,7 @@ flowchart TD
 (defpackage :org-agent
   (:use :cl)
   (:export 
-   ;; --- Harness Protocol ---
+   ;; --- Harness Communication ---
    #:frame-message
    #:parse-message
    #:make-hello-message
@@ -68,7 +68,7 @@ flowchart TD
    ;; --- Reactive Signal Pipeline ---
    #:process-signal
    #:perceive-gate
-   #:neuro-gate
+   #:probabilistic-gate
    #:consensus-gate
    #:decide-gate
    #:dispatch-gate
@@ -90,8 +90,8 @@ flowchart TD
    #:skill-priority
    #:skill-dependencies
    #:skill-trigger-fn
-   #:skill-neuro-prompt
-   #:skill-symbolic-fn
+   #:skill-probabilistic-prompt
+   #:skill-deterministic-fn
 
    ;; --- Tool Registry ---
    #:def-cognitive-tool
@@ -110,12 +110,12 @@ flowchart TD
    #:unregister-emacs-client
 
    ;; --- Probabilistic Engine ---
-   #:ask-neuro
-   #:register-neuro-backend
+   #:ask-probabilistic
+   #:register-probabilistic-backend
    #:distill-prompt
    #:*provider-cascade*
    
-   ;; --- Symbolic Logic ---
+   ;; --- Deterministic Logic ---
    #:list-objects-with-attribute
    #:decide
    

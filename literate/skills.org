@@ -44,10 +44,10 @@ We begin by ensuring we are in the correct isolated harness namespace.
 #+end_src
 
 ** Skill Metadata (defstruct skill)
-The core data structure representing an agent capability. It includes the trigger condition, the neural prompt generator, and the symbolic safety gate.
+The core data structure representing an agent capability. It includes the trigger condition, the probabilistic prompt generator, and the deterministic safety gate.
 
 #+begin_src lisp :tangle ../src/skills.lisp
-(defstruct skill name priority dependencies trigger-fn neuro-prompt symbolic-fn)
+(defstruct skill name priority dependencies trigger-fn probabilistic-prompt deterministic-fn)
 #+end_src
 
 ** Skill Catalog Tracking
@@ -83,15 +83,15 @@ The primary dispatcher for the Probabilistic Engine. It iterates through the reg
 The interface used within Org files to register new capabilities. Note that dependencies are explicitly quoted to prevent premature evaluation during the macro expansion phase.
 
 #+begin_src lisp :tangle ../src/skills.lisp
-(defmacro defskill (name &key priority dependencies trigger neuro symbolic)
+(defmacro defskill (name &key priority dependencies trigger probabilistic deterministic)
   "Registers a new skill into the global registry."
   `(setf (gethash (string-downcase (string ,name)) *skills-registry*)
          (make-skill :name (string-downcase (string ,name)) 
                      :priority (or ,priority 10) 
                      :dependencies ',dependencies
                      :trigger-fn ,trigger 
-                     :neuro-prompt ,neuro 
-                     :symbolic-fn ,symbolic)))
+                     :probabilistic-prompt ,probabilistic 
+                     :deterministic-fn ,deterministic)))
 #+end_src
 
 ** Dependency Resolution (resolve-skill-dependencies)
@@ -118,21 +118,19 @@ A robust, low-level scanner that extracts `#+DEPENDS_ON:` and `:ID:` tags from a
 
 #+begin_src lisp :tangle ../src/skills.lisp
 (defun parse-skill-metadata (filepath)
-  "Extracts ID and DEPENDS_ON tags using robust line-scanning."
+  "Extracts ID and DEPENDS_ON tags using robust regex scanning."
   (let ((dependencies nil)
-        (id nil))
-    (with-open-file (stream filepath)
-      (loop for line = (read-line stream nil :eof)
-            until (eq line :eof)
-            do (let ((clean (string-trim '(#\Space #\Tab #\Return #\Newline) line)))
-                 (cond
-                   ((uiop:string-prefix-p "#+DEPENDS_ON:" (string-upcase clean))
-                    (let* ((deps-part (string-trim " " (subseq clean 13))))
-                      (setf dependencies (append dependencies 
-                                                 (mapcar (lambda (s) (string-trim "[] " s))
-                                                         (uiop:split-string deps-part :separator '(#\Space #\Tab)))))))
-                   ((uiop:string-prefix-p ":ID:" (string-upcase clean))
-                    (setf id (string-trim '(#\Space #\Tab) (subseq clean 4))))))))
+        (id nil)
+        (content (uiop:read-file-string filepath)))
+    ;; Extract ID
+    (multiple-value-bind (match regs)
+        (ppcre:scan-to-strings "(?im:^:ID:\\s*([^\\s\\r\\n]+))" content)
+      (when match (setf id (aref regs 0))))
+    ;; Extract all DEPENDS_ON lines
+    (ppcre:do-register-groups (deps-string)
+        ("(?im:^#\\+DEPENDS_ON:\\s*(.*))" content)
+      (let ((deps (ppcre:split "\\s+" (string-trim " " deps-string))))
+        (setf dependencies (append dependencies (mapcar (lambda (s) (string-trim "[] " s)) deps)))))
     (values id (remove-if (lambda (s) (= 0 (length s))) dependencies))))
 #+end_src
 
@@ -149,6 +147,7 @@ It performs three critical roles:
   "Returns a list of skill filepaths sorted by dependency (dependencies first)."
   (let ((files (uiop:directory-files skills-dir "org-skill-*.org"))
         (adj (make-hash-table :test 'equal))
+        (name-to-file (make-hash-table :test 'equal))
         (id-to-file (make-hash-table :test 'equal))
         (result nil)
         (visited (make-hash-table :test 'equal))
@@ -156,7 +155,7 @@ It performs three critical roles:
     (dolist (file files)
       (let ((filename (pathname-name file)))
         (multiple-value-bind (id deps) (parse-skill-metadata file)
-          (setf (gethash (string-downcase filename) id-to-file) file)
+          (setf (gethash (string-downcase filename) name-to-file) file)
           (when id (setf (gethash (string-downcase id) id-to-file) file))
           (setf (gethash (string-downcase filename) adj) deps))))
     (labels ((visit (file)
@@ -165,10 +164,12 @@ It performs three critical roles:
                  (unless (gethash node-key visited)
                    (setf (gethash node-key stack) t)
                    (dolist (dep (gethash node-key adj))
-                     (let* ((dep-id (if (and (> (length dep) 3) (uiop:string-prefix-p "id:" (string-downcase dep)))
-                                        (subseq dep 3)
-                                        dep))
-                            (dep-file (gethash (string-downcase dep-id) id-to-file)))
+                     (let* ((is-id-p (uiop:string-prefix-p "id:" (string-downcase dep)))
+                            (dep-key (string-downcase (if is-id-p (subseq dep 3) dep)))
+                            (dep-file (if is-id-p 
+                                          (gethash dep-key id-to-file)
+                                          (or (gethash dep-key id-to-file)
+                                              (gethash dep-key name-to-file)))))
                        (when dep-file
                          (let ((dep-filename (pathname-name dep-file)))
                            (if (gethash (string-downcase dep-filename) stack)
@@ -179,9 +180,9 @@ It performs three critical roles:
                    (push file result)))))
       (let ((filenames (sort (mapcar #'pathname-name files) #'string<)))
         (dolist (name filenames)
-          (let ((file (gethash (string-downcase name) id-to-file)))
+          (let ((file (gethash (string-downcase name) name-to-file)))
             (when file (visit file)))))
-      result)))
+      (nreverse result))))
 #+end_src
 
 ** Syntax Validation (validate-lisp-syntax)

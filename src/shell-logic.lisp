@@ -83,5 +83,5 @@
 (defskill :skill-shell-actuator
   :priority 80
   :trigger #'trigger-skill-shell-actuator
-  :neuro #'neuro-skill-shell-actuator
-  :symbolic (lambda (action context) (declare (ignore context)) action))
+  :probabilistic #'probabilistic-skill-shell-actuator
+  :deterministic (lambda (action context) (declare (ignore context)) action))

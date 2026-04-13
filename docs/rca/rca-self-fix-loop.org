@@ -36,5 +36,5 @@ This eliminates unnecessary nesting levels and drastically reduces the surface a
 - *Institutional Memory:* This RCA documents the decision to flatten the `.asd` structure to prevent future "Parenthesis Hell" incidents.
 
 * 4. Permanent Learnings
-- **Flatten Configuration:** Keep `defsystem` definitions as flat as possible. The overhead of `:module` blocks often outweighs their organizational benefit in a neurosymbolic environment where agents frequently edit these files.
+- **Flatten Configuration:** Keep `defsystem` definitions as flat as possible. The overhead of `:module` blocks often outweighs their organizational benefit in a probabilistic-deterministic environment where agents frequently edit these files.
 - **Mocking Probabilistic Engine:** For verifying *loop mechanics*, mocking LLM responses is essential to ensure test determinism, while integration tests can use live LLM calls.

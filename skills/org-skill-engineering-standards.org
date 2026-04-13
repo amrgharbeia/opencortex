@@ -82,8 +82,8 @@ The Engineering Standards skill provides the deterministic enforcement of the wo
 (org-agent:defskill :skill-engineering-standards
   :priority 900 ; High priority, runs before most skills
   :trigger (lambda (ctx) t) ; Always active
-  :neuro nil
-  :symbolic #'engineering-standards-gate)
+  :probabilistic nil
+  :deterministic #'engineering-standards-gate)
 #+end_src
 
 * See Also

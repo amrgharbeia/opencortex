@@ -89,7 +89,7 @@
 (defskill :skill-gateway-matrix
   :priority 150
   :trigger (lambda (ctx) (declare (ignore ctx)) nil)
-  :neuro nil
-  :symbolic (lambda (action ctx) (declare (ignore ctx)) action))
+  :probabilistic nil
+  :deterministic (lambda (action ctx) (declare (ignore ctx)) action))
 
 (start-matrix-gateway)

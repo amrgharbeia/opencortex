@@ -64,6 +64,6 @@ Define a standardized `CONFIG` object type in the Object Store. Provide getter/s
 (defskill :skill-environment-config
   :priority 100
   :trigger (lambda (context) nil) ; Passive utility skill
-  :neuro (lambda (context) nil)
-  :symbolic (lambda (action context) action))
+  :probabilistic (lambda (context) nil)
+  :deterministic (lambda (action context) action))
 #+end_src

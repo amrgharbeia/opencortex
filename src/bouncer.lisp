@@ -88,8 +88,8 @@
   :trigger (lambda (ctx) 
              (or (eq (getf (getf ctx :payload) :sensor) :approval-required)
                  (eq (getf (getf ctx :payload) :sensor) :heartbeat)))
-  :neuro nil
-  :symbolic (lambda (action context)
+  :probabilistic nil
+  :deterministic (lambda (action context)
               (declare (ignore action))
               (let* ((payload (getf context :payload))
                      (sensor (getf payload :sensor)))

@@ -43,7 +43,7 @@
         t)))
 
 (defun verify-action-formally (action context)
-  "Symbolically proves that ACTION satisfies all applicable security invariants."
+  "Deterministically proves that ACTION satisfies all applicable security invariants."
   (let ((action-target (getf action :target))
         (action-type (getf action :type))
         (all-passed t))
@@ -64,8 +64,8 @@
 (defskill :skill-formal-verification
   :priority 95 ; Just below Bouncer
   :trigger (lambda (context) (declare (ignore context)) nil) ; Middleware only
-  :neuro nil
-  :symbolic (lambda (action context)
+  :probabilistic nil
+  :deterministic (lambda (action context)
               (if (verify-action-formally action context)
                   action
                   (let ((err (format nil "Formal verification failed for action: ~s" action)))

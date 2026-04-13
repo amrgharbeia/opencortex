@@ -3,7 +3,7 @@
 #+FILETAGS: :rca:security:formal-verification:psf:
 
 * Executive Summary
-Implemented a Lisp-Native Symbolic Prover to replace heuristic whitelisting with formal security invariants. This ensures that every high-impact action (shell, file I/O) is mathematically proven safe against the Sovereign's core mandates.
+Implemented a Lisp-Native Deterministic Prover to replace heuristic whitelisting with formal security invariants. This ensures that every high-impact action (shell, file I/O) is mathematically proven safe against the Sovereign's core mandates.
 
 * 1. Architectural Shift: Native vs. External
 ** Issue
@@ -22,7 +22,7 @@ Incorrect assumption about the Quicklisp system name vs. the package name. The l
 3. Verified via explicit `ql:quickload` in the test runner.
 
 * 3. Formal Invariants Implemented
-- **Path Confinement:** Symbolically proves that any file operation or absolute path in a shell command is strictly within the `/home/user/memex` root.
+- **Path Confinement:** Deterministically proves that any file operation or absolute path in a shell command is strictly within the `/home/user/memex` root.
 - **No Network Exfiltration:** Prevents the shell from invoking common exfiltration tools (`nc`, `ssh`, etc.) by inspecting the parsed command structure.
 
 * 4. PSF Mandate Alignment

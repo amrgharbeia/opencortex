@@ -3,7 +3,7 @@
 (in-package :org-agent-tests)
 
 (def-suite harness-protocol-suite
-  :description "Test suite for org-agent Communication Protocol (Harness Protocol)")
+  :description "Test suite for org-agent Communication Protocol (Harness Communication)")
 (in-suite harness-protocol-suite)
 
 (test test-framing

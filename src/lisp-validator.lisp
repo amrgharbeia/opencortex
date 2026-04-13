@@ -96,7 +96,7 @@
                (when candidate
                  (let ((payload (getf candidate :payload)))
                    (member (getf payload :action) '(:eval :shell))))))
-  :neuro nil ; Purely deterministic/safety skill
-  :symbolic (lambda (action context)
+  :probabilistic nil ; Purely deterministic/safety skill
+  :deterministic (lambda (action context)
               (harness-log "DETERMINISTIC ENGINE [Lisp-Validator]: Intercepted critical action for structural validation.")
               action))

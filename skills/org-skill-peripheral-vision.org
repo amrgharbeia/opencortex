@@ -25,7 +25,7 @@ Refine the global awareness provided to the LLM by pruning irrelevant branches o
 ** 3. Success Criteria
 - [ ] Correctly calculate semantic relevance using the Embedding skill.
 - [ ] Recursively render the Org DAG with depth-based and similarity-based pruning.
-- [ ] Successfully generate the `GLOBAL MEMEX AWARENESS` block for the neuro-gate.
+- [ ] Successfully generate the `GLOBAL MEMEX AWARENESS` block for the probabilistic-gate.
 
 * Phase B: Blueprint (PROTOCOL)
 :PROPERTIES:
@@ -118,10 +118,10 @@ Move context pruning and rendering logic out of `context.lisp` to allow for more
   :priority 90
   :dependencies ("org-skill-embedding")
   :trigger (lambda (ctx) (member (getf (getf ctx :payload) :sensor) '(:perceive :context-refresh)))
-  :neuro nil
-  :symbolic (lambda (action ctx)
+  :probabilistic nil
+  :deterministic (lambda (action ctx)
               (declare (ignore action ctx))
               ;; This skill primarily provides the context-assemble-global-awareness function
-              ;; used by the neuro-gate, rather than handling specific actions.
+              ;; used by the probabilistic-gate, rather than handling specific actions.
               nil))
 #+end_src

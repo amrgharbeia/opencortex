@@ -24,7 +24,7 @@ flowchart TD
         H -- Pointers --> S2
     end
     subgraph IPCSlow[External Layer]
-        E[Emacs / Actuators] -. Harness Protocol .-> H
+        E[Emacs / Actuators] -. Harness Communication .-> H
     end
 #+end_src
 

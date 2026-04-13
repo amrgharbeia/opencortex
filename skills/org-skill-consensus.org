@@ -45,8 +45,8 @@ Enable reliable, cross-instance coordination without a central master.
 (defskill :skill-consensus
   :priority 85
   :trigger (lambda (context) (eq (getf (getf context :payload) :sensor) :conflict-detected))
-  :neuro (lambda (context) "Formulate a consensus proposal for the peer swarm.")
-  :symbolic (lambda (action context) action))
+  :probabilistic (lambda (context) "Formulate a consensus proposal for the peer swarm.")
+  :deterministic (lambda (action context) action))
 #+end_src
 
 

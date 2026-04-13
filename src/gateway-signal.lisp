@@ -65,7 +65,7 @@
 (defskill :skill-gateway-signal
   :priority 150
   :trigger (lambda (ctx) (declare (ignore ctx)) nil) ;; Passive
-  :neuro nil
-  :symbolic (lambda (action ctx) (declare (ignore ctx)) action))
+  :probabilistic nil
+  :deterministic (lambda (action ctx) (declare (ignore ctx)) action))
 
 (start-signal-gateway)

@@ -31,7 +31,7 @@
          (use-hmac (and enforce-hmac (string-equal enforce-hmac "true")))
          (prefix-len (if use-hmac 70 6)))
     (when (< (length framed-string) prefix-len)
-      (error "Framed string too short for Harness Protocol prefix"))
+      (error "Framed string too short for Harness Communication prefix"))
     
     (let* ((len-str (subseq framed-string 0 6))
            (signature (when use-hmac (subseq framed-string 6 70)))
@@ -51,7 +51,7 @@
             (ironclad:update-mac hmac payload-bytes)
             (let ((expected-signature (ironclad:byte-array-to-hex-string (ironclad:produce-mac hmac))))
               (unless (string-equal signature expected-signature)
-                (error "Harness Protocol Integrity Failure: HMAC mismatch"))))))
+                (error "Harness Communication Integrity Failure: HMAC mismatch"))))))
       
       ;; SECURITY: Disable the reader's ability to execute code during parsing
       (let ((*read-eval* nil))

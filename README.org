@@ -26,12 +26,12 @@ There is a beautiful irony to org-agent: Lisp was invented in 1958 specifically 
 
 Lisp possesses a unique property called *Homoiconicity*: the primary representation of the program is also a data structure (nested lists) within the language itself. Because Lisp code /is/ Lisp data, it is trivially easy for an AI to generate, manipulate, and safely evaluate new tools at runtime. This makes Lisp the ultimate, un-brittle language for a "self-writing" agent.
 
-** 3. The Neuro-Protosymbolic Loop
+** 3. The Probabilistic-Protodeterministic Loop
 org-agent does not let AI models touch your system directly. Instead, it splits cognition into two distinct engines:
 - *The Probabilistic Engine (The AI Models):* Provides semantic understanding, multimodal translation, and probabilistic creativity. It looks at your Memex and proposes an action by writing a strictly formatted Lisp s-expression.
 - *The Deterministic Engine (Common Lisp):* Provides deterministic logic, physics, and safety. It intercepts the model's Lisp proposal, formally verifies its structure against your security rules, and only executes it if it is mathematically sound.
 
-Crucially, the Deterministic engine is *continuously progressive*. Right now, it starts by acting as a strict security bouncer—enforcing rules and bounding the AI's actions. But as the system matures, the Deterministic engine will progressively take over more and more of the actual reasoning, reducing the AI models' involvement to a mere semantic translation layer for the messy outside world. We are moving from a /neuro-protosymbolic/ system today, toward a fully autonomous /neurosymbolic/ Lisp machine tomorrow.
+Crucially, the Deterministic engine is *continuously progressive*. Right now, it starts by acting as a strict security bouncer—enforcing rules and bounding the AI's actions. But as the system matures, the Deterministic engine will progressively take over more and more of the actual reasoning, reducing the AI models' involvement to a mere semantic translation layer for the messy outside world. We are moving from a /probabilistic-protodeterministic/ system today, toward a fully autonomous /probabilistic-deterministic/ Lisp machine tomorrow.
 
 * Architecture: Thin Harness, Fat Skills
 
@@ -62,12 +62,12 @@ When the system boots, it parses these single files, mathematically proves their
 The agent's "mind" is not a transient chat session; it is a durable, stateful architecture consisting of three layers:
 1. *The Linguistic Substrate (Plaintext Files):* The human-readable Source of Truth on your hard drive. You can edit these files in any text editor, and the agent will instantly perceive the changes.
 2. *The Lisp Object Store (RAM):* The "Active Brain," a live, threaded graph of Lisp objects representing every headline, paragraph, and tag in your Memex. It allows the agent to navigate your life instantly without constantly re-reading files.
-3. *The Telemetry Store (External):* A high-volume database for sub-symbolic sensory data (e.g., smart home logs or system metrics), which the agent monitors and distills.
+3. *The Telemetry Store (External):* A high-volume database for sub-deterministic sensory data (e.g., smart home logs or system metrics), which the agent monitors and distills.
 
 ** The Psychology: The 2x2 Cognitive Matrix
 The agent operates on a matrix that balances cognitive speed with cognitive state:
 
-| | Probabilistic (Neural/Intuitive) | Deterministic (Symbolic/Logical) |
+| | Probabilistic (Neural/Intuitive) | Deterministic (Deterministic/Logical) |
 | :--- | :--- | :--- |
 | Foreground (Active) | *The Interface:* Fast AI models for conversation, multimodal ingestion, and semantic understanding. | *The Steward:* Lisp engine that safely retrieves requested data from the Memex and enforces security rules while the Interface keeps you engaged. |
 | Background (Passive) | *The Editor:* Deep AI models finding hidden patterns while you sleep. | *The Librarian:* Lisp engine continuously maintaining data integrity and filing away loose notes. |

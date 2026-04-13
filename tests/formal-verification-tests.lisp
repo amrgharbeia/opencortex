@@ -35,12 +35,12 @@
     ))
 
 (test test-formal-gate-middleware
-  "Verify that the skill correctly filters actions via its symbolic function."
+  "Verify that the skill correctly filters actions via its deterministic function."
   (let ((action '(:type :REQUEST :target :shell :payload (:cmd "nc -l 1234")))
         (context '(:payload (:sensor :test))))
     ;; The skill should return a :log error action instead of the original request
     (let* ((skill (gethash "skill-formal-verification" org-agent::*skills-registry*))
-           (result (funcall (org-agent::skill-symbolic-fn skill) action context)))
+           (result (funcall (org-agent::skill-deterministic-fn skill) action context)))
       (is (not (eq result action)))
       (is (eq :log (getf result :type)))
       (is (search "Formal verification failed" (getf (getf result :payload) :text))))))

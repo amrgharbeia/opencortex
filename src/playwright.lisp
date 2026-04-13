@@ -34,5 +34,5 @@
 (defskill :skill-playwright
   :priority 150
   :trigger (lambda (ctx) (declare (ignore ctx)) nil) ; Passive tool provider
-  :neuro nil
-  :symbolic (lambda (action ctx) (declare (ignore ctx)) action))
+  :probabilistic nil
+  :deterministic (lambda (action ctx) (declare (ignore ctx)) action))

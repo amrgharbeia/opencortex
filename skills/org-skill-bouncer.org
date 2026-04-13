@@ -14,7 +14,7 @@ While the *Formal Prover* ensures an action is "legal" (e.g., "Yes, you are allo
 
 1. **Secret Exposure Gate:** The Bouncer automatically scans all outgoing `:text` payloads for strings matching your API keys or sensitive IDs stored in the `Credentials Vault`.
 2. **Network Exfiltration Gate:** It monitors for unauthorized IP addresses or domains in shell commands, preventing the agent from "phoning home" to a malicious server.
-3. **The Final Filter:** The Bouncer sits at the very end of the symbolic pipeline. It is the last gate before an action touches the physical hardware.
+3. **The Final Filter:** The Bouncer sits at the very end of the deterministic pipeline. It is the last gate before an action touches the physical hardware.
 
 * Implementation
 
@@ -130,8 +130,8 @@ The primary entry point for all high-impact actions.
   :trigger (lambda (ctx) 
              (or (eq (getf (getf ctx :payload) :sensor) :approval-required)
                  (eq (getf (getf ctx :payload) :sensor) :heartbeat)))
-  :neuro nil
-  :symbolic (lambda (action context)
+  :probabilistic nil
+  :deterministic (lambda (action context)
               (declare (ignore action))
               (let* ((payload (getf context :payload))
                      (sensor (getf payload :sensor)))

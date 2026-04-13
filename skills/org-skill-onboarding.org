@@ -8,7 +8,7 @@
 #+FILETAGS: :onboarding:calibration:setup:psf:
 
 * Overview
-The *Onboarding Skill* ensures that the Lisp Machine environment is correctly calibrated. It automates the "zero-to-one" setup of the Neurosymbolic Kernel, including path normalization, identity personalization, and provider/actuator configuration.
+The *Onboarding Skill* ensures that the Lisp Machine environment is correctly calibrated. It automates the "zero-to-one" setup of the Probabilistic-Deterministic Kernel, including path normalization, identity personalization, and provider/actuator configuration.
 
 * Phase A: Demand (PRD)
 :PROPERTIES:

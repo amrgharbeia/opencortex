@@ -81,10 +81,10 @@ The *Self-Fix Agent* is the system's "Repair Mechanism." It takes failure hypoth
 (org-agent:defskill :skill-self-fix
   :priority 95
   :trigger (lambda (context) (eq (getf (getf context :payload) :sensor) :repair-request))
-  :neuro (lambda (context)
+  :probabilistic (lambda (context)
            (format nil "You are the PSF Repair Actuator. Synthesize a surgical fix for the reported failure.
 Return a Lisp plist for :repair-file."))
-  :symbolic (lambda (action context)
+  :deterministic (lambda (action context)
               (let ((payload (getf action :payload)))
                 (self-fix-apply action context))))
 #+end_src
@@ -95,4 +95,4 @@ Return a Lisp plist for :repair-file."))
 :STATUS: SIGNED
 :END:
 
-** 1. Architectural IntentnEstablish core functional interfaces for this skill.\n\n** 2. Semantic Interfaces\n(defun trigger-skill-org-skill-self-fix (context))\n(defun neuro-skill-org-skill-self-fix (context))
+** 1. Architectural IntentnEstablish core functional interfaces for this skill.\n\n** 2. Semantic Interfaces\n(defun trigger-skill-org-skill-self-fix (context))\n(defun probabilistic-skill-org-skill-self-fix (context))

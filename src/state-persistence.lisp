@@ -119,7 +119,7 @@
   :trigger (lambda (ctx) 
              (let ((sensor (getf (getf ctx :payload) :sensor)))
                (member sensor '(:heartbeat :manual-persist))))
-  :neuro nil
-  :symbolic (lambda (action ctx)
+  :probabilistic nil
+  :deterministic (lambda (action ctx)
               (persistence-dump-local)
               action))

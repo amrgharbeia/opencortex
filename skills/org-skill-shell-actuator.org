@@ -51,7 +51,7 @@ Interfaces for secure system calls. State is event-driven via the core kernel bu
 *** DONE Diagnostic Capture
 - Verified that STDOUT, STDERR, and Exit Codes are correctly captured and re-injected.
 *** DONE Result Analysis Loop
-- The `:neuro` component successfully formats command results for Sovereign review.
+- The `:probabilistic` component successfully formats command results for Sovereign review.
 
 * Phase B: Blueprint (PROTOCOL)
 :PROPERTIES:
@@ -69,7 +69,7 @@ Interfaces for secure system calls. State is event-driven via the core kernel bu
 (defun trigger-skill-shell-actuator (context)
   "Monitors for shell-response events.")
 
-(defun neuro-skill-shell-actuator (context)
+(defun probabilistic-skill-shell-actuator (context)
   "Neural interpretation of command diagnostics.")
 #+end_src
 
@@ -186,10 +186,10 @@ Hardware-Level Isolation for future security evolution.
          (eq (getf payload :sensor) :shell-response))))
 #+end_src
 
-** Neuro-Cognitive Analysis
+** Probabilistic-Cognitive Analysis
 #+begin_src lisp :tangle ../src/shell-logic.lisp
 (in-package :org-agent)
-(defun neuro-skill-shell-actuator (context)
+(defun probabilistic-skill-shell-actuator (context)
   (let* ((p (getf context :payload))
          (cmd (getf p :cmd))
          (stdout (getf p :stdout))
@@ -242,6 +242,6 @@ Define the skill entry for the shell actuator.
 (defskill :skill-shell-actuator
   :priority 80
   :trigger #'trigger-skill-shell-actuator
-  :neuro #'neuro-skill-shell-actuator
-  :symbolic (lambda (action context) (declare (ignore context)) action))
+  :probabilistic #'probabilistic-skill-shell-actuator
+  :deterministic (lambda (action context) (declare (ignore context)) action))
 #+end_src

@@ -24,14 +24,14 @@ CODE: ~a
 MANDATE: Output EXACTLY ONE valid Common Lisp list. Do not explain. Do not use markdown blocks."
                         error-message code))
         (system-prompt "You are a Lisp Syntax Repair Actuator. Return only valid, balanced Lisp code."))
-    (let ((repaired (ask-neuro prompt :system-prompt system-prompt)))
+    (let ((repaired (ask-probabilistic prompt :system-prompt system-prompt)))
       (string-trim '(#\Space #\Newline #\Tab) repaired))))
 
 (defskill :skill-lisp-repair
   :priority 90
   :trigger (lambda (ctx) (eq (getf (getf ctx :payload) :sensor) :syntax-error))
-  :neuro nil ;; Handled deterministically in symbolic or manually via ask-neuro
-  :symbolic (lambda (action context)
+  :probabilistic nil ;; Handled deterministically in deterministic or manually via ask-probabilistic
+  :deterministic (lambda (action context)
               (declare (ignore action))
               (let* ((payload (getf context :payload))
                      (code (getf payload :code))

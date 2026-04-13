@@ -51,8 +51,8 @@
 (defskill :skill-embedding
   :priority 50
   :trigger (lambda (ctx) (eq (getf (getf ctx :payload) :sensor) :embedding-request))
-  :neuro nil
-  :symbolic (lambda (action ctx)
+  :probabilistic nil
+  :deterministic (lambda (action ctx)
               (declare (ignore ctx))
               (case (getf action :action)
                 (:get-embedding (get-embedding (getf action :text)))

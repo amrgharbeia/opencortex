@@ -4,7 +4,7 @@
 #+FILETAGS: :quickstart:onboarding:guide:
 
 * 1. Introduction
-Welcome to ~org-agent~, the "Executive Soul" of your personal OS. This guide will help you set up and interact with your first neurosymbolic agent.
+Welcome to ~org-agent~, the "Executive Soul" of your personal OS. This guide will help you set up and interact with your first probabilistic-deterministic agent.
 
 * 2. Prerequisites
 Before launching the harness, ensure your host environment has:
@@ -35,7 +35,7 @@ docker-compose up --build -d
 * 4. Interaction Gateways
 Once the harness is "Ready", you can interact with it via multiple sensors.
 
-** Gateway A: Emacs (Harness Protocol)
+** Gateway A: Emacs (Harness Communication)
 If you have configured the ~org-agent~ package in Emacs:
 1. Open a chat buffer: ~M-x org-agent-chat-open~.
 2. Send: "Are you online, agent?"

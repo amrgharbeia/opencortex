@@ -8,7 +8,7 @@
 #+FILETAGS: :security:logic:formal-methods:psf:
 
 * Overview
-The *Formal Verification Gate* replaces heuristic whitelisting with symbolic logic proofs. It ensures that every action proposed by Probabilistic Engine is *provably safe* against the harness's core security invariants using a Lisp-native symbolic prover.
+The *Formal Verification Gate* replaces heuristic whitelisting with deterministic logic proofs. It ensures that every action proposed by Probabilistic Engine is *provably safe* against the harness's core security invariants using a Lisp-native deterministic prover.
 
 ** Deep Reasoning: The Sandbox of Intent
 This gate is the first line of defense against both "Inside Threats" (maliciously modified skill files) and "Hallucination Threats" (LLMs generating unsafe commands). 
@@ -29,7 +29,7 @@ Define a logic-based verification layer for high-integrity decision making witho
 
 ** 2. Success Criteria
 - [ ] *Invariants:* Express security properties as Lisp predicates.
-- [ ] *Soundness:* Block any action that fails a symbolic safety check.
+- [ ] *Soundness:* Block any action that fails a deterministic safety check.
 - [ ] *Path Confinement:* Prove that file operations are confined to the Sovereign's memex.
 - [ ] *Network Protection:* Prove that shell commands do not attempt unauthorized data exfiltration.
 
@@ -117,7 +117,7 @@ The core prover that applies all relevant invariants to an action.
 
 #+begin_src lisp :tangle ../src/verification-logic.lisp
 (defun verify-action-formally (action context)
-  "Symbolically proves that ACTION satisfies all applicable security invariants."
+  "Deterministically proves that ACTION satisfies all applicable security invariants."
   (let ((action-target (getf action :target))
         (action-type (getf action :type))
         (all-passed t))
@@ -141,8 +141,8 @@ The core prover that applies all relevant invariants to an action.
 (defskill :skill-formal-verification
   :priority 95 ; Just below Bouncer
   :trigger (lambda (context) (declare (ignore context)) nil) ; Middleware only
-  :neuro nil
-  :symbolic (lambda (action context)
+  :probabilistic nil
+  :deterministic (lambda (action context)
               (if (verify-action-formally action context)
                   action
                   (let ((err (format nil "Formal verification failed for action: ~s" action)))

@@ -82,11 +82,11 @@
                                :model (getf args :model))))
 
 (dolist (p '(:anthropic :gemini-api :gemini-web :groq :ollama :openai :openrouter))
-  (org-agent:register-neuro-backend p (lambda (prompt system-prompt &key model)
+  (org-agent:register-probabilistic-backend p (lambda (prompt system-prompt &key model)
                                         (execute-llm-request prompt system-prompt :provider p :model model))))
 
 (defskill :skill-llm-gateway
   :priority 150 ; Higher than individual old skills
   :trigger (lambda (context) (declare (ignore context)) nil)
-  :neuro (lambda (context) (declare (ignore context)) nil)
-  :symbolic (lambda (action context) (declare (ignore context)) action))
+  :probabilistic (lambda (context) (declare (ignore context)) nil)
+  :deterministic (lambda (action context) (declare (ignore context)) action))

@@ -32,5 +32,5 @@
 (defskill :skill-harness-monitor
   :priority 100
   :trigger (lambda (context) t)
-  :neuro (lambda (context) \"You are the Harness Monitor. Use your tools to provide system visibility.\")
-  :symbolic (lambda (action context) action))
+  :probabilistic (lambda (context) \"You are the Harness Monitor. Use your tools to provide system visibility.\")
+  :deterministic (lambda (action context) action))

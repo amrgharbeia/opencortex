@@ -26,5 +26,5 @@
 (org-agent:defskill :skill-engineering-standards
   :priority 900 ; High priority, runs before most skills
   :trigger (lambda (ctx) t) ; Always active
-  :neuro nil
-  :symbolic #'engineering-standards-gate)
+  :probabilistic nil
+  :deterministic #'engineering-standards-gate)

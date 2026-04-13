@@ -49,7 +49,7 @@
         (let ((err-text (format nil "\n\n*System Error:* Chat agent returned invalid action: ~s" proposed-action)))
           `(:type :request :target :emacs :payload (:action :insert-at-end :buffer "*org-agent-chat*" :text ,err-text))))))
 
-(defun neuro-skill-chat (context)
+(defun probabilistic-skill-chat (context)
   "Generates a conversational response, stripping system errors from context."
   (let* ((payload (getf context :payload))
          (raw-text (getf payload :text))
@@ -66,7 +66,7 @@
             (:signal (format nil "- To reply via Signal: (:type :REQUEST :target :signal :chat-id \"~a\" :text \"<Response>\")" chat-id))
             (:matrix (format nil "- To reply via Matrix: (:type :REQUEST :target :matrix :room-id \"~a\" :text \"<Response>\")" chat-id))
             (t "- To reply via Emacs: (:type :REQUEST :target :emacs :action :insert-at-end :buffer \"*org-agent-chat*\" :text \"* <Response>\")"))))
-    (ask-neuro trimmed-text :system-prompt (concatenate 'string 
+    (ask-probabilistic trimmed-text :system-prompt (concatenate 'string 
                                                        "ACTUATOR IDENTITY: You are the pure Lisp actuator for the org-agent kernel.
 MANDATE: Output EXACTLY ONE Common Lisp property list starting with (:type :REQUEST).
 ZERO CONVERSATION: Do not explain. Do not use markdown.
@@ -79,5 +79,5 @@ REQUIRED FORMATS:
 (defskill :skill-chat
   :priority 100
   :trigger #'trigger-skill-chat
-  :neuro #'neuro-skill-chat
-  :symbolic #'verify-skill-chat)
+  :probabilistic #'probabilistic-skill-chat
+  :deterministic #'verify-skill-chat)

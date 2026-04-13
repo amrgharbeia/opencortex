@@ -1,16 +1,18 @@
-#+TITLE: The Harness Protocol (protocol.lisp)
+#+TITLE: The Harness Communication (communication.lisp)
 #+AUTHOR: Amr
 #+FILETAGS: :harness:protocol:
 #+STARTUP: content
 
-* The Harness Protocol (protocol.lisp)
-** Architectural Intent: Deterministic Framing & Reader Security
+* The Harness Communication (communication.lisp)
+** Architectural Intent: Secure Inter-Process Communication & Deterministic Framing
 
-The ~org-agent~ harness operates as a perfectly deterministic, highly secure computational engine. When communicating with external actuators—such as an Emacs instance, a web dashboard, or a remote script—the harness cannot rely on unpredictable, "loose" data streams. 
+Yes, the Harness Communication is fundamentally about **Communication**. It defines the exact physical and semantic boundaries for how the isolated Lisp environment talks to the outside world.
+
+The ~org-agent~ harness operates as a perfectly deterministic, highly secure computational engine. When communicating with external processes or actuators—such as an Emacs client, a web dashboard, or a remote Shell script—the harness cannot rely on unpredictable, "loose" data streams. 
 
 Streaming raw Lisp or JSON over a TCP socket is inherently fragile. If a multi-megabyte Org Abstract Syntax Tree (AST) is fragmented by the operating system's network stack during transmission, a standard stream parser might attempt to evaluate an incomplete string, leading to immediate crashes or desynchronization.
 
-To solve this, we implement the **Harness Protocol**, which enforces absolute deterministic boundaries around every message.
+To solve this, we implement the **Harness Communication**, which enforces absolute deterministic boundaries around every message.
 
 *** 1. Physical Boundary: Hex-Length Prefixing
 Every message crossing the wire is prefixed with a strict 6-character hexadecimal length string (zero-padded). This creates an unbreakable physical boundary. The harness reads exactly the number of bytes specified by the hex length. It will never under-read (crashing on a partial form) and never over-read (consuming bytes meant for the next message). 
@@ -19,7 +21,7 @@ Every message crossing the wire is prefixed with a strict 6-character hexadecima
 The protocol keeps the Lisp harness completely agnostic of its clients. The harness does not care if the client is written in Emacs Lisp, Python, or Rust. Any environment capable of calculating a byte length and opening a TCP socket can interface with the Lisp Machine.
 
 *** 3. Preventing Reader Macro Injection
-Common Lisp's ~read-from-string~ is extremely powerful but dangerous; it allows "reader macros" (like ~#.~) which execute code during the parsing phase. The Harness Protocol mandates that ~*read-eval*~ is explicitly bound to ~nil~ before any network data is parsed, physically preventing arbitrary code execution.
+Common Lisp's ~read-from-string~ is extremely powerful but dangerous; it allows "reader macros" (like ~#.~) which execute code during the parsing phase. The Harness Communication mandates that ~*read-eval*~ is explicitly bound to ~nil~ before any network data is parsed, physically preventing arbitrary code execution.
 
 ** Message Framing Logic
 #+begin_src mermaid
@@ -40,14 +42,14 @@ flowchart LR
 ** Package Context
 We ensure all protocol logic resides within the isolated harness namespace.
 
-#+begin_src lisp :tangle ../src/protocol.lisp
+#+begin_src lisp :tangle ../src/communication.lisp
 (in-package :org-agent)
 #+end_src
 
 ** Actuator Registry
 The harness maintains a decoupled registry of target actuators. This allows the system to route messages to Emacs, the Shell, or Web Gateways without hardcoding the routing logic into the protocol itself.
 
-#+begin_src lisp :tangle ../src/protocol.lisp
+#+begin_src lisp :tangle ../src/communication.lisp
 (defvar *actuator-registry* (make-hash-table :test 'equal)
   "Global registry mapping target keywords to their physical actuator functions.")
 
@@ -59,7 +61,7 @@ The harness maintains a decoupled registry of target actuators. This allows the 
 ** Message Framing (frame-message)
 The ~frame-message~ function prepares an outgoing Lisp string for transmission. It calculates the byte length, converts it into a 6-character padded hex string, and prefixes it. If ~HARNESS_PROTOCOL_ENFORCE_HMAC~ is enabled in the environment, it also prepends a cryptographic signature to ensure the message hasn't been tampered with.
 
-#+begin_src lisp :tangle ../src/protocol.lisp
+#+begin_src lisp :tangle ../src/communication.lisp
 (defun frame-message (msg-string)
   "Prefixes MSG-STRING with a 6-character hex length.
    If security is enabled, prefixes a 64-char HMAC-SHA256 signature."
@@ -80,7 +82,7 @@ The ~frame-message~ function prepares an outgoing Lisp string for transmission. 
 ** Message Parsing (parse-message)
 Parsing is the high-security inverse of framing. This function acts as the final perimeter defense. It validates the length, verifies the HMAC integrity, and—most importantly—jails the Lisp reader by disabling ~*read-eval*~. 
 
-#+begin_src lisp :tangle ../src/protocol.lisp
+#+begin_src lisp :tangle ../src/communication.lisp
 (defun parse-message (framed-string)
   "Extracts and parses the S-expression from a framed string securely."
   (when (< (length framed-string) 6)
@@ -89,7 +91,7 @@ Parsing is the high-security inverse of framing. This function acts as the final
          (use-hmac (and enforce-hmac (string-equal enforce-hmac "true")))
          (prefix-len (if use-hmac 70 6)))
     (when (< (length framed-string) prefix-len)
-      (error "Framed string too short for Harness Protocol prefix"))
+      (error "Framed string too short for Harness Communication prefix"))
     
     (let* ((len-str (subseq framed-string 0 6))
            (signature (when use-hmac (subseq framed-string 6 70)))
@@ -109,7 +111,7 @@ Parsing is the high-security inverse of framing. This function acts as the final
             (ironclad:update-mac hmac payload-bytes)
             (let ((expected-signature (ironclad:byte-array-to-hex-string (ironclad:produce-mac hmac))))
               (unless (string-equal signature expected-signature)
-                (error "Harness Protocol Integrity Failure: HMAC mismatch"))))))
+                (error "Harness Communication Integrity Failure: HMAC mismatch"))))))
       
       ;; SECURITY: Disable the reader's ability to execute code during parsing
       (let ((*read-eval* nil))
@@ -121,7 +123,7 @@ Parsing is the high-security inverse of framing. This function acts as the final
 ** Handshaking (make-hello-message)
 Every session begins with a standard ~HELLO~ handshake, allowing the harness to announce its capabilities and protocol version to the connecting client.
 
-#+begin_src lisp :tangle ../src/protocol.lisp
+#+begin_src lisp :tangle ../src/communication.lisp
 (defun make-hello-message (version)
   "Constructs the standard HELLO handshake message."
   (list :type :EVENT 

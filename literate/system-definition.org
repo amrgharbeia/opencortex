@@ -35,24 +35,24 @@ This system defines the core "Thin Harness." It includes the protocol, the objec
   :author "Amr"
   :version "0.1.0"
   :license "MIT"
-  :description "The Neurosymbolic Lisp Machine Harness"
+  :description "The Probabilistic-Deterministic Lisp Machine Harness"
   :depends-on (:usocket :cl-json :bordeaux-threads :dexador :uiop :cl-dotenv :cl-ppcre :hunchentoot :ironclad :str)
   :serial t
   :components ((:file "src/package")
                (:file "src/skills")
                (:file "src/system-invariants")
                (:file "src/engineering-standards")
-               (:file "src/protocol-validator")
-               (:file "src/protocol")
+               (:file "src/communication-validator")
+               (:file "src/communication")
                (:file "src/object-store")
                (:file "src/embedding")
                (:file "src/embedding-logic")
                (:file "src/context")
                (:file "src/context-logic")
-               (:file "src/neuro")
+               (:file "src/probabilistic")
                (:file "src/credentials-vault")
                (:file "src/llm-gateway")
-               (:file "src/symbolic")
+               (:file "src/deterministic")
                (:file "src/lisp-validator")
                (:file "src/self-fix")
                (:file "src/lisp-repair")
@@ -74,7 +74,7 @@ This system contains the empirical tests required by the Engineering Standards. 
 #+begin_src lisp :tangle ../org-agent.asd
 (defsystem :org-agent/tests
   :depends-on (:org-agent :fiveam)
-  :components ((:file "tests/protocol-tests")
+  :components ((:file "tests/communication-tests")
                (:file "tests/pipeline-tests")
                (:file "tests/peripheral-vision-tests")
                (:file "tests/lisp-validator-tests")

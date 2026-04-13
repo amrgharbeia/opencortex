@@ -6,12 +6,12 @@
   (member "!archive" tags :test #'string-equal))
 
 (in-package :org-agent)
-(defun neuro-skill-inbox-processor (context)
+(defun probabilistic-skill-inbox-processor (context)
   (let* ((payload (getf context :payload))
          (content (getf payload :content))
          (tags (getf payload :tags))
          (is-archive (inbox-is-archive-p tags)))
-    (ask-neuro content :system-prompt
+    (ask-probabilistic content :system-prompt
       (format nil "You are the PSF Librarian. Your goal is to ENRICH this Org-mode capture.
 RULES:
 1. Create a '** Summary' sub-heading with a 1-sentence summary.

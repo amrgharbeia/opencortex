@@ -85,8 +85,8 @@ Enforces high-integrity semantic rules for task management.
 (defskill :skill-task-integrity
   :priority 90
   :trigger (lambda (ctx) (declare (ignore ctx)) nil)
-  :neuro nil
-  :symbolic (lambda (action context)
+  :probabilistic nil
+  :deterministic (lambda (action context)
               (declare (ignore context))
               (let ((err (task-integrity-check action)))
                 (if err

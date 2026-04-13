@@ -20,8 +20,8 @@
 (org-agent:defskill :skill-broken-math
   :priority 50
   :trigger (lambda (ctx) (eq (getf (getf ctx :payload) :sensor) :broken-trigger))
-  :neuro nil
-  :symbolic (lambda (action context)
+  :probabilistic nil
+  :deterministic (lambda (action context)
               (declare (ignore action context))
               (+ 1 \"two\"))) ; DETERMINISTIC BUG
 #+end_src
