@@ -11,7 +11,7 @@ By strictly defining the public interface, we ensure that skills remain decouple
 
 #+begin_src mermaid
 flowchart TD
-    External[Actuators / Clients] -- OACP --> Package[Package Membrane: API]
+    External[Actuators / Clients] -- Harness Protocol --> Package[Package Membrane: API]
     Skills[Dynamic Skills] -- API Calls --> Package
     Package --> Internal[Harness Internal Modules]
     style Package fill:#f9f,stroke:#333,stroke-width:4px
