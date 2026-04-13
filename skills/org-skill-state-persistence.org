@@ -12,7 +12,7 @@ The *State Persistence Layer* ensures the durability and sovereignty of the agen
 ** Deep Reasoning: Protection Against External Tampering
 While the *Prover* and *Bouncer* protect against internal skill failures, the Merkle-Tree architecture within the State Layer protects against **External Threats** (e.g., a hacker or virus modifying your `.org` files directly on disk).
 
-1. **Skill Hashing:** Every code block and headline in a skill file has a unique Merkle hash recorded in the Object Store.
+1. **Skill Hashing:** Every code block and headline in a skill file has a unique Merkle hash recorded in the Memory.
 2. **Integrity Verification:** Upon loading or reloading a skill, the harness re-calculates the hash and compares it against the "known good" state in the Merkle Tree.
 3. **Automatic Lockdown:** If a file has been tampered with externally, the hash mismatch triggers an immediate lockdown. the harness refuses to execute the skill and alerts the Sovereign via Signal/Telegram.
 
@@ -25,7 +25,7 @@ While the *Prover* and *Bouncer* protect against internal skill failures, the Me
 Define automated behaviors for knowledge graph serialization, local persistence, and decentralized archival.
 
 ** 2. User Needs
-- *Instant Recall:* Rapid local loading of the Object Store from a persistent image.
+- *Instant Recall:* Rapid local loading of the Memory from a persistent image.
 - *Decentralized Archival:* Pushing immutable snapshots to IPFS for cross-node sync and sovereignty.
 - *Merkle Integrity:* Every save operation must respect and record the Merkle-Tree history.
 - *Safety:* Sanitize and validate data during restoration to prevent code injection.
@@ -36,7 +36,7 @@ Define automated behaviors for knowledge graph serialization, local persistence,
 :END:
 
 ** 1. Architectural Intent
-The persistence layer acts as a bridge between the volatile RAM-resident Object Store and permanent storage backends. It provides two adapters: `LOCAL` (fast, SBCL-native) and `IPFS` (sovereign, content-addressed).
+The persistence layer acts as a bridge between the volatile RAM-resident Memory and permanent storage backends. It provides two adapters: `LOCAL` (fast, SBCL-native) and `IPFS` (sovereign, content-addressed).
 
 ** 2. Semantic Interfaces
 #+begin_src lisp
@@ -57,7 +57,7 @@ The persistence layer acts as a bridge between the volatile RAM-resident Object 
 
 ** 1. Success Criteria
 - [ ] *Speed:* Local image load must be <500ms for a 10k node graph.
-- [ ] *Fidelity:* IPFS round-trip must result in a bit-identical Object Store.
+- [ ] *Fidelity:* IPFS round-trip must result in a bit-identical Memory.
 - [ ] *Validation:* Restoration must block any `read-eval` reader macros in content.
 
 ** 2. TDD Plan
@@ -97,8 +97,8 @@ Serializes the Merkle history and current pointers to a Lisp file.
                *history-store*)
       ;; 2. Dump the current active pointers
       (maphash (lambda (id obj)
-                 (print `(setf (gethash ,id *object-store*) (gethash ,(org-object-hash obj) *history-store*)) out))
-               *object-store*))
+                 (print `(setf (gethash ,id *memory*) (gethash ,(org-object-hash obj) *history-store*)) out))
+               *memory*))
     t))
 #+end_src
 
@@ -120,7 +120,7 @@ Restores the state from the local disk.
 #+end_src
 
 ** IPFS Serialization (persistence-serialize-for-archival)
-Converts the live `*object-store*` into a JSON-compatible list of alists.
+Converts the live `*memory*` into a JSON-compatible list of alists.
 
 #+begin_src lisp :tangle ../src/state-persistence.lisp
 (defun persistence-serialize-for-archival ()
@@ -139,7 +139,7 @@ Converts the live `*object-store*` into a JSON-compatible list of alists.
                        (:last-sync . ,(org-object-last-sync obj))
                        (:hash . ,(org-object-hash obj)))
                      objects))
-             *object-store*)
+             *memory*)
     objects))
 #+end_src
 
@@ -175,7 +175,7 @@ Restores the graph from IPFS, using a safe parser to prevent injection.
     (handler-case
         (let* ((response (dex:post ipfs-url))
                (data (cl-json:decode-json-from-string response)))
-          (clrhash *object-store*)
+          (clrhash *memory*)
           (dolist (item data)
             (let* ((id (cdr (assoc :id item)))
                    (obj (make-org-object 
@@ -189,7 +189,7 @@ Restores the graph from IPFS, using a safe parser to prevent injection.
                          :version (cdr (assoc :version item))
                          :last-sync (cdr (assoc :last-sync item))
                          :hash (cdr (assoc :hash item)))))
-              (setf (gethash id *object-store*) obj)))
+              (setf (gethash id *memory*) obj)))
           (harness-log "PERSISTENCE - Restored from IPFS: ~a" cid)
           t)
       (error (c)
@@ -246,11 +246,11 @@ Expose persistence capabilities to the neural Probabilistic Engine.
 (test test-local-roundtrip
   "Ensure RAM -> Disk -> RAM preserves data integrity."
   (let ((test-id "persist-test-1"))
-    (setf (gethash test-id *object-store*) (make-org-object :id test-id :content "Integrity Check"))
+    (setf (gethash test-id *memory*) (make-org-object :id test-id :content "Integrity Check"))
     (org-agent:persistence-dump-local)
-    (clrhash *object-store*)
+    (clrhash *memory*)
     (org-agent:persistence-load-local)
-    (is (equal "Integrity Check" (org-object-content (gethash test-id *object-store*))))))
+    (is (equal "Integrity Check" (org-object-content (gethash test-id *memory*))))))
 #+end_src
 
 ** 2. Chaos Scenarios

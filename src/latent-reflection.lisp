@@ -7,12 +7,12 @@
   "Returns COUNT random objects from the object-store."
   (let ((keys nil)
         (selected nil))
-    (maphash (lambda (k v) (declare (ignore v)) (push k keys)) *object-store*)
+    (maphash (lambda (k v) (declare (ignore v)) (push k keys)) *memory*)
     (let ((len (length keys)))
       (when (> len 0)
         (dotimes (i count)
           (let* ((random-key (nth (random len) keys))
-                 (obj (gethash random-key *object-store*)))
+                 (obj (gethash random-key *memory*)))
             (when obj
               (push obj selected))))))
     selected))

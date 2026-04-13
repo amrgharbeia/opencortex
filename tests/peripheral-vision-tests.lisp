@@ -9,7 +9,7 @@
 
 (test test-foveal-rendering
   "Verify that the foveal target is rendered with content, while siblings are skeletal."
-  (clrhash org-agent::*object-store*)
+  (clrhash org-agent::*memory*)
   (let* ((ast '(:type :HEADLINE :properties (:ID "proj-root" :TITLE "Project" :TAGS "project")
                 :contents ((:type :HEADLINE :properties (:ID "node-foveal" :TITLE "Foveal Node")
                             :raw-content "FOVEAL CONTENT" :contents nil)
@@ -25,7 +25,7 @@
 
 (test test-awareness-budget
   "Verify that context-assemble-global-awareness handles multiple projects."
-  (clrhash org-agent::*object-store*)
+  (clrhash org-agent::*memory*)
   (ingest-ast '(:type :HEADLINE :properties (:ID "p1" :TITLE "Project 1" :TAGS "project") :contents nil))
   (ingest-ast '(:type :HEADLINE :properties (:ID "p2" :TITLE "Project 2" :TAGS "project") :contents nil))
   (let ((output (context-assemble-global-awareness)))

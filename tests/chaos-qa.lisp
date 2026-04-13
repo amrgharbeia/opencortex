@@ -42,8 +42,8 @@
   "Verify that hash is stable even if properties are sent in different order."
   (let* ((ast1 '(:type :HEADLINE :properties (:ID "collision" :A "1" :B "2") :contents nil))
          (ast2 '(:type :HEADLINE :properties (:ID "collision" :B "2" :A "1") :contents nil)))
-    (clrhash org-agent::*object-store*)
+    (clrhash org-agent::*memory*)
     (let ((h1 (org-object-hash (lookup-object (ingest-ast ast1)))))
-      (clrhash org-agent::*object-store*)
+      (clrhash org-agent::*memory*)
       (let ((h2 (org-object-hash (lookup-object (ingest-ast ast2)))))
         (is (equal h1 h2))))))

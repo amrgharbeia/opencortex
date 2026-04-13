@@ -5,7 +5,7 @@
 
 * Stage 1: Perceive (perceive.lisp)
 ** Architectural Intent: Sensory Ingestion
-The Perceive stage is responsible for data normalization and sensory intake. It takes raw stimuli (from TCP sockets, Signal, or Heartbeats) and updates the global Object Store graph.
+The Perceive stage is responsible for data normalization and sensory intake. It takes raw stimuli (from TCP sockets, Signal, or Heartbeats) and updates the global Memory graph.
 
 #+begin_src lisp :tangle ../src/perceive.lisp
 (in-package :org-agent)
@@ -34,7 +34,7 @@ The Perceive stage is responsible for data normalization and sensory intake. It 
          (type (getf signal :type))
          (sensor (getf payload :sensor)))
     (harness-log "GATE [Perceive]: ~a (~a)" type (or sensor "no-sensor"))
-    (snapshot-object-store)
+    (snapshot-memory)
     (cond ((eq type :EVENT)
            (case sensor
              (:buffer-update (let ((ast (getf payload :ast))) (when ast (ingest-ast ast))))

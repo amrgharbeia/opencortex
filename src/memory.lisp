@@ -1,6 +1,6 @@
 (in-package :org-agent)
 
-(defvar *object-store* (make-hash-table :test 'equal))
+(defvar *memory* (make-hash-table :test 'equal))
 
 (defvar *history-store* (make-hash-table :test 'equal)
   "Immutable Merkle-Tree versioning store mapping hashes to objects.")
@@ -21,7 +21,7 @@
     (ironclad:byte-array-to-hex-string (ironclad:produce-digest digester))))
 
 (defun ingest-ast (ast &optional parent-id)
-  "Parses an Org AST into the recursive Lisp Object Store with Merkle hashing."
+  "Parses an Org AST into the recursive Lisp Memory with Merkle hashing."
   (let* ((type (getf ast :type))
          (props (getf ast :properties))
          (id (or (getf props :ID) (format nil "temp-~a" (get-universal-time))))
@@ -51,7 +51,7 @@
                      :hash hash))))
       (unless existing-obj
         (setf (gethash hash *history-store*) obj))
-      (setf (gethash id *object-store*) obj)
+      (setf (gethash id *memory*) obj)
       id)))
 
 (defvar *object-store-snapshots* nil)
@@ -63,30 +63,30 @@
     (maphash (lambda (k v) (setf (gethash k new-table) v)) hash-table)
     new-table))
 
-(defun snapshot-object-store ()
+(defun snapshot-memory ()
   "Creates a lightweight, Copy-on-Write snapshot using Merkle-Tree pointers."
-  (let ((snapshot (copy-hash-table *object-store*)))
+  (let ((snapshot (copy-hash-table *memory*)))
     (push (list :timestamp (get-universal-time) :data snapshot) *object-store-snapshots*)
     (when (> (length *object-store-snapshots*) 20)
       (setf *object-store-snapshots* (subseq *object-store-snapshots* 0 20)))
-    (harness-log "MEMORY - CoW Object Store snapshot created.")))
+    (harness-log "MEMORY - CoW Memory snapshot created.")))
 
-(defun rollback-object-store (&optional (index 0))
-  "Restores the Object Store to a previously captured snapshot using immutable history pointers."
+(defun rollback-memory (&optional (index 0))
+  "Restores the Memory to a previously captured snapshot using immutable history pointers."
   (let ((snapshot (nth index *object-store-snapshots*)))
     (if snapshot
-        (progn (setf *object-store* (copy-hash-table (getf snapshot :data)))
-               (harness-log "MEMORY - Object Store rolled back to snapshot ~a" index))
+        (progn (setf *memory* (copy-hash-table (getf snapshot :data)))
+               (harness-log "MEMORY - Memory rolled back to snapshot ~a" index))
         (harness-log "MEMORY ERROR - Snapshot ~a not found." index))))
 
 (defun lookup-object (id) 
   "Retrieves an object from the store by its unique ID."
-  (gethash id *object-store*))
+  (gethash id *memory*))
 
 (defun list-objects-by-type (type)
   "Returns a list of all objects matching a specific Org element type."
   (let ((results nil))
-    (maphash (lambda (id obj) (declare (ignore id)) (when (eq (org-object-type obj) type) (push obj results))) *object-store*)
+    (maphash (lambda (id obj) (declare (ignore id)) (when (eq (org-object-type obj) type) (push obj results))) *memory*)
     results))
 
 (defun find-headline-missing-id (ast)

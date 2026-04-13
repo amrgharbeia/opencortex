@@ -30,7 +30,7 @@ Unify the structural rules and programmatic manipulation of the Org-mode AST.
 :END:
 
 ** 1. Architectural Intent
-The memory suite uses a "Functional Core" for AST manipulation. Every transformation (normalization, refactoring) returns a new AST version, which is then persisted to the Object Store.
+The memory suite uses a "Functional Core" for AST manipulation. Every transformation (normalization, refactoring) returns a new AST version, which is then persisted to the Memory.
 
 ** 2. Semantic Interfaces
 #+begin_src lisp
@@ -52,7 +52,7 @@ The memory suite uses a "Functional Core" for AST manipulation. Every transforma
 ** 1. Success Criteria
 - [ ] *Round-trip Fidelity:* Org -> JSON -> Org must result in identical text (modulo normalization).
 - [ ] *ID Uniqueness:* No two headlines may share an ID after normalization.
-- [ ] *Merkle Integration:* AST modifications must trigger Object Store snapshots.
+- [ ] *Merkle Integration:* AST modifications must trigger Memory snapshots.
 
 ** 2. TDD Plan
 Tests in `tests/memory-suite-tests.lisp` will verify the round-trip conversion and the recursive ID injection logic.

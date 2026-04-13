@@ -24,7 +24,7 @@
          (type (getf signal :type))
          (sensor (getf payload :sensor)))
     (harness-log "GATE [Perceive]: ~a (~a)" type (or sensor "no-sensor"))
-    (snapshot-object-store)
+    (snapshot-memory)
     (cond ((eq type :EVENT)
            (case sensor
              (:buffer-update (let ((ast (getf payload :ast))) (when ast (ingest-ast ast))))

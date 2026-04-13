@@ -8,7 +8,7 @@
 #+FILETAGS: :system:config:sovereignty:psf:
 
 * Overview
-The *Environment Configuration Manager* is the source of truth for user preferences. It persists settings (like LLM Model Fleets) into the harness's Object Store, allowing for dynamic runtime reconfiguration without environment variable bloat.
+The *Environment Configuration Manager* is the source of truth for user preferences. It persists settings (like LLM Model Fleets) into the harness's Memory, allowing for dynamic runtime reconfiguration without environment variable bloat.
 
 * Phase A: Demand (PRD)
 :PROPERTIES:
@@ -20,7 +20,7 @@ Provide a programmatic and literate interface for managing system-wide settings.
 
 ** 2. User Needs
 - *Fleet Management:* Define preferred models for each LLM provider.
-- *Persistence:* Ensure settings survive kernel restarts via the Object Store.
+- *Persistence:* Ensure settings survive kernel restarts via the Memory.
 - *Transparency:* Allow the user to audit current settings via the REPL or Org tables.
 
 * Phase B: Blueprint (PROTOCOL)
@@ -29,7 +29,7 @@ Provide a programmatic and literate interface for managing system-wide settings.
 :END:
 
 ** 1. Architectural Intent
-Define a standardized `CONFIG` object type in the Object Store. Provide getter/setter functions for the "LLM Fleet."
+Define a standardized `CONFIG` object type in the Memory. Provide getter/setter functions for the "LLM Fleet."
 
 ** 2. Semantic Interfaces
 
@@ -38,7 +38,7 @@ Define a standardized `CONFIG` object type in the Object Store. Provide getter/s
 (in-package :org-agent)
 
 (defun set-llm-model (provider model-id)
-  "Registers a preferred model for a provider in the Object Store."
+  "Registers a preferred model for a provider in the Memory."
   (let ((config-id (format nil "config-llm-~a" (string-downcase (string provider)))))
     (let ((obj (make-org-object 
                 :id config-id
@@ -46,14 +46,14 @@ Define a standardized `CONFIG` object type in the Object Store. Provide getter/s
                 :attributes `(:provider ,provider :model-id ,model-id)
                 :content (format nil "Fleet preference for ~a set to ~a" provider model-id)
                 :version (get-universal-time))))
-      (setf (gethash config-id *object-store*) obj)
+      (setf (gethash config-id *memory*) obj)
       (harness-log "CONFIG - Fleet updated: ~a -> ~a" provider model-id)
       t)))
 
 (defun get-llm-model (provider &optional default)
-  "Retrieves the preferred model for a provider from the Object Store."
+  "Retrieves the preferred model for a provider from the Memory."
   (let* ((config-id (format nil "config-llm-~a" (string-downcase (string provider))))
-         (obj (gethash config-id *object-store*)))
+         (obj (gethash config-id *memory*)))
     (if obj
         (getf (org-object-attributes obj) :model-id)
         default)))

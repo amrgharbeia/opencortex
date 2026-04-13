@@ -33,11 +33,11 @@
 
 (test test-bouncer-approval-reaction
   "Verify that the bouncer skill re-injects an action when a plan node is APPROVED."
-  (clrhash org-agent::*object-store*)
+  (clrhash org-agent::*memory*)
   (let* ((action '(:type :REQUEST :target :telegram :payload (:text "hello")))
          (node-id "plan-1"))
     ;; 1. Setup an APPROVED flight plan node
-    (setf (gethash node-id org-agent::*object-store*)
+    (setf (gethash node-id org-agent::*memory*)
           (org-agent::make-org-object 
            :id node-id 
            :attributes `(:TITLE "Flight Plan" :TODO "APPROVED" :TAGS ("FLIGHT_PLAN") :ACTION ,(format nil "~s" action))))
@@ -46,7 +46,7 @@
     (let ((result (org-agent::bouncer-process-approvals)))
       (is (eq t result))
       ;; The node should now be DONE
-      (let ((obj (gethash node-id org-agent::*object-store*)))
+      (let ((obj (gethash node-id org-agent::*memory*)))
         (is (equal "DONE" (getf (org-agent:org-object-attributes obj) :TODO)))))))
 
 (test test-bouncer-secret-exposure

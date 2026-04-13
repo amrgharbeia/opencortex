@@ -19,7 +19,7 @@ Provide a standardized interface for converting text into vector representations
 
 ** 2. User Needs
 - *Text Vectorization:* Convert Org-mode content into high-dimensional vectors.
-- *Similarity Search:* Find semantically related nodes in the Object Store.
+- *Similarity Search:* Find semantically related nodes in the Memory.
 - *Provider Agnosticism:* Support multiple embedding models (Gemini, OpenAI, etc.).
 
 ** 3. Success Criteria
@@ -98,7 +98,7 @@ Move heavy neural and mathematical logic out of `core.lisp` and `probabilistic.l
                (let ((vec (org-object-vector obj))) 
                  (when vec 
                    (push (cons (cosine-similarity query-vector vec) obj) similarities)))) 
-             *object-store*)
+             *memory*)
     (let ((sorted (sort similarities #'> :key #'car))) 
       (subseq sorted 0 (min top-k (length sorted))))))
 #+end_src

@@ -10,7 +10,7 @@
          (is-skill (and (stringp (namestring target-file))
                         (search "skills/" (namestring target-file)))))
     
-    (org-agent:snapshot-object-store)
+    (org-agent:snapshot-memory)
     (org-agent:harness-log "SELF-FIX - Attempting surgical fix on ~a..." target-file)
     
     (handler-case
@@ -32,7 +32,7 @@
                                 (org-agent:harness-log "SELF-FIX FAILURE - Skill reload failed. Rolling back.")
                                 (with-open-file (out target-file :direction :output :if-exists :supersede)
                                   (write-string content out))
-                                (org-agent:rollback-object-store 0)
+                                (org-agent:rollback-memory 0)
                                 nil)))
                         (progn
                           (org-agent:harness-log "SELF-FIX SUCCESS - Applied fix to file.")
@@ -41,7 +41,7 @@
             (progn (org-agent:harness-log "SELF-FIX FAILURE - File not found.") nil))
       (error (c)
         (org-agent:harness-log "SELF-FIX CRASH - ~a. Rolling back." c)
-        (org-agent:rollback-object-store 0)
+        (org-agent:rollback-memory 0)
         nil))))
 
 (def-cognitive-tool :repair-file 

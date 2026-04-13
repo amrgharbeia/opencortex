@@ -44,7 +44,7 @@
     output))
 
 (defun context-assemble-global-awareness (&optional signal)
-  "Produces a high-level skeletal outline of the current Object Store for the LLM."
+  "Produces a high-level skeletal outline of the current Memory for the LLM."
   (let* ((payload (when signal (getf signal :payload)))
          (foveal-id (when payload (getf payload :target-id)))
          (foveal-vector (when foveal-id (org-object-vector (lookup-object foveal-id))))

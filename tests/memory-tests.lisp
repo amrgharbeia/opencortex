@@ -1,21 +1,21 @@
-(defpackage :org-agent-object-store-tests
+(defpackage :org-agent-memory-tests
   (:use :cl :fiveam :org-agent)
-  (:export #:object-store-suite))
+  (:export #:memory-suite))
 
-(in-package :org-agent-object-store-tests)
+(in-package :org-agent-memory-tests)
 
-(def-suite object-store-suite
-  :description "Tests for the Merkle-Tree Object Store.")
+(def-suite memory-suite
+  :description "Tests for the Merkle-Tree Memory.")
 
-(in-suite object-store-suite)
+(in-suite memory-suite)
 
 (test merkle-hash-consistency
   (let* ((ast1 '(:type :HEADLINE :properties (:ID "test-1" :TITLE "Node 1") :contents nil))
          (ast2 '(:type :HEADLINE :properties (:ID "test-1" :TITLE "Node 1") :contents nil)))
-    (clrhash *object-store*)
+    (clrhash *memory*)
     (let ((id1 (ingest-ast ast1)))
       (let ((hash1 (org-object-hash (lookup-object id1))))
-        (clrhash *object-store*)
+        (clrhash *memory*)
         (let ((id2 (ingest-ast ast2)))
           (let ((hash2 (org-object-hash (lookup-object id2))))
             (is (equal hash1 hash2))))))))
@@ -24,19 +24,19 @@
   (let* ((ast-leaf '(:type :HEADLINE :properties (:ID "leaf" :TITLE "Leaf") :contents nil))
          (ast-root-full '(:type :HEADLINE :properties (:ID "root" :TITLE "Root") 
                            :contents ((:type :HEADLINE :properties (:ID "leaf" :TITLE "Leaf") :contents nil))))
-         (id-root (progn (clrhash *object-store*) (ingest-ast ast-root-full)))
+         (id-root (progn (clrhash *memory*) (ingest-ast ast-root-full)))
          (initial-root-hash (org-object-hash (lookup-object id-root))))
       
       ;; Now ingest a modified version (title change)
       (let* ((ast-root-modified '(:type :HEADLINE :properties (:ID "root" :TITLE "Root") 
                                  :contents ((:type :HEADLINE :properties (:ID "leaf" :TITLE "Leaf Modified") :contents nil))))
-             (id-root-mod (progn (clrhash *object-store*) (ingest-ast ast-root-modified)))
+             (id-root-mod (progn (clrhash *memory*) (ingest-ast ast-root-modified)))
              (modified-root-hash (org-object-hash (lookup-object id-root-mod))))
         (is (not (equal initial-root-hash modified-root-hash))))))
 
 (test history-store-immutability
-  "Verify that *history-store* retains old versions even after *object-store* updates."
-  (clrhash *object-store*)
+  "Verify that *history-store* retains old versions even after *memory* updates."
+  (clrhash *memory*)
   (clrhash *history-store*)
   (let* ((ast-v1 '(:type :HEADLINE :properties (:ID "test-node" :TITLE "Version 1") :contents nil))
          (id-v1 (ingest-ast ast-v1))
@@ -63,7 +63,7 @@
 
 (test cow-snapshot-and-rollback
   "Verify that lightweight snapshots can accurately restore previous pointer states."
-  (clrhash *object-store*)
+  (clrhash *memory*)
   (clrhash *history-store*)
   (setf *object-store-snapshots* nil)
   
@@ -72,7 +72,7 @@
          (hash-v1 (org-object-hash (lookup-object id-v1))))
     
     ;; Take a snapshot at State A
-    (snapshot-object-store)
+    (snapshot-memory)
     
     (let* ((ast-v2 '(:type :HEADLINE :properties (:ID "cow-node" :TITLE "State B") :contents nil))
            (id-v2 (ingest-ast ast-v2))
@@ -82,7 +82,7 @@
       (is (equal (org-object-hash (lookup-object "cow-node")) hash-v2))
       
       ;; Rollback to State A (index 0 because we only took 1 snapshot)
-      (rollback-object-store 0)
+      (rollback-memory 0)
       
       ;; Verify we are back in State A
       (is (equal (org-object-hash (lookup-object "cow-node")) hash-v1))

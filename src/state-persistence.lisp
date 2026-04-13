@@ -18,8 +18,8 @@
                *history-store*)
       ;; 2. Dump the current active pointers
       (maphash (lambda (id obj)
-                 (print `(setf (gethash ,id *object-store*) (gethash ,(org-object-hash obj) *history-store*)) out))
-               *object-store*))
+                 (print `(setf (gethash ,id *memory*) (gethash ,(org-object-hash obj) *history-store*)) out))
+               *memory*))
     t))
 
 (defun persistence-load-local ()
@@ -50,7 +50,7 @@
                        (:last-sync . ,(org-object-last-sync obj))
                        (:hash . ,(org-object-hash obj)))
                      objects))
-             *object-store*)
+             *memory*)
     objects))
 
 (defun persistence-push-ipfs ()
@@ -76,7 +76,7 @@
     (handler-case
         (let* ((response (dex:post ipfs-url))
                (data (cl-json:decode-json-from-string response)))
-          (clrhash *object-store*)
+          (clrhash *memory*)
           (dolist (item data)
             (let* ((id (cdr (assoc :id item)))
                    (obj (make-org-object 
@@ -90,7 +90,7 @@
                          :version (cdr (assoc :version item))
                          :last-sync (cdr (assoc :last-sync item))
                          :hash (cdr (assoc :hash item)))))
-              (setf (gethash id *object-store*) obj)))
+              (setf (gethash id *memory*) obj)))
           (harness-log "PERSISTENCE - Restored from IPFS: ~a" cid)
           t)
       (error (c)

@@ -20,7 +20,7 @@
               (setf current-signal (act-gate current-signal)))
           (error (c)
             (harness-log "METABOLISM CRASH: ~a - Initiating Micro-Rollback." c)
-            (rollback-object-store 0)
+            (rollback-memory 0)
             (let ((sensor (ignore-errors (getf (getf current-signal :payload) :sensor))))
               (if (or (> depth 2) (member sensor '(:loop-error :tool-error)))
                   (setf current-signal nil)

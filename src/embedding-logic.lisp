@@ -44,7 +44,7 @@
                (let ((vec (org-object-vector obj))) 
                  (when vec 
                    (push (cons (cosine-similarity query-vector vec) obj) similarities)))) 
-             *object-store*)
+             *memory*)
     (let ((sorted (sort similarities #'> :key #'car))) 
       (subseq sorted 0 (min top-k (length sorted))))))
 

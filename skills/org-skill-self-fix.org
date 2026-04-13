@@ -10,7 +10,7 @@
 #+DEPENDS_ON: id:98576df2-c496-4e4a-9acb-0bca514a0305
 
 * Overview
-The *Self-Fix Agent* is the system's "Repair Mechanism." It takes failure hypotheses, applies surgical code modifications, and verifies them using the Object Store's rollback capabilities.
+The *Self-Fix Agent* is the system's "Repair Mechanism." It takes failure hypotheses, applies surgical code modifications, and verifies them using the Memory's rollback capabilities.
 
 * Phase D: Build (Implementation)
 
@@ -28,7 +28,7 @@ The *Self-Fix Agent* is the system's "Repair Mechanism." It takes failure hypoth
          (is-skill (and (stringp (namestring target-file))
                         (search "skills/" (namestring target-file)))))
     
-    (org-agent:snapshot-object-store)
+    (org-agent:snapshot-memory)
     (org-agent:harness-log "SELF-FIX - Attempting surgical fix on ~a..." target-file)
     
     (handler-case
@@ -50,7 +50,7 @@ The *Self-Fix Agent* is the system's "Repair Mechanism." It takes failure hypoth
                                 (org-agent:harness-log "SELF-FIX FAILURE - Skill reload failed. Rolling back.")
                                 (with-open-file (out target-file :direction :output :if-exists :supersede)
                                   (write-string content out))
-                                (org-agent:rollback-object-store 0)
+                                (org-agent:rollback-memory 0)
                                 nil)))
                         (progn
                           (org-agent:harness-log "SELF-FIX SUCCESS - Applied fix to file.")
@@ -59,7 +59,7 @@ The *Self-Fix Agent* is the system's "Repair Mechanism." It takes failure hypoth
             (progn (org-agent:harness-log "SELF-FIX FAILURE - File not found.") nil))
       (error (c)
         (org-agent:harness-log "SELF-FIX CRASH - ~a. Rolling back." c)
-        (org-agent:rollback-object-store 0)
+        (org-agent:rollback-memory 0)
         nil))))
 #+end_src
 

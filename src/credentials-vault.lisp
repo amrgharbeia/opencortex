@@ -35,7 +35,7 @@
   (let ((key (format nil "~a-~a" provider type)))
     (setf (gethash key *vault-memory*) secret)
     (harness-log "VAULT - Updated ~a for ~a. Triggering Merkle snapshot..." type provider)
-    (snapshot-object-store)
+    (snapshot-memory)
     t))
 
 (defun vault-onboard-gemini-web ()

@@ -15,7 +15,7 @@ Architecture gap. The system lacked an authorization state between "Safe" and "E
 2. **Asynchronous Event:** If flagged, the harness emits an `:approval-required` event.
 3. **Flight Plan Skill:** Created `org-skill-bouncer.org` to:
    - Catch the event and create a serialized Org node with state `PLAN`.
-   - Monitor the Object Store for `APPROVED` states.
+   - Monitor the Memory for `APPROVED` states.
    - Re-inject approved actions with the `:approved t` bypass flag.
 
 * 2. Design Decision: Org-native Approval
@@ -30,4 +30,4 @@ Ensures that the agent's "Flight Plans" are first-class citizens in the Memex, a
 
 * 3. Permanent Learnings
 - **Serial Bypass:** Always include a specific bypass flag (e.g., `:approved t`) when re-injecting intercepted actions to prevent infinite interception loops.
-- **Heartbeat Listeners:** Periodic scanning of the Object Store for state transitions is an effective way to implement asynchronous authorization gates without blocking the harness.
+- **Heartbeat Listeners:** Periodic scanning of the Memory for state transitions is an effective way to implement asynchronous authorization gates without blocking the harness.

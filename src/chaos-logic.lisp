@@ -19,7 +19,7 @@
          (mode (or (getf payload :mode) :random))
          (intensity (or (getf payload :intensity) 3)))
     (harness-log "CHAOS - Commencing stress test (Mode: ~a, Intensity: ~a)" mode intensity)
-    (snapshot-object-store)
+    (snapshot-memory)
     (case mode
       (:random (dotimes (i intensity)
                  (let ((failure-type (nth (random 3) '(:test-failure :shell-timeout :llm-error))))
@@ -27,7 +27,7 @@
                     `(:type :EVENT :payload (:sensor :chaos-injection :type ,failure-type))))))
       (:shell (inject-stimulus 
                `(:type :EVENT :payload (:sensor :shell-response :cmd "git push" :exit-code 128 :stderr "fatal: network unreachable")))))
-    (snapshot-object-store)
+    (snapshot-memory)
     (format nil "SUCCESS - Chaos stress test initiated.")))
 
 (defun chaos-enable ()

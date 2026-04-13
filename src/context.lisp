@@ -1,7 +1,7 @@
 (in-package :org-agent)
 
 (defun context-query-store (&key tag todo-state type)
-  "Filters the Object Store based on tags, todo states, or types."
+  "Filters the Memory based on tags, todo states, or types."
   (let ((results nil))
     (maphash (lambda (id obj)
                (declare (ignore id))
@@ -10,7 +10,7 @@
                  (when tag (unless (search tag (format nil "~a" (getf attrs :TAGS)) :test #'string-equal) (setf match nil)))
                  (when (and todo-state (not (equal state todo-state))) (setf match nil))
                  (when match (push obj results))))
-             *object-store*)
+             *memory*)
     results))
 
 (defun context-get-active-projects ()
@@ -102,7 +102,7 @@
       path-string))
 
 (defun context-assemble-global-awareness (&optional signal)
-  "Produces a high-level skeletal outline of the current Object Store for the LLM."
+  "Produces a high-level skeletal outline of the current Memory for the LLM."
   (let* ((payload (when signal (getf signal :payload)))
          (foveal-id (when payload (getf payload :target-id)))
          (projects (context-get-active-projects))

@@ -10,7 +10,7 @@
   "Registers a function for a named hook. Triggers a Merkle snapshot."
   (pushnew fn (gethash hook-name *hook-registry*))
   (harness-log "ORCHESTRATOR - Registered hook function for ~a" hook-name)
-  (snapshot-object-store)
+  (snapshot-memory)
   t)
 
 (defun orchestrator-trigger-hook (hook-name &rest args)
@@ -24,7 +24,7 @@
   "Schedules a task for execution. Schedule can be an interval (integer seconds) or 'heartbeat'."
   (setf (gethash task-id *cron-registry*) (list :schedule schedule :fn fn :last-run 0))
   (harness-log "ORCHESTRATOR - Scheduled task ~a (~a)" task-id schedule)
-  (snapshot-object-store)
+  (snapshot-memory)
   t)
 
 (defun orchestrator-process-cron ()

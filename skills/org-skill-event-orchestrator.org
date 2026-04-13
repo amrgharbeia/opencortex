@@ -27,7 +27,7 @@ Provide a unified, high-integrity interface for background automation and stimul
 - *Predictable Scheduling:* Precise execution of tasks based on cron-strings or intervals.
 - *Reactive Extensions:* Ability to "hook" into system events (save, boot, ingest).
 - *Intelligent Dispatch:* Automated complexity tiering to prevent wasted compute.
-- *Durable Registry:* All registered hooks and cron-jobs must be persisted to the Object Store.
+- *Durable Registry:* All registered hooks and cron-jobs must be persisted to the Memory.
 
 * Phase B: Blueprint (PROTOCOL)
 :PROPERTIES:
@@ -57,7 +57,7 @@ The orchestrator maintains three internal registries (Hooks, Cron, Routing Rules
 ** 1. Success Criteria
 - [ ] *Hook Latency:* Triggering a hook with 10 functions must complete in <1ms.
 - [ ] *Cron Precision:* Scheduled tasks must fire within 1s of their target window.
-- [ ] *Merkle Persistence:* Adding a hook or cron-job must increment the Object Store version.
+- [ ] *Merkle Persistence:* Adding a hook or cron-job must increment the Memory version.
 - [ ] *Classification Accuracy:* Routine system events must always be classified as `:REFLEX`.
 
 ** 2. TDD Plan
@@ -89,7 +89,7 @@ Allows external skills to register logic at system lifecycle points.
   "Registers a function for a named hook. Triggers a Merkle snapshot."
   (pushnew fn (gethash hook-name *hook-registry*))
   (harness-log "ORCHESTRATOR - Registered hook function for ~a" hook-name)
-  (snapshot-object-store)
+  (snapshot-memory)
   t)
 #+end_src
 
@@ -113,7 +113,7 @@ Registers a recurring task to be executed during heartbeats.
   "Schedules a task for execution. Schedule can be an interval (integer seconds) or 'heartbeat'."
   (setf (gethash task-id *cron-registry*) (list :schedule schedule :fn fn :last-run 0))
   (harness-log "ORCHESTRATOR - Scheduled task ~a (~a)" task-id schedule)
-  (snapshot-object-store)
+  (snapshot-memory)
   t)
 #+end_src
 

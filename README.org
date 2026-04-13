@@ -39,7 +39,7 @@ To guarantee long-term stability, org-agent enforces a strict architectural boun
 
 ** The Minimalist Harness
 The Lisp microkernel does almost no actual "work." It is a thin, unbreakable harness strictly responsible for three things:
-1. *The Object Store:* Maintaining the live graph of your Memex in RAM.
+1. *The Memory:* Maintaining the live graph of your Memex in RAM.
 2. *The Communication Protocol:* Managing the secure bridge between the agent and the outside world. While power users can connect natively via Emacs or Vim, the vast majority of users will interact with org-agent exclusively through chat clients (like Telegram, Signal, or Matrix), web dashboards, or a Terminal UI (TUI). The harness doesn't care; it just securely routes the messages.
 3. *The Cognitive Loop:* Moving signals through the Perceive -> Probabilistic -> Deterministic -> Dispatch pipeline.
 
@@ -61,7 +61,7 @@ When the system boots, it parses these single files, mathematically proves their
 ** The Anatomy: Three Data Stores
 The agent's "mind" is not a transient chat session; it is a durable, stateful architecture consisting of three layers:
 1. *The Linguistic Substrate (Plaintext Files):* The human-readable Source of Truth on your hard drive. You can edit these files in any text editor, and the agent will instantly perceive the changes.
-2. *The Lisp Object Store (RAM):* The "Active Brain," a live, threaded graph of Lisp objects representing every headline, paragraph, and tag in your Memex. It allows the agent to navigate your life instantly without constantly re-reading files.
+2. *The Lisp Memory (RAM):* The "Active Brain," a live, threaded graph of Lisp objects representing every headline, paragraph, and tag in your Memex. It allows the agent to navigate your life instantly without constantly re-reading files.
 3. *The Telemetry Store (External):* A high-volume database for sub-deterministic sensory data (e.g., smart home logs or system metrics), which the agent monitors and distills.
 
 ** The Psychology: The 2x2 Cognitive Matrix

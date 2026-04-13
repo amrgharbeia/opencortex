@@ -16,7 +16,7 @@
 
 (test test-async-repair-flow
   "Verify that the pipeline correctly emits and reacts to syntax-error events."
-  (clrhash org-agent::*object-store*)
+  (clrhash org-agent::*memory*)
   (let* ((broken-code "(:type :REQUEST :target :tool")
          (error-msg "End of file")
          ;; 1. The Stimulus that caused the error

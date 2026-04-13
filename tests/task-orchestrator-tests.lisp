@@ -20,10 +20,10 @@
 (test test-task-integrity-parent-child
   "Verify that task-integrity-check rejects closing a parent with active children."
   ;; Mocking some objects in the store
-  (clrhash org-agent::*object-store*)
-  (setf (gethash "parent-1" org-agent::*object-store*)
+  (clrhash org-agent::*memory*)
+  (setf (gethash "parent-1" org-agent::*memory*)
         (org-agent::make-org-object :id "parent-1" :attributes '(:TITLE "Parent Task" :TODO "TODO")))
-  (setf (gethash "child-1" org-agent::*object-store*)
+  (setf (gethash "child-1" org-agent::*memory*)
         (org-agent::make-org-object :id "child-1" :attributes '(:TITLE "Child Task" :TODO "TODO" :PARENT "parent-1")))
   
   (let* ((action '(:type :REQUEST :target :emacs :action :update-node :id "parent-1" :attributes (:TODO "DONE")))

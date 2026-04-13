@@ -27,5 +27,5 @@
 (defun find-most-similar (query-vector top-k)
   "Identifies the top-k most semantically related objects in the store."
   (let ((similarities nil))
-    (maphash (lambda (id obj) (let ((vec (org-object-vector obj))) (when vec (push (cons (cosine-similarity query-vector vec) obj) similarities)))) *object-store*)
+    (maphash (lambda (id obj) (let ((vec (org-object-vector obj))) (when vec (push (cons (cosine-similarity query-vector vec) obj) similarities)))) *memory*)
     (let ((sorted (sort similarities #'> :key #'car))) (subseq sorted 0 (min top-k (length sorted))))))

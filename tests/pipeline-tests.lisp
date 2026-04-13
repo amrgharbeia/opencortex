@@ -26,11 +26,11 @@
 
 (test test-perceive-gate
   "Perceive gate should update the object store and normalize signal."
-  (clrhash org-agent::*object-store*)
+  (clrhash org-agent::*memory*)
   (let* ((signal (list :type :EVENT :payload (list :sensor :buffer-update :ast (list :type :HEADLINE :properties (list :ID "test-node" :TITLE "Test") :contents nil))))
          (result (perceive-gate signal)))
     (is (eq :perceived (getf result :status)))
-    (is (not (null (gethash "test-node" org-agent::*object-store*))))))
+    (is (not (null (gethash "test-node" org-agent::*memory*))))))
 
 (test test-decide-gate-safety
   "Decide gate should block unsafe LLM proposals."
@@ -46,7 +46,7 @@
 (test test-pipeline-flow-flat
   "Verify that process-signal correctly executes a signal through gates."
   (setup-mock-skills)
-  (clrhash org-agent::*object-store*)
+  (clrhash org-agent::*memory*)
   (let ((signal (list :type :EVENT :payload (list :sensor :buffer-update))))
     (process-signal signal)
     (pass "Pipeline completed execution.")))
@@ -90,15 +90,15 @@
 
 (test test-global-awareness-assembly
   "Verify that context-assemble-global-awareness reports active projects."
-  (clrhash org-agent::*object-store*)
+  (clrhash org-agent::*memory*)
   (ingest-ast (list :type :HEADLINE :properties (list :ID "proj-1" :TITLE "Project Alpha" :TAGS "project") :contents nil))
   (let ((awareness (context-assemble-global-awareness)))
     (is (search "Project Alpha" awareness))
     (is (search "proj-1" awareness))))
 
 (test test-micro-rollback
-  "Verify that a pipeline crash triggers an automatic Object Store rollback."
-  (clrhash org-agent::*object-store*)
+  "Verify that a pipeline crash triggers an automatic Memory rollback."
+  (clrhash org-agent::*memory*)
   (clrhash org-agent::*history-store*)
   (setf org-agent::*object-store-snapshots* nil)
   ;; State A

@@ -7,7 +7,7 @@
 The ~package.lisp~ file defines the public API of the ~org-agent~ harness. It serves as the primary membrane between the deterministic core modules and the dynamic world of skills and actuators.
 
 ** Architectural Intent: The Package Membrane
-By strictly defining the public interface, we ensure that skills remain decoupled from the harness implementation details. This allows for sovereign replacement of any component (e.g., swapping the Object Store or the Probabilistic Engine) without breaking existing skills.
+By strictly defining the public interface, we ensure that skills remain decoupled from the harness implementation details. This allows for sovereign replacement of any component (e.g., swapping the Memory or the Probabilistic Engine) without breaking existing skills.
 
 #+begin_src mermaid
 flowchart TD
@@ -34,11 +34,11 @@ flowchart TD
    #:harness-log
    #:main
    
-   ;; --- Object Store (CLOSOS) ---
+   ;; --- Memory (CLOSOS) ---
    #:ingest-ast
    #:lookup-object
    #:list-objects-by-type
-   #:*object-store*
+   #:*memory*
    #:*history-store*
    #:org-object
    #:org-object-id
@@ -51,8 +51,8 @@ flowchart TD
    #:org-object-vector
    #:org-object-content
    #:org-object-hash
-   #:snapshot-object-store
-   #:rollback-object-store
+   #:snapshot-memory
+   #:rollback-memory
    
    ;; --- Context API (Peripheral Vision) ---
    #:context-query-store

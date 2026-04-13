@@ -15,8 +15,8 @@
     format concatenate string-downcase string-upcase search
     ;; Kernel specifics
     org-agent::harness-log
-    org-agent::snapshot-object-store
-    org-agent::rollback-object-store
+    org-agent::snapshot-memory
+    org-agent::rollback-memory
     org-agent::lookup-object
     org-agent::list-objects-by-type
     org-agent::ingest-ast

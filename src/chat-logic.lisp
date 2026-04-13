@@ -1,7 +1,7 @@
 (in-package :org-agent)
 
 (defun chat-archive-message (text &key (role :user) channel chat-id)
-  "Archives a chat message into the persistent Object Store and triggers a snapshot."
+  "Archives a chat message into the persistent Memory and triggers a snapshot."
   (let* ((msg-id (org-id-new))
          (obj (make-org-object 
                :id msg-id
@@ -9,9 +9,9 @@
                :attributes `(:role ,role :channel ,channel :chat-id ,chat-id :timestamp ,(get-universal-time))
                :content text
                :version (get-universal-time))))
-    (setf (gethash msg-id *object-store*) obj)
+    (setf (gethash msg-id *memory*) obj)
     (harness-log "CHAT - Message archived: ~a (~a)" msg-id role)
-    (snapshot-object-store)
+    (snapshot-memory)
     msg-id))
 
 (defun trigger-skill-chat (context)

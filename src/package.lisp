@@ -13,11 +13,11 @@
    #:harness-log
    #:main
    
-   ;; --- Object Store (CLOSOS) ---
+   ;; --- Memory (CLOSOS) ---
    #:ingest-ast
    #:lookup-object
    #:list-objects-by-type
-   #:*object-store*
+   #:*memory*
    #:*history-store*
    #:org-object
    #:org-object-id
@@ -30,8 +30,8 @@
    #:org-object-vector
    #:org-object-content
    #:org-object-hash
-   #:snapshot-object-store
-   #:rollback-object-store
+   #:snapshot-memory
+   #:rollback-memory
    
    ;; --- Context API (Peripheral Vision) ---
    #:context-query-store

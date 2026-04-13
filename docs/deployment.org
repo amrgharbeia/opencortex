@@ -26,7 +26,7 @@ docker-compose logs -f
 * Volume Mapping
 The ~docker-compose.yml~ file automatically mounts your host's ~memex~ directory to ~/memex~ inside the container. This allows the agent to:
 1. Read/Write to your Zettelkasten and GTD files.
-2. Maintain its local state (Object Store, snapshots).
+2. Maintain its local state (Memory, snapshots).
 
 * Troubleshooting
 ** signal-cli Identity

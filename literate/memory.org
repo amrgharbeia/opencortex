@@ -1,22 +1,24 @@
-#+TITLE: The Object Store (object-store.lisp)
+#+TITLE: The System Memory (memory.lisp)
 #+AUTHOR: Amr
 #+FILETAGS: :harness:memory:
 #+STARTUP: content
 
-* The Object Store (object-store.lisp)
-** Architectural Intent: The Single Address Space
+* The System Memory (memory.lisp)
+** Architectural Intent: The Single Address Space (Live Memory)
 
-Traditional architectures rely on external databases (SQLite, Vector DBs) which introduce I/O latency and structural impedance. The org-agent architecture chooses a different path: the Single Address Space.
+Yes, the Memory module is the cognitive bedrock of the PSF. It is not a database; it is the agent's live, active "brain" state.
+
+Traditional architectures rely on external databases (SQLite, Vector DBs) which introduce I/O latency and structural impedance. The org-agent architecture chooses a different path: the **Single Address Space**. By treating the entire knowledge base as a graph of Lisp pointers, we achieve microsecond recollection and total structural transparency.
 
 - **Pointer-Based Reasoning:** By loading the entire knowledge graph into a live Common Lisp hash table, we achieve microsecond recollection. The harness doesn't "search a file"; it traverses a memory pointer.
 - **Memory Imaging:** The ability to snapshot the Lisp image allows the agent to resume its entire cognitive state instantly, solving the "Cold Start" problem.
-- **Merkle-Tree Integrity:** Every node in the Object Store is cryptographically hashed. By recursively hashing content and children, the root hash provides a single, immutable fingerprint of the entire system state.
+- **Merkle-Tree Integrity:** Every node in the Memory is cryptographically hashed. By recursively hashing content and children, the root hash provides a single, immutable fingerprint of the entire system state.
 
 ** System Architecture
 #+begin_src mermaid
 flowchart TD
     subgraph LispMachine[Lisp Machine]
-        H[Harness Pipeline] --> OS[(Object Store)]
+        H[Harness Pipeline] --> OS[(Memory)]
         S1[Skill: Architect] --> OS
         S2[Skill: Analyst] --> OS
         S3[Skill: GTD] --> OS
@@ -29,15 +31,15 @@ flowchart TD
 #+end_src
 
 ** Package Context
-#+begin_src lisp :tangle ../src/object-store.lisp
+#+begin_src lisp :tangle ../src/memory.lisp
 (in-package :org-agent)
 #+end_src
 
 ** The Object Repository
-The `*object-store*` is the global hash table that holds every Org element by its unique ID. This is the "live RAM" of the agent's memory.
+The `*memory*` is the global hash table that holds every Org element by its unique ID. This is the "live RAM" of the agent's memory.
 
-#+begin_src lisp :tangle ../src/object-store.lisp
-(defvar *object-store* (make-hash-table :test 'equal))
+#+begin_src lisp :tangle ../src/memory.lisp
+(defvar *memory* (make-hash-table :test 'equal))
 
 (defvar *history-store* (make-hash-table :test 'equal)
   "Immutable Merkle-Tree versioning store mapping hashes to objects.")
@@ -46,7 +48,7 @@ The `*object-store*` is the global hash table that holds every Org element by it
 ** The Data Structure (org-object)
 Every element in the Memex (headlines, paragraphs, etc.) is represented by an `org-object` structure. It contains both semantic metadata (attributes, content) and structural metadata (parent/child pointers, Merkle hashes).
 
-#+begin_src lisp :tangle ../src/object-store.lisp
+#+begin_src lisp :tangle ../src/memory.lisp
 (defstruct org-object
   id type attributes content vector parent-id children version last-sync hash)
 #+end_src
@@ -54,7 +56,7 @@ Every element in the Memex (headlines, paragraphs, etc.) is represented by an `o
 ** Merkle Tree Integrity (compute-merkle-hash)
 The `compute-merkle-hash` function ensures the cryptographic integrity of the knowledge graph. A node's hash depends on its own properties and the hashes of all its children. This creates a recursive fingerprint where any change to a single note propagates up to the root hash.
 
-#+begin_src lisp :tangle ../src/object-store.lisp
+#+begin_src lisp :tangle ../src/memory.lisp
 (defun compute-merkle-hash (id type attributes content child-hashes)
   "Computes a SHA-256 Merkle hash for a node based on its core properties and children's hashes."
   (let* ((alist (loop for (k v) on attributes by #'cddr collect (cons k v)))
@@ -71,9 +73,9 @@ The `compute-merkle-hash` function ensures the cryptographic integrity of the kn
 ** Ingesting the AST (ingest-ast)
 The `ingest-ast` function is the primary bridge between the external world (Emacs/JSON) and the internal Lisp machine. It recursively parses an Org-mode Abstract Syntax Tree (AST) into `org-object` structures and registers them in the store.
 
-#+begin_src lisp :tangle ../src/object-store.lisp
+#+begin_src lisp :tangle ../src/memory.lisp
 (defun ingest-ast (ast &optional parent-id)
-  "Parses an Org AST into the recursive Lisp Object Store with Merkle hashing."
+  "Parses an Org AST into the recursive Lisp Memory with Merkle hashing."
   (let* ((type (getf ast :type))
          (props (getf ast :properties))
          (id (or (getf props :ID) (format nil "temp-~a" (get-universal-time))))
@@ -103,14 +105,14 @@ The `ingest-ast` function is the primary bridge between the external world (Emac
                      :hash hash))))
       (unless existing-obj
         (setf (gethash hash *history-store*) obj))
-      (setf (gethash id *object-store*) obj)
+      (setf (gethash id *memory*) obj)
       id)))
 #+end_src
 
-** Memory Snapshots (snapshot-object-store)
-Because objects are stored immutably in the `*history-store*`, a snapshot is a lightweight shallow copy of the active `*object-store*` pointers. The system maintains a rolling buffer of 20 snapshots, allowing for near-instant, zero-cost rollback.
+** Memory Snapshots (snapshot-memory)
+Because objects are stored immutably in the `*history-store*`, a snapshot is a lightweight shallow copy of the active `*memory*` pointers. The system maintains a rolling buffer of 20 snapshots, allowing for near-instant, zero-cost rollback.
 
-#+begin_src lisp :tangle ../src/object-store.lisp
+#+begin_src lisp :tangle ../src/memory.lisp
 (defvar *object-store-snapshots* nil)
 
 (defun copy-hash-table (hash-table)
@@ -120,47 +122,47 @@ Because objects are stored immutably in the `*history-store*`, a snapshot is a l
     (maphash (lambda (k v) (setf (gethash k new-table) v)) hash-table)
     new-table))
 
-(defun snapshot-object-store ()
+(defun snapshot-memory ()
   "Creates a lightweight, Copy-on-Write snapshot using Merkle-Tree pointers."
-  (let ((snapshot (copy-hash-table *object-store*)))
+  (let ((snapshot (copy-hash-table *memory*)))
     (push (list :timestamp (get-universal-time) :data snapshot) *object-store-snapshots*)
     (when (> (length *object-store-snapshots*) 20)
       (setf *object-store-snapshots* (subseq *object-store-snapshots* 0 20)))
-    (harness-log "MEMORY - CoW Object Store snapshot created.")))
+    (harness-log "MEMORY - CoW Memory snapshot created.")))
 #+end_src
 
-** Memory Rollback (rollback-object-store)
+** Memory Rollback (rollback-memory)
 Restores the state of the Memex from one of the previous snapshots.
 
-#+begin_src lisp :tangle ../src/object-store.lisp
-(defun rollback-object-store (&optional (index 0))
-  "Restores the Object Store to a previously captured snapshot using immutable history pointers."
+#+begin_src lisp :tangle ../src/memory.lisp
+(defun rollback-memory (&optional (index 0))
+  "Restores the Memory to a previously captured snapshot using immutable history pointers."
   (let ((snapshot (nth index *object-store-snapshots*)))
     (if snapshot
-        (progn (setf *object-store* (copy-hash-table (getf snapshot :data)))
-               (harness-log "MEMORY - Object Store rolled back to snapshot ~a" index))
+        (progn (setf *memory* (copy-hash-table (getf snapshot :data)))
+               (harness-log "MEMORY - Memory rolled back to snapshot ~a" index))
         (harness-log "MEMORY ERROR - Snapshot ~a not found." index))))
 #+end_src
 
 ** Lookup Utilities
 Basic functions for retrieving objects by ID or type.
 
-#+begin_src lisp :tangle ../src/object-store.lisp
+#+begin_src lisp :tangle ../src/memory.lisp
 (defun lookup-object (id) 
   "Retrieves an object from the store by its unique ID."
-  (gethash id *object-store*))
+  (gethash id *memory*))
 
 (defun list-objects-by-type (type)
   "Returns a list of all objects matching a specific Org element type."
   (let ((results nil))
-    (maphash (lambda (id obj) (declare (ignore id)) (when (eq (org-object-type obj) type) (push obj results))) *object-store*)
+    (maphash (lambda (id obj) (declare (ignore id)) (when (eq (org-object-type obj) type) (push obj results))) *memory*)
     results))
 #+end_src
 
 ** Structural Helpers
 Utility functions for AST traversal and path resolution.
 
-#+begin_src lisp :tangle ../src/object-store.lisp
+#+begin_src lisp :tangle ../src/memory.lisp
 (defun find-headline-missing-id (ast)
   "Traverses an AST to find headlines that lack an :ID: property."
   (when (listp ast)
@@ -174,27 +176,27 @@ Utility functions for AST traversal and path resolution.
 #+end_src
 
 * Phase E: Chaos (Verification)
-Following the Engineering Standards, the Object Store must be empirically verified through automated testing. The following test suite ensures the mathematical integrity of the Merkle hashes and the behavioral correctness of the immutable versioning and rollback systems.
+Following the Engineering Standards, the Memory must be empirically verified through automated testing. The following test suite ensures the mathematical integrity of the Merkle hashes and the behavioral correctness of the immutable versioning and rollback systems.
 
-#+begin_src lisp :tangle ../tests/object-store-tests.lisp
-(defpackage :org-agent-object-store-tests
+#+begin_src lisp :tangle ../tests/memory-tests.lisp
+(defpackage :org-agent-memory-tests
   (:use :cl :fiveam :org-agent)
-  (:export #:object-store-suite))
+  (:export #:memory-suite))
 
-(in-package :org-agent-object-store-tests)
+(in-package :org-agent-memory-tests)
 
-(def-suite object-store-suite
-  :description "Tests for the Merkle-Tree Object Store.")
+(def-suite memory-suite
+  :description "Tests for the Merkle-Tree Memory.")
 
-(in-suite object-store-suite)
+(in-suite memory-suite)
 
 (test merkle-hash-consistency
   (let* ((ast1 '(:type :HEADLINE :properties (:ID "test-1" :TITLE "Node 1") :contents nil))
          (ast2 '(:type :HEADLINE :properties (:ID "test-1" :TITLE "Node 1") :contents nil)))
-    (clrhash *object-store*)
+    (clrhash *memory*)
     (let ((id1 (ingest-ast ast1)))
       (let ((hash1 (org-object-hash (lookup-object id1))))
-        (clrhash *object-store*)
+        (clrhash *memory*)
         (let ((id2 (ingest-ast ast2)))
           (let ((hash2 (org-object-hash (lookup-object id2))))
             (is (equal hash1 hash2))))))))
@@ -203,19 +205,19 @@ Following the Engineering Standards, the Object Store must be empirically verifi
   (let* ((ast-leaf '(:type :HEADLINE :properties (:ID "leaf" :TITLE "Leaf") :contents nil))
          (ast-root-full '(:type :HEADLINE :properties (:ID "root" :TITLE "Root") 
                            :contents ((:type :HEADLINE :properties (:ID "leaf" :TITLE "Leaf") :contents nil))))
-         (id-root (progn (clrhash *object-store*) (ingest-ast ast-root-full)))
+         (id-root (progn (clrhash *memory*) (ingest-ast ast-root-full)))
          (initial-root-hash (org-object-hash (lookup-object id-root))))
       
       ;; Now ingest a modified version (title change)
       (let* ((ast-root-modified '(:type :HEADLINE :properties (:ID "root" :TITLE "Root") 
                                  :contents ((:type :HEADLINE :properties (:ID "leaf" :TITLE "Leaf Modified") :contents nil))))
-             (id-root-mod (progn (clrhash *object-store*) (ingest-ast ast-root-modified)))
+             (id-root-mod (progn (clrhash *memory*) (ingest-ast ast-root-modified)))
              (modified-root-hash (org-object-hash (lookup-object id-root-mod))))
         (is (not (equal initial-root-hash modified-root-hash))))))
 
 (test history-store-immutability
-  "Verify that *history-store* retains old versions even after *object-store* updates."
-  (clrhash *object-store*)
+  "Verify that *history-store* retains old versions even after *memory* updates."
+  (clrhash *memory*)
   (clrhash *history-store*)
   (let* ((ast-v1 '(:type :HEADLINE :properties (:ID "test-node" :TITLE "Version 1") :contents nil))
          (id-v1 (ingest-ast ast-v1))
@@ -242,7 +244,7 @@ Following the Engineering Standards, the Object Store must be empirically verifi
 
 (test cow-snapshot-and-rollback
   "Verify that lightweight snapshots can accurately restore previous pointer states."
-  (clrhash *object-store*)
+  (clrhash *memory*)
   (clrhash *history-store*)
   (setf *object-store-snapshots* nil)
   
@@ -251,7 +253,7 @@ Following the Engineering Standards, the Object Store must be empirically verifi
          (hash-v1 (org-object-hash (lookup-object id-v1))))
     
     ;; Take a snapshot at State A
-    (snapshot-object-store)
+    (snapshot-memory)
     
     (let* ((ast-v2 '(:type :HEADLINE :properties (:ID "cow-node" :TITLE "State B") :contents nil))
            (id-v2 (ingest-ast ast-v2))
@@ -261,7 +263,7 @@ Following the Engineering Standards, the Object Store must be empirically verifi
       (is (equal (org-object-hash (lookup-object "cow-node")) hash-v2))
       
       ;; Rollback to State A (index 0 because we only took 1 snapshot)
-      (rollback-object-store 0)
+      (rollback-memory 0)
       
       ;; Verify we are back in State A
       (is (equal (org-object-hash (lookup-object "cow-node")) hash-v1))
