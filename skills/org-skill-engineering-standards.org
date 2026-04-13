@@ -36,6 +36,9 @@ You are strictly forbidden from considering a task complete without updating `gt
 ** 8. Configuration Externalization (Environment-Driven)
 Source code MUST be strictly free of hardcoded configuration values (e.g., ports, rhythms, timeouts). All such values must be extracted to the environment (via `.env`) and documented in `.env.example`. This ensures portability and security.
 
+** 9. Literate-Only Modification (The Tangle Mandate)
+You are strictly forbidden from modifying generated source code files (e.g., `.lisp`, `.py`, `.el`) directly. All changes MUST be made within the corresponding Literate Org file and then tangled to the source. Direct modification of source code is only permitted with explicit user authorization.
+
 * Phase B: Blueprint (PROTOCOL)
 :PROPERTIES:
 :STATUS: SIGNED

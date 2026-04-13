@@ -43,6 +43,7 @@
    #:context-get-system-logs
    #:context-resolve-path
    #:context-get-skill-telemetry
+   #:harness-track-telemetry
    #:context-assemble-global-awareness
    
    ;; --- Reactive Signal Pipeline ---
@@ -112,6 +113,16 @@
 
 (defvar *skill-telemetry* (make-hash-table :test 'equal))
 (defvar *telemetry-lock* (bt:make-lock "harness-telemetry-lock"))
+
+(defun harness-track-telemetry (skill-name duration status)
+  "Updates performance metrics for a specific skill. Status should be :success or :rejected."
+  (when skill-name 
+    (bt:with-lock-held (*telemetry-lock*)
+      (let ((entry (or (gethash skill-name *skill-telemetry*) (list :executions 0 :total-time 0 :failures 0))))
+        (incf (getf entry :executions)) 
+        (incf (getf entry :total-time) duration)
+        (when (eq status :rejected) (incf (getf entry :failures))) 
+        (setf (gethash skill-name *skill-telemetry*) entry)))))
 
 (defvar *cognitive-tools* (make-hash-table :test 'equal))
 
