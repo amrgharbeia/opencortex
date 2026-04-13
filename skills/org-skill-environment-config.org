@@ -34,8 +34,7 @@ Define a standardized `CONFIG` object type in the Memory. Provide getter/setter 
 ** 2. Semantic Interfaces
 
 *** Fleet Configuration
-#+begin_src lisp :tangle ../src/config-logic.lisp
-(in-package :org-agent)
+#+begin_src lisp
 
 (defun set-llm-model (provider model-id)
   "Registers a preferred model for a provider in the Memory."

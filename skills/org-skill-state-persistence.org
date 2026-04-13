@@ -90,7 +90,7 @@ Serializes the Merkle history and current pointers to a Lisp file.
     (ensure-directories-exist image-file)
     (harness-log "PERSISTENCE - Dumping local image to ~a..." (uiop:native-namestring image-file))
     (with-open-file (out image-file :direction :output :if-exists :supersede)
-      (format out "(in-package :org-agent)~%")
+      (format out "~%")
       ;; 1. Dump all immutable objects in the history store
       (maphash (lambda (hash obj)
                  (print `(setf (gethash ,hash *history-store*) ,obj) out))

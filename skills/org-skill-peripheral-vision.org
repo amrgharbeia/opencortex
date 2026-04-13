@@ -48,8 +48,7 @@ Move context pruning and rendering logic out of `context.lisp` to allow for more
 * Phase D: Build (Implementation)
 
 ** Foveal-Peripheral Pruning
-#+begin_src lisp :tangle ../src/context-logic.lisp
-(in-package :org-agent)
+#+begin_src lisp
 
 (defun context-render-to-org (obj &key (depth 1) (foveal-id nil) (semantic-threshold 0.75) (foveal-vector nil))
   "Recursively renders an org-object and its children to an Org string using a Foveal-Peripheral Hybrid model."
@@ -113,7 +112,7 @@ Move context pruning and rendering logic out of `context.lisp` to allow for more
 #+end_src
 
 * Registration
-#+begin_src lisp :tangle ../src/context-logic.lisp
+#+begin_src lisp
 (defskill :skill-peripheral-vision
   :priority 90
   :dependencies ("org-skill-embedding")

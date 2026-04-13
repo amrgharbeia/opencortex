@@ -62,7 +62,6 @@
    #:load-skill-with-timeout
    #:topological-sort-skills
    #:validate-lisp-syntax
-   #:lisp-validator-validate
    #:defskill
    #:*skills-registry*
    #:skill

@@ -51,8 +51,7 @@ Move heavy neural and mathematical logic out of `core.lisp` and `probabilistic.l
 * Phase D: Build (Implementation)
 
 ** Vector Operations
-#+begin_src lisp :tangle ../src/embedding-logic.lisp
-(in-package :org-agent)
+#+begin_src lisp
 
 (defun get-embedding (text)
   "Retrieves a vector representation of text via the configured neural provider."
@@ -104,7 +103,7 @@ Move heavy neural and mathematical logic out of `core.lisp` and `probabilistic.l
 #+end_src
 
 * Registration
-#+begin_src lisp :tangle ../src/embedding-logic.lisp
+#+begin_src lisp
 (defskill :skill-embedding
   :priority 50
   :trigger (lambda (ctx) (eq (getf (getf ctx :payload) :sensor) :embedding-request))

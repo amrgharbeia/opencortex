@@ -12,8 +12,7 @@ The *Lisp Repair Syntax Gate* asynchronously intercepts `:syntax-error` events e
 * Implementation
 
 ** Core Repair Logic
-#+begin_src lisp :tangle ../src/lisp-repair.lisp
-(in-package :org-agent)
+#+begin_src lisp
 
 (defun count-char (char string)
   (let ((count 0))
@@ -46,7 +45,7 @@ MANDATE: Output EXACTLY ONE valid Common Lisp list. Do not explain. Do not use m
 ** Skill Definition
 Reacts to syntax error events and transforms them into repaired requests.
 
-#+begin_src lisp :tangle ../src/lisp-repair.lisp
+#+begin_src lisp
 (defskill :skill-lisp-repair
   :priority 90
   :trigger (lambda (ctx) (eq (getf (getf ctx :payload) :sensor) :syntax-error))

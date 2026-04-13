@@ -12,8 +12,7 @@ The *Harness Monitor* provides tools for inspecting the internal state and healt
 
 * Implementation
 
-#+begin_src lisp :tangle ../src/harness-monitor.lisp
-(in-package :org-agent)
+#+begin_src lisp
 
 (org-agent:def-cognitive-tool :harness-status \"Returns the current operational status of the Org-Agent harness, including loaded skills and telemetry.\"
   nil

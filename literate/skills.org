@@ -6,9 +6,15 @@
 * The Skill Engine (skills.lisp)
 ** Architectural Intent: Late-Binding Intelligence
 
-A static, hardcoded architecture is inherently fragile. To build a sovereign agent that can evolve alongside its user, the harness must be a "Thin Shell" that delegates its capabilities to dynamic, hot-reloadable modules known as **Skills**.
+A static, hardcoded architecture is inherently fragile. To build a sovereign agent that can evolve alongside its user, the harness must be a "Thin Shell" that delegates its capabilities to dynamic, hot-reloadable modules known as **Skills**. This is the core of our **Thin Harness / Thick Skill Microkernel Architecture**.
 
 Skills unify the **"Why"** (Literate Org documentation) and the **"How"** (Functional Lisp implementation). This allows the harness to "learn" new behaviors without a full system restart, enabling a continuous evolutionary loop where the agent can eventually inspect and improve its own code.
+
+*** The True Microkernel (Decoupled Core Skills)
+Historically, "core" skills (like State Persistence or Gateways) were statically compiled into the harness for performance. We have fundamentally decoupled this. Now, *all* behavioral skills are pure user-space dynamic modules. They do not tangle to `src/` and are not listed in `org-agent.asd`. The harness simply boots, scans the `skills/` directory, and evaluates the code inside a jailed package. If a user wishes to swap the IPFS persistence skill for an AWS S3 one, they simply swap the `.org` file; no kernel recompilation is required.
+
+*** Dormant Verification (Tests)
+Because skills are no longer statically compiled into the core `org-agent` ASDF system, their associated `FiveAM` test blocks are currently dormant during a standard static build. The tests still exist within the literate `.org` files as verifiable documentation, but executing them requires either dynamic evaluation at runtime or a dedicated test-loader skill.
 
 *** 1. The Package Jailing Principle
 Every skill is evaluated within its own dedicated Common Lisp package (namespace). This "Jailing" prevents symbol collisions between disparate skills and ensures that a bug in one module cannot easily corrupt the internal state of another.

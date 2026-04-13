@@ -66,14 +66,13 @@ Tests in `tests/orchestrator-tests.lisp` will verify hook execution order, cron-
 * Phase D: Build (Implementation)
 
 ** Package Context
-#+begin_src lisp :tangle ../src/event-orchestrator.lisp
-(in-package :org-agent)
+#+begin_src lisp
 #+end_src
 
 ** Registry State
 We maintain our internal registries in hash-tables, which will be serialized via the State Persistence layer.
 
-#+begin_src lisp :tangle ../src/event-orchestrator.lisp
+#+begin_src lisp
 (defvar *hook-registry* (make-hash-table :test 'equal)
   "Maps hook-names (symbols) to lists of functions.")
 
@@ -84,7 +83,7 @@ We maintain our internal registries in hash-tables, which will be serialized via
 ** Hook: Registration
 Allows external skills to register logic at system lifecycle points.
 
-#+begin_src lisp :tangle ../src/event-orchestrator.lisp
+#+begin_src lisp
 (defun orchestrator-register-hook (hook-name fn)
   "Registers a function for a named hook. Triggers a Merkle snapshot."
   (pushnew fn (gethash hook-name *hook-registry*))
@@ -96,7 +95,7 @@ Allows external skills to register logic at system lifecycle points.
 ** Hook: Triggering
 Executes all functions associated with a specific hook.
 
-#+begin_src lisp :tangle ../src/event-orchestrator.lisp
+#+begin_src lisp
 (defun orchestrator-trigger-hook (hook-name &rest args)
   "Executes all registered functions for the given hook name."
   (let ((functions (gethash hook-name *hook-registry*)))
@@ -108,7 +107,7 @@ Executes all functions associated with a specific hook.
 ** Cron: Task Scheduling
 Registers a recurring task to be executed during heartbeats.
 
-#+begin_src lisp :tangle ../src/event-orchestrator.lisp
+#+begin_src lisp
 (defun orchestrator-schedule-task (task-id schedule fn)
   "Schedules a task for execution. Schedule can be an interval (integer seconds) or 'heartbeat'."
   (setf (gethash task-id *cron-registry*) (list :schedule schedule :fn fn :last-run 0))
@@ -120,7 +119,7 @@ Registers a recurring task to be executed during heartbeats.
 ** Cron: Heartbeat Processor
 The internal loop that checks the cron-registry during every system pulse.
 
-#+begin_src lisp :tangle ../src/event-orchestrator.lisp
+#+begin_src lisp
 (defun orchestrator-process-cron ()
   "Checked by the harness on every heartbeat."
   (let ((now (get-universal-time)))
@@ -139,7 +138,7 @@ The internal loop that checks the cron-registry during every system pulse.
 ** Router: Complexity Classification
 Deterministic logic to classify incoming stimuli into complexity tiers.
 
-#+begin_src lisp :tangle ../src/event-orchestrator.lisp
+#+begin_src lisp
 (defun orchestrator-classify-complexity (context)
   "Returns the complexity tier (:REFLEX, :COGNITION, :REASONING) for a stimulus."
   (let* ((payload (getf context :payload))
@@ -162,7 +161,7 @@ Deterministic logic to classify incoming stimuli into complexity tiers.
 ** Registration
 We register the orchestrator as a core skill and hot-patch the harness's routing hook to use our classification logic.
 
-#+begin_src lisp :tangle ../src/event-orchestrator.lisp
+#+begin_src lisp
 (progn
   ;; Hook into kernel routing
   (setf org-agent::*model-selector-fn* #'orchestrator-classify-complexity)
@@ -179,7 +178,7 @@ We register the orchestrator as a core skill and hot-patch the harness's routing
 * Phase E: Chaos (Verification)
 
 ** 1. Unit Tests (FiveAM)
-#+begin_src lisp :tangle ../tests/orchestrator-tests.lisp
+#+begin_src lisp
 (defpackage :org-agent-orchestrator-tests
   (:use :cl :fiveam :org-agent))
 (in-package :org-agent-orchestrator-tests)

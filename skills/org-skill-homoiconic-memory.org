@@ -60,14 +60,13 @@ Tests in `tests/memory-suite-tests.lisp` will verify the round-trip conversion a
 * Phase D: Build (Implementation)
 
 ** Package Context
-#+begin_src lisp :tangle ../src/homoiconic-memory.lisp
-(in-package :org-agent)
+#+begin_src lisp
 #+end_src
 
 ** Node Structure Definition
 We define the standard `org-node` structure used throughout the harness.
 
-#+begin_src lisp :tangle ../src/homoiconic-memory.lisp
+#+begin_src lisp
 (defun make-memory-node (headline &key content properties children)
   "Constructor for a normalized Org node alist."
   (list :type :HEADLINE
@@ -79,7 +78,7 @@ We define the standard `org-node` structure used throughout the harness.
 ** ID Generation (org-id-get-create)
 Mandated standard for ID creation. This function ensures that every node in the Memex has a unique, deterministic identifier.
 
-#+begin_src lisp :tangle ../src/homoiconic-memory.lisp
+#+begin_src lisp
 (defun org-id-get-create ()
   "Generates a new unique ID for an Org node. This is the system-wide standard."
   (format nil "node-~a" (get-universal-time)))
@@ -88,7 +87,7 @@ Mandated standard for ID creation. This function ensures that every node in the 
 ** ID Injection (memory-ensure-id)
 Ensures every headline has a unique ID property using the system standard `org-id-get-create`. This is foundational for the Merkle-Tree object store.
 
-#+begin_src lisp :tangle ../src/homoiconic-memory.lisp
+#+begin_src lisp
 (defun memory-ensure-id (node)
   "Injects a unique ID into an Org node if missing, using the standard org-id-get-create mechanism."
   (let* ((props (getf node :properties))
@@ -104,7 +103,7 @@ Ensures every headline has a unique ID property using the system standard `org-i
 ** Recursive Normalization (memory-normalize-ast)
 Recursively walks the AST to enforce structural rules.
 
-#+begin_src lisp :tangle ../src/homoiconic-memory.lisp
+#+begin_src lisp
 (defun memory-normalize-ast (ast)
   "Recursively normalizes an Org AST."
   (let ((type (getf ast :type))
@@ -124,7 +123,7 @@ Recursively walks the AST to enforce structural rules.
 ** JSON Bridge: Org-to-JSON
 Utilizes the Emacs bridge (or local parser) to convert text to JSON.
 
-#+begin_src lisp :tangle ../src/homoiconic-memory.lisp
+#+begin_src lisp
 (defun memory-org-to-json (source-path)
   "Routes to the Emacs-based Org-JSON bridge."
   ;; Future implementation will use the org-json-convert CLI tool
@@ -135,7 +134,7 @@ Utilizes the Emacs bridge (or local parser) to convert text to JSON.
 ** JSON Bridge: JSON-to-Org
 Converts a structured AST back into Org-mode text.
 
-#+begin_src lisp :tangle ../src/homoiconic-memory.lisp
+#+begin_src lisp
 (defun memory-json-to-org (ast)
   "Materializes a JSON AST into Org-mode text."
   ;; Placeholder for org-element-interpret-data equivalent
@@ -144,7 +143,7 @@ Converts a structured AST back into Org-mode text.
 #+end_src
 
 ** Registration
-#+begin_src lisp :tangle ../src/homoiconic-memory.lisp
+#+begin_src lisp
 (progn
   (defskill :skill-homoiconic-memory
     :priority 300 ; Core foundational skill
@@ -159,7 +158,7 @@ Converts a structured AST back into Org-mode text.
 * Phase E: Chaos (Verification)
 
 ** 1. Unit Tests (FiveAM)
-#+begin_src lisp :tangle ../tests/memory-suite-tests.lisp
+#+begin_src lisp
 (defpackage :org-agent-memory-tests
   (:use :cl :fiveam :org-agent))
 (in-package :org-agent-memory-tests)

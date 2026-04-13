@@ -39,8 +39,7 @@ Define automated behaviors for GTD state consistency and dependency verification
 * Implementation
 
 ** Semantic Mapping
-#+begin_src lisp :tangle ../src/task-integrity.lisp
-(in-package :org-agent)
+#+begin_src lisp
 
 (defun semantic-mapping (task-state)
   "Maps Org-mode task states to semantic categories."
@@ -51,7 +50,7 @@ Define automated behaviors for GTD state consistency and dependency verification
 #+end_src
 
 ** Active Children Detection
-#+begin_src lisp :tangle ../src/task-integrity.lisp
+#+begin_src lisp
 (defun detect-active-children (task-id)
   "Checks if a task has any child tasks in an active state."
   (let ((children (list-objects-with-attribute :PARENT task-id)))
@@ -64,7 +63,7 @@ Define automated behaviors for GTD state consistency and dependency verification
 ** Integrity Check (task-integrity-check)
 Enforces high-integrity semantic rules for task management.
 
-#+begin_src lisp :tangle ../src/task-integrity.lisp
+#+begin_src lisp
 (defun task-integrity-check (action)
   "Enforces semantic GTD integrity rules on proposed actions."
   (let* ((payload (getf action :payload))
@@ -81,7 +80,7 @@ Enforces high-integrity semantic rules for task management.
 #+begin_src
 
 ** Skill Definition
-#+begin_src lisp :tangle ../src/task-integrity.lisp
+#+begin_src lisp
 (defskill :skill-task-integrity
   :priority 90
   :trigger (lambda (ctx) (declare (ignore ctx)) nil)

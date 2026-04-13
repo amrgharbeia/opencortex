@@ -38,28 +38,27 @@ Wraps the `signal-cli` binary. Polling is done in a background thread to prevent
 * Phase D: Build (Implementation)
 
 ** Package Context
-#+begin_src lisp :tangle ../src/gateway-signal.lisp
-(in-package :org-agent)
+#+begin_src lisp
 #+end_src
 
 ** State: Signal Identity
 Retrieves the Signal account number from the secure vault.
 
-#+begin_src lisp :tangle ../src/gateway-signal.lisp
+#+begin_src lisp
 (defun get-signal-account () (vault-get-secret :signal))
 #+end_src
 
 ** State: Polling Thread
 Reference to the background thread responsible for message reception.
 
-#+begin_src lisp :tangle ../src/gateway-signal.lisp
+#+begin_src lisp
 (defvar *signal-polling-thread* nil)
 #+end_src
 
 ** Actuator: sendMessage
 Executes the `signal-cli send` command.
 
-#+begin_src lisp :tangle ../src/gateway-signal.lisp
+#+begin_src lisp
 (defun execute-signal-action (action context)
   "Sends a message via signal-cli."
   (declare (ignore context))
@@ -78,7 +77,7 @@ Executes the `signal-cli send` command.
 ** Sensor: receive & Injection
 Polls for new messages and injects them into the harness.
 
-#+begin_src lisp :tangle ../src/gateway-signal.lisp
+#+begin_src lisp
 (defun signal-process-updates ()
   "Polls for new messages via signal-cli and injects them into the harness."
   (let ((account (get-signal-account)))
@@ -108,7 +107,7 @@ Polls for new messages and injects them into the harness.
 ** Start Polling
 Initializes the Signal background thread.
 
-#+begin_src lisp :tangle ../src/gateway-signal.lisp
+#+begin_src lisp
 (defun start-signal-gateway ()
   "Initializes the Signal background thread."
   (unless (and *signal-polling-thread* (bt:thread-alive-p *signal-polling-thread*))
@@ -125,7 +124,7 @@ Initializes the Signal background thread.
 ** Stop Polling
 Gracefully terminates the background thread.
 
-#+begin_src lisp :tangle ../src/gateway-signal.lisp
+#+begin_src lisp
 (defun stop-signal-gateway ()
   (when (and *signal-polling-thread* (bt:thread-alive-p *signal-polling-thread*))
     (bt:destroy-thread *signal-polling-thread*)
@@ -135,14 +134,14 @@ Gracefully terminates the background thread.
 ** Registration: Actuator
 Register the Signal channel as a physical actuator.
 
-#+begin_src lisp :tangle ../src/gateway-signal.lisp
+#+begin_src lisp
 (register-actuator :signal #'execute-signal-action)
 #+end_src
 
 ** Registration: Skill
 Define the passive skill entry for the gateway.
 
-#+begin_src lisp :tangle ../src/gateway-signal.lisp
+#+begin_src lisp
 (defskill :skill-gateway-signal
   :priority 150
   :trigger (lambda (ctx) (declare (ignore ctx)) nil) ;; Passive
@@ -153,6 +152,6 @@ Define the passive skill entry for the gateway.
 ** Initialization
 Trigger the polling loop upon loading.
 
-#+begin_src lisp :tangle ../src/gateway-signal.lisp
+#+begin_src lisp
 (start-signal-gateway)
 #+end_src

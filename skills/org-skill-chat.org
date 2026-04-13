@@ -49,8 +49,7 @@ Interfaces for conversational event handling and UI integration. Source of truth
 * Phase D: Build (Implementation)
 
 ** Event Perception
-#+begin_src lisp :tangle ../src/chat-logic.lisp
-(in-package :org-agent)
+#+begin_src lisp
 
 (defun chat-archive-message (text &key (role :user) channel chat-id)
   "Archives a chat message into the persistent Memory and triggers a snapshot."
@@ -76,7 +75,7 @@ Interfaces for conversational event handling and UI integration. Source of truth
 #+end_src
 
 ** Deterministic Verification
-#+begin_src lisp :tangle ../src/chat-logic.lisp
+#+begin_src lisp
 (defun verify-skill-chat (proposed-action context)
   (let* ((payload (getf proposed-action :payload))
          (action (or (getf payload :action) (getf proposed-action :action)))
@@ -108,7 +107,7 @@ Interfaces for conversational event handling and UI integration. Source of truth
 ** Neural Response Generation
 The Chat skill acts as the conversational UI. Because the ~org-agent~ kernel evaluates LLM output via ~read-from-string~ (expecting a valid s-expression) and the chat verifier strictly expects an Emacs ~:insert-at-end~ actuation, we must explicitly mandate that the LLM wraps its conversational output in a Common Lisp property list.
 
-#+begin_src lisp :tangle ../src/chat-logic.lisp
+#+begin_src lisp
 (defun probabilistic-skill-chat (context)
   "Generates a conversational response, stripping system errors from context."
   (let* ((payload (getf context :payload))
@@ -138,7 +137,7 @@ REQUIRED FORMATS:
 #+end_src
 
 * Registration
-#+begin_src lisp :tangle ../src/chat-logic.lisp
+#+begin_src lisp
 (defskill :skill-chat
   :priority 100
   :trigger #'trigger-skill-chat

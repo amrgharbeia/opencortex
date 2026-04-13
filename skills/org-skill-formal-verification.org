@@ -48,20 +48,19 @@ The gate operates as high-priority middleware. It decomposes proposed actions an
 * Phase D: Build (Implementation)
 
 ** Package Context
-#+begin_src lisp :tangle ../src/verification-logic.lisp
-(in-package :org-agent)
+#+begin_src lisp
 #+end_src
 
 ** Invariant Registry
 Global store for all registered security invariants.
 
-#+begin_src lisp :tangle ../src/verification-logic.lisp
+#+begin_src lisp
 (defvar *formal-invariants* (make-hash-table :test 'equal)
   "Registry of security invariants used by the Formal Verification Gate.")
 #+end_src
 
 ** Invariant Definition Macro
-#+begin_src lisp :tangle ../src/verification-logic.lisp
+#+begin_src lisp
 (defmacro def-invariant (name action-type (action context) &body body)
   "Defines a formal security invariant. 
    BODY must return T for safe actions and NIL for unsafe ones."
@@ -74,7 +73,7 @@ Global store for all registered security invariants.
 ** Invariant: Path Confinement
 Ensures all file-related operations (including shell calls that touch files) are confined to the memex root.
 
-#+begin_src lisp :tangle ../src/verification-logic.lisp
+#+begin_src lisp
 (def-invariant path-confinement :all (action context)
   "Forces all path-based operations to reside within the Sovereign Memex."
   (declare (ignore context))
@@ -99,7 +98,7 @@ Ensures all file-related operations (including shell calls that touch files) are
 ** Invariant: No Network Exfiltration
 Blocks common tools and patterns used for data exfiltration via the shell.
 
-#+begin_src lisp :tangle ../src/verification-logic.lisp
+#+begin_src lisp
 (def-invariant no-network-exfil :shell (action context)
   "Prevents shell commands from establishing unauthorized external connections."
   (declare (ignore context))
@@ -115,7 +114,7 @@ Blocks common tools and patterns used for data exfiltration via the shell.
 ** Verification Engine
 The core prover that applies all relevant invariants to an action.
 
-#+begin_src lisp :tangle ../src/verification-logic.lisp
+#+begin_src lisp
 (defun verify-action-formally (action context)
   "Deterministically proves that ACTION satisfies all applicable security invariants."
   (let ((action-target (getf action :target))
@@ -137,7 +136,7 @@ The core prover that applies all relevant invariants to an action.
 #+end_src
 
 ** Registration: Skill
-#+begin_src lisp :tangle ../src/verification-logic.lisp
+#+begin_src lisp
 (defskill :skill-formal-verification
   :priority 95 ; Just below Bouncer
   :trigger (lambda (context) (declare (ignore context)) nil) ; Middleware only

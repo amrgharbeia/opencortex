@@ -33,12 +33,11 @@ Define a high-integrity, recursive security sandbox for Lisp execution.
 * Implementation
 
 ** Package
-#+begin_src lisp :tangle ../src/lisp-validator.lisp
-(in-package :org-agent)
+#+begin_src lisp
 #+end_src
 
 ** Whitelist Definition
-#+begin_src lisp :tangle ../src/lisp-validator.lisp
+#+begin_src lisp
 (defparameter *lisp-validator-whitelist*
   '(;; Math & Logic
     + - * / = < > <= >= 1+ 1- min max
@@ -84,7 +83,7 @@ Define a high-integrity, recursive security sandbox for Lisp execution.
 ** Dynamic Symbol Registration
 We allow other skills to register safe symbols for the validator.
 
-#+begin_src lisp :tangle ../src/lisp-validator.lisp
+#+begin_src lisp
 (defvar *lisp-validator-registry* nil
   "List of dynamically registered safe symbols.")
 
@@ -100,7 +99,7 @@ We allow other skills to register safe symbols for the validator.
 #+end_src
 
 ** Recursive AST Walker
-#+begin_src lisp :tangle ../src/lisp-validator.lisp
+#+begin_src lisp
 (defun lisp-validator-ast-walk (form)
   "Recursively walks the Lisp AST. Returns T if safe, NIL if unsafe."
   (cond
@@ -125,7 +124,7 @@ We allow other skills to register safe symbols for the validator.
 #+end_src
 
 ** Cognitive Tools
-#+begin_src lisp :tangle ../src/lisp-validator.lisp
+#+begin_src lisp
 (org-agent:def-cognitive-tool :lisp-validator-status "Returns validator-related telemetry, including blocked actions and harness status."
   nil
   :body (lambda (args)
@@ -140,7 +139,7 @@ We allow other skills to register safe symbols for the validator.
 #+end_src
 
 ** Skill Definition
-#+begin_src lisp :tangle ../src/lisp-validator.lisp
+#+begin_src lisp
 (org-agent:defskill :skill-lisp-validator
   :priority 900 ; High priority, before most skills
   :trigger (lambda (ctx) 
@@ -157,7 +156,7 @@ We allow other skills to register safe symbols for the validator.
 
 
 * Phase E: Chaos (Verification)
-#+begin_src lisp :tangle ../tests/lisp-validator-tests.lisp
+#+begin_src lisp
 (defpackage :org-agent-lisp-validator-tests
   (:use :cl :fiveam :org-agent)
   (:export #:lisp-validator-suite))

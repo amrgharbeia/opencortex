@@ -56,14 +56,13 @@ Verification will occur via `tests/llm-gateway-tests.lisp` using the FiveAM fram
 * Phase D: Build (Implementation)
 
 ** Package Context
-#+begin_src lisp :tangle ../src/llm-gateway.lisp
-(in-package :org-agent)
+#+begin_src lisp
 #+end_src
 
 ** Nested Extraction Helper (get-nested)
 A robust utility to navigate deeply nested JSON alists produced by `cl-json`, handling both objects and arrays.
 
-#+begin_src lisp :tangle ../src/llm-gateway.lisp
+#+begin_src lisp
 (defun get-nested (alist &rest keys)
   "Recursively extracts nested values from an alist, handling both objects and arrays."
   (let ((val alist))
@@ -82,7 +81,7 @@ A robust utility to navigate deeply nested JSON alists produced by `cl-json`, ha
 ** Unified Request Executor (execute-llm-request)
 This is the primary actuator for neural reasoning. It handles the specific JSON payload formats and HTTP headers required by each provider. It retrieves secrets from the [[file:org-skill-credentials-vault.org][Credentials Vault]], ensuring that API keys are masked in all diagnostic output.
 
-#+begin_src lisp :tangle ../src/llm-gateway.lisp
+#+begin_src lisp
 (defun execute-llm-request (prompt system-prompt &key provider model)
   "Unified entry point for all LLM providers."
   (let ((api-key (vault-get-secret provider :type :api-key))
@@ -144,7 +143,7 @@ The `:ask-llm` tool exposes the gateway's power to Probabilistic Engine, allowin
 ** Registration: Tool
 Register the unified gateway as a cognitive tool.
 
-#+begin_src lisp :tangle ../src/llm-gateway.lisp
+#+begin_src lisp
 (def-cognitive-tool :ask-llm 
   "Queries an LLM provider via the unified gateway."
   ((:prompt :type :string :description "The user prompt.")
@@ -159,7 +158,7 @@ Register the unified gateway as a cognitive tool.
 #+end_src
 Register each supported provider with the harness's neural registry.
 
-#+begin_src lisp :tangle ../src/llm-gateway.lisp
+#+begin_src lisp
 (dolist (p '(:anthropic :gemini-api :gemini-web :groq :ollama :openai :openrouter))
   (org-agent:register-probabilistic-backend p (lambda (prompt system-prompt &key model)
                                         (execute-llm-request prompt system-prompt :provider p :model model))))
@@ -168,7 +167,7 @@ Register each supported provider with the harness's neural registry.
 ** Registration: Skill
 Define the foundational skill entry for the gateway.
 
-#+begin_src lisp :tangle ../src/llm-gateway.lisp
+#+begin_src lisp
 (defskill :skill-llm-gateway
   :priority 150 ; Higher than individual old skills
   :trigger (lambda (context) (declare (ignore context)) nil)
