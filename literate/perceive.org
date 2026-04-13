@@ -1,0 +1,47 @@
+#+TITLE: Stage 1: Perceive (perceive.lisp)
+#+AUTHOR: Amr
+#+FILETAGS: :harness:perceive:
+#+STARTUP: content
+
+* Stage 1: Perceive (perceive.lisp)
+** Architectural Intent: Sensory Ingestion
+The Perceive stage is responsible for data normalization and sensory intake. It takes raw stimuli (from TCP sockets, Signal, or Heartbeats) and updates the global Object Store graph.
+
+#+begin_src lisp :tangle ../src/perceive.lisp
+(in-package :org-agent)
+
+(defun harness-track-telemetry (skill-name duration status)
+  "Updates performance metrics for a specific skill."
+  (when skill-name (bt:with-lock-held (*telemetry-lock*)
+                     (let ((entry (or (gethash skill-name *skill-telemetry*) (list :executions 0 :total-time 0 :failures 0))))
+                       (incf (getf entry :executions)) (incf (getf entry :total-time) duration)
+                       (when (eq status :rejected) (incf (getf entry :failures))) (setf (gethash skill-name *skill-telemetry*) entry)))))
+
+(defun inject-stimulus (raw-message &key stream (depth 0))
+  "Enqueues a raw message into the reactive signal pipeline."
+  (let* ((payload (getf raw-message :payload)) 
+         (sensor (getf payload :sensor))
+         (async-p (or (getf payload :async-p) (member sensor '(:chat-message :delegation :user-command)))))
+    (when stream (setf (getf raw-message :reply-stream) stream))
+    (if async-p (bt:make-thread (lambda () (restart-case (handler-bind ((error (lambda (c) (harness-log "ASYNC ERROR: ~a" c) (invoke-restart 'skip-event))))
+                                                           (process-signal raw-message)) (skip-event () nil))) :name "org-agent-async-task")
+        (restart-case (handler-bind ((error (lambda (c) (harness-log "SYSTEM ERROR: ~a" c) (invoke-restart 'skip-event)))) (process-signal raw-message))
+          (skip-event () (harness-log "SYSTEM RECOVERY: Stimulus dropped.~%"))))))
+
+(defun perceive-gate (signal)
+  "Initial processing: Normalizes raw stimuli and updates memory."
+  (let* ((payload (getf signal :payload))
+         (type (getf signal :type))
+         (sensor (getf payload :sensor)))
+    (harness-log "GATE [Perceive]: ~a (~a)" type (or sensor "no-sensor"))
+    (snapshot-object-store)
+    (cond ((eq type :EVENT)
+           (case sensor
+             (:buffer-update (let ((ast (getf payload :ast))) (when ast (ingest-ast ast))))
+             (:point-update (let ((element (getf payload :element))) (when element (ingest-ast element))))
+             (:interrupt (bt:with-lock-held (*interrupt-lock*) (setf *interrupt-flag* t)))))
+          ((eq type :RESPONSE)
+           (harness-log "GATE [Perceive]: Act Result -> ~a" (getf payload :status))))
+    (setf (getf signal :status) :perceived)
+    signal))
+#+end_src
