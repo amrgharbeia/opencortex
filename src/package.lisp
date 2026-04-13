@@ -1,11 +1,11 @@
 (defpackage :org-agent
   (:use :cl)
   (:export 
-   ;; --- Harness Communication ---
+   ;; --- communication protocol ---
    #:frame-message
    #:parse-message
    #:make-hello-message
-   #:validate-harness-protocol-schema
+   #:validate-communication-protocol-schema
    
    ;; --- Daemon Lifecycle ---
    #:start-daemon
@@ -20,6 +20,7 @@
    #:*memory*
    #:*history-store*
    #:org-object
+   #:make-org-object
    #:org-object-id
    #:org-object-type
    #:org-object-attributes

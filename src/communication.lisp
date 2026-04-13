@@ -11,10 +11,10 @@
   "Prefixes MSG-STRING with a 6-character hex length.
    If security is enabled, prefixes a 64-char HMAC-SHA256 signature."
   (let ((len (length msg-string))
-        (enforce-hmac (uiop:getenv "HARNESS_PROTOCOL_ENFORCE_HMAC")))
+        (enforce-hmac (uiop:getenv "COMMUNICATION_PROTOCOL_ENFORCE_HMAC")))
     (if (and enforce-hmac (string-equal enforce-hmac "true"))
-        (let ((secret (uiop:getenv "HARNESS_PROTOCOL_HMAC_SECRET")))
-          (unless secret (error "HARNESS_PROTOCOL_HMAC_SECRET is required when security is enabled."))
+        (let ((secret (uiop:getenv "COMMUNICATION_PROTOCOL_HMAC_SECRET")))
+          (unless secret (error "COMMUNICATION_PROTOCOL_HMAC_SECRET is required when security is enabled."))
           (let* ((key (ironclad:ascii-string-to-byte-array secret))
                  (hmac (ironclad:make-mac :hmac key :sha256))
                  (payload-bytes (ironclad:ascii-string-to-byte-array msg-string)))
@@ -27,11 +27,11 @@
   "Extracts and parses the S-expression from a framed string securely."
   (when (< (length framed-string) 6)
     (error "Framed string too short"))
-  (let* ((enforce-hmac (uiop:getenv "HARNESS_PROTOCOL_ENFORCE_HMAC"))
+  (let* ((enforce-hmac (uiop:getenv "COMMUNICATION_PROTOCOL_ENFORCE_HMAC"))
          (use-hmac (and enforce-hmac (string-equal enforce-hmac "true")))
          (prefix-len (if use-hmac 70 6)))
     (when (< (length framed-string) prefix-len)
-      (error "Framed string too short for Harness Communication prefix"))
+      (error "Framed string too short for communication protocol prefix"))
     
     (let* ((len-str (subseq framed-string 0 6))
            (signature (when use-hmac (subseq framed-string 6 70)))
@@ -43,20 +43,20 @@
         (error "Message length mismatch. Expected ~a, got ~a" expected-len (length actual-msg)))
       
       (when use-hmac
-        (let ((secret (uiop:getenv "HARNESS_PROTOCOL_HMAC_SECRET")))
-          (unless secret (error "HARNESS_PROTOCOL_HMAC_SECRET is required when security is enabled."))
+        (let ((secret (uiop:getenv "COMMUNICATION_PROTOCOL_HMAC_SECRET")))
+          (unless secret (error "COMMUNICATION_PROTOCOL_HMAC_SECRET is required when security is enabled."))
           (let* ((key (ironclad:ascii-string-to-byte-array secret))
                  (hmac (ironclad:make-mac :hmac key :sha256))
                  (payload-bytes (ironclad:ascii-string-to-byte-array actual-msg)))
             (ironclad:update-mac hmac payload-bytes)
             (let ((expected-signature (ironclad:byte-array-to-hex-string (ironclad:produce-mac hmac))))
               (unless (string-equal signature expected-signature)
-                (error "Harness Communication Integrity Failure: HMAC mismatch"))))))
+                (error "communication protocol Integrity Failure: HMAC mismatch"))))))
       
       ;; SECURITY: Disable the reader's ability to execute code during parsing
       (let ((*read-eval* nil))
         (let ((msg (read-from-string actual-msg)))
-          (validate-harness-protocol-schema msg)
+          (validate-communication-protocol-schema msg)
           msg)))))
 
 (defun make-hello-message (version)

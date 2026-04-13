@@ -4,7 +4,7 @@
   :version "0.1.0"
   :license "MIT"
   :description "The Probabilistic-Deterministic Lisp Machine Harness"
-  :depends-on (:usocket :cl-json :bordeaux-threads :dexador :uiop :cl-dotenv :cl-ppcre :hunchentoot :ironclad :str)
+  :depends-on (:usocket ::bordeaux-threads :dexador :uiop :cl-dotenv :cl-ppcre :hunchentoot :ironclad :str :cl-json)
   :serial t
   :components ((:file "src/package")
                (:file "src/skills")
@@ -56,7 +56,7 @@
                (:file "tests/playwright-tests")
                (:file "tests/chaos-qa"))
   :perform (test-op (o s) 
-             (uiop:symbol-call :fiveam :run! (uiop:find-symbol* :harness-protocol-suite :org-agent-tests))
+             (uiop:symbol-call :fiveam :run! (uiop:find-symbol* :communication-protocol-suite :org-agent-tests))
              (uiop:symbol-call :fiveam :run! (uiop:find-symbol* :pipeline-suite :org-agent-pipeline-tests))
              (uiop:symbol-call :fiveam :run! (uiop:find-symbol* :vision-suite :org-agent-peripheral-vision-tests))
              (uiop:symbol-call :fiveam :run! (uiop:find-symbol* :safety-suite :org-agent-safety-tests))

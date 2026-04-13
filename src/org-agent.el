@@ -12,7 +12,7 @@
 
 ;; org-agent provides a Probabilistic-Deterministic Lisp Machine interface for Emacs.
 ;; It acts as the sensor/actuator array, communicating with a persistent
-;; Common Lisp daemon over a high-speed Harness Communication socket.
+;; Common Lisp daemon over a high-speed communication protocol socket.
 
 ;;; Code:
 
@@ -100,7 +100,7 @@ will assume you have started it manually (e.g., via SBCL)."
     (message "org-agent: Killed daemon process.")))
 
 (defun org-agent--filter (proc string)
-  "Handle incoming Harness Communication messages from the daemon via PROC with STRING."
+  "Handle incoming communication protocol messages from the daemon via PROC with STRING."
   (let ((buf (process-buffer proc)))
     (when (buffer-live-p buf)
       (with-current-buffer buf
@@ -109,7 +109,7 @@ will assume you have started it manually (e.g., via SBCL)."
         (org-agent--process-buffer buf proc)))))
 
 (defun org-agent--process-buffer (buffer &optional proc)
-  "Process the Harness Communication message BUFFER, optionally using PROC."
+  "Process the communication protocol message BUFFER, optionally using PROC."
   (with-current-buffer buffer
     (goto-char (point-min))
     (while (>= (buffer-size) 6)
@@ -127,13 +127,13 @@ will assume you have started it manually (e.g., via SBCL)."
           (setq msg-len 1000000)))))) ; Break loop
 
 (defun org-agent--plist-get (plist prop)
-  "Case-insensitive keyword lookup for Harness Communication compatibility."
+  "Case-insensitive keyword lookup for communication protocol compatibility."
   (or (plist-get plist prop)
       (plist-get plist (intern (upcase (symbol-name prop))))
       (plist-get plist (intern (downcase (symbol-name prop))))))
 
 (defun org-agent--handle-message (proc plist)
-  "Route and execute incoming Harness Communication messages from PROC using PLIST."
+  "Route and execute incoming communication protocol messages from PROC using PLIST."
   (let ((type (org-agent--plist-get plist :type))
         (id (org-agent--plist-get plist :id))
         (payload (or (org-agent--plist-get plist :payload) plist)))
@@ -190,7 +190,7 @@ will assume you have started it manually (e.g., via SBCL)."
     (message "org-agent: Connection lost.")))
 
 (defun org-agent-send (plist)
-  "Send a Lisp PLIST to the daemon using Harness Communication framing."
+  "Send a Lisp PLIST to the daemon using communication protocol framing."
   (let* ((msg (prin1-to-string plist))
          (len (length msg))
          (framed (format "%06x%s" len msg)))

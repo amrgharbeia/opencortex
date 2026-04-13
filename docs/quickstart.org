@@ -35,7 +35,7 @@ docker-compose up --build -d
 * 4. Interaction Gateways
 Once the harness is "Ready", you can interact with it via multiple sensors.
 
-** Gateway A: Emacs (Harness Communication)
+** Gateway A: Emacs (communication protocol)
 If you have configured the ~org-agent~ package in Emacs:
 1. Open a chat buffer: ~M-x org-agent-chat-open~.
 2. Send: "Are you online, agent?"
