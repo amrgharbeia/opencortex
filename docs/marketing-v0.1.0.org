@@ -1,18 +1,18 @@
 #+TITLE: v0.1.0 Launch & Marketing Plan
 #+AUTHOR: Amr
-#+FILETAGS: :marketing:release:psf:
+#+FILETAGS: :marketing:release:autonomy:
 #+STARTUP: content
 
 * Overview
-With the v0.1.0 "Sovereign MVP" released, the goal is to leverage GitHub's social graph to build a community of early adopters, contributors, and power users who resonate with the "Thin Harness, Fat Skills" and "Local-First" philosophy.
+With the v0.1.0 "Autonomous MVP" released, the goal is to leverage GitHub's social graph to build a community of early adopters, contributors, and power users who resonate with the "Thin Harness, Fat Skills" and "Local-First" philosophy.
 
 * 1. Licensing Strategy
 Before wide promotion, the project's license must align with its goals.
 - **MIT License (Current):** Maximum adoption, frictionless for developers to embed in their own tools. Good for rapid growth.
-- **GPLv3 / AGPLv3:** Enforces copyleft. Ensures any modifications or integrations by corporations must remain open-source. Protects the "Sovereign" ethos from proprietary enclosure.
+- **GPLv3 / AGPLv3:** Enforces copyleft. Ensures any modifications or integrations by corporations must remain open-source. Protects the "Autonomous" ethos from proprietary enclosure.
 - **Dual Licensing:** Open-source for individuals, commercial license for enterprise usage (if monetization is a future goal).
 
-*Decision Needed:* Do we stick with MIT, or switch to a copyleft license (AGPL) to protect the sovereign nature of the project?
+*Decision Needed:* Do we stick with MIT, or switch to a copyleft license (AGPL) to protect the autonomous nature of the project?
 
 * 2. The GitHub Migration & Setup
 To maximize visibility, the repository must be optimized for GitHub's ecosystem.

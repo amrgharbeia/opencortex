@@ -5,7 +5,7 @@
 :END:
 #+TITLE: SKILL: Chat Agent (Universal Literate Note)
 #+STARTUP: content
-#+FILETAGS: :chat:conversational:ui:psf:
+#+FILETAGS: :chat:conversational:ui:autonomy:
 
 * Overview
 The *Chat Agent* provides a dedicated conversational interface within Emacs (`*org-agent-chat*`). It enables fluid dialogue while maintaining strict persona alignment and contextual awareness.

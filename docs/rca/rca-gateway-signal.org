@@ -1,6 +1,6 @@
 #+TITLE: Root Cause Analysis: Signal Gateway & Multi-Channel Chat
 #+DATE: 2026-04-11
-#+FILETAGS: :rca:gateway:signal:chat:psf:
+#+FILETAGS: :rca:gateway:signal:chat:autonomy:
 
 * Executive Summary
 Successfully implemented the second external communication channel (Signal) using `signal-cli`. Further hardened the multi-channel chat logic and resolved JSON mapping discrepancies between Common Lisp and external CLI outputs.
@@ -22,7 +22,7 @@ Unlike Telegram's HTTP API, Signal requires a local binary (`signal-cli`).
 ** Security
 The system uses the pre-configured Signal account `+13322690326` discovered in the user's memex.
 
-* 3. Alignment with PSF Mandates
+* 3. Alignment with org-agent Mandates
 ** Literate Granularity
 Strictly adhered to the "one definition per block" mandate throughout the new `org-skill-gateway-signal.org` file.
 ** Verification

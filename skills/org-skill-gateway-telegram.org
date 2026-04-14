@@ -4,11 +4,11 @@
 :END:
 #+TITLE: SKILL: Telegram Gateway (Universal Literate Note)
 #+STARTUP: content
-#+FILETAGS: :gateway:telegram:io:psf:
+#+FILETAGS: :gateway:telegram:io:autonomy:
 #+DEPENDS_ON: id:credentials-vault-skill
 
 * Overview
-The *Telegram Gateway* provides bi-directional communication between the Sovereign and the Org-Agent via the Telegram Bot API. It features a non-blocking polling sensor and a high-integrity actuator for outbound messaging.
+The *Telegram Gateway* provides bi-directional communication between the Autonomous and the Org-Agent via the Telegram Bot API. It features a non-blocking polling sensor and a high-integrity actuator for outbound messaging.
 
 * Phase A: Demand (PRD)
 :PROPERTIES:

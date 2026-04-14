@@ -1,6 +1,6 @@
 #+TITLE: Root Cause Analysis: Telegram Gateway & Channel-Aware Chat
 #+DATE: 2026-04-11
-#+FILETAGS: :rca:gateway:telegram:chat:psf:
+#+FILETAGS: :rca:gateway:telegram:chat:autonomy:
 
 * Executive Summary
 Successfully implemented the first external communication channel (Telegram) and decoupled the Chat Agent from its Emacs-centric roots. Resolved significant load-order and dependency issues identified during integration.
@@ -32,8 +32,8 @@ Misinterpretation of the `UIOP` API. `setenv` is not a standard export; the port
 ** Resolution
 Updated all test environment setup to use the `setf` accessor.
 
-* 4. PSF Mandate Alignment
-** Sovereign Boundary
+* 4. org-agent Mandate Alignment
+** Autonomous Boundary
 By moving the Telegram API logic to a user-space skill and communicating with the core via standard stimuli, we have respected the microkernel boundary.
 ** Homoiconic Memory
 All Telegram interactions are now logged as `:chat-message` events, ensuring the agent's history is unified regardless of the platform.

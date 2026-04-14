@@ -5,7 +5,7 @@
 :END:
 #+TITLE: SKILL: Context Manager (Universal Literate Note)
 #+STARTUP: content
-#+FILETAGS: :context:system:psf:
+#+FILETAGS: :context:system:autonomy:
 
 * Overview
 The *Context Manager* handles the cognitive stack of the agent, allowing for switching between different projects, areas, and tasks while maintaining a clean environment.

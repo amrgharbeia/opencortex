@@ -4,7 +4,7 @@
 :END:
 #+TITLE: SKILL: Lisp Repair Syntax Gate
 #+STARTUP: content
-#+FILETAGS: :system:repair:syntax:lisp:psf:
+#+FILETAGS: :system:repair:syntax:lisp:autonomy:
 
 * Overview
 The *Lisp Repair Syntax Gate* asynchronously intercepts `:syntax-error` events emitted by the harness when Probabilistic Engine (LLM) proposals fail to parse. It performs deterministic or neural repairs and re-injects the corrected action into the pipeline.

@@ -6,7 +6,7 @@
 * The Skill Engine (skills.lisp)
 ** Architectural Intent: Late-Binding Intelligence
 
-A static, hardcoded architecture is inherently fragile. To build a sovereign agent that can evolve alongside its user, the harness must be a "Thin Shell" that delegates its capabilities to dynamic, hot-reloadable modules known as **Skills**. This is the core of our **Thin Harness / Thick Skill Microkernel Architecture**.
+A static, hardcoded architecture is inherently fragile. To build a autonomous agent that can evolve alongside its user, the harness must be a "Thin Shell" that delegates its capabilities to dynamic, hot-reloadable modules known as **Skills**. This is the core of our **Thin Harness / Thick Skill Microkernel Architecture**.
 
 Skills unify the **"Why"** (Literate Org documentation) and the **"How"** (Functional Lisp implementation). This allows the harness to "learn" new behaviors without a full system restart, enabling a continuous evolutionary loop where the agent can eventually inspect and improve its own code.
 
@@ -373,7 +373,7 @@ You can call tools by returning a Lisp plist: (:target :tool :action :call :tool
 
 EXAMPLES:
 (:target :tool :action :call :tool \"eval\" :args (:code \"(+ 1 1)\"))
-(:target :tool :action :call :tool \"grep-search\" :args (:pattern \"sovereignty\"))
+(:target :tool :action :call :tool \"grep-search\" :args (:pattern \"autonomousty\"))
 (:target :tool :action :call :tool \"shell\" :args (:cmd \"ls -la\"))
 
 ---

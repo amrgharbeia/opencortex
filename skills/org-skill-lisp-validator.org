@@ -5,7 +5,7 @@
 :END:
 #+TITLE: SKILL: Lisp Validator
 #+STARTUP: content
-#+FILETAGS: :security:lisp:ast:psf:
+#+FILETAGS: :security:lisp:ast:autonomy:
 
 * Overview
 The *Lisp Validator* is the primary structural gate for the Probabilistic-Deterministic Lisp Machine. It provides a recursive AST validator that subjects all Lisp proposals from the Probabilistic Engine to a strict "Deny-by-Default" sandbox.

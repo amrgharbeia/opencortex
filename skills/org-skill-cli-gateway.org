@@ -4,7 +4,7 @@
 :END:
 #+TITLE: SKILL: CLI Gateway (Universal Literate Note)
 #+STARTUP: content
-#+FILETAGS: :gateway:cli:io:psf:
+#+FILETAGS: :gateway:cli:io:autonomy:
 
 * Overview
 The *CLI Gateway* is the primary interaction point for the Org-Agent MVP. It provides a lightweight TCP socket server that allows local terminal clients to communicate with the daemon. It ensures a frictionless "First Contact" experience immediately following installation.
@@ -58,11 +58,13 @@ The CLI actuator writes the agent's response back to the client's network stream
   (let* ((payload (getf action :payload))
          (text (or (getf payload :text) (getf action :text)))
          (stream (getf context :reply-stream)))
-    (if (and stream (open-stream-p stream))
-        (progn
-          (format stream "Agent: ~a~%" text)
-          (finish-output stream))
-        (harness-log "CLI ERROR: No active reply stream for signal."))))
+    (handler-case
+        (if (and stream (open-stream-p stream))
+            (progn
+              (format stream "Agent: ~a~%" text)
+              (finish-output stream))
+            (harness-log "CLI ERROR: No active or open reply stream for signal."))
+      (error (c) (harness-log "CLI ACTUATOR ERROR: ~a" c)))))
 #+end_src
 
 ** Server: Client Handler
@@ -71,6 +73,11 @@ Handles an individual TCP connection. It reads lines until the connection is clo
 #+begin_src lisp
 (defun handle-cli-client (stream)
   "Reads lines from a CLI client and injects them as stimuli."
+  (harness-log "CLI: Client connected.")
+  (format stream "--------------------------------------------------~%")
+  (format stream "  Connected to the Autonomous Brain (v0.1.0)~%")
+  (format stream "--------------------------------------------------~%")
+  (finish-output stream)
   (handler-case
       (loop for line = (read-line stream nil nil)
             while line do
@@ -82,7 +89,8 @@ Handles an individual TCP connection. It reads lines until the connection is clo
                                                       :channel :cli 
                                                       :text trimmed))
                                  :stream stream))))
-    (error (c) (harness-log "CLI CLIENT ERROR: ~a" c))))
+    (error (c) (harness-log "CLI CLIENT DISCONNECT: ~a" c)))
+  (harness-log "CLI: Client disconnected."))
 #+end_src
 
 ** Server: Main Loop
@@ -129,20 +137,23 @@ We tangle a lightweight client script that the user can run on their host machin
 
 ** The Bash Client
 #+begin_src bash :tangle ../scripts/org-agent-chat.sh :shebang "#!/bin/bash"
-# org-agent-chat: The terminal mouthpiece for the Sovereign Brain.
+# org-agent-chat: The terminal mouthpiece for the Autonomous Brain.
 PORT=9105
 HOST=${1:-localhost}
 
-echo "Connecting to org-agent at $HOST:$PORT..."
-echo "Type your message and press Enter. Ctrl+C to exit."
-echo "--------------------------------------------------"
-
-# Uses netcat (nc) for a simple bidirectional pipe. 
-# Requires an open connection. We use a simple loop for persistence.
-while true; do
-    read -p "User: " MESSAGE
-    if [ -z "$MESSAGE" ]; then continue; fi
-    # Send message and wait for one line of response from Agent
-    echo "$MESSAGE" | nc -N $HOST $PORT
-done
+# Check for socat (preferred)
+if command -v socat >/dev/null 2>&1; then
+    # Use socat with READLINE for history and arrow-key support.
+    # It establishes a persistent bidirectional connection.
+    socat READLINE,history=$HOME/.org_agent_history TCP:$HOST:$PORT
+else
+    # Fallback to nc (netcat) for a single-shot connection if socat is missing.
+    # Note: This is less robust for agents with long-thinking times.
+    echo "WARNING: socat not found. Falling back to nc (no line-editing support)."
+    while true; do
+        read -p "User: " MESSAGE
+        if [ -z "$MESSAGE" ]; then continue; fi
+        echo "$MESSAGE" | nc -N $HOST $PORT
+    done
+fi
 #+end_src

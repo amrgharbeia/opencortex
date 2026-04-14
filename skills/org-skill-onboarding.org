@@ -5,7 +5,7 @@
 :END:
 #+TITLE: SKILL: Onboarding & Calibration (Universal Literate Note)
 #+STARTUP: content
-#+FILETAGS: :onboarding:calibration:setup:psf:
+#+FILETAGS: :onboarding:calibration:setup:autonomy:
 
 * Overview
 The *Onboarding Skill* ensures that the Lisp Machine environment is correctly calibrated. It automates the "zero-to-one" setup of the Probabilistic-Deterministic Kernel, including path normalization, identity personalization, and provider/actuator configuration.
@@ -16,7 +16,7 @@ The *Onboarding Skill* ensures that the Lisp Machine environment is correctly ca
 :END:
 
 ** 1. Purpose
-Define automated behaviors for verifying and configuring the PSF environment.
+Define automated behaviors for verifying and configuring the org-agent environment.
 
 ** 2. User Needs
 - *Environment Verification:* Confirm SBCL, Quicklisp, and core binaries are present.

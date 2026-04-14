@@ -5,7 +5,7 @@
 :END:
 #+TITLE: SKILL: Inbound Multi-Channel Gateway (Universal Literate Note)
 #+STARTUP: content
-#+FILETAGS: :gateway:sensors:io:psf:
+#+FILETAGS: :gateway:sensors:io:autonomy:
 
 * Overview
 The *Inbound Multi-Channel Gateway* provides the sensory interface for external messaging. It enables the agent to "hear" the user from various platforms (Signal, Telegram, SMS) by normalizing disparate inbound payloads into standard Probabilistic-Deterministic Kernel stimuli.

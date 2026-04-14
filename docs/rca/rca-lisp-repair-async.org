@@ -1,9 +1,9 @@
 #+TITLE: Root Cause Analysis: Asynchronous Lisp Repair Syntax Gate
 #+DATE: 2026-04-11
-#+FILETAGS: :rca:lisp:repair:decoupling:architecture:psf:
+#+FILETAGS: :rca:lisp:repair:decoupling:architecture:autonomy:
 
 * Executive Summary
-Reimplemented the `org-skill-lisp-repair` to align with the "Sovereign Boundary" mandate. The previously synchronous, core-blocking repair logic has been replaced with an asynchronous, event-driven architecture using the Reactive Signal Pipeline.
+Reimplemented the `org-skill-lisp-repair` to align with the "Autonomous Boundary" mandate. The previously synchronous, core-blocking repair logic has been replaced with an asynchronous, event-driven architecture using the Reactive Signal Pipeline.
 
 * 1. Issue: Core Bloat & Synchronous Coupling
 ** Symptoms
@@ -22,8 +22,8 @@ Mismatched expectations of signal nesting. The skill expected the code at `(getf
 ** Resolution
 Updated the deterministic logic to correctly traverse the nested signal structure: `(getf (getf context :candidate) :payload)`.
 
-* 3. PSF Mandate Alignment
-** Sovereign Boundary
+* 3. org-agent Mandate Alignment
+** Autonomous Boundary
 The core is now strictly a parser. Repair is an optional, user-space service.
 ** Reactive Signal Pipeline
 Leveraged the pipeline's ability to re-inject `EVENT` signals to flatten the recursion of the repair loop.

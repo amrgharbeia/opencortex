@@ -2,12 +2,12 @@
 :ID:       gardener-skill
 :CREATED:  [2026-04-13 Mon 18:50]
 :END:
-#+TITLE: SKILL: Sovereign Gardener (Memex Maintenance)
+#+TITLE: SKILL: Autonomous Gardener (Memex Maintenance)
 #+STARTUP: content
-#+FILETAGS: :gardener:maintenance:memex:psf:
+#+FILETAGS: :gardener:maintenance:memex:autonomy:
 
 * Overview
-The *Sovereign Gardener* is the metabolic immune system of the Memex. It autonomously audits the knowledge graph for structural decay—broken links, orphaned nodes, and missing metadata—ensuring that the system remains coherent and navigatable over long horizons.
+The *Autonomous Gardener* is the metabolic immune system of the Memex. It autonomously audits the knowledge graph for structural decay—broken links, orphaned nodes, and missing metadata—ensuring that the system remains coherent and navigatable over long horizons.
 
 * Phase A: Demand (PRD)
 :PROPERTIES:

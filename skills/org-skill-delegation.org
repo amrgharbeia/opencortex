@@ -5,7 +5,7 @@
 :END:
 #+TITLE: SKILL: Delegation Manager (Universal Literate Note)
 #+STARTUP: content
-#+FILETAGS: :delegation:multi-agent:psf:
+#+FILETAGS: :delegation:multi-agent:autonomy:
 
 * Overview
 The *Delegation Manager* orchestrates the dispatch of tasks to sub-agents or specialized skills.

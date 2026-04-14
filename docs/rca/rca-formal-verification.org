@@ -1,9 +1,9 @@
 #+TITLE: Root Cause Analysis: Lisp-Native Formal Verification Gate
 #+DATE: 2026-04-11
-#+FILETAGS: :rca:security:formal-verification:psf:
+#+FILETAGS: :rca:security:formal-verification:autonomy:
 
 * Executive Summary
-Implemented a Lisp-Native Deterministic Prover to replace heuristic whitelisting with formal security invariants. This ensures that every high-impact action (shell, file I/O) is mathematically proven safe against the Sovereign's core mandates.
+Implemented a Lisp-Native Deterministic Prover to replace heuristic whitelisting with formal security invariants. This ensures that every high-impact action (shell, file I/O) is mathematically proven safe against the Autonomous's core mandates.
 
 * 1. Architectural Shift: Native vs. External
 ** Issue
@@ -25,7 +25,7 @@ Incorrect assumption about the Quicklisp system name vs. the package name. The l
 - **Path Confinement:** Deterministically proves that any file operation or absolute path in a shell command is strictly within the `/home/user/memex` root.
 - **No Network Exfiltration:** Prevents the shell from invoking common exfiltration tools (`nc`, `ssh`, etc.) by inspecting the parsed command structure.
 
-* 4. PSF Mandate Alignment
+* 4. org-agent Mandate Alignment
 ** Soundness over Heuristics
 By moving to formal invariants, we have moved from "blacklisting bad things" to "proving safety." Any action that cannot be proven to satisfy all invariants is denied by default.
 ** Literate Granularity

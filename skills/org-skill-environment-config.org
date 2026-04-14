@@ -5,7 +5,7 @@
 :END:
 #+TITLE: SKILL: Environment Configuration Manager (Universal Literate Note)
 #+STARTUP: content
-#+FILETAGS: :system:config:sovereignty:psf:
+#+FILETAGS: :system:config:autonomousty:autonomy:
 
 * Overview
 The *Environment Configuration Manager* is the source of truth for user preferences. It persists settings (like LLM Model Fleets) into the harness's Memory, allowing for dynamic runtime reconfiguration without environment variable bloat.

@@ -4,7 +4,7 @@
 :END:
 #+TITLE: SKILL: Vector Embedding (Universal Literate Note)
 #+STARTUP: content
-#+FILETAGS: :embedding:vector-search:semantic:psf:
+#+FILETAGS: :embedding:vector-search:semantic:autonomy:
 
 * Overview
 The *Vector Embedding* skill provides semantic search and vectorization capabilities to the org-agent. It decouples the specific embedding algorithms and provider-specific API calls from the core kernel.

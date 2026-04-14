@@ -6,7 +6,7 @@
 * The System Memory (memory.lisp)
 ** Architectural Intent: The Single Address Space (Live Memory)
 
-Yes, the Memory module is the cognitive bedrock of the PSF. It is not a database; it is the agent's live, active "brain" state.
+Yes, the Memory module is the cognitive bedrock of the org-agent. It is not a database; it is the agent's live, active "brain" state.
 
 Traditional architectures rely on external databases (SQLite, Vector DBs) which introduce I/O latency and structural impedance. The org-agent architecture chooses a different path: the **Single Address Space**. By treating the entire knowledge base as a graph of Lisp pointers, we achieve microsecond recollection and total structural transparency.
 

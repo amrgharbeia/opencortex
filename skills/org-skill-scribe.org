@@ -2,12 +2,12 @@
 :ID:       scribe-skill
 :CREATED:  [2026-04-13 Mon 18:40]
 :END:
-#+TITLE: SKILL: Sovereign Scribe (Knowledge Distillation)
+#+TITLE: SKILL: Autonomous Scribe (Knowledge Distillation)
 #+STARTUP: content
-#+FILETAGS: :scribe:distillation:memex:psf:
+#+FILETAGS: :scribe:distillation:memex:autonomy:
 
 * Overview
-The *Sovereign Scribe* is the background architect of the Memex. It is responsible for the "Nightly Distillation": a process that scans chronological daily logs, extracts evergreen concepts, and formalizes them into atomic Zettelkasten notes.
+The *Autonomous Scribe* is the background architect of the Memex. It is responsible for the "Nightly Distillation": a process that scans chronological daily logs, extracts evergreen concepts, and formalizes them into atomic Zettelkasten notes.
 
 * Phase A: Demand (PRD)
 :PROPERTIES:

@@ -9,6 +9,7 @@ ENV DEBIAN_FRONTEND=noninteractive
 # - curl/git/unzip: Standard tools for Quicklisp and binaries
 # - default-jre: Required by signal-cli
 # - python3/pip: Required for Playwright bridge
+# - socat: Required for stateful CLI interaction
 RUN apt-get update && apt-get install -y \
     sbcl \
     curl \
@@ -20,6 +21,7 @@ RUN apt-get update && apt-get install -y \
     python3-pip \
     python3-venv \
     emacs-nox \
+    socat \
     && rm -rf /var/lib/apt/lists/*
 
 # 2. Setup Playwright (High-Fidelity Browsing)

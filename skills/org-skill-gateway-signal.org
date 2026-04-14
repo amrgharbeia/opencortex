@@ -4,11 +4,11 @@
 :END:
 #+TITLE: SKILL: Signal Gateway (Universal Literate Note)
 #+STARTUP: content
-#+FILETAGS: :gateway:signal:io:psf:
+#+FILETAGS: :gateway:signal:io:autonomy:
 #+DEPENDS_ON: id:credentials-vault-skill
 
 * Overview
-The *Signal Gateway* provides bi-directional communication between the Sovereign and the Org-Agent via the `signal-cli` tool. It features a non-blocking polling sensor and a high-integrity actuator for outbound messaging.
+The *Signal Gateway* provides bi-directional communication between the Autonomous and the Org-Agent via the `signal-cli` tool. It features a non-blocking polling sensor and a high-integrity actuator for outbound messaging.
 
 * Phase A: Demand (PRD)
 :PROPERTIES:

@@ -5,10 +5,10 @@
 :END:
 #+TITLE: SKILL: System Policy
 #+STARTUP: content
-#+FILETAGS: :platform:policy:alignment:
+#+FILETAGS: :platform:policy:alignment:autonomy:
 
 * Overview
-The *Org-Agent* is a probabilistic-deterministic harness for a personal operating system. It uses Org-mode as its native memory and Common Lisp as its deterministic reasoning engine.
+The *org-agent* is a probabilistic-deterministic harness for a personal operating system. It uses Org-mode as its native memory and Common Lisp as its deterministic reasoning engine.
 
 * Package Context
 Every skill executes within its own jailed package namespace, while inheriting core harness symbols.
@@ -20,15 +20,15 @@ Every skill executes within its own jailed package namespace, while inheriting c
 * The Core Invariants
 This document contains the *Core System Policy*. These are non-negotiable philosophical and technical constraints that every agentic action MUST satisfy. The Deterministic Engine uses these headlines as a "Moral Compass" during the decision stage.
 
-** 1. Sovereignty Above All
-Every action must increase the user's independence from centralized, proprietary platforms. If a tool or library introduces a dependency on a non-sovereign entity, it must be flagged for replacement.
+** 1. Autonomy Above All
+Every action must increase the user's independence from centralized, proprietary platforms. If a tool or library introduces a dependency on a non-autonomous entity, it must be flagged for replacement.
 
 #+begin_src lisp :tangle ../src/policy.lisp
-(defun policy-check-sovereignty (action context)
-  "Ensures the action does not violate the Sovereignty invariant."
+(defun policy-check-autonomy (action context)
+  "Ensures the action does not violate the Autonomy invariant."
   (declare (ignore context))
   ;; Implementation placeholder: currently permits all actions.
-  ;; Future: Scan for non-sovereign domain names or proprietary API endpoints.
+  ;; Future: Scan for non-autonomous domain names or proprietary API endpoints.
   action)
 #+end_src
 
@@ -50,7 +50,7 @@ The main deterministic entry point for the policy skill. It orchestrates the var
 #+begin_src lisp :tangle ../src/policy.lisp
 (defun policy-deterministic-gate (action context)
   "The main policy gate. Sub-calls engineering standards if available."
-  (let ((current-action (policy-check-sovereignty action context)))
+  (let ((current-action (policy-check-autonomy action context)))
     (when current-action
       (let ((eng-pkg (find-package :org-agent.skills.org-skill-engineering-standards)))
         (when eng-pkg

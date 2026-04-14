@@ -5,7 +5,7 @@
 :END:
 #+TITLE: SKILL: Task Integrity Agent (Universal Literate Note)
 #+STARTUP: content
-#+FILETAGS: :gtd:integrity:safety:psf:
+#+FILETAGS: :gtd:integrity:safety:autonomy:
 
 * Overview
 The *Task Integrity Agent* is the "Guardian" of the GTD system. It ensures that all task transitions adhere to semantic rules, preventing logical inconsistencies and maintaining the structural health of the task hierarchy.

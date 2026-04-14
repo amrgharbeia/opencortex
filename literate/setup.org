@@ -26,6 +26,7 @@ ENV DEBIAN_FRONTEND=noninteractive
 # - curl/git/unzip: Standard tools for Quicklisp and binaries
 # - default-jre: Required by signal-cli
 # - python3/pip: Required for Playwright bridge
+# - socat: Required for stateful CLI interaction
 RUN apt-get update && apt-get install -y \
     sbcl \
     curl \
@@ -37,6 +38,7 @@ RUN apt-get update && apt-get install -y \
     python3-pip \
     python3-venv \
     emacs-nox \
+    socat \
     && rm -rf /var/lib/apt/lists/*
 
 # 2. Setup Playwright (High-Fidelity Browsing)
@@ -129,10 +131,15 @@ NC='\033[0m'
 command_exists() { command -v "$1" >/dev/null 2>&1; }
 
 # 1. Try to drop straight into the CLI chat
-if command_exists nc && nc -z $HOST $PORT 2>/dev/null; then
-    echo -e "${BLUE}Connected to sovereign brain at $HOST:$PORT...${NC}"
-    echo "Type your message and press Enter. Ctrl+C to exit."
-    echo "--------------------------------------------------"
+if command_exists socat && socat - TCP:$HOST:$PORT,connect-timeout=1 2>/dev/null; then
+    echo -e "${BLUE}Connected to autonomous brain at $HOST:$PORT...${NC}"
+    # Use socat with READLINE for history and arrow-key support.
+    # It establishes a persistent bidirectional connection.
+    socat READLINE,history=$HOME/.org_agent_history TCP:$HOST:$PORT
+    exit 0
+elif command_exists nc && nc -z $HOST $PORT 2>/dev/null; then
+    echo -e "${YELLOW}socat not found. Falling back to nc (no line-editing).${NC}"
+    echo -e "${BLUE}Connected to autonomous brain at $HOST:$PORT...${NC}"
     while true; do
         read -p "User: " MESSAGE
         if [ -z "$MESSAGE" ]; then continue; fi
@@ -202,7 +209,7 @@ fi
 
 # 4. Zero-to-One Onboarding (No installation found)
 echo -e "${BLUE}==================================================${NC}"
-echo -e "${BLUE} org-agent: Sovereign Intelligence Onboarding     ${NC}"
+echo -e "${BLUE} org-agent: Autonomous Intelligence Onboarding     ${NC}"
 echo -e "${BLUE}==================================================${NC}"
 
 # --- OS & Docker Detection ---

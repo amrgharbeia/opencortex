@@ -1,6 +1,6 @@
 #+TITLE: Root Cause Analysis: Individual Provider Track Verification
 #+DATE: 2026-04-11
-#+FILETAGS: :rca:providers:llm:testing:psf:
+#+FILETAGS: :rca:providers:llm:testing:autonomy:
 
 * Executive Summary
 Verified the unified LLM gateway implementation for all 6 individual provider tracks (Anthropic, Gemini, Groq, OpenAI, OpenRouter, Ollama). Identified and resolved critical parsing failures in the Gemini track and integration gaps in the system build definition.
@@ -30,7 +30,7 @@ Gemini requests failed with "API Key missing" even when environment variables we
 ** Resolution
 Updated `vault-get-secret` to map both `:gemini` and `:gemini-api` to the same `GEMINI_API_KEY` environment variable.
 
-* 4. PSF Mandate Alignment
+* 4. org-agent Mandate Alignment
 ** Invariant Check
 - *High-Integrity Memory:* All individual provider tracks are now backed by automated unit tests (`llm-gateway-tests.lisp`).
 - *Literate Programming:* Updated `org-skill-llm-gateway.org` to reflect the improved `get-nested` utility.

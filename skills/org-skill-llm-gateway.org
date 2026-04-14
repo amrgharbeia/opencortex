@@ -5,7 +5,7 @@
 :END:
 #+TITLE: SKILL: Unified LLM Gateway (Universal Literate Note)
 #+STARTUP: content
-#+FILETAGS: :llm:gateway:infrastructure:psf:
+#+FILETAGS: :llm:gateway:infrastructure:autonomy:
 #+DEPENDS_ON: id:credentials-vault-skill
 
 * Overview
@@ -118,7 +118,7 @@ This is the primary actuator for neural reasoning. It handles the specific JSON 
                          (:anthropic `(("Content-Type" . "application/json") ("x-api-key" . ,api-key) ("anthropic-version" . "2023-06-01")))
                          (:gemini-api `(("Content-Type" . "application/json") ("x-goog-api-key" . ,api-key)))
                          (:openrouter `(("Content-Type" . "application/json") ("Authorization" . ,(format nil "Bearer ~a" api-key)) 
-                                        ("HTTP-Referer" . "https://github.com/amr/org-agent") ("X-Title" . "org-agent Sovereign Kernel")))
+                                        ("HTTP-Referer" . "https://github.com/amr/org-agent") ("X-Title" . "org-agent Autonomous Kernel")))
                          (t `(("Content-Type" . "application/json") ("Authorization" . ,(format nil "Bearer ~a" api-key))))))
               (body (case provider
                       (:anthropic (cl-json:encode-json-to-string `((model . ,(or model "claude-3-5-sonnet-20240620")) (max_tokens . 4096) (system . ,system-prompt) (messages . (( (role . "user") (content . ,prompt) ))))))

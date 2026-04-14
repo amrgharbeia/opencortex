@@ -4,7 +4,7 @@
 :END:
 #+TITLE: SKILL: Homoiconic Memory (Universal Literate Note)
 #+STARTUP: content
-#+FILETAGS: :org-mode:ast:json:normalization:psf:
+#+FILETAGS: :org-mode:ast:json:normalization:autonomy:
 #+DEPENDS_ON: id:state-persistence-skill
 
 * Overview

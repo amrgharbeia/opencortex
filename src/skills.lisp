@@ -237,7 +237,7 @@ You can call tools by returning a Lisp plist: (:target :tool :action :call :tool
 
 EXAMPLES:
 (:target :tool :action :call :tool \"eval\" :args (:code \"(+ 1 1)\"))
-(:target :tool :action :call :tool \"grep-search\" :args (:pattern \"sovereignty\"))
+(:target :tool :action :call :tool \"grep-search\" :args (:pattern \"autonomousty\"))
 (:target :tool :action :call :tool \"shell\" :args (:cmd \"ls -la\"))
 
 ---

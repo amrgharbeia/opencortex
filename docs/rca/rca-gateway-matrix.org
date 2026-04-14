@@ -1,6 +1,6 @@
 #+TITLE: Root Cause Analysis: Matrix Gateway & Communication Track Completion
 #+DATE: 2026-04-11
-#+FILETAGS: :rca:gateway:matrix:chat:psf:
+#+FILETAGS: :rca:gateway:matrix:chat:autonomy:
 
 * Executive Summary
 Successfully implemented the third and final external communication channel (Matrix) for Org-agent v1.0. Resolved integration issues related to case-sensitivity in JSON keys and strict header requirements in `dexador`.

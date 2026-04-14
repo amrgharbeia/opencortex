@@ -1,7 +1,7 @@
 #+TITLE: Changelog
 #+STARTUP: content
 
-* v0.1.0 - The Sovereign Foundation (2026-04-13)
+* v0.1.0 - The Autonomous Foundation (2026-04-13)
 This is the initial MVP release of the ~org-agent~. It establishes a secure, auditable Lisp kernel for a personal operating system.
 
 ** Features
@@ -9,7 +9,7 @@ This is the initial MVP release of the ~org-agent~. It establishes a secure, aud
 - **Verification Lock:** Mandatory skill enforcement via environment configuration. System halts if security policies or bouncers fail to load.
 - **Foveal-Peripheral Context:** High-resolution focus on active tasks with low-resolution skeletal awareness of the rest of the Memex.
 - **The Bouncer:** Last-mile deterministic security gate with Deep Packet Inspection for secrets and network exfiltration.
-- **Sovereign Scribe:** Background distillation worker that turns daily journal entries into evergreen Zettelkasten notes.
+- **Autonomous Scribe:** Background distillation worker that turns daily journal entries into evergreen Zettelkasten notes.
 - **Unified Onboarding:** Single-command installation (~org-agent.sh~) with Docker-first deployment and OS detection.
 - **CLI Gateway:** Local TCP socket server and interactive chat client for frictionless first contact.
 

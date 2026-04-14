@@ -5,7 +5,7 @@
 :END:
 #+TITLE: SKILL: Memex Manager (Universal Literate Note)
 #+STARTUP: content
-#+FILETAGS: :memex:gtd:zettelkasten:integrity:psf:
+#+FILETAGS: :memex:gtd:zettelkasten:integrity:autonomy:
 
 * Overview
 The *Memex Manager* is the primary automation engine for the Personal Knowledge Management system. It enforces metadata standards, automates task lifecycles, and distills ephemeral daily logs into timeless knowledge.
@@ -22,7 +22,7 @@ Define automated behaviors for knowledge and task management integrity.
 - *Unified Capture:* Landing all new information in `inbox.org`.
 - *Metadata Compliance:* Mandatory `:CREATED:` and `:LOGBOOK:` drawers.
 - *Automated Task Lifecycle:* `NEXT` promotion logic for GTD.
-- *Mobile Sovereignty:* Compatibility with Markor and Orgzly.
+- *Mobile Autonomousty:* Compatibility with Markor and Orgzly.
 - *Agentic Distillation:* Extracting evergreen concepts from daily logs.
 
 ** 3. Success Criteria

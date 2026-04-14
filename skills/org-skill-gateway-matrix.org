@@ -4,7 +4,7 @@
 :END:
 #+TITLE: SKILL: Matrix Gateway (Universal Literate Note)
 #+STARTUP: content
-#+FILETAGS: :gateway:matrix:io:psf:
+#+FILETAGS: :gateway:matrix:io:autonomy:
 #+DEPENDS_ON: id:credentials-vault-skill
 
 * Overview

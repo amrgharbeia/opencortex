@@ -1,6 +1,6 @@
 #+TITLE: Root Cause Analysis: Micro-Loader & Deterministic Boot Sequence
 #+DATE: 2026-04-11
-#+FILETAGS: :rca:boot:loader:topological-sort:psf:
+#+FILETAGS: :rca:boot:loader:topological-sort:autonomy:
 
 * Executive Summary
 Refactored the arbitrary skill loading mechanism into a robust **Micro-Loader**. The system now calculates a deterministic boot sequence based on `#+DEPENDS_ON:` tags and protects the harness from malformed or hanging skills via package-based jailing and execution timeouts.
@@ -31,7 +31,7 @@ Skill loading was strictly synchronous and blocking on the main thread.
 ** Resolution
 **Execution Timeouts:** Implemented `load-skill-with-timeout`, which wraps the loader in a monitored thread. If a skill takes longer than 5 seconds to initialize, the loader terminates the thread, jails the failure, and continues with the rest of the boot sequence.
 
-* 4. PSF Mandate Alignment
+* 4. org-agent Mandate Alignment
 ** Evolutionary Kernel
 The boot sequence is now a verifiable, mathematical process rather than a side-effect of filesystem organization.
 ** Literate Granularity

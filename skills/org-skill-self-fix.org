@@ -5,7 +5,7 @@
 :END:
 #+TITLE: SKILL: Self-Fix Agent (Universal Literate Note)
 #+STARTUP: content
-#+FILETAGS: :self-repair:autonomy:debugging:psf:
+#+FILETAGS: :self-repair:autonomy:debugging:autonomy:
 #+DEPENDS_ON: id:0ae190ec-5991-49b5-9038-f860548a3a0c
 #+DEPENDS_ON: id:98576df2-c496-4e4a-9acb-0bca514a0305
 
@@ -81,7 +81,7 @@ The *Self-Fix Agent* is the system's "Repair Mechanism." It takes failure hypoth
   :priority 95
   :trigger (lambda (context) (eq (getf (getf context :payload) :sensor) :repair-request))
   :probabilistic (lambda (context)
-           (format nil "You are the PSF Repair Actuator. Synthesize a surgical fix for the reported failure.
+           (format nil "You are the org-agent Repair Actuator. Synthesize a surgical fix for the reported failure.
 Return a Lisp plist for :repair-file."))
   :deterministic (lambda (action context)
               (let ((payload (getf action :payload)))

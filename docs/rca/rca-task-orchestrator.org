@@ -23,7 +23,7 @@ Selected "Majority Rules" over "First-to-Finish".
 - *Pros:* Higher accuracy, mathematically consistent.
 - *Cons:* Slower (latency limited by the slowest provider).
 ** Invariant Alignment
-Aligns with PSF Mandate 4 (Radical Transparency) and Invariant 2 (Technical Mastery) by ensuring decisions are auditable and consistent across multiple brains.
+Aligns with org-agent Mandate 4 (Radical Transparency) and Invariant 2 (Technical Mastery) by ensuring decisions are auditable and consistent across multiple brains.
 
 * 3. Design Decision: Task Integrity Gate
 ** Requirement
@@ -33,7 +33,7 @@ Added `task-integrity-check` in `deterministic.lisp`.
 ** Invariant Alignment
 Enforces the "High-Integrity Memory" mandate by ensuring the Org-mode AST remains semantically valid according to GTD rules (e.g., no orphaned active tasks).
 
-* 4. PSF Mandate Violations during Session (Corrected)
+* 4. org-agent Mandate Violations during Session (Corrected)
 ** Violations
 1. Editing without prior commit.
 2. Direct `.lisp` edits vs Literate Org tangling.
@@ -45,4 +45,4 @@ Enforces the "High-Integrity Memory" mandate by ensuring the Org-mode AST remain
 
 * 5. Permanent Learnings
 - *Check Exports:* Always verify that symbols exported in `package.lisp` have a corresponding definition in the literate source.
-- *Strict PSF Mode:* Enable a pre-save hook or agent check to ensure all edits are performed within `#+begin_src` blocks in Literate Org files to avoid synchronization debt.
+- *Strict org-agent Mode:* Enable a pre-save hook or agent check to ensure all edits are performed within `#+begin_src` blocks in Literate Org files to avoid synchronization debt.

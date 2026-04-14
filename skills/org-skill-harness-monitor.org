@@ -4,7 +4,7 @@
 :END:
 #+TITLE: SKILL: Harness Monitor
 #+STARTUP: content
-#+FILETAGS: :system:monitor:telemetry:psf:
+#+FILETAGS: :system:monitor:telemetry:autonomy:
 #+DEPENDS_ON: id:47425a43-2be0-423c-8509-22592cfe9c9e
 
 * Overview

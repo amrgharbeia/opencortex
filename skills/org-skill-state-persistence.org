@@ -4,17 +4,17 @@
 :END:
 #+TITLE: SKILL: State Persistence Layer (Universal Literate Note)
 #+STARTUP: content
-#+FILETAGS: :memory:persistence:closos:ipfs:psf:
+#+FILETAGS: :memory:persistence:closos:ipfs:autonomy:
 
 * Overview
-The *State Persistence Layer* ensures the durability and sovereignty of the agent's memory. It unifies local, high-performance Lisp image dumps with decentralized, immutable IPFS checkpointing. This dual-path approach provides both rapid operational recovery and long-term historical integrity.
+The *State Persistence Layer* ensures the durability and autonomousty of the agent's memory. It unifies local, high-performance Lisp image dumps with decentralized, immutable IPFS checkpointing. This dual-path approach provides both rapid operational recovery and long-term historical integrity.
 
 ** Deep Reasoning: Protection Against External Tampering
 While the *Prover* and *Bouncer* protect against internal skill failures, the Merkle-Tree architecture within the State Layer protects against **External Threats** (e.g., a hacker or virus modifying your `.org` files directly on disk).
 
 1. **Skill Hashing:** Every code block and headline in a skill file has a unique Merkle hash recorded in the Memory.
 2. **Integrity Verification:** Upon loading or reloading a skill, the harness re-calculates the hash and compares it against the "known good" state in the Merkle Tree.
-3. **Automatic Lockdown:** If a file has been tampered with externally, the hash mismatch triggers an immediate lockdown. the harness refuses to execute the skill and alerts the Sovereign via Signal/Telegram.
+3. **Automatic Lockdown:** If a file has been tampered with externally, the hash mismatch triggers an immediate lockdown. the harness refuses to execute the skill and alerts the Autonomous via Signal/Telegram.
 
 * Phase A: Demand (PRD)
 :PROPERTIES:
@@ -26,7 +26,7 @@ Define automated behaviors for knowledge graph serialization, local persistence,
 
 ** 2. User Needs
 - *Instant Recall:* Rapid local loading of the Memory from a persistent image.
-- *Decentralized Archival:* Pushing immutable snapshots to IPFS for cross-node sync and sovereignty.
+- *Decentralized Archival:* Pushing immutable snapshots to IPFS for cross-node sync and autonomousty.
 - *Merkle Integrity:* Every save operation must respect and record the Merkle-Tree history.
 - *Safety:* Sanitize and validate data during restoration to prevent code injection.
 
@@ -36,7 +36,7 @@ Define automated behaviors for knowledge graph serialization, local persistence,
 :END:
 
 ** 1. Architectural Intent
-The persistence layer acts as a bridge between the volatile RAM-resident Memory and permanent storage backends. It provides two adapters: `LOCAL` (fast, SBCL-native) and `IPFS` (sovereign, content-addressed).
+The persistence layer acts as a bridge between the volatile RAM-resident Memory and permanent storage backends. It provides two adapters: `LOCAL` (fast, SBCL-native) and `IPFS` (autonomous, content-addressed).
 
 ** 2. Semantic Interfaces
 #+begin_src lisp
@@ -120,7 +120,7 @@ Restores the state from the local disk.
 #+end_src
 
 ** IPFS Serialization (persistence-serialize-for-archival)
-Converts the live `*memory*` into a list of Lisp Property Lists (Plists) for sovereign, homoiconic transport.
+Converts the live `*memory*` into a list of Lisp Property Lists (Plists) for autonomous, homoiconic transport.
 
 #+begin_src lisp
 (defun persistence-serialize-for-archival ()

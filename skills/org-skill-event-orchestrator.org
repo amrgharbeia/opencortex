@@ -4,7 +4,7 @@
 :END:
 #+TITLE: SKILL: Event Orchestrator (Universal Literate Note)
 #+STARTUP: content
-#+FILETAGS: :system:control:event-driven:cron:hooks:routing:psf:
+#+FILETAGS: :system:control:event-driven:cron:hooks:routing:autonomy:
 #+DEPENDS_ON: id:state-persistence-skill
 
 * Overview

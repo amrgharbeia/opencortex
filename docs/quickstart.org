@@ -1,4 +1,4 @@
-#+TITLE: Quickstart Guide: The Road to Sovereignty
+#+TITLE: Quickstart Guide: The Road to Autonomousty
 #+AUTHOR: Amr
 #+DATE: [2026-04-11 Sat]
 #+FILETAGS: :quickstart:onboarding:guide:
@@ -13,7 +13,7 @@ Before launching the harness, ensure your host environment has:
 - **Emacs (Optional)**: For the full literate experience via ~org-agent.el~.
 
 * 3. Installation & Enclosure
-** Step 1: Clone the Sovereignty
+** Step 1: Clone the Autonomousty
 #+begin_src bash
 git clone https://github.com/amr/org-agent.git
 cd org-agent

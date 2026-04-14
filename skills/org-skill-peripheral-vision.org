@@ -4,7 +4,7 @@
 :END:
 #+TITLE: SKILL: Peripheral Vision (Universal Literate Note)
 #+STARTUP: content
-#+FILETAGS: :context:foveal:peripheral:pruning:psf:
+#+FILETAGS: :context:foveal:peripheral:pruning:autonomy:
 
 * Overview
 The *Peripheral Vision* skill implements the Foveal-Peripheral Hybrid model for context pruning. It ensures that the LLM receives a semantically relevant and manageable view of the Memory, preventing context window overflow.

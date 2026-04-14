@@ -5,7 +5,7 @@
 :END:
 #+TITLE: SKILL: Social Consensus Protocol (Universal Literate Note)
 #+STARTUP: content
-#+FILETAGS: :distributed:swarms:consensus:psf:
+#+FILETAGS: :distributed:swarms:consensus:autonomy:
 #+DEPENDS_ON: skill-sub-agent-manager
 
 * Overview
@@ -30,7 +30,7 @@ Enable reliable, cross-instance coordination without a central master.
 #+begin_src lisp
 (defun consensus-propose-vote (proposal)
   "Broadcasts a proposal to the peer swarm and collects votes.
-   Implements PSF Social Consensus Protocol."
+   Implements org-agent Social Consensus Protocol."
   (let* ((peers (get-swarm-peer-list))
          (votes (loop for peer in peers 
                       collect (org-agent:send-swarm-packet peer `(:type :REQUEST :action :vote :proposal ,proposal)))))

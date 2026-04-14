@@ -5,7 +5,7 @@
 :END:
 #+TITLE: SKILL: Shell Actuator Agent (Universal Literate Note)
 #+STARTUP: content
-#+FILETAGS: :shell:actuator:system:psf:
+#+FILETAGS: :shell:actuator:system:autonomy:
 
 * Overview
 The *Shell Actuator Agent* provides the bridge to the host operating system. It enables secure command execution while maintaining a strict security posture through whitelisting and diagnostic feedback loops.
@@ -51,7 +51,7 @@ Interfaces for secure system calls. State is event-driven via the core kernel bu
 *** DONE Diagnostic Capture
 - Verified that STDOUT, STDERR, and Exit Codes are correctly captured and re-injected.
 *** DONE Result Analysis Loop
-- The `:probabilistic` component successfully formats command results for Sovereign review.
+- The `:probabilistic` component successfully formats command results for Autonomous review.
 
 * Phase B: Blueprint (PROTOCOL)
 :PROPERTIES:

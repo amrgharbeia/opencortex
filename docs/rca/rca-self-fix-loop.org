@@ -29,9 +29,9 @@ Refactored `org-agent.asd` to use a **Flat Component Structure**.
 - *After:* `:components ((:file "src/package") ...)`
 This eliminates unnecessary nesting levels and drastically reduces the surface area for syntax errors.
 
-* 3. PSF Mandate Alignment
+* 3. org-agent Mandate Alignment
 ** Invariant Check
-- *Lisp Machine Sovereignty:* Verification utilized hot-reloading (`load-skill-from-org`) without restarting the SBCL image.
+- *Lisp Machine Autonomousty:* Verification utilized hot-reloading (`load-skill-from-org`) without restarting the SBCL image.
 - *Literate Programming:* Updated `org-skill-self-fix.org` to match the finalized `self-fix.lisp` logic.
 - *Institutional Memory:* This RCA documents the decision to flatten the `.asd` structure to prevent future "Parenthesis Hell" incidents.
 

@@ -4,7 +4,7 @@
 :END:
 #+TITLE: SKILL: Communication Protocol Schema Validator (Universal Literate Note)
 #+STARTUP: content
-#+FILETAGS: :protocol:communication-protocol:security:validation:psf:
+#+FILETAGS: :protocol:communication-protocol:security:validation:autonomy:
 
 * Overview
 The *Communication Protocol Schema Validator* skill provides deep structural validation for all messages entering the org-agent kernel. It ensures that every property list adheres to a strict schema, preventing malformed data from causing harness-level errors.

@@ -5,10 +5,10 @@
 :END:
 #+TITLE: SKILL: Deterministic Engine Bouncer (Authorization Gate)
 #+STARTUP: content
-#+FILETAGS: :system:bouncer:authorization:psf:
+#+FILETAGS: :system:bouncer:authorization:autonomy:
 
 * Overview
-The *Deterministic Engine Bouncer* is the authorization gate for high-risk actions. It serializes intercepted actions into Org nodes ("Flight Plans") and re-injects them once manually approved by the Sovereign.
+The *Deterministic Engine Bouncer* is the authorization gate for high-risk actions. It serializes intercepted actions into Org nodes ("Flight Plans") and re-injects them once manually approved by the Autonomous.
 
 * Package Context
 #+begin_src lisp

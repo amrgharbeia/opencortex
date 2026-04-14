@@ -109,17 +109,20 @@ The agent meets you where you are. While it natively integrates with text editor
 
 * Quick Start (The Zero-to-One Experience)
 
-org-agent can be installed and booted with a single command. The unified entrypoint script will detect your OS, offer to install Docker if missing, interactively gather your API keys, and launch the sovereign kernel in the background.
+org-agent can be installed and booted with a single command. The unified entrypoint script will detect your OS, offer to install Docker if missing, interactively gather your API keys, and launch the autonomous kernel in the background.
 
 #+begin_src bash
 curl -fsSL https://raw.githubusercontent.com/gharbeia/org-agent/main/org-agent.sh | bash
 #+end_src
 
-After installation, simply type `org-agent` in your terminal to start chatting with your sovereign brain.
+After installation, simply type `org-agent` in your terminal to start chatting with your autonomous brain.
 
 For power users who wish to run the agent natively (Baremetal), please refer to the [[file:literate/setup.org][setup.org]] literate documentation.
 
-* The Evolutionary Roadmap (v1.0.0 to v4.0.0+)
+* The Evolutionary Roadmap (v0.1.0 to v4.0.0+)
+
+** v0.1.0: The Autonomous Foundation (Current Release)
+The initial MVP that establishes a secure, auditable Lisp kernel for a personal operating system. It features a robust metabolic pipeline, mandatory skill enforcement, and background distillation.
 
 ** v1.0.0 (Phase 2.5): The Verified Wrapper (Current Target)
 At this stage, org-agent achieves feature parity with State-of-the-Art autonomous agents (like Devin or SWE-agent) but with Lisp-grade mathematical security.
@@ -140,7 +143,7 @@ The great inversion. The Lisp engine takes the wheel, and the LLM is relegated t
 - *Self-Correcting Syntax:* The Lisp engine catches and repairs hallucinated syntax errors without consulting the LLM.
 
 ** v4.0.0+ (Phase 5): The Neurosymbolic Singularity
-The ultimate vision realized. The agent achieves homoiconic sovereignty.
+The ultimate vision realized. The agent achieves homoiconic autonomy.
 - *Homoiconic Self-Writing:* The agent inspects its own literate source code, proposes optimizations, formally verifies them, and hot-reloads itself at runtime.
 - *Asynchronous Swarm Cognition:* The agent spawns isolated sub-agents in jailed Lisp packages to solve sub-tasks in parallel.
 - *The Digital Extension of Self:* A perfect, asynchronous operating system for your digital life, managing the Memex with zero structural degradation.
