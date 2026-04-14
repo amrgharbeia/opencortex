@@ -78,11 +78,11 @@ The Scribe only cares about non-personal, non-distilled headlines.
                (declare (ignore id))
                (let* ((attrs (org-object-attributes obj))
                       (tags (getf attrs :TAGS))
-                      (type (org-object-type obj)))
+                      (type (org-object-type obj))
+                      (version (org-object-version obj)))
                  (when (and (eq type :HEADLINE)
-                            (not (member "@personal" tags :test #'string-equal))
-                            (not (member "distilled" tags :test #'string-equal)))
-                   ;; Basic check: is it in a file starting with '20' (daily format)?
+                            (> version *scribe-last-checkpoint*)
+                            (not (member "@personal" tags :test #'string-equal)))
                    (push obj results))))
              *memory*)
     results))
@@ -124,7 +124,7 @@ The deterministic gate receives the list of proposed notes and writes them to th
 
 #+begin_src lisp
 (defun scribe-commit-notes (proposals)
-  "Writes proposed atomic notes to the notes/ directory."
+  "Writes proposed atomic notes to the notes/ directory. Appends if the note exists."
   (let ((notes-dir (uiop:merge-pathnames* "notes/" (asdf:system-source-directory :org-agent))))
     (ensure-directories-exist notes-dir)
     (dolist (note proposals)
@@ -133,10 +133,13 @@ The deterministic gate receives the list of proposed notes and writes them to th
              (source-id (getf note :source-id))
              (filename (format nil "~a.org" (string-downcase (cl-ppcre:regex-replace-all " " title "_"))))
              (path (merge-pathnames filename notes-dir)))
-        (with-open-file (out path :direction :output :if-exists :supersede)
-          (format out ":PROPERTIES:~%:ID: ~a~%:SOURCE_ID: ~a~%:END:~%#+TITLE: ~a~%~%~a" 
-                  (org-id-new) source-id title content))
-        (harness-log "SCRIBE: Created evergreen note ~a" filename)))))
+        (if (uiop:file-exists-p path)
+            (with-open-file (out path :direction :output :if-exists :append)
+              (format out "~%~%* Appended insight from ~a~%~a" source-id content))
+            (with-open-file (out path :direction :output :if-exists :supersede)
+              (format out ":PROPERTIES:~%:ID: ~a~%:SOURCE_ID: ~a~%:END:~%#+TITLE: ~a~%~%~a" 
+                      (org-id-new) source-id title content)))
+        (harness-log "SCRIBE: Processed evergreen note ~a" filename)))))
 
 (defun verify-skill-scribe (action context)
   "Executes the note creation and marks source nodes as distilled."
