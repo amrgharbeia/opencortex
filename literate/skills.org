@@ -324,9 +324,14 @@ The unified orchestrator for the system boot sequence.
       (harness-log " LOADER: Initializing ~a skills..." (length sorted-files))
       
       (dolist (file sorted-files)
-        (let ((skill-name (pathname-name file)))
+        (let* ((skill-name (pathname-name file))
+               (is-mandatory (member skill-name mandatory-skills :test #'string-equal)))
           (harness-log " LOADER: Loading ~a..." skill-name)
-          (load-skill-with-timeout file 5)))
+          (let ((status (load-skill-with-timeout file 5)))
+            (unless (eq status :success)
+              (if is-mandatory
+                  (error "BOOT FAILURE: Mandatory skill '~a' failed to load (Status: ~a)." skill-name status)
+                  (harness-log "LOADER WARNING: Skill '~a' failed to load." skill-name))))))
       
       ;; Final Summary
       (let ((ready 0) (failed 0))

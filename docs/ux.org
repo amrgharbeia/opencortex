@@ -53,5 +53,14 @@ This opens a slick, colorful interactive terminal session:
 5. The Deterministic Engine (Bouncer) verifies it is a safe read-only action.
 6. The ~:cli~ Actuator formats the Lisp response into Markdown and sends it back over the socket.
 
-* 3. The Continuous Loop (Daily Usage)
+* 3. The Interactive Refinement (v0.2.0)
+** Goal
+Transition from a "Verified Wrapper" around netcat to a high-fidelity, native Common Lisp TUI that rivals the experience of ~gemini-cli~.
+
+** Features
+- *Homoiconic UI:* The TUI is rendered directly by the Lisp kernel, allowing for live introspection of the agent's thoughts.
+- *Rich Formatting:* ANSI colors, bold headers, and syntax-highlighted code blocks.
+- *Command Palette:* Slash commands for system control without leaving the chat.
+
+* 4. The Continuous Loop (Daily Usage)
 (To be defined as the agent's capabilities expand into Scribe, Gardener, and Emacs-native interactions).

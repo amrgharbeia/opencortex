@@ -1,6 +1,7 @@
 :PROPERTIES:
 :ID:       bouncer-agent-skill
 :CREATED:  [2026-04-11 Sat 15:20]
+:EDITED:   [2026-04-13 Mon 18:35]
 :END:
 #+TITLE: SKILL: Deterministic Engine Bouncer (Authorization Gate)
 #+STARTUP: content
@@ -9,18 +10,15 @@
 * Overview
 The *Deterministic Engine Bouncer* is the authorization gate for high-risk actions. It serializes intercepted actions into Org nodes ("Flight Plans") and re-injects them once manually approved by the Sovereign.
 
-** Deep Reasoning: Beyond Permission
-While the *Formal Prover* ensures an action is "legal" (e.g., "Yes, you are allowed to send a Matrix message"), the *Bouncer* ensures the action is "safe" by inspecting the payload content via **Deep Packet Inspection (DPI)**.
+* Package Context
+#+begin_src lisp
+(in-package :org-agent)
+#+end_src
 
-1. **Secret Exposure Gate:** The Bouncer automatically scans all outgoing `:text` payloads for strings matching your API keys or sensitive IDs stored in the `Credentials Vault`.
-2. **Network Exfiltration Gate:** It monitors for unauthorized IP addresses or domains in shell commands, preventing the agent from "phoning home" to a malicious server.
-3. **The Final Filter:** The Bouncer sits at the very end of the deterministic pipeline. It is the last gate before an action touches the physical hardware.
+* Deep Packet Inspection (DPI)
+The Bouncer ensures the action is "safe" by inspecting the payload content via Deep Packet Inspection.
 
-* Implementation
-
-** Deep Packet Inspection (DPI)
-
-*** Secret Exposure Check
+** Secret Exposure Check
 Retrieves all active secrets from the vault and scans the payload for potential leaks.
 
 #+begin_src lisp
@@ -36,7 +34,7 @@ Retrieves all active secrets from the vault and scans the payload for potential 
       found-secret)))
 #+end_src
 
-*** Network Exfiltration Check
+** Network Exfiltration Check
 Inspects shell commands for unwhitelisted domains or IP addresses.
 
 #+begin_src lisp
@@ -53,8 +51,8 @@ Inspects shell commands for unwhitelisted domains or IP addresses.
             (not (some (lambda (safe) (search safe domain)) network-whitelist))))))))
 #+end_src
 
-** Runtime Guard (bouncer-check)
-The primary entry point for all high-impact actions.
+* Runtime Guard (bouncer-check)
+The primary entry point for all high-impact actions. It blocks or queues actions based on risk vectors.
 
 #+begin_src lisp
 (defun bouncer-check (action context)
@@ -96,7 +94,9 @@ The primary entry point for all high-impact actions.
       (t action))))
 #+end_src
 
-** Approval Processing
+* Approval Processing
+The Bouncer periodically scans the Memex for approved "Flight Plans" and re-injects them into the metabolic loop.
+
 #+begin_src lisp
 (defun bouncer-process-approvals ()
   "Scans the object store for APPROVED flight plans and re-injects their actions."
@@ -118,31 +118,40 @@ The primary entry point for all high-impact actions.
     found-any))
 #+end_src
 
-** Skill Definition
+* Skill Definition
+The Bouncer skill reacts to approval requirements by creating flight plan nodes, and periodically checks for manual approvals via heartbeats.
+
+** Skill Logic
+#+begin_src lisp
+(defun bouncer-deterministic-gate (action context)
+  "Main gate for the bouncer skill."
+  (declare (ignore action))
+  (let* ((payload (getf context :payload))
+         (sensor (getf payload :sensor)))
+    (case sensor
+      (:approval-required
+       (let* ((blocked-action (getf payload :action))
+              (id (org-id-new)))
+         (harness-log "BOUNCER: Creating flight plan node...")
+         ;; Create the node in Emacs (or inbox)
+         (list :type :REQUEST :target :emacs :action :insert-node 
+               :id id :attributes `(:TITLE "Flight Plan: High-Risk Action" 
+                                    :TODO "PLAN" 
+                                    :TAGS ("FLIGHT_PLAN")
+                                    :ACTION ,(format nil "~s" blocked-action)))))
+      (:heartbeat
+       ;; Periodically check for approvals
+       (bouncer-process-approvals)
+       nil))))
+#+end_src
+
+** Skill Registration
 #+begin_src lisp
 (defskill :skill-bouncer
-  :priority 100
+  :priority 150
   :trigger (lambda (ctx) 
              (or (eq (getf (getf ctx :payload) :sensor) :approval-required)
                  (eq (getf (getf ctx :payload) :sensor) :heartbeat)))
   :probabilistic nil
-  :deterministic (lambda (action context)
-              (declare (ignore action))
-              (let* ((payload (getf context :payload))
-                     (sensor (getf payload :sensor)))
-                (case sensor
-                  (:approval-required
-                   (let* ((blocked-action (getf payload :action))
-                          (id (org-id-new)))
-                     (harness-log "BOUNCER: Creating flight plan node...")
-                     ;; Create the node in Emacs (or inbox)
-                     (list :type :REQUEST :target :emacs :action :insert-node 
-                           :id id :attributes `(:TITLE "Flight Plan: High-Risk Action" 
-                                                :TODO "PLAN" 
-                                                :TAGS ("FLIGHT_PLAN")
-                                                :ACTION ,(format nil "~s" blocked-action)))))
-                  (:heartbeat
-                   ;; Periodically check for approvals
-                   (bouncer-process-approvals)
-                   nil)))))
+  :deterministic #'bouncer-deterministic-gate)
 #+end_src

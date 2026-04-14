@@ -32,12 +32,13 @@
   (let* ((active-skill (find-triggered-skill context))
          (tool-belt (generate-tool-belt-prompt))
          (global-context (context-assemble-global-awareness))
+         (system-logs (context-get-system-logs))
          (assistant-name (or (uiop:getenv "MEMEX_ASSISTANT") "Agent")))
     (if active-skill
         (let* ((prompt-generator (skill-probabilistic-prompt active-skill))
                (raw-prompt (when prompt-generator (funcall prompt-generator context)))
-               (system-prompt (format nil "IDENTITY: Actuator for ~a. MANDATE: ONE Lisp plist. ~a ~a" 
-                                      assistant-name global-context tool-belt)))
+               (system-prompt (format nil "IDENTITY: Actuator for ~a. MANDATE: ONE Lisp plist. ~a ~a RECENT_LOGS: ~a" 
+                                      assistant-name global-context tool-belt system-logs)))
           (if (and raw-prompt (> (length raw-prompt) 1))
               (let* ((thought (probabilistic-call raw-prompt :system-prompt system-prompt :context context))
                      ;; Ensure we are working with a string for read-from-string

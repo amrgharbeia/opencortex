@@ -3,7 +3,8 @@
 (defun policy-check-sovereignty (action context)
   "Ensures the action does not violate the Sovereignty invariant."
   (declare (ignore context))
-  ;; Implementation placeholder
+  ;; Implementation placeholder: currently permits all actions.
+  ;; Future: Scan for non-sovereign domain names or proprietary API endpoints.
   action)
 
 (defun policy-deterministic-gate (action context)
