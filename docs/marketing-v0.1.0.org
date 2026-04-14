@@ -1,0 +1,46 @@
+#+TITLE: v0.1.0 Launch & Marketing Plan
+#+AUTHOR: Amr
+#+FILETAGS: :marketing:release:psf:
+#+STARTUP: content
+
+* Overview
+With the v0.1.0 "Sovereign MVP" released, the goal is to leverage GitHub's social graph to build a community of early adopters, contributors, and power users who resonate with the "Thin Harness, Fat Skills" and "Local-First" philosophy.
+
+* 1. Licensing Strategy
+Before wide promotion, the project's license must align with its goals.
+- **MIT License (Current):** Maximum adoption, frictionless for developers to embed in their own tools. Good for rapid growth.
+- **GPLv3 / AGPLv3:** Enforces copyleft. Ensures any modifications or integrations by corporations must remain open-source. Protects the "Sovereign" ethos from proprietary enclosure.
+- **Dual Licensing:** Open-source for individuals, commercial license for enterprise usage (if monetization is a future goal).
+
+*Decision Needed:* Do we stick with MIT, or switch to a copyleft license (AGPL) to protect the sovereign nature of the project?
+
+* 2. The GitHub Migration & Setup
+To maximize visibility, the repository must be optimized for GitHub's ecosystem.
+- [ ] **Mirror/Migrate to GitHub:** Move the primary remote from the self-hosted Gitea to GitHub.
+- [ ] **README Optimization:** Add badges (License, Build Status, Version). Ensure the "Zero-to-One" curl command is prominent. Add an architecture diagram (mermaid).
+- [ ] **Repository Topics:** Add tags like `common-lisp`, `autonomous-agents`, `org-mode`, `pkm`, `zettelkasten`, `llm`, `local-first`.
+- [ ] **Contributing Guide:** Add `CONTRIBUTING.md` to explain the Literate Programming standard and how to add new "Skills".
+- [ ] **Issue Templates:** Create templates for "Bug Report" and "Skill Proposal".
+
+* 3. The PR & Social Media Campaign
+The narrative: "An autonomous AI agent that doesn't just chat, but lives natively in your Org-mode Memex. No Python glue code, no cloud lock-in—just pure, homoiconic Common Lisp."
+
+** Target Audiences & Channels
+1. **The Emacs / Org-mode Community:**
+   - *Channels:* `r/emacs`, `r/orgmode`, Hacker News (`/r/lisp`), Emacs News.
+   - *Hook:* "A background daemon that autonomously distills your daily logs into a Zettelkasten using LLMs."
+2. **The Local-First / PKM Community:**
+   - *Channels:* `r/Zettelkasten`, `r/PKM`, Obsidian/Logseq diaspora looking for more power.
+   - *Hook:* "Own your brain. An AI agent that runs locally on your Markdown/Org files with mathematical security gates."
+3. **The AI / Autonomous Agent Hackers:**
+   - *Channels:* Hacker News (Show HN), Twitter/X (AI tech Twitter).
+   - *Hook:* "Tired of fragile Python/Playwright agent wrappers? org-agent uses a deterministic Lisp microkernel to formally verify LLM actions before execution."
+
+** Launch Materials
+- **Demo Video (2 minutes):** Show the one-liner install, the agent running the `Scribe` skill in the background, and the user querying it via `org-agent chat`.
+- **Blog Post / Essay:** "Why we built an Autonomous Agent in Common Lisp." Discuss the fragility of current SOTA (Devin/SWE-agent) and the necessity of the Bouncer/Policy gates.
+
+* 4. Post-Launch Community Engagement
+- Encourage "Show and Tell" in GitHub Discussions.
+- Create a "Skill Directory" where users can share their custom `.org` skills.
+- Actively solicit feedback for the v0.2.0 (Lisp TUI) roadmap.
