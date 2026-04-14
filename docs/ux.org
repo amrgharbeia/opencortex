@@ -1,0 +1,57 @@
+#+TITLE: User Experience (UX) Journey
+#+AUTHOR: Amr
+#+FILETAGS: :ux:design:psf:
+#+STARTUP: content
+
+* Overview
+This document traces the intended User Experience (UX) journey for the ~org-agent~. It serves as a living design document to ensure that architectural decisions align with a frictionless, sovereign, and intuitive user interaction model.
+
+* 1. The Zero-to-One Experience (Onboarding)
+** Goal
+A user should be able to go from discovering the project to having a running, calibrated agent in under 3 minutes, with zero prerequisite knowledge of Lisp.
+
+** The Appliance Paradigm (Primary Path)
+The user runs a single command in their terminal:
+#+begin_src bash
+curl -fsSL https://raw.githubusercontent.com/gharbeia/org-agent/main/scripts/install.sh | bash
+#+end_src
+
+** The Interactive Wizard
+The script verifies Docker presence and then launches an interactive prompt before booting the container:
+1. *Identity:* "What is your name?" -> Configures ~$MEMEX_USER~
+2. *Assistant:* "What shall we name your Assistant?" -> Configures ~$MEMEX_ASSISTANT~
+3. *Neural Provider:* "Select your primary neural provider [Gemini/OpenRouter/Anthropic/OpenAI]" -> Configures API Keys.
+4. *Data Gravity:* "Where is your Memex located?" -> Maps the host directory to the Docker container.
+
+*Outcome:* The `.env` is generated, core skills are seeded into the user's Memex, and `docker-compose up -d` launches the daemon in the background. The user sees: /"Booting your sovereign brain in the background..."/
+
+* 2. The First Contact (The CLI Gateway)
+** Goal
+Immediately after boot, the user needs a way to verify the agent is alive and capable of answering questions about their Memex without configuring complex third-party integrations (like Telegram bots).
+
+** The Interaction
+The user types a local client command to connect to the background daemon:
+#+begin_src bash
+org-agent chat
+#+end_src
+
+This opens a slick, colorful interactive terminal session:
+#+begin_example
+> User: Hello, what are my active projects?
+> Agent: [Thinking...]
+> Agent: You currently have 3 active projects:
+>        1. Org-agent v1.0
+>        2. Home Renovation
+>        3. Read 'The Sovereign Individual'
+#+end_example
+
+** Behind the Scenes
+1. The ~org-agent chat~ client connects to the daemon's local port (e.g., 9105).
+2. It sends a ~:chat-message~ signal.
+3. The core harness routes this to the Probabilistic Engine.
+4. The Context Manager retrieves active projects from the Memex AST.
+5. The Deterministic Engine (Bouncer) verifies it is a safe read-only action.
+6. The ~:cli~ Actuator formats the Lisp response into Markdown and sends it back over the socket.
+
+* 3. The Continuous Loop (Daily Usage)
+(To be defined as the agent's capabilities expand into Scribe, Gardener, and Emacs-native interactions).

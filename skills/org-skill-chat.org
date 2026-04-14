@@ -124,6 +124,7 @@ The Chat skill acts as the conversational UI. Because the ~org-agent~ kernel eva
             (:telegram (format nil "- To reply via Telegram: (:type :REQUEST :target :telegram :chat-id \"~a\" :text \"<Response>\")" chat-id))
             (:signal (format nil "- To reply via Signal: (:type :REQUEST :target :signal :chat-id \"~a\" :text \"<Response>\")" chat-id))
             (:matrix (format nil "- To reply via Matrix: (:type :REQUEST :target :matrix :room-id \"~a\" :text \"<Response>\")" chat-id))
+            (:cli (format nil "- To reply via CLI: (:type :REQUEST :target :cli :text \"<Response>\")"))
             (t "- To reply via Emacs: (:type :REQUEST :target :emacs :action :insert-at-end :buffer \"*org-agent-chat*\" :text \"* <Response>\")"))))
     (ask-probabilistic trimmed-text :system-prompt (concatenate 'string 
                                                        "ACTUATOR IDENTITY: You are the pure Lisp actuator for the org-agent kernel.

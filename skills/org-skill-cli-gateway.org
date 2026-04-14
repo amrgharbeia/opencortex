@@ -1,0 +1,148 @@
+:PROPERTIES:
+:ID:       cli-gateway-skill
+:CREATED:  [2026-04-13 Mon 17:00]
+:END:
+#+TITLE: SKILL: CLI Gateway (Universal Literate Note)
+#+STARTUP: content
+#+FILETAGS: :gateway:cli:io:psf:
+
+* Overview
+The *CLI Gateway* is the primary interaction point for the Org-Agent MVP. It provides a lightweight TCP socket server that allows local terminal clients to communicate with the daemon. It ensures a frictionless "First Contact" experience immediately following installation.
+
+* Phase A: Demand (PRD)
+:PROPERTIES:
+:STATUS: SIGNED
+:END:
+
+** 1. Purpose
+Provide a secure, local, and low-latency terminal interface for the Org-Agent.
+
+** 2. Success Criteria
+- [X] *Ingress:* Accept plain-text messages over TCP port 9105.
+- [X] *Normalisation:* Inject messages into the harness as `:chat-message` signals.
+- [X] *Egress:* Implement the `:cli` actuator to route agent responses back to the correct client socket.
+- [X] *Client:* Provide a standalone client script for the user's host machine.
+
+* Phase B: Blueprint (PROTOCOL)
+:PROPERTIES:
+:STATUS: SIGNED
+:END:
+
+** 1. Architectural Intent
+The gateway runs a multi-threaded TCP server. Each connection is handled in its own thread. Inbound lines are wrapped in a Signal and processed. The `:cli` actuator retrieves the `:reply-stream` from the signal context to send the response back to the specific connected client.
+
+** 2. Semantic Interfaces
+- Inbound: `(:sensor :chat-message :channel :cli :text "...")`
+- Outbound: `(:type :REQUEST :target :cli :text "...")`
+
+* Phase D: Build (Implementation)
+
+** Package Context
+#+begin_src lisp
+(in-package :org-agent)
+#+end_src
+
+** State: Server Control
+#+begin_src lisp
+(defvar *cli-server-thread* nil)
+(defvar *cli-server-socket* nil)
+(defvar *cli-port* 9105)
+#+end_src
+
+** Actuator: CLI Response
+The CLI actuator writes the agent's response back to the client's network stream. It applies a simple "Agent: " prefix for clarity.
+
+#+begin_src lisp
+(defun execute-cli-action (action context)
+  "Sends a message back to the connected CLI client via its network stream."
+  (let* ((payload (getf action :payload))
+         (text (or (getf payload :text) (getf action :text)))
+         (stream (getf context :reply-stream)))
+    (if (and stream (open-stream-p stream))
+        (progn
+          (format stream "Agent: ~a~%" text)
+          (finish-output stream))
+        (harness-log "CLI ERROR: No active reply stream for signal."))))
+#+end_src
+
+** Server: Client Handler
+Handles an individual TCP connection. It reads lines until the connection is closed.
+
+#+begin_src lisp
+(defun handle-cli-client (stream)
+  "Reads lines from a CLI client and injects them as stimuli."
+  (handler-case
+      (loop for line = (read-line stream nil nil)
+            while line do
+            (let ((trimmed (string-trim '(#\Space #\Tab #\Newline #\Return) line)))
+              (when (> (length trimmed) 0)
+                (harness-log "CLI: Received input -> ~a" trimmed)
+                (inject-stimulus (list :type :EVENT 
+                                       :payload (list :sensor :chat-message 
+                                                      :channel :cli 
+                                                      :text trimmed))
+                                 :stream stream))))
+    (error (c) (harness-log "CLI CLIENT ERROR: ~a" c))))
+#+end_src
+
+** Server: Main Loop
+Listens for new TCP connections on the configured port.
+
+#+begin_src lisp
+(defun start-cli-gateway (&optional (port *cli-port*))
+  "Starts the TCP listener for local CLI clients."
+  (setf *cli-server-socket* (usocket:socket-listen "0.0.0.0" port :reuse-address t))
+  (setf *cli-server-thread*
+        (bt:make-thread
+         (lambda ()
+           (unwind-protect
+                (loop
+                  (let* ((socket (usocket:socket-accept *cli-server-socket*))
+                         (stream (usocket:socket-stream socket)))
+                    (bt:make-thread (lambda () 
+                                      (unwind-protect (handle-cli-client stream)
+                                        (usocket:socket-close socket)))
+                                    :name "org-agent-cli-client-handler")))
+             (usocket:socket-close *cli-server-socket*)))
+         :name "org-agent-cli-gateway"))
+  (harness-log "CLI: Gateway listening on port ~a" port))
+#+end_src
+
+** Registration
+#+begin_src lisp
+(register-actuator :cli #'execute-cli-action)
+
+(defskill :skill-gateway-cli
+  :priority 200
+  :trigger (lambda (ctx) (declare (ignore ctx)) nil)
+  :probabilistic nil
+  :deterministic (lambda (action ctx) (declare (ignore ctx)) action))
+#+end_src
+
+** Initialization
+#+begin_src lisp
+(start-cli-gateway)
+#+end_src
+
+* Phase E: The Client (Scripts)
+We tangle a lightweight client script that the user can run on their host machine.
+
+** The Bash Client
+#+begin_src bash :tangle ../scripts/org-agent-chat.sh :shebang "#!/bin/bash"
+# org-agent-chat: The terminal mouthpiece for the Sovereign Brain.
+PORT=9105
+HOST=${1:-localhost}
+
+echo "Connecting to org-agent at $HOST:$PORT..."
+echo "Type your message and press Enter. Ctrl+C to exit."
+echo "--------------------------------------------------"
+
+# Uses netcat (nc) for a simple bidirectional pipe. 
+# Requires an open connection. We use a simple loop for persistence.
+while true; do
+    read -p "User: " MESSAGE
+    if [ -z "$MESSAGE" ]; then continue; fi
+    # Send message and wait for one line of response from Agent
+    echo "$MESSAGE" | nc -N $HOST $PORT
+done
+#+end_src
