@@ -6,7 +6,7 @@
 * Overview: The Zero-to-One Experience
 The *Setup & Onboarding* process ensures that users can boot the ~org-agent~ Lisp Machine with zero friction. We follow the *Appliance Paradigm* for standard users (Docker-first) and provide a *Power User Path* (Baremetal) for those wanting deep native integration.
 
-This file is a Literate Devops document. Tangling it generates the Docker configuration, the one-liner installation script, and the baremetal onboarding script.
+This file is a Literate Devops document. Tangling it generates the Docker configuration and the unified entrypoint script (~org-agent.sh~).
 
 * 1. The Appliance Paradigm (Docker First)
 The easiest way to run the agent is via Docker. This prevents the user from having to manually manage SBCL, Quicklisp, Python virtual environments, Playwright binaries, and Java (for Signal).
@@ -108,26 +108,104 @@ volumes:
   signal-state:
 #+end_src
 
-* 2. The Interactive One-Liner (install.sh)
-This script is what the user pipes to ~bash~ from curl. It detects the OS, installs Docker if missing (after asking permission), clones the repo, interactively generates the ~.env~, and launches the container.
+* 2. The Unified Entrypoint (org-agent.sh)
+We combine the installation script, the daemon launcher, and the CLI chat client into a single, elegant bash script. 
 
-#+begin_src bash :tangle ../scripts/install.sh :shebang "#!/bin/bash"
+If the agent is running, it connects to the chat. If it's installed but offline, it boots the daemon. If it's not installed at all, it walks the user through the onboarding wizard.
+
+#+begin_src bash :tangle ../org-agent.sh :shebang "#!/bin/bash"
 set -e
+
+PORT=9105
+HOST=${1:-localhost}
 
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 BLUE='\033[0;34m'
 YELLOW='\033[0;33m'
-NC='\033[0m' # No Color
+NC='\033[0m'
 
+command_exists() { command -v "$1" >/dev/null 2>&1; }
+
+# 1. Try to drop straight into the CLI chat
+if command_exists nc && nc -z $HOST $PORT 2>/dev/null; then
+    echo -e "${BLUE}Connected to sovereign brain at $HOST:$PORT...${NC}"
+    echo "Type your message and press Enter. Ctrl+C to exit."
+    echo "--------------------------------------------------"
+    while true; do
+        read -p "User: " MESSAGE
+        if [ -z "$MESSAGE" ]; then continue; fi
+        echo "$MESSAGE" | nc -N $HOST $PORT
+    done
+    exit 0
+fi
+
+# 2. Check if we have an existing installation we can boot
+if [ -f "$HOME/.org-agent-path" ]; then
+    INSTALL_DIR=$(cat "$HOME/.org-agent-path")
+    if [ -d "$INSTALL_DIR" ] && [ -f "$INSTALL_DIR/docker-compose.yml" ]; then
+        echo -e "${YELLOW}Daemon is offline. Booting from $INSTALL_DIR...${NC}"
+        cd "$INSTALL_DIR"
+        docker-compose up -d
+        echo "Waiting for brain to initialize..."
+        sleep 5
+        # Re-run to enter chat
+        exec "$0" "$@"
+    fi
+fi
+
+# 3. If we are running this inside a cloned repo, configure and boot
+if [ -f "docker-compose.yml" ] && [ -d "literate" ]; then
+    echo -e "${YELLOW}Local repository detected. Ensuring configuration...${NC}"
+    INSTALL_DIR=$(pwd)
+    echo "$INSTALL_DIR" > "$HOME/.org-agent-path"
+    
+    if [ ! -f .env ]; then
+        cp .env.example .env
+        read -p "What is your name? (default: User): " USER_NAME
+        USER_NAME=${USER_NAME:-User}
+        sed -i "s/MEMEX_USER=.*/MEMEX_USER=\"$USER_NAME\"/g" .env
+
+        read -p "What shall we name your Assistant? (default: Agent): " AGENT_NAME
+        AGENT_NAME=${AGENT_NAME:-Agent}
+        sed -i "s/MEMEX_ASSISTANT=.*/MEMEX_ASSISTANT=\"$AGENT_NAME\"/g" .env
+
+        echo -e "\nSelect your primary neural provider:"
+        echo "1) Google Gemini (Free Tier / Official)"
+        echo "2) OpenRouter (Unified / Paid)"
+        echo "3) Anthropic (Claude / API Key)"
+        echo "4) OpenAI (GPT / API Key)"
+        read -p "Choice [1-4]: " LLM_CHOICE
+
+        case $LLM_CHOICE in
+            2) read -p "Enter OpenRouter API Key: " INPUT; sed -i "s/OPENROUTER_API_KEY=.*/OPENROUTER_API_KEY=\"$INPUT\"/g" .env ;;
+            3) read -p "Enter Anthropic API Key: " INPUT; sed -i "s/ANTHROPIC_API_KEY=.*/ANTHROPIC_API_KEY=\"$INPUT\"/g" .env ;;
+            4) read -p "Enter OpenAI API Key: " INPUT; sed -i "s/OPENAI_API_KEY=.*/OPENAI_API_KEY=\"$INPUT\"/g" .env ;;
+            *) read -p "Enter Gemini API Key: " INPUT; sed -i "s/GEMINI_API_KEY=.*/GEMINI_API_KEY=\"$INPUT\"/g" .env ;;
+        esac
+
+        # Seed Core Skills
+        echo -e "\n${BLUE}Seeding Skills...${NC}"
+        MEMEX_TARGET=$(dirname $(dirname "$INSTALL_DIR"))
+        SKILLS_DIR="$MEMEX_TARGET/notes"
+        mkdir -p "$SKILLS_DIR"
+        cp -n skills/*.org "$SKILLS_DIR/" 2>/dev/null || true
+        echo -e "${GREEN}✓ Core skills seeded to $SKILLS_DIR.${NC}"
+    fi
+    
+    docker-compose up -d --build
+    echo "Waiting for brain to initialize..."
+    sleep 5
+    exec "$0" "$@"
+fi
+
+# 4. Zero-to-One Onboarding (No installation found)
 echo -e "${BLUE}==================================================${NC}"
 echo -e "${BLUE} org-agent: Sovereign Intelligence Onboarding     ${NC}"
 echo -e "${BLUE}==================================================${NC}"
 
 # --- OS & Docker Detection ---
-echo -e "\n${BLUE}[1/4] Verifying Environment...${NC}"
-
-command_exists() { command -v "$1" >/dev/null 2>&1; }
+echo -e "\n${BLUE}[1/2] Verifying Environment...${NC}"
 
 install_docker() {
     echo -e "${YELLOW}Docker is required to run org-agent natively without messy dependencies.${NC}"
@@ -175,7 +253,7 @@ else
 fi
 
 # --- Repository Setup ---
-echo -e "\n${BLUE}[2/4] Downloading Kernel...${NC}"
+echo -e "\n${BLUE}[2/2] Downloading Kernel...${NC}"
 MEMEX_DEFAULT="$HOME/memex"
 read -p "Where is your Memex located? (default: $MEMEX_DEFAULT): " MEMEX_TARGET
 MEMEX_TARGET=${MEMEX_TARGET:-$MEMEX_DEFAULT}
@@ -193,58 +271,17 @@ else
     git pull origin main
 fi
 
-# --- Interactive Configuration ---
-echo -e "\n${BLUE}[3/4] Neural & Identity Calibration...${NC}"
-if [ ! -f .env ]; then
-    cp .env.example .env
-fi
-
-# Ask for Name
-read -p "What is your name? (default: User): " USER_NAME
-USER_NAME=${USER_NAME:-User}
-sed -i "s/MEMEX_USER=.*/MEMEX_USER=\"$USER_NAME\"/g" .env
-
-# Ask for Assistant Name
-read -p "What shall we name your Assistant? (default: Agent): " AGENT_NAME
-AGENT_NAME=${AGENT_NAME:-Agent}
-sed -i "s/MEMEX_ASSISTANT=.*/MEMEX_ASSISTANT=\"$AGENT_NAME\"/g" .env
-
-# Ask for LLM
-echo -e "\nSelect your primary neural provider:"
-echo "1) Google Gemini (Free Tier / Official)"
-echo "2) OpenRouter (Unified / Paid)"
-echo "3) Anthropic (Claude / API Key)"
-echo "4) OpenAI (GPT / API Key)"
-read -p "Choice [1-4]: " LLM_CHOICE
-
-case $LLM_CHOICE in
-    2) read -p "Enter OpenRouter API Key: " INPUT; sed -i "s/OPENROUTER_API_KEY=.*/OPENROUTER_API_KEY=\"$INPUT\"/g" .env ;;
-    3) read -p "Enter Anthropic API Key: " INPUT; sed -i "s/ANTHROPIC_API_KEY=.*/ANTHROPIC_API_KEY=\"$INPUT\"/g" .env ;;
-    4) read -p "Enter OpenAI API Key: " INPUT; sed -i "s/OPENAI_API_KEY=.*/OPENAI_API_KEY=\"$INPUT\"/g" .env ;;
-    *) read -p "Enter Gemini API Key: " INPUT; sed -i "s/GEMINI_API_KEY=.*/GEMINI_API_KEY=\"$INPUT\"/g" .env ;;
-esac
-
-# Seed Core Skills
-echo -e "\n${BLUE}[4/4] Seeding Skills...${NC}"
-# In Docker, the host's memex maps to /memex. The skills should be saved in the host's memex notes folder.
-SKILLS_DIR="$MEMEX_TARGET/notes"
-mkdir -p "$SKILLS_DIR"
-cp -n skills/*.org "$SKILLS_DIR/" 2>/dev/null || true
-echo -e "${GREEN}✓ Core skills seeded to $SKILLS_DIR.${NC}"
+mkdir -p "$HOME/.local/bin"
+ln -sf "$(pwd)/org-agent.sh" "$HOME/.local/bin/org-agent"
+echo -e "${GREEN}✓ Installed 'org-agent' command to ~/.local/bin${NC}"
 
 # Ensure proper ownership if sudo was used for apt
 if [ -n "$SUDO_USER" ]; then
     chown -R "$SUDO_USER" "$MEMEX_TARGET/projects/org-agent"
 fi
 
-echo -e "\n${GREEN}==================================================${NC}"
-echo -e "${GREEN} Onboarding Complete!                             ${NC}"
-echo -e "${GREEN} Booting your sovereign brain in the background...${NC}"
-echo -e "${GREEN}==================================================${NC}"
-
-# Launch
-docker-compose up -d --build
-echo -e "\n${YELLOW}To view logs, run: cd $MEMEX_TARGET/projects/org-agent && docker-compose logs -f${NC}"
+# Execute the newly cloned script to run configuration (Step 3)
+exec ./org-agent.sh
 #+end_src
 
 * 3. The Power-User Path (Baremetal Onboarding)

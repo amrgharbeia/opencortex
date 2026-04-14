@@ -109,13 +109,15 @@ The agent meets you where you are. While it natively integrates with text editor
 
 * Quick Start (The Zero-to-One Experience)
 
-org-agent can be installed and booted with a single command. The onboarding script will detect your OS, offer to install Docker if missing, interactively gather your API keys, and launch the sovereign kernel in the background.
+org-agent can be installed and booted with a single command. The unified entrypoint script will detect your OS, offer to install Docker if missing, interactively gather your API keys, and launch the sovereign kernel in the background.
 
 #+begin_src bash
-curl -fsSL https://raw.githubusercontent.com/gharbeia/org-agent/main/scripts/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/gharbeia/org-agent/main/org-agent.sh | bash
 #+end_src
 
-For power users who wish to run the agent natively (Baremetal) without Docker to allow direct manipulation of their local =~/.emacs.d=, please refer to the [[file:literate/setup.org][setup.org]] literate documentation.
+After installation, simply type `org-agent` in your terminal to start chatting with your sovereign brain.
+
+For power users who wish to run the agent natively (Baremetal), please refer to the [[file:literate/setup.org][setup.org]] literate documentation.
 
 * The Evolutionary Roadmap (v1.0.0 to v4.0.0+)
 
