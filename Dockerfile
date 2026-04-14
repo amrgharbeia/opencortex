@@ -19,6 +19,7 @@ RUN apt-get update && apt-get install -y \
     python3 \
     python3-pip \
     python3-venv \
+    emacs-nox \
     && rm -rf /var/lib/apt/lists/*
 
 # 2. Setup Playwright (High-Fidelity Browsing)

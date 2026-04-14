@@ -31,7 +31,7 @@ Major architectural shifts or complex refactors require a formal implementation 
 You are strictly forbidden from drafting a plan or requesting formal approval in the same conversational turn that you propose an initial strategy or begin file discovery. You MUST propose your strategy in plain text, explicitly state "Waiting for user feedback," and yield the turn. You may only proceed to draft the `.md` plan after the user explicitly replies with agreement.
 
 ** 7. GTD Synchronization (Roadmap Integrity)
-You are strictly forbidden from considering a task complete without updating `gtd.org`. Every major architectural shift, feature implementation, or refactor MUST be recorded in the project roadmap to ensure technical transparency and historical auditability.
+You are strictly forbidden from considering a task complete without updating `gtd.org`. Every major architectural shift, feature implementation, or refactor MUST be recorded in the project roadmap to ensure technical transparency and historical auditability. When updating `gtd.org`, you MUST NEVER use checkboxes (`[ ]`) for sub-tasks; always use hierarchical sub-TODO headlines.
 
 ** 8. Configuration Externalization (Environment-Driven)
 Source code MUST be strictly free of hardcoded configuration values (e.g., ports, rhythms, timeouts). All such values must be extracted to the environment (via `.env`) and documented in `.env.example`. This ensures portability and security.
