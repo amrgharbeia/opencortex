@@ -12,6 +12,31 @@ NC='\033[0m'
 
 command_exists() { command -v "$1" >/dev/null 2>&1; }
 
+update_opencortex() {
+    echo -e "${BLUE}Updating OpenCortex...${NC}"
+    if [ -d ".git" ]; then
+        echo "Pulling latest changes from repository..."
+        git pull origin main
+    fi
+    if [ -f .env ]; then
+        SKILLS_DIR=$(grep "^SKILLS_DIR=" .env | cut -d"\"" -f2)
+        SKILLS_DIR=${SKILLS_DIR:-$(pwd)/notes}
+        echo "Synchronizing core skills to $SKILLS_DIR..."
+        mkdir -p "$SKILLS_DIR"
+        cp -n skills/*.org "$SKILLS_DIR/" 2>/dev/null || true
+    fi
+    if command_exists docker-compose && [ -f "docker-compose.yml" ]; then
+        echo "Rebuilding Docker image..."
+        docker-compose up -d --build
+    fi
+    echo -e "${GREEN}✓ Update complete.${NC}"
+    exit 0
+}
+
+if [[ "$1" == "--update" ]]; then
+    update_opencortex
+fi
+
 # 1. Try to drop straight into the CLI chat
 if command_exists socat && socat - TCP:$HOST:$PORT,connect-timeout=1 2>/dev/null; then
     echo -e "${BLUE}Connected to autonomous brain at $HOST:$PORT...${NC}"
@@ -77,7 +102,7 @@ if [ -f "docker-compose.yml" ] && [ -d "literate" ]; then
         # Seed Core Skills
         echo -e "\n${BLUE}Seeding Skills...${NC}"
         MEMEX_TARGET=$(dirname $(dirname "$INSTALL_DIR"))
-        SKILLS_DIR="$MEMEX_TARGET/notes"
+        SKILLS_DIR=$(grep "^SKILLS_DIR=" .env | cut -d"\"" -f2) ; SKILLS_DIR=${SKILLS_DIR:-$MEMEX_TARGET/notes}
         mkdir -p "$SKILLS_DIR"
         cp -n skills/*.org "$SKILLS_DIR/" 2>/dev/null || true
         echo -e "${GREEN}✓ Core skills seeded to $SKILLS_DIR.${NC}"

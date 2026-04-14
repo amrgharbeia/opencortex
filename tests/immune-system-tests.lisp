@@ -28,8 +28,8 @@
     (clrhash opencortex::*skills-registry*)
     (setf (gethash "crasher" opencortex::*skills-registry*) skill)
     
-    ;; Since cognitive-loop is recursive and our core hooks inject a NEW stimulus,
-    ;; we can't easily capture it in a single synchronous call without mocking cognitive-loop.
+    ;; Since cognitive-cycle is recursive and our core hooks inject a NEW stimulus,
+    ;; we can't easily capture it in a single synchronous call without mocking cognitive-cycle.
     ;; However, we can check if harness-log received the "SYSTEM ERROR" message.
     (harness-log "CLEAN LOG")
     (opencortex:process-signal stimulus)

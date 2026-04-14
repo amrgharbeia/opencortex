@@ -41,7 +41,7 @@ To guarantee long-term stability, opencortex enforces a strict architectural bou
 The Lisp microkernel does almost no actual "work." It is a thin, unbreakable harness strictly responsible for three things:
 1. *The Memory:* Maintaining the live graph of your Memex in RAM.
 2. *The Communication Protocol:* Managing the secure bridge between the agent and the outside world. While power users can connect natively via Emacs or Vim, the vast majority of users will interact with opencortex exclusively through chat clients (like Telegram, Signal, or Matrix), web dashboards, or a Terminal UI (TUI). The harness doesn't care; it just securely routes the messages.
-3. *The Cognitive Loop:* Moving signals through the Perceive -> Probabilistic -> Deterministic -> Dispatch pipeline.
+3. *The Cognitive Cycle:* Moving signals through the Perceive -> Probabilistic -> Deterministic -> Dispatch pipeline.
 
 Everything else—AI routing, vector embeddings, shell execution, or web browsing—is pushed entirely out of the harness and into *Fat Skills*.
 
