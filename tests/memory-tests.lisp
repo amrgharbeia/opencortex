@@ -1,8 +1,8 @@
-(defpackage :org-agent-memory-tests
-  (:use :cl :fiveam :org-agent)
+(defpackage :opencortex-memory-tests
+  (:use :cl :fiveam :opencortex)
   (:export #:memory-suite))
 
-(in-package :org-agent-memory-tests)
+(in-package :opencortex-memory-tests)
 
 (def-suite memory-suite
   :description "Tests for the Merkle-Tree Memory.")

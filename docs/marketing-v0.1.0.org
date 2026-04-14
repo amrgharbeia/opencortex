@@ -34,10 +34,10 @@ The narrative: "An autonomous AI agent that doesn't just chat, but lives nativel
    - *Hook:* "Own your brain. An AI agent that runs locally on your Markdown/Org files with mathematical security gates."
 3. **The AI / Autonomous Agent Hackers:**
    - *Channels:* Hacker News (Show HN), Twitter/X (AI tech Twitter).
-   - *Hook:* "Tired of fragile Python/Playwright agent wrappers? org-agent uses a deterministic Lisp microkernel to formally verify LLM actions before execution."
+   - *Hook:* "Tired of fragile Python/Playwright agent wrappers? opencortex uses a deterministic Lisp microkernel to formally verify LLM actions before execution."
 
 ** Launch Materials
-- **Demo Video (2 minutes):** Show the one-liner install, the agent running the `Scribe` skill in the background, and the user querying it via `org-agent chat`.
+- **Demo Video (2 minutes):** Show the one-liner install, the agent running the `Scribe` skill in the background, and the user querying it via `opencortex chat`.
 - **Blog Post / Essay:** "Why we built an Autonomous Agent in Common Lisp." Discuss the fragility of current SOTA (Devin/SWE-agent) and the necessity of the Bouncer/Policy gates.
 
 * 4. Post-Launch Community Engagement

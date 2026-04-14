@@ -19,9 +19,9 @@ Skills that depended on functions or variables from other skills would randomly 
 ** Symptoms
 Variables or functions with the same name in different skills would silently overwrite each other, causing unpredictable behavior.
 ** Root Cause
-All skills were being evaluated directly into the `org-agent` package.
+All skills were being evaluated directly into the `opencortex` package.
 ** Resolution
-**Package-Based Jailing:** Each skill is now evaluated within its own dedicated, shadowed package (e.g., `ORG-AGENT.SKILLS.ORG-SKILL-CHAT`). This ensures logical isolation while still allowing access to kernel exports.
+**Package-Based Jailing:** Each skill is now evaluated within its own dedicated, shadowed package (e.g., `OPENCORTEX.SKILLS.ORG-SKILL-CHAT`). This ensures logical isolation while still allowing access to kernel exports.
 
 * 3. Issue: Boot Stall (The Hanging Skill)
 ** Symptoms
@@ -31,7 +31,7 @@ Skill loading was strictly synchronous and blocking on the main thread.
 ** Resolution
 **Execution Timeouts:** Implemented `load-skill-with-timeout`, which wraps the loader in a monitored thread. If a skill takes longer than 5 seconds to initialize, the loader terminates the thread, jails the failure, and continues with the rest of the boot sequence.
 
-* 4. org-agent Mandate Alignment
+* 4. opencortex Mandate Alignment
 ** Evolutionary Kernel
 The boot sequence is now a verifiable, mathematical process rather than a side-effect of filesystem organization.
 ** Literate Granularity

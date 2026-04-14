@@ -1,4 +1,4 @@
-(in-package :org-agent)
+(in-package :opencortex)
 
 (SETF (GETHASH "fake-hash-123" *HISTORY-STORE*)
         #S(ORG-OBJECT

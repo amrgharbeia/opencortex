@@ -1,12 +1,12 @@
 services:
-  org-agent:
+  opencortex:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: org-agent
+    container_name: opencortex
     env_file: .env
     volumes:
-      # Mount the entire memex directory (2 levels up from projects/org-agent)
+      # Mount the entire memex directory (2 levels up from projects/opencortex)
       - ../..:/memex
       # Ensure signal-cli state is preserved
       - signal-state:/root/.local/share/signal-cli

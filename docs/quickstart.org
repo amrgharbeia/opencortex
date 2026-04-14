@@ -4,19 +4,19 @@
 #+FILETAGS: :quickstart:onboarding:guide:
 
 * 1. Introduction
-Welcome to ~org-agent~, the "Executive Soul" of your personal OS. This guide will help you set up and interact with your first probabilistic-deterministic agent.
+Welcome to ~opencortex~, the "Executive Soul" of your personal OS. This guide will help you set up and interact with your first probabilistic-deterministic agent.
 
 * 2. Prerequisites
 Before launching the harness, ensure your host environment has:
 - **Docker & Docker Compose**: The primary enclosure for the Lisp Machine.
 - **LLM API Keys**: At least one key for Gemini, Anthropic, or OpenAI.
-- **Emacs (Optional)**: For the full literate experience via ~org-agent.el~.
+- **Emacs (Optional)**: For the full literate experience via ~opencortex.el~.
 
 * 3. Installation & Enclosure
 ** Step 1: Clone the Autonomousty
 #+begin_src bash
-git clone https://github.com/amr/org-agent.git
-cd org-agent
+git clone https://github.com/amr/opencortex.git
+cd opencortex
 #+end_src
 
 ** Step 2: Secret Configuration
@@ -36,8 +36,8 @@ docker-compose up --build -d
 Once the harness is "Ready", you can interact with it via multiple sensors.
 
 ** Gateway A: Emacs (communication protocol)
-If you have configured the ~org-agent~ package in Emacs:
-1. Open a chat buffer: ~M-x org-agent-chat-open~.
+If you have configured the ~opencortex~ package in Emacs:
+1. Open a chat buffer: ~M-x opencortex-chat-open~.
 2. Send: "Are you online, agent?"
 
 ** Gateway B: External Sensors
@@ -46,7 +46,7 @@ If you enabled Signal or Telegram in ~.env~, send a message directly to your bot
 * 5. Verification (The Chaos Check)
 To ensure the harness is fully healthy, check the logs for the Micro-Loader summary:
 #+begin_src bash
-docker-compose logs -f org-agent
+docker-compose logs -f opencortex
 #+end_src
 Look for: ~LOADER: Boot Complete. [Ready: 34] [Failed: 0]~
 

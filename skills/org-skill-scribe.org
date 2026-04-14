@@ -42,7 +42,7 @@ The Scribe reacts to the `:heartbeat` sensor. It maintains a state file (`scribe
 
 ** Package Context
 #+begin_src lisp
-(in-package :org-agent)
+(in-package :opencortex)
 #+end_src
 
 ** State: Checkpoint Management
@@ -54,14 +54,14 @@ We track the last processed universal time to avoid redundant distillation.
 
 (defun scribe-load-state ()
   "Loads the scribe checkpoint from the state directory."
-  (let ((state-file (uiop:merge-pathnames* "state/scribe-checkpoint.lisp" (asdf:system-source-directory :org-agent))))
+  (let ((state-file (uiop:merge-pathnames* "state/scribe-checkpoint.lisp" (asdf:system-source-directory :opencortex))))
     (if (uiop:file-exists-p state-file)
         (setf *scribe-last-checkpoint* (read-from-string (uiop:read-file-string state-file)))
         (setf *scribe-last-checkpoint* 0))))
 
 (defun scribe-save-state ()
   "Saves the current universal-time as the new checkpoint."
-  (let ((state-file (uiop:merge-pathnames* "state/scribe-checkpoint.lisp" (asdf:system-source-directory :org-agent))))
+  (let ((state-file (uiop:merge-pathnames* "state/scribe-checkpoint.lisp" (asdf:system-source-directory :opencortex))))
     (ensure-directories-exist state-file)
     (with-open-file (out state-file :direction :output :if-exists :supersede)
       (format out "~a" (get-universal-time)))))
@@ -125,7 +125,7 @@ The deterministic gate receives the list of proposed notes and writes them to th
 #+begin_src lisp
 (defun scribe-commit-notes (proposals)
   "Writes proposed atomic notes to the notes/ directory. Appends if the note exists."
-  (let ((notes-dir (uiop:merge-pathnames* "notes/" (asdf:system-source-directory :org-agent))))
+  (let ((notes-dir (uiop:merge-pathnames* "notes/" (asdf:system-source-directory :opencortex))))
     (ensure-directories-exist notes-dir)
     (dolist (note proposals)
       (let* ((title (getf note :title))

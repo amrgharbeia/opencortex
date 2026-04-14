@@ -22,14 +22,14 @@ Created `self-fix-tests.lisp` which:
 ** Symptoms
 Repeated `LOAD-SYSTEM-DEFINITION-ERROR` and "unmatched close parenthesis" errors during test integration.
 ** Root Cause
-Complexity in the `:components` nesting of `org-agent.asd` led to repeated syntax errors when using automated editing tools. The deep nesting made manual paren counting prone to "off-by-one" errors.
+Complexity in the `:components` nesting of `opencortex.asd` led to repeated syntax errors when using automated editing tools. The deep nesting made manual paren counting prone to "off-by-one" errors.
 ** Resolution
-Refactored `org-agent.asd` to use a **Flat Component Structure**. 
+Refactored `opencortex.asd` to use a **Flat Component Structure**. 
 - *Before:* `:components ((:module "src" :components (...)))`
 - *After:* `:components ((:file "src/package") ...)`
 This eliminates unnecessary nesting levels and drastically reduces the surface area for syntax errors.
 
-* 3. org-agent Mandate Alignment
+* 3. opencortex Mandate Alignment
 ** Invariant Check
 - *Lisp Machine Autonomousty:* Verification utilized hot-reloading (`load-skill-from-org`) without restarting the SBCL image.
 - *Literate Programming:* Updated `org-skill-self-fix.org` to match the finalized `self-fix.lisp` logic.

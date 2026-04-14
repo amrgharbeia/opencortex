@@ -11,10 +11,10 @@ A static, hardcoded architecture is inherently fragile. To build a autonomous ag
 Skills unify the **"Why"** (Literate Org documentation) and the **"How"** (Functional Lisp implementation). This allows the harness to "learn" new behaviors without a full system restart, enabling a continuous evolutionary loop where the agent can eventually inspect and improve its own code.
 
 *** The True Microkernel (Decoupled Core Skills)
-Historically, "core" skills (like State Persistence or Gateways) were statically compiled into the harness for performance. We have fundamentally decoupled this. Now, *all* behavioral skills are pure user-space dynamic modules. They do not tangle to `src/` and are not listed in `org-agent.asd`. The harness simply boots, scans the `skills/` directory, and evaluates the code inside a jailed package. If a user wishes to swap the IPFS persistence skill for an AWS S3 one, they simply swap the `.org` file; no kernel recompilation is required.
+Historically, "core" skills (like State Persistence or Gateways) were statically compiled into the harness for performance. We have fundamentally decoupled this. Now, *all* behavioral skills are pure user-space dynamic modules. They do not tangle to `src/` and are not listed in `opencortex.asd`. The harness simply boots, scans the `skills/` directory, and evaluates the code inside a jailed package. If a user wishes to swap the IPFS persistence skill for an AWS S3 one, they simply swap the `.org` file; no kernel recompilation is required.
 
 *** Dormant Verification (Tests)
-Because skills are no longer statically compiled into the core `org-agent` ASDF system, their associated `FiveAM` test blocks are currently dormant during a standard static build. The tests still exist within the literate `.org` files as verifiable documentation, but executing them requires either dynamic evaluation at runtime or a dedicated test-loader skill.
+Because skills are no longer statically compiled into the core `opencortex` ASDF system, their associated `FiveAM` test blocks are currently dormant during a standard static build. The tests still exist within the literate `.org` files as verifiable documentation, but executing them requires either dynamic evaluation at runtime or a dedicated test-loader skill.
 
 *** 1. The Package Jailing Principle
 Every skill is evaluated within its own dedicated Common Lisp package (namespace). This "Jailing" prevents symbol collisions between disparate skills and ensures that a bug in one module cannot easily corrupt the internal state of another.
@@ -32,9 +32,9 @@ flowchart TD
     S3 -- Depends On --> S2
     
     subgraph Jailing[Package Jailing]
-        P1[Package: ORG-AGENT.SKILLS.S1]
-        P2[Package: ORG-AGENT.SKILLS.S2]
-        P3[Package: ORG-AGENT.SKILLS.S3]
+        P1[Package: OPENCORTEX.SKILLS.S1]
+        P2[Package: OPENCORTEX.SKILLS.S2]
+        P3[Package: OPENCORTEX.SKILLS.S3]
     end
     
     S1 --> P1
@@ -46,7 +46,7 @@ flowchart TD
 We begin by ensuring we are in the correct isolated harness namespace.
 
 #+begin_src lisp :tangle ../src/skills.lisp
-(in-package :org-agent)
+(in-package :opencortex)
 #+end_src
 
 ** Skill Metadata (defstruct skill)
@@ -209,8 +209,8 @@ A pre-flight safety check. Before evaluating any code from an Org file, the harn
 The core "hot-loading" mechanism. It extracts Lisp blocks from an Org file and evaluates them within a "Jail" (an isolated package).
 
 *** The Jailing Algorithm:
-1.  **Isolation:** It generates a package name based on the filename (e.g., ~ORG-AGENT.SKILLS.CORE-LOGIC~).
-2.  **Namespace Protection:** It inherits external symbols from the ~ORG-AGENT~ package, allowing the skill to use the harness API, but keeps its internal helper functions local.
+1.  **Isolation:** It generates a package name based on the filename (e.g., ~OPENCORTEX.SKILLS.CORE-LOGIC~).
+2.  **Namespace Protection:** It inherits external symbols from the ~OPENCORTEX~ package, allowing the skill to use the harness API, but keeps its internal helper functions local.
 3.  **Block Filtering:** It explicitly ignores blocks that contain ~:tangle~, ensuring that harness-level code (which is already in ~src/~) is not accidentally re-evaluated as skill logic.
 
 #+begin_src lisp :tangle ../src/skills.lisp
@@ -226,7 +226,7 @@ The core "hot-loading" mechanism. It extracts Lisp blocks from an Org file and e
                (lines (uiop:split-string content :separator '(#\Newline)))
                (in-lisp-block nil) 
                (lisp-code "") 
-               (pkg-name (intern (string-upcase (format nil "ORG-AGENT.SKILLS.~a" skill-base-name)) :keyword)))
+               (pkg-name (intern (string-upcase (format nil "OPENCORTEX.SKILLS.~a" skill-base-name)) :keyword)))
           
           (dolist (line lines)
             (let ((clean-line (string-trim '(#\Space #\Tab #\Return) line)))
@@ -253,7 +253,7 @@ The core "hot-loading" mechanism. It extracts Lisp blocks from an Org file and e
                 (harness-log "HARNESS: Jailing skill '~a' in package ~a" skill-base-name pkg-name)
                 (unless (find-package pkg-name)
                   (let ((new-pkg (make-package pkg-name :use '(:cl))))
-                    (do-external-symbols (sym (find-package :org-agent)) (shadowing-import sym new-pkg))))
+                    (do-external-symbols (sym (find-package :opencortex)) (shadowing-import sym new-pkg))))
                 
                 (let ((*read-eval* nil) (*package* (find-package pkg-name)))
                   (eval (read-from-string (format nil "(progn ~a)" lisp-code))))
@@ -398,9 +398,9 @@ The harness provides a baseline set of cognitive tools that enable core system i
   :guard (lambda (args context)
            (declare (ignore context))
            (let ((code (getf args :code)))
-             (let ((harness-pkg (find-package :org-agent.skills.org-skill-lisp-validator)))
+             (let ((harness-pkg (find-package :opencortex.skills.org-skill-lisp-validator)))
                (if harness-pkg 
-                   (uiop:symbol-call :org-agent.skills.org-skill-lisp-validator :lisp-validator-validate code)
+                   (uiop:symbol-call :opencortex.skills.org-skill-lisp-validator :lisp-validator-validate code)
                    t))))
   :body (lambda (args)
           (let ((code (getf args :code)))

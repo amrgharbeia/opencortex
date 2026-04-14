@@ -8,7 +8,7 @@
 
 A common failure mode for Large Language Models (LLMs) is the "Lost in the Middle" phenomenon, where the model's reasoning accuracy degrades as its context window becomes saturated with irrelevant data. Naive approaches to context management—such as simple character-count truncation or sliding windows—often sever the structural relationships that define an Org-mode Memex.
 
-The ~org-agent~ harness implements a deterministic, tree-aware solution: the **Foveal-Peripheral Hybrid Model**.
+The ~opencortex~ harness implements a deterministic, tree-aware solution: the **Foveal-Peripheral Hybrid Model**.
 
 *** 1. The Foveal Focus (High Resolution)
 When the harness prepares a prompt for the Probabilistic Engine, it identifies a "Foveal Focus"—typically the specific Org headline or task the user is currently interacting with. This node, along with its immediate children and semantically relevant neighbors, is rendered at "High Resolution," meaning its full body text, properties, and metadata are included in the prompt.
@@ -38,7 +38,7 @@ The ~context.lisp~ module provides the deterministic functional layer for queryi
 We begin by ensuring we are executing within the correct isolated package namespace.
 
 #+begin_src lisp :tangle ../src/context.lisp
-(in-package :org-agent)
+(in-package :opencortex)
 #+end_src
 
 ** Querying the Store (context-query-store)
@@ -214,10 +214,10 @@ Following the Engineering Standards, the peripheral vision extraction and render
 
 ** Test Suite Context
 #+begin_src lisp :tangle ../tests/peripheral-vision-tests.lisp
-(defpackage :org-agent-peripheral-vision-tests
-  (:use :cl :fiveam :org-agent)
+(defpackage :opencortex-peripheral-vision-tests
+  (:use :cl :fiveam :opencortex)
   (:export #:vision-suite))
-(in-package :org-agent-peripheral-vision-tests)
+(in-package :opencortex-peripheral-vision-tests)
 
 (def-suite vision-suite
   :description "Verification of Foveal-Peripheral context model.")
@@ -230,7 +230,7 @@ Verify that the foveal target is rendered with content, while siblings are skele
 #+begin_src lisp :tangle ../tests/peripheral-vision-tests.lisp
 (test test-foveal-rendering
   "Verify that the foveal target is rendered with content, while siblings are skeletal."
-  (clrhash org-agent::*memory*)
+  (clrhash opencortex::*memory*)
   (let* ((ast '(:type :HEADLINE :properties (:ID "proj-root" :TITLE "Project" :TAGS "project")
                 :contents ((:type :HEADLINE :properties (:ID "node-foveal" :TITLE "Foveal Node")
                             :raw-content "FOVEAL CONTENT" :contents nil)
@@ -250,7 +250,7 @@ Verify that context-assemble-global-awareness handles multiple projects correctl
 #+begin_src lisp :tangle ../tests/peripheral-vision-tests.lisp
 (test test-awareness-budget
   "Verify that context-assemble-global-awareness handles multiple projects."
-  (clrhash org-agent::*memory*)
+  (clrhash opencortex::*memory*)
   (ingest-ast '(:type :HEADLINE :properties (:ID "p1" :TITLE "Project 1" :TAGS "project") :contents nil))
   (ingest-ast '(:type :HEADLINE :properties (:ID "p2" :TITLE "Project 2" :TAGS "project") :contents nil))
   (let ((output (context-assemble-global-awareness)))

@@ -8,13 +8,13 @@
 #+FILETAGS: :platform:policy:alignment:autonomy:
 
 * Overview
-The *org-agent* is a probabilistic-deterministic harness for a personal operating system. It uses Org-mode as its native memory and Common Lisp as its deterministic reasoning engine.
+The *opencortex* is a probabilistic-deterministic harness for a personal operating system. It uses Org-mode as its native memory and Common Lisp as its deterministic reasoning engine.
 
 * Package Context
 Every skill executes within its own jailed package namespace, while inheriting core harness symbols.
 
 #+begin_src lisp :tangle ../src/policy.lisp
-(in-package :org-agent)
+(in-package :opencortex)
 #+end_src
 
 * The Core Invariants
@@ -52,7 +52,7 @@ The main deterministic entry point for the policy skill. It orchestrates the var
   "The main policy gate. Sub-calls engineering standards if available."
   (let ((current-action (policy-check-autonomy action context)))
     (when current-action
-      (let ((eng-pkg (find-package :org-agent.skills.org-skill-engineering-standards)))
+      (let ((eng-pkg (find-package :opencortex.skills.org-skill-engineering-standards)))
         (when eng-pkg
           (let ((eng-gate (find-symbol "ENGINEERING-STANDARDS-GATE" eng-pkg)))
             (when (and eng-gate (fboundp eng-gate))

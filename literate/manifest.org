@@ -1,20 +1,20 @@
-#+TITLE: Manifest (org-agent.asd)
+#+TITLE: Manifest (opencortex.asd)
 #+AUTHOR: Amr
 #+FILETAGS: :harness:system:
 #+STARTUP: content
 
-* Manifest (org-agent.asd)
+* Manifest (opencortex.asd)
 ** Architectural Intent: The ASDF Skeleton
 
-The ~org-agent.asd~ file is the physical blueprint of the Lisp Machine. It uses **Another System Definition Facility (ASDF)** to orchestrate the compilation and loading of all harness modules. 
+The ~opencortex.asd~ file is the physical blueprint of the Lisp Machine. It uses **Another System Definition Facility (ASDF)** to orchestrate the compilation and loading of all harness modules. 
 
-Traditional Lisp systems often use complex, non-linear dependency graphs. However, the ~org-agent~ harness mandates a strict, linear bootstrap sequence.
+Traditional Lisp systems often use complex, non-linear dependency graphs. However, the ~opencortex~ harness mandates a strict, linear bootstrap sequence.
 
 *** 1. Strict Serial Loading (:serial t)
 The harness uses the ~:serial t~ flag. This is a critical design choice that ensures every file is compiled and loaded in the exact order it appears in the ~:components~ list. This eliminates "macro-not-found" errors by guaranteeing that the ~package.lisp~ and ~skills.lisp~ (where the core macros are defined) are always established before any behavioral logic or skills are loaded.
 
 *** 2. Isolation of the Verification Suite
-To maintain a "Zero-Overhead" production environment, the testing logic is isolated into a secondary system: ~:org-agent/tests~. This allows the harness to boot in production without loading the ~FiveAM~ framework or the voluminous test data, keeping the memory footprint minimal and the attack surface small.
+To maintain a "Zero-Overhead" production environment, the testing logic is isolated into a secondary system: ~:opencortex/tests~. This allows the harness to boot in production without loading the ~FiveAM~ framework or the voluminous test data, keeping the memory footprint minimal and the attack surface small.
 
 ** The Build Pipeline
 #+begin_src mermaid
@@ -29,9 +29,9 @@ flowchart TD
 ** Harness System Definition
 This system defines the core "Thin Harness." It includes the protocol, the object store, and the functional loop.
 
-#+begin_src lisp :tangle ../org-agent.asd
-(defsystem :org-agent
-  :name "org-agent"
+#+begin_src lisp :tangle ../opencortex.asd
+(defsystem :opencortex
+  :name "opencortex"
   :author "Amr"
   :version "0.1.0"
   :license "AGPLv3"
@@ -49,26 +49,26 @@ This system defines the core "Thin Harness." It includes the protocol, the objec
                (:file "src/deterministic")
                (:file "src/loop"))
   :build-operation "program-op"
-  :build-pathname "org-agent-server"
-  :entry-point "org-agent:main")
+  :build-pathname "opencortex-server"
+  :entry-point "opencortex:main")
 #+end_src
 
 ** Verification Suite Definition
-This system contains the empirical tests required by the Engineering Standards. It depends on ~:org-agent~ and the ~FiveAM~ testing framework.
+This system contains the empirical tests required by the Engineering Standards. It depends on ~:opencortex~ and the ~FiveAM~ testing framework.
 
-#+begin_src lisp :tangle ../org-agent.asd
-(defsystem :org-agent/tests
-  :depends-on (:org-agent :fiveam)
+#+begin_src lisp :tangle ../opencortex.asd
+(defsystem :opencortex/tests
+  :depends-on (:opencortex :fiveam)
   :components ((:file "tests/communication-tests")
                (:file "tests/pipeline-tests")
                (:file "tests/boot-sequence-tests")
                (:file "tests/memory-tests")
                (:file "tests/immune-system-tests"))
   :perform (test-op (o s) 
-             (uiop:symbol-call :fiveam :run! (uiop:find-symbol* :communication-protocol-suite :org-agent-tests))
-             (uiop:symbol-call :fiveam :run! (uiop:find-symbol* :pipeline-suite :org-agent-pipeline-tests))
-             (uiop:symbol-call :fiveam :run! (uiop:find-symbol* :safety-suite :org-agent-safety-tests))
-             (uiop:symbol-call :fiveam :run! (uiop:find-symbol* :boot-suite :org-agent-boot-tests))
-             (uiop:symbol-call :fiveam :run! (uiop:find-symbol* :memory-suite :org-agent-memory-tests))
-             (uiop:symbol-call :fiveam :run! (uiop:find-symbol* :immune-suite :org-agent-immune-system-tests))))
+             (uiop:symbol-call :fiveam :run! (uiop:find-symbol* :communication-protocol-suite :opencortex-tests))
+             (uiop:symbol-call :fiveam :run! (uiop:find-symbol* :pipeline-suite :opencortex-pipeline-tests))
+             (uiop:symbol-call :fiveam :run! (uiop:find-symbol* :safety-suite :opencortex-safety-tests))
+             (uiop:symbol-call :fiveam :run! (uiop:find-symbol* :boot-suite :opencortex-boot-tests))
+             (uiop:symbol-call :fiveam :run! (uiop:find-symbol* :memory-suite :opencortex-memory-tests))
+             (uiop:symbol-call :fiveam :run! (uiop:find-symbol* :immune-suite :opencortex-immune-system-tests))))
 #+end_src

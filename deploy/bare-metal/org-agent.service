@@ -1,18 +1,18 @@
 [Unit]
-Description=org-agent: Probabilistic-Deterministic Lisp Machine Kernel
+Description=opencortex: Probabilistic-Deterministic Lisp Machine Kernel
 After=network.target
 
 [Service]
 Type=simple
 # Update User and WorkingDirectory to match your local setup
 User=amr
-WorkingDirectory=/home/amr/.openclaw/workspace/memex/5_projects/org-agent
-ExecStart=/home/amr/.openclaw/workspace/memex/5_projects/org-agent/org-agent-server
+WorkingDirectory=/home/amr/.openclaw/workspace/memex/5_projects/opencortex
+ExecStart=/home/amr/.openclaw/workspace/memex/5_projects/opencortex/opencortex-server
 Restart=always
 RestartSec=10
 
 # Environment variables can be loaded from the .env file
-EnvironmentFile=/home/amr/.openclaw/workspace/memex/5_projects/org-agent/.env
+EnvironmentFile=/home/amr/.openclaw/workspace/memex/5_projects/opencortex/.env
 
 [Install]
 WantedBy=multi-user.target

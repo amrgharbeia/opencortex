@@ -22,7 +22,7 @@ Mismatched expectations of signal nesting. The skill expected the code at `(getf
 ** Resolution
 Updated the deterministic logic to correctly traverse the nested signal structure: `(getf (getf context :candidate) :payload)`.
 
-* 3. org-agent Mandate Alignment
+* 3. opencortex Mandate Alignment
 ** Autonomous Boundary
 The core is now strictly a parser. Repair is an optional, user-space service.
 ** Reactive Signal Pipeline

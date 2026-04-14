@@ -1,4 +1,4 @@
-# ORG-AGENT v1.0 Production Environment
+# OPENCORTEX v1.0 Production Environment
 FROM debian:bookworm-slim
 
 # Prevent interactive prompts during build
@@ -49,12 +49,12 @@ RUN echo '(let ((quicklisp-init (merge-pathnames "quicklisp/setup.lisp" (user-ho
 
 # 6. Setup Application Directory
 WORKDIR /app
-COPY . /app/projects/org-agent
+COPY . /app/projects/opencortex
 
 # 7. Pre-cache Lisp Dependencies
 RUN sbcl --non-interactive \
-    --eval '(push #p"/app/projects/org-agent/" asdf:*central-registry*)' \
-    --eval '(ql:quickload :org-agent)'
+    --eval '(push #p"/app/projects/opencortex/" asdf:*central-registry*)' \
+    --eval '(ql:quickload :opencortex)'
 
 # 8. Environment & Volumes
 # The host's memex root should be mounted to /memex
@@ -66,6 +66,6 @@ EXPOSE 9105 8080
 
 # Entrypoint
 CMD ["sbcl", "--non-interactive", \
-     "--eval", "(push #p\"/app/projects/org-agent/\" asdf:*central-registry*)", \
-     "--eval", "(ql:quickload :org-agent)", \
-     "--eval", "(org-agent:main)"]
+     "--eval", "(push #p\"/app/projects/opencortex/\" asdf:*central-registry*)", \
+     "--eval", "(ql:quickload :opencortex)", \
+     "--eval", "(opencortex:main)"]

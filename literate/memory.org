@@ -6,9 +6,9 @@
 * The System Memory (memory.lisp)
 ** Architectural Intent: The Single Address Space (Live Memory)
 
-Yes, the Memory module is the cognitive bedrock of the org-agent. It is not a database; it is the agent's live, active "brain" state.
+Yes, the Memory module is the cognitive bedrock of the opencortex. It is not a database; it is the agent's live, active "brain" state.
 
-Traditional architectures rely on external databases (SQLite, Vector DBs) which introduce I/O latency and structural impedance. The org-agent architecture chooses a different path: the **Single Address Space**. By treating the entire knowledge base as a graph of Lisp pointers, we achieve microsecond recollection and total structural transparency.
+Traditional architectures rely on external databases (SQLite, Vector DBs) which introduce I/O latency and structural impedance. The opencortex architecture chooses a different path: the **Single Address Space**. By treating the entire knowledge base as a graph of Lisp pointers, we achieve microsecond recollection and total structural transparency.
 
 - **Pointer-Based Reasoning:** By loading the entire knowledge graph into a live Common Lisp hash table, we achieve microsecond recollection. The harness doesn't "search a file"; it traverses a memory pointer.
 - **Memory Imaging:** The ability to snapshot the Lisp image allows the agent to resume its entire cognitive state instantly, solving the "Cold Start" problem.
@@ -32,7 +32,7 @@ flowchart TD
 
 ** Package Context
 #+begin_src lisp :tangle ../src/memory.lisp
-(in-package :org-agent)
+(in-package :opencortex)
 #+end_src
 
 ** The Object Repository
@@ -179,11 +179,11 @@ Utility functions for AST traversal and path resolution.
 Following the Engineering Standards, the Memory must be empirically verified through automated testing. The following test suite ensures the mathematical integrity of the Merkle hashes and the behavioral correctness of the immutable versioning and rollback systems.
 
 #+begin_src lisp :tangle ../tests/memory-tests.lisp
-(defpackage :org-agent-memory-tests
-  (:use :cl :fiveam :org-agent)
+(defpackage :opencortex-memory-tests
+  (:use :cl :fiveam :opencortex)
   (:export #:memory-suite))
 
-(in-package :org-agent-memory-tests)
+(in-package :opencortex-memory-tests)
 
 (def-suite memory-suite
   :description "Tests for the Merkle-Tree Memory.")

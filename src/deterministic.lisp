@@ -1,4 +1,4 @@
-(in-package :org-agent)
+(in-package :opencortex)
 
 (defun decide (proposed-action context)
   "The Deterministic Safety Gate: iterates through all skill deterministic-gates sorted by priority."

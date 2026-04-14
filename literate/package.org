@@ -4,7 +4,7 @@
 #+STARTUP: content
 
 * System Interface (package.lisp)
-The ~package.lisp~ file defines the public API of the ~org-agent~ harness. It serves as the primary membrane between the deterministic core modules and the dynamic world of skills and actuators.
+The ~package.lisp~ file defines the public API of the ~opencortex~ harness. It serves as the primary membrane between the deterministic core modules and the dynamic world of skills and actuators.
 
 ** Architectural Intent: The Package Membrane
 By strictly defining the public interface, we ensure that skills remain decoupled from the harness implementation details. This allows for autonomous replacement of any component (e.g., swapping the Memory or the Probabilistic Engine) without breaking existing skills.
@@ -19,7 +19,7 @@ flowchart TD
 
 ** Public API Export
 #+begin_src lisp :tangle ../src/package.lisp
-(defpackage :org-agent
+(defpackage :opencortex
   (:use :cl)
   (:export 
    ;; --- communication protocol ---
@@ -127,7 +127,7 @@ flowchart TD
 
 ** Package Implementation
 #+begin_src lisp :tangle ../src/package.lisp
-(in-package :org-agent)
+(in-package :opencortex)
 #+end_src
 
 ** Harness Logging State

@@ -1,4 +1,4 @@
-(in-package :org-agent)
+(in-package :opencortex)
 
 (defvar *probabilistic-backends* (make-hash-table :test 'equal))
 (defvar *provider-cascade* nil)

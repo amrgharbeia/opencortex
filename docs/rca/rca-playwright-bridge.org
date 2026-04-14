@@ -3,7 +3,7 @@
 #+FILETAGS: :rca:intelligence:browsing:automation:autonomy:
 
 * Executive Summary
-Successfully implemented a high-fidelity browsing bridge using Playwright and Python. This allows the `org-agent` to interact with modern, JavaScript-rendered web applications that were previously inaccessible via simple HTTP clients.
+Successfully implemented a high-fidelity browsing bridge using Playwright and Python. This allows the `opencortex` to interact with modern, JavaScript-rendered web applications that were previously inaccessible via simple HTTP clients.
 
 * 1. Architectural Strategy: The I/O Bridge
 ** Problem
@@ -28,7 +28,7 @@ Created the `:browser` cognitive tool, which exposes three primary capabilities 
 - **Extraction:** Targeted text retrieval via CSS selectors.
 - **Vision:** Base64-encoded screenshot capture for future multimodal processing.
 
-* 4. org-agent Mandate Alignment
+* 4. opencortex Mandate Alignment
 ** Zero-Bloat (Managed)
 While adding Playwright increases the image size, it is a "Complexity Earned" trade-off that dramatically expands the agent's capability frontier.
 ** Literate Granularity

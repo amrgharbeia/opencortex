@@ -5,13 +5,13 @@
 
 * Stage 1: Perceive (perceive.lisp)
 ** Architectural Intent: Sensory Ingestion
-The Perceive stage is the "sensory cortex" of the Org-Agent. It takes raw stimuli from the outside world (keyboard events, chat messages, heartbeats, or system interrupts) and normalizes them into internal **Signals**.
+The Perceive stage is the "sensory cortex" of the OpenCortex. It takes raw stimuli from the outside world (keyboard events, chat messages, heartbeats, or system interrupts) and normalizes them into internal **Signals**.
 
 ** Async Sensor Routing
 To prevent blocking the main pipeline, certain sensors (like user commands or chat messages) are processed asynchronously in their own threads.
 
 #+begin_src lisp :tangle ../src/perceive.lisp
-(in-package :org-agent)
+(in-package :opencortex)
 
 (defvar *async-sensors* '(:chat-message :delegation :user-command)
   "List of sensors that should be processed asynchronously to avoid blocking gateways.")
@@ -41,7 +41,7 @@ The entry point for raw messages. It determines if the signal should be processe
            (restart-case (handler-bind ((error (lambda (c) (harness-log "ASYNC ERROR: ~a" c) (invoke-restart 'skip-event))))
                            (process-signal raw-message)) 
              (skip-event () nil))) 
-         :name "org-agent-async-task")
+         :name "opencortex-async-task")
         (restart-case (handler-bind ((error (lambda (c) (harness-log "SYSTEM ERROR: ~a" c) (invoke-restart 'skip-event)))) 
                         (process-signal raw-message))
           (skip-event () (harness-log "SYSTEM RECOVERY: Stimulus dropped.~%"))))))

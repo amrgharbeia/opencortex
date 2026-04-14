@@ -1,19 +1,19 @@
 #+TITLE: LXC / Systemd-nspawn Deployment Guide
-#+AUTHOR: org-agent
+#+AUTHOR: opencortex
 
 * Overview
-For users who prefer containerization without the overhead or dependency on the Docker daemon, `org-agent` can be run within a standard Linux Container (LXC) or a systemd-nspawn container.
+For users who prefer containerization without the overhead or dependency on the Docker daemon, `opencortex` can be run within a standard Linux Container (LXC) or a systemd-nspawn container.
 
 * Systemd-nspawn Setup (Fastest for Linux users)
 
 1. **Create the container root:**
    #+begin_src bash
-   sudo debootstrap --arch=amd64 bookworm /var/lib/machines/org-agent
+   sudo debootstrap --arch=amd64 bookworm /var/lib/machines/opencortex
    #+end_src
 
 2. **Start and enter the container:**
    #+begin_src bash
-   sudo systemd-nspawn -D /var/lib/machines/org-agent
+   sudo systemd-nspawn -D /var/lib/machines/opencortex
    #+end_src
 
 3. **Install dependencies (inside container):**
@@ -24,7 +24,7 @@ For users who prefer containerization without the overhead or dependency on the 
 4. **Bind mount the Memex directory:**
    Add this to your container startup or use the `--bind` flag:
    #+begin_src bash
-   sudo systemd-nspawn -D /var/lib/machines/org-agent --bind /home/amr/.openclaw/workspace/memex
+   sudo systemd-nspawn -D /var/lib/machines/opencortex --bind /home/amr/.openclaw/workspace/memex
    #+end_src
 
 * Proxmox LXC Setup

@@ -8,7 +8,7 @@
 #+DEPENDS_ON: id:state-persistence-skill
 
 * Overview
-The *Event Orchestrator* is the central nervous system of the Org-Agent. It unifies three previously fragmented domains of system control:
+The *Event Orchestrator* is the central nervous system of the OpenCortex. It unifies three previously fragmented domains of system control:
 1. **Cron (Temporal Control):** Triggering tasks based on time and heartbeats.
 2. **Hooks (Lifecycle Control):** Enabling event-driven extensibility at specific code points.
 3. **Routing (Cognitive Control):** Classifying incoming stimuli into complexity tiers for optimal resource allocation.
@@ -164,7 +164,7 @@ We register the orchestrator as a core skill and hot-patch the harness's routing
 #+begin_src lisp
 (progn
   ;; Hook into kernel routing
-  (setf org-agent::*model-selector-fn* #'orchestrator-classify-complexity)
+  (setf opencortex::*model-selector-fn* #'orchestrator-classify-complexity)
   
   (defskill :skill-event-orchestrator
     :priority 400 ; Foundational control layer
@@ -179,22 +179,22 @@ We register the orchestrator as a core skill and hot-patch the harness's routing
 
 ** 1. Unit Tests (FiveAM)
 #+begin_src lisp
-(defpackage :org-agent-orchestrator-tests
-  (:use :cl :fiveam :org-agent))
-(in-package :org-agent-orchestrator-tests)
+(defpackage :opencortex-orchestrator-tests
+  (:use :cl :fiveam :opencortex))
+(in-package :opencortex-orchestrator-tests)
 
 (def-suite orchestrator-suite :description "Tests for Event Orchestrator.")
 (in-suite orchestrator-suite)
 
 (test test-hook-execution
   (let ((test-val 0))
-    (org-agent:orchestrator-register-hook :test-hook (lambda () (setf test-val 1)))
-    (org-agent:orchestrator-trigger-hook :test-hook)
+    (opencortex:orchestrator-register-hook :test-hook (lambda () (setf test-val 1)))
+    (opencortex:orchestrator-trigger-hook :test-hook)
     (is (= 1 test-val))))
 
 (test test-routing-reflex
   (let ((ctx '(:payload (:sensor :heartbeat))))
-    (is (eq :REFLEX (org-agent:orchestrator-classify-complexity ctx)))))
+    (is (eq :REFLEX (opencortex:orchestrator-classify-complexity ctx)))))
 #+end_src
 
 ** 2. Chaos Scenarios

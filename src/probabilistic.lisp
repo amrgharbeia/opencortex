@@ -1,4 +1,4 @@
-(in-package :org-agent)
+(in-package :opencortex)
 
 (defvar *probabilistic-backends* (make-hash-table :test 'equal))
 
@@ -71,7 +71,7 @@
           (let* ((prompt-generator (skill-probabilistic-prompt active-skill)) 
                  (raw-prompt (when prompt-generator (funcall prompt-generator context)))
                  (full-system-prompt (concatenate 'string 
-                                                 "ACTUATOR IDENTITY: You are the pure Lisp actuator for the org-agent kernel.
+                                                 "ACTUATOR IDENTITY: You are the pure Lisp actuator for the opencortex kernel.
 MANDATE: Output EXACTLY ONE Common Lisp property list starting with (:type :REQUEST).
 ZERO CONVERSATION: Do not explain. Do not say 'Okay'. Do not use markdown blocks.
 STRICT RULE: Do not output multiple lists. Do not chain multiple requests. 
@@ -84,7 +84,7 @@ DO NOT embed tool calls inside text strings.
                                                  tool-belt
                                                  "
 IMPORTANT: To reply to the user, you MUST use:
-(:type :REQUEST :target :emacs :action :insert-at-end :buffer \"*org-agent-chat*\" :text \"* <Response Text>\")
+(:type :REQUEST :target :emacs :action :insert-at-end :buffer \"*opencortex-chat*\" :text \"* <Response Text>\")
 
 To call a tool, you MUST use:
 (:type :REQUEST :target :tool :action :call :tool \"<name>\" :args (:arg1 \"val\"))

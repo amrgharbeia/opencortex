@@ -43,7 +43,7 @@ flowchart LR
 We ensure all protocol logic resides within the isolated system namespace.
 
 #+begin_src lisp :tangle ../src/communication.lisp
-(in-package :org-agent)
+(in-package :opencortex)
 #+end_src
 
 ** Actuator Registry

@@ -27,8 +27,8 @@ The *Self-Fix Agent* is the system's "Repair Mechanism." It takes failure hypoth
          (is-skill (and (stringp (namestring target-file))
                         (search "skills/" (namestring target-file)))))
     
-    (org-agent:snapshot-memory)
-    (org-agent:harness-log "SELF-FIX - Attempting surgical fix on ~a..." target-file)
+    (opencortex:snapshot-memory)
+    (opencortex:harness-log "SELF-FIX - Attempting surgical fix on ~a..." target-file)
     
     (handler-case
         (if (uiop:file-exists-p target-file)
@@ -40,25 +40,25 @@ The *Self-Fix Agent* is the system's "Repair Mechanism." It takes failure hypoth
                     
                     (if is-skill
                         (progn
-                          (org-agent:harness-log "SELF-FIX - Reloading modified skill ~a..." target-file)
-                          (if (org-agent:load-skill-from-org target-file)
+                          (opencortex:harness-log "SELF-FIX - Reloading modified skill ~a..." target-file)
+                          (if (opencortex:load-skill-from-org target-file)
                               (progn
-                                (org-agent:harness-log "SELF-FIX SUCCESS - Applied and reloaded.")
+                                (opencortex:harness-log "SELF-FIX SUCCESS - Applied and reloaded.")
                                 t)
                               (progn
-                                (org-agent:harness-log "SELF-FIX FAILURE - Skill reload failed. Rolling back.")
+                                (opencortex:harness-log "SELF-FIX FAILURE - Skill reload failed. Rolling back.")
                                 (with-open-file (out target-file :direction :output :if-exists :supersede)
                                   (write-string content out))
-                                (org-agent:rollback-memory 0)
+                                (opencortex:rollback-memory 0)
                                 nil)))
                         (progn
-                          (org-agent:harness-log "SELF-FIX SUCCESS - Applied fix to file.")
+                          (opencortex:harness-log "SELF-FIX SUCCESS - Applied fix to file.")
                           t)))
-                  (progn (org-agent:harness-log "SELF-FIX FAILURE - Pattern not found.") nil)))
-            (progn (org-agent:harness-log "SELF-FIX FAILURE - File not found.") nil))
+                  (progn (opencortex:harness-log "SELF-FIX FAILURE - Pattern not found.") nil)))
+            (progn (opencortex:harness-log "SELF-FIX FAILURE - File not found.") nil))
       (error (c)
-        (org-agent:harness-log "SELF-FIX CRASH - ~a. Rolling back." c)
-        (org-agent:rollback-memory 0)
+        (opencortex:harness-log "SELF-FIX CRASH - ~a. Rolling back." c)
+        (opencortex:rollback-memory 0)
         nil))))
 #+end_src
 
@@ -77,11 +77,11 @@ The *Self-Fix Agent* is the system's "Repair Mechanism." It takes failure hypoth
 
 ** Skill Definition
 #+begin_src lisp
-(org-agent:defskill :skill-self-fix
+(opencortex:defskill :skill-self-fix
   :priority 95
   :trigger (lambda (context) (eq (getf (getf context :payload) :sensor) :repair-request))
   :probabilistic (lambda (context)
-           (format nil "You are the org-agent Repair Actuator. Synthesize a surgical fix for the reported failure.
+           (format nil "You are the opencortex Repair Actuator. Synthesize a surgical fix for the reported failure.
 Return a Lisp plist for :repair-file."))
   :deterministic (lambda (action context)
               (let ((payload (getf action :payload)))

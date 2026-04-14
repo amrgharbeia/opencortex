@@ -1,4 +1,4 @@
-(in-package :org-agent)
+(in-package :opencortex)
 
 (defun policy-check-autonomy (action context)
   "Ensures the action does not violate the Autonomy invariant."
@@ -11,7 +11,7 @@
   "The main policy gate. Sub-calls engineering standards if available."
   (let ((current-action (policy-check-autonomy action context)))
     (when current-action
-      (let ((eng-pkg (find-package :org-agent.skills.org-skill-engineering-standards)))
+      (let ((eng-pkg (find-package :opencortex.skills.org-skill-engineering-standards)))
         (when eng-pkg
           (let ((eng-gate (find-symbol "ENGINEERING-STANDARDS-GATE" eng-pkg)))
             (when (and eng-gate (fboundp eng-gate))

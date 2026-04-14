@@ -8,13 +8,13 @@
 #+DEPENDS_ON: id:47425a43-2be0-423c-8509-22592cfe9c9e
 
 * Overview
-The *Harness Monitor* provides tools for inspecting the internal state and health of the Org-Agent Lisp Machine.
+The *Harness Monitor* provides tools for inspecting the internal state and health of the OpenCortex Lisp Machine.
 
 * Implementation
 
 #+begin_src lisp
 
-(org-agent:def-cognitive-tool :harness-status \"Returns the current operational status of the Org-Agent harness, including loaded skills and telemetry.\"
+(opencortex:def-cognitive-tool :harness-status \"Returns the current operational status of the OpenCortex harness, including loaded skills and telemetry.\"
   nil
   :body (lambda (args)
           (declare (ignore args))
@@ -23,12 +23,12 @@ The *Harness Monitor* provides tools for inspecting the internal state and healt
 - Uptime: ~a seconds
 - Memory Usage: ~a
 - Providers: ~a\"
-                  (hash-table-count org-agent:*skills-registry*)
+                  (hash-table-count opencortex:*skills-registry*)
                   (get-universal-time)
                   \"Not implemented\"
-                  org-agent:*provider-cascade*)))
+                  opencortex:*provider-cascade*)))
 
-(org-agent:def-cognitive-tool :list-skills \"Lists all currently loaded skills and their metadata.\"
+(opencortex:def-cognitive-tool :list-skills \"Lists all currently loaded skills and their metadata.\"
   nil
   :body (lambda (args)
           (declare (ignore args))
@@ -38,9 +38,9 @@ The *Harness Monitor* provides tools for inspecting the internal state and healt
                        (setf output (concatenate 'string output
                                                  (format nil \"- ~a (Priority: ~a, Deps: ~s)~%\"
                                                          name
-                                                         (org-agent:skill-priority skill)
-                                                         (org-agent:skill-dependencies skill)))))
-                     org-agent:*skills-registry*)
+                                                         (opencortex:skill-priority skill)
+                                                         (opencortex:skill-dependencies skill)))))
+                     opencortex:*skills-registry*)
             output)))
 
 (defskill :skill-harness-monitor

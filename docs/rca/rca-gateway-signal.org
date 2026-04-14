@@ -22,7 +22,7 @@ Unlike Telegram's HTTP API, Signal requires a local binary (`signal-cli`).
 ** Security
 The system uses the pre-configured Signal account `+13322690326` discovered in the user's memex.
 
-* 3. Alignment with org-agent Mandates
+* 3. Alignment with opencortex Mandates
 ** Literate Granularity
 Strictly adhered to the "one definition per block" mandate throughout the new `org-skill-gateway-signal.org` file.
 ** Verification

@@ -8,7 +8,7 @@
 #+FILETAGS: :chat:conversational:ui:autonomy:
 
 * Overview
-The *Chat Agent* provides a dedicated conversational interface within Emacs (`*org-agent-chat*`). It enables fluid dialogue while maintaining strict persona alignment and contextual awareness.
+The *Chat Agent* provides a dedicated conversational interface within Emacs (`*opencortex-chat*`). It enables fluid dialogue while maintaining strict persona alignment and contextual awareness.
 
 * Phase A: Demand (PRD)
 :PROPERTIES:
@@ -101,11 +101,11 @@ Interfaces for conversational event handling and UI integration. Source of truth
             (chat-archive-message (getf payload :text) :role :agent :channel target :chat-id (or (getf payload :chat-id) (getf payload :room-id))))
           proposed-action)
         (let ((err-text (format nil "\n\n*System Error:* Chat agent returned invalid action: ~s" proposed-action)))
-          `(:type :request :target :emacs :payload (:action :insert-at-end :buffer "*org-agent-chat*" :text ,err-text))))))
+          `(:type :request :target :emacs :payload (:action :insert-at-end :buffer "*opencortex-chat*" :text ,err-text))))))
 #+end_src
 
 ** Neural Response Generation
-The Chat skill acts as the conversational UI. Because the ~org-agent~ kernel evaluates LLM output via ~read-from-string~ (expecting a valid s-expression) and the chat verifier strictly expects an Emacs ~:insert-at-end~ actuation, we must explicitly mandate that the LLM wraps its conversational output in a Common Lisp property list.
+The Chat skill acts as the conversational UI. Because the ~opencortex~ kernel evaluates LLM output via ~read-from-string~ (expecting a valid s-expression) and the chat verifier strictly expects an Emacs ~:insert-at-end~ actuation, we must explicitly mandate that the LLM wraps its conversational output in a Common Lisp property list.
 
 #+begin_src lisp
 (defun probabilistic-skill-chat (context)
@@ -125,9 +125,9 @@ The Chat skill acts as the conversational UI. Because the ~org-agent~ kernel eva
             (:signal (format nil "- To reply via Signal: (:type :REQUEST :target :signal :chat-id \"~a\" :text \"<Response>\")" chat-id))
             (:matrix (format nil "- To reply via Matrix: (:type :REQUEST :target :matrix :room-id \"~a\" :text \"<Response>\")" chat-id))
             (:cli (format nil "- To reply via CLI: (:type :REQUEST :target :cli :text \"<Response>\")"))
-            (t "- To reply via Emacs: (:type :REQUEST :target :emacs :action :insert-at-end :buffer \"*org-agent-chat*\" :text \"* <Response>\")"))))
+            (t "- To reply via Emacs: (:type :REQUEST :target :emacs :action :insert-at-end :buffer \"*opencortex-chat*\" :text \"* <Response>\")"))))
     (ask-probabilistic trimmed-text :system-prompt (concatenate 'string 
-                                                       "ACTUATOR IDENTITY: You are the pure Lisp actuator for the org-agent kernel.
+                                                       "ACTUATOR IDENTITY: You are the pure Lisp actuator for the opencortex kernel.
 MANDATE: Output EXACTLY ONE Common Lisp property list starting with (:type :REQUEST).
 ZERO CONVERSATION: Do not explain. Do not use markdown.
 STRICT RULE: Never output the strings 'Unknown request' or 'System Error'. 

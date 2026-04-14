@@ -1,4 +1,4 @@
-(in-package :org-agent)
+(in-package :opencortex)
 
 (defun validate-communication-protocol-schema (msg)
   "Strict structural validation for incoming communication protocol messages."

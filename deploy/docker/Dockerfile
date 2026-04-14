@@ -18,21 +18,21 @@ RUN curl -O https://beta.quicklisp.org/quicklisp.lisp && \
 WORKDIR /app
 
 # Copy source code and system definition
-COPY org-agent.asd /app/
+COPY opencortex.asd /app/
 COPY src/ /app/src/
 
 # Ensure we aren't using a stale binary from the host
-RUN rm -f /app/org-agent-server
+RUN rm -f /app/opencortex-server
 
 # Build the standalone binary natively inside the container
 # This ensures GLIBC compatibility with the runtime environment.
 RUN sbcl --non-interactive \
          --eval '(push "/app/" asdf:*central-registry*)' \
-         --eval '(ql:quickload :org-agent)' \
-         --eval '(asdf:make :org-agent)'
+         --eval '(ql:quickload :opencortex)' \
+         --eval '(asdf:make :opencortex)'
 
 # Ensure the binary is executable
-RUN chmod +x /app/org-agent-server
+RUN chmod +x /app/opencortex-server
 
 # Expose the communication protocol and Web Dashboard ports
 EXPOSE 9105 8080
@@ -41,4 +41,4 @@ EXPOSE 9105 8080
 VOLUME /memex
 
 # Run the natively compiled standalone daemon
-CMD ["./org-agent-server"]
+CMD ["./opencortex-server"]

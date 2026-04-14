@@ -17,9 +17,9 @@ Implemented a robust `get-nested` helper function that safely traverses both nes
 ** Symptoms
 Provider logic was present in the codebase but inaccessible during tests and runtime.
 ** Root Cause
-The `credentials-vault.lisp` and `llm-gateway.lisp` files (consolidated in a previous session) were never added to the `org-agent.asd` system definition. Furthermore, an incorrect loading order caused `UNDEFINED-FUNCTION` errors for `register-probabilistic-backend`.
+The `credentials-vault.lisp` and `llm-gateway.lisp` files (consolidated in a previous session) were never added to the `opencortex.asd` system definition. Furthermore, an incorrect loading order caused `UNDEFINED-FUNCTION` errors for `register-probabilistic-backend`.
 ** Resolution
-1. Added both files to `org-agent.asd`.
+1. Added both files to `opencortex.asd`.
 2. Enforced strict loading order: `probabilistic` (defines registry) -> `credentials-vault` -> `llm-gateway` (uses registry).
 
 * 3. Issue: Credential Key Mismatch
@@ -30,7 +30,7 @@ Gemini requests failed with "API Key missing" even when environment variables we
 ** Resolution
 Updated `vault-get-secret` to map both `:gemini` and `:gemini-api` to the same `GEMINI_API_KEY` environment variable.
 
-* 4. org-agent Mandate Alignment
+* 4. opencortex Mandate Alignment
 ** Invariant Check
 - *High-Integrity Memory:* All individual provider tracks are now backed by automated unit tests (`llm-gateway-tests.lisp`).
 - *Literate Programming:* Updated `org-skill-llm-gateway.org` to reflect the improved `get-nested` utility.

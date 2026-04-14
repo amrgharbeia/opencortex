@@ -92,7 +92,7 @@ This is the primary actuator for neural reasoning. It handles the specific JSON 
 
     (case provider
       (:gemini-web
-       (let ((res (uiop:symbol-call :org-agent.skills.org-skill-web-research :ask-gemini-web full-prompt)))
+       (let ((res (uiop:symbol-call :opencortex.skills.org-skill-web-research :ask-gemini-web full-prompt)))
          (if res (list :status :success :content res) (list :status :error :message "Web Research Failure"))))
       
       (:ollama
@@ -118,7 +118,7 @@ This is the primary actuator for neural reasoning. It handles the specific JSON 
                          (:anthropic `(("Content-Type" . "application/json") ("x-api-key" . ,api-key) ("anthropic-version" . "2023-06-01")))
                          (:gemini-api `(("Content-Type" . "application/json") ("x-goog-api-key" . ,api-key)))
                          (:openrouter `(("Content-Type" . "application/json") ("Authorization" . ,(format nil "Bearer ~a" api-key)) 
-                                        ("HTTP-Referer" . "https://github.com/amr/org-agent") ("X-Title" . "org-agent Autonomous Kernel")))
+                                        ("HTTP-Referer" . "https://github.com/amr/opencortex") ("X-Title" . "opencortex Autonomous Kernel")))
                          (t `(("Content-Type" . "application/json") ("Authorization" . ,(format nil "Bearer ~a" api-key))))))
               (body (case provider
                       (:anthropic (cl-json:encode-json-to-string `((model . ,(or model "claude-3-5-sonnet-20240620")) (max_tokens . 4096) (system . ,system-prompt) (messages . (( (role . "user") (content . ,prompt) ))))))
@@ -160,7 +160,7 @@ Register each supported provider with the harness's neural registry.
 
 #+begin_src lisp
 (dolist (p '(:anthropic :gemini-api :gemini-web :groq :ollama :openai :openrouter))
-  (org-agent:register-probabilistic-backend p (lambda (prompt system-prompt &key model)
+  (opencortex:register-probabilistic-backend p (lambda (prompt system-prompt &key model)
                                         (execute-llm-request prompt system-prompt :provider p :model model))))
 #+end_src
 

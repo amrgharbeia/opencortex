@@ -1,4 +1,4 @@
-;; org-agent: Guix Environment Manifest
+;; opencortex: Guix Environment Manifest
 ;; Usage: guix shell -m manifest.scm -- sbcl --eval ...
 
 (specifications->manifest

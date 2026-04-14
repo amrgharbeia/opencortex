@@ -1,11 +1,11 @@
 version: '3.8'
 
 services:
-  org-agent:
+  opencortex:
     build:
       context: ../..
       dockerfile: deploy/docker/Dockerfile
-    container_name: org-agent
+    container_name: opencortex
     restart: unless-stopped
     ports:
       - "${ORG_AGENT_DAEMON_PORT:-9105}:${ORG_AGENT_DAEMON_PORT:-9105}"

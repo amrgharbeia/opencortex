@@ -52,28 +52,28 @@ Define a high-integrity, recursive security sandbox for Lisp execution.
     ;; Strings
     format concatenate string-downcase string-upcase search
     ;; Kernel specifics
-    org-agent::harness-log
-    org-agent::snapshot-memory
-    org-agent::rollback-memory
-    org-agent::lookup-object
-    org-agent::list-objects-by-type
-    org-agent::ingest-ast
-    org-agent::find-headline-missing-id
-    org-agent::context-query-store
-    org-agent::context-get-active-projects
-    org-agent::context-get-recent-completed-tasks
-    org-agent::context-list-all-skills
-    org-agent::context-get-system-logs
-    org-agent::context-assemble-global-awareness
-    org-agent::org-object-id
-    org-agent::org-object-type
-    org-agent::org-object-attributes
-    org-agent::org-object-content
-    org-agent::org-object-parent-id
-    org-agent::org-object-children
-    org-agent::org-object-version
-    org-agent::org-object-last-sync
-    org-agent::org-object-hash
+    opencortex::harness-log
+    opencortex::snapshot-memory
+    opencortex::rollback-memory
+    opencortex::lookup-object
+    opencortex::list-objects-by-type
+    opencortex::ingest-ast
+    opencortex::find-headline-missing-id
+    opencortex::context-query-store
+    opencortex::context-get-active-projects
+    opencortex::context-get-recent-completed-tasks
+    opencortex::context-list-all-skills
+    opencortex::context-get-system-logs
+    opencortex::context-assemble-global-awareness
+    opencortex::org-object-id
+    opencortex::org-object-type
+    opencortex::org-object-attributes
+    opencortex::org-object-content
+    opencortex::org-object-parent-id
+    opencortex::org-object-children
+    opencortex::org-object-version
+    opencortex::org-object-last-sync
+    opencortex::org-object-hash
     ;; Essential macros
     declare ignore
     ;; Let's also add simple data types
@@ -125,7 +125,7 @@ We allow other skills to register safe symbols for the validator.
 
 ** Cognitive Tools
 #+begin_src lisp
-(org-agent:def-cognitive-tool :lisp-validator-status "Returns validator-related telemetry, including blocked actions and harness status."
+(opencortex:def-cognitive-tool :lisp-validator-status "Returns validator-related telemetry, including blocked actions and harness status."
   nil
   :body (lambda (args)
           (declare (ignore args))
@@ -140,7 +140,7 @@ We allow other skills to register safe symbols for the validator.
 
 ** Skill Definition
 #+begin_src lisp
-(org-agent:defskill :skill-lisp-validator
+(opencortex:defskill :skill-lisp-validator
   :priority 900 ; High priority, before most skills
   :trigger (lambda (ctx) 
              ;; Check if any proposed action is an :eval or :shell call
@@ -157,26 +157,26 @@ We allow other skills to register safe symbols for the validator.
 
 * Phase E: Chaos (Verification)
 #+begin_src lisp
-(defpackage :org-agent-lisp-validator-tests
-  (:use :cl :fiveam :org-agent)
+(defpackage :opencortex-lisp-validator-tests
+  (:use :cl :fiveam :opencortex)
   (:export #:lisp-validator-suite))
-(in-package :org-agent-lisp-validator-tests)
+(in-package :opencortex-lisp-validator-tests)
 
 (def-suite lisp-validator-suite :description "Tests for the Lisp Validator.")
 (in-suite lisp-validator-suite)
 
 (test test-basic-math-safe
-  (is (org-agent:lisp-validator-validate "(+ 1 2)")))
+  (is (opencortex:lisp-validator-validate "(+ 1 2)")))
 
 (test test-blocked-eval
-  (is (not (org-agent:lisp-validator-validate "(eval '(+ 1 2))"))))
+  (is (not (opencortex:lisp-validator-validate "(eval '(+ 1 2))"))))
 
 (test test-blocked-shell
-  (is (not (org-agent:lisp-validator-validate "(uiop:run-program \"ls\")"))))
+  (is (not (opencortex:lisp-validator-validate "(uiop:run-program \"ls\")"))))
 
 (test test-nested-unsafe
-  (is (not (org-agent:lisp-validator-validate "(let ((x 1)) (delete-file \"test.txt\"))"))))
+  (is (not (opencortex:lisp-validator-validate "(let ((x 1)) (delete-file \"test.txt\"))"))))
 
 (test test-safe-kernel-api
-  (is (org-agent:lisp-validator-validate "(org-agent::lookup-object \"node-1\")")))
+  (is (opencortex:lisp-validator-validate "(opencortex::lookup-object \"node-1\")")))
 #+end_src

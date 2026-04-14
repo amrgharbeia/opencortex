@@ -1,5 +1,5 @@
 .env
-org-agent-server
+opencortex-server
 \$MEMEX_DIR/
 *.log
 *~

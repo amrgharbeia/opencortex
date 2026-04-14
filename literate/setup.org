@@ -4,9 +4,9 @@
 #+STARTUP: content
 
 * Overview: The Zero-to-One Experience
-The *Setup & Onboarding* process ensures that users can boot the ~org-agent~ Lisp Machine with zero friction. We follow the *Appliance Paradigm* for standard users (Docker-first) and provide a *Power User Path* (Baremetal) for those wanting deep native integration.
+The *Setup & Onboarding* process ensures that users can boot the ~opencortex~ Lisp Machine with zero friction. We follow the *Appliance Paradigm* for standard users (Docker-first) and provide a *Power User Path* (Baremetal) for those wanting deep native integration.
 
-This file is a Literate Devops document. Tangling it generates the Docker configuration and the unified entrypoint script (~org-agent.sh~).
+This file is a Literate Devops document. Tangling it generates the Docker configuration and the unified entrypoint script (~opencortex.sh~).
 
 * 1. The Appliance Paradigm (Docker First)
 The easiest way to run the agent is via Docker. This prevents the user from having to manually manage SBCL, Quicklisp, Python virtual environments, Playwright binaries, and Java (for Signal).
@@ -15,7 +15,7 @@ The easiest way to run the agent is via Docker. This prevents the user from havi
 The container wraps all messy OS dependencies and pre-caches the Lisp environment for rapid booting.
 
 #+begin_src dockerfile :tangle ../Dockerfile
-# ORG-AGENT v1.0 Production Environment
+# OPENCORTEX v1.0 Production Environment
 FROM debian:bookworm-slim
 
 # Prevent interactive prompts during build
@@ -66,12 +66,12 @@ RUN echo '(let ((quicklisp-init (merge-pathnames "quicklisp/setup.lisp" (user-ho
 
 # 6. Setup Application Directory
 WORKDIR /app
-COPY . /app/projects/org-agent
+COPY . /app/projects/opencortex
 
 # 7. Pre-cache Lisp Dependencies
 RUN sbcl --non-interactive \
-    --eval '(push #p"/app/projects/org-agent/" asdf:*central-registry*)' \
-    --eval '(ql:quickload :org-agent)'
+    --eval '(push #p"/app/projects/opencortex/" asdf:*central-registry*)' \
+    --eval '(ql:quickload :opencortex)'
 
 # 8. Environment & Volumes
 # The host's memex root should be mounted to /memex
@@ -83,22 +83,22 @@ EXPOSE 9105 8080
 
 # Entrypoint
 CMD ["sbcl", "--non-interactive", \
-     "--eval", "(push #p\"/app/projects/org-agent/\" asdf:*central-registry*)", \
-     "--eval", "(ql:quickload :org-agent)", \
-     "--eval", "(org-agent:main)"]
+     "--eval", "(push #p\"/app/projects/opencortex/\" asdf:*central-registry*)", \
+     "--eval", "(ql:quickload :opencortex)", \
+     "--eval", "(opencortex:main)"]
 #+end_src
 
 ** Docker Compose
 #+begin_src yaml :tangle ../docker-compose.yml
 services:
-  org-agent:
+  opencortex:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: org-agent
+    container_name: opencortex
     env_file: .env
     volumes:
-      # Mount the entire memex directory (2 levels up from projects/org-agent)
+      # Mount the entire memex directory (2 levels up from projects/opencortex)
       - ../..:/memex
       # Ensure signal-cli state is preserved
       - signal-state:/root/.local/share/signal-cli
@@ -111,12 +111,12 @@ volumes:
   signal-state:
 #+end_src
 
-* 2. The Unified Entrypoint (org-agent.sh)
+* 2. The Unified Entrypoint (opencortex.sh)
 We combine the installation script, the daemon launcher, and the CLI chat client into a single, elegant bash script. 
 
 If the agent is running, it connects to the chat. If it's installed but offline, it boots the daemon. If it's not installed at all, it walks the user through the onboarding wizard.
 
-#+begin_src bash :tangle ../org-agent.sh :shebang "#!/bin/bash"
+#+begin_src bash :tangle ../opencortex.sh :shebang "#!/bin/bash"
 set -e
 
 PORT=9105
@@ -149,8 +149,8 @@ elif command_exists nc && nc -z $HOST $PORT 2>/dev/null; then
 fi
 
 # 2. Check if we have an existing installation we can boot
-if [ -f "$HOME/.org-agent-path" ]; then
-    INSTALL_DIR=$(cat "$HOME/.org-agent-path")
+if [ -f "$HOME/.opencortex-path" ]; then
+    INSTALL_DIR=$(cat "$HOME/.opencortex-path")
     if [ -d "$INSTALL_DIR" ] && [ -f "$INSTALL_DIR/docker-compose.yml" ]; then
         echo -e "${YELLOW}Daemon is offline. Booting from $INSTALL_DIR...${NC}"
         cd "$INSTALL_DIR"
@@ -166,7 +166,7 @@ fi
 if [ -f "docker-compose.yml" ] && [ -d "literate" ]; then
     echo -e "${YELLOW}Local repository detected. Ensuring configuration...${NC}"
     INSTALL_DIR=$(pwd)
-    echo "$INSTALL_DIR" > "$HOME/.org-agent-path"
+    echo "$INSTALL_DIR" > "$HOME/.opencortex-path"
     
     if [ ! -f .env ]; then
         cp .env.example .env
@@ -209,14 +209,14 @@ fi
 
 # 4. Zero-to-One Onboarding (No installation found)
 echo -e "${BLUE}==================================================${NC}"
-echo -e "${BLUE} org-agent: Autonomous Intelligence Onboarding     ${NC}"
+echo -e "${BLUE} opencortex: Autonomous Intelligence Onboarding     ${NC}"
 echo -e "${BLUE}==================================================${NC}"
 
 # --- OS & Docker Detection ---
 echo -e "\n${BLUE}[1/2] Verifying Environment...${NC}"
 
 install_docker() {
-    echo -e "${YELLOW}Docker is required to run org-agent natively without messy dependencies.${NC}"
+    echo -e "${YELLOW}Docker is required to run opencortex natively without messy dependencies.${NC}"
     read -p "Would you like me to attempt to install Docker? [Y/n]: " install_choice
     install_choice=${install_choice:-Y}
     if [[ "$install_choice" =~ ^[Yy]$ ]]; then
@@ -269,27 +269,27 @@ MEMEX_TARGET=${MEMEX_TARGET:-$MEMEX_DEFAULT}
 mkdir -p "$MEMEX_TARGET/projects"
 cd "$MEMEX_TARGET/projects"
 
-if [ ! -d "org-agent" ]; then
-    echo "Cloning org-agent..."
-    git clone https://github.com/gharbeia/org-agent.git
-    cd org-agent
+if [ ! -d "opencortex" ]; then
+    echo "Cloning opencortex..."
+    git clone https://github.com/gharbeia/opencortex.git
+    cd opencortex
 else
     echo -e "${GREEN}✓ Repository already exists.${NC}"
-    cd org-agent
+    cd opencortex
     git pull origin main
 fi
 
 mkdir -p "$HOME/.local/bin"
-ln -sf "$(pwd)/org-agent.sh" "$HOME/.local/bin/org-agent"
-echo -e "${GREEN}✓ Installed 'org-agent' command to ~/.local/bin${NC}"
+ln -sf "$(pwd)/opencortex.sh" "$HOME/.local/bin/opencortex"
+echo -e "${GREEN}✓ Installed 'opencortex' command to ~/.local/bin${NC}"
 
 # Ensure proper ownership if sudo was used for apt
 if [ -n "$SUDO_USER" ]; then
-    chown -R "$SUDO_USER" "$MEMEX_TARGET/projects/org-agent"
+    chown -R "$SUDO_USER" "$MEMEX_TARGET/projects/opencortex"
 fi
 
 # Execute the newly cloned script to run configuration (Step 3)
-exec ./org-agent.sh
+exec ./opencortex.sh
 #+end_src
 
 * 3. The Power-User Path (Baremetal Onboarding)
@@ -299,7 +299,7 @@ For users who want to run the Lisp Machine natively on their host OS (typically 
 set -e
 RED='\033[0;31m'; GREEN='\033[0;32m'; BLUE='\033[0;34m'; NC='\033[0m'
 
-echo -e "${BLUE}=== org-agent: Baremetal Power-User Setup ===${NC}"
+echo -e "${BLUE}=== opencortex: Baremetal Power-User Setup ===${NC}"
 
 if ! command -v sbcl >/dev/null 2>&1; then
     echo -e "${RED}✗ SBCL not found. Please install it first.${NC}"

@@ -1,19 +1,19 @@
-#+TITLE: Deployment Guide: Containerized Org-Agent
+#+TITLE: Deployment Guide: Containerized OpenCortex
 #+AUTHOR: Amr
 #+DATE: [2026-04-11 Sat]
 #+FILETAGS: :deployment:docker:infrastructure:
 
 * Overview
-The ~org-agent~ is designed to run within a Docker container to ensure system dependencies (SBCL, Quicklisp, signal-cli) are perfectly matched across different host environments.
+The ~opencortex~ is designed to run within a Docker container to ensure system dependencies (SBCL, Quicklisp, signal-cli) are perfectly matched across different host environments.
 
 * Prerequisites
 - Docker Engine
 - Docker Compose
-- A valid ~.env~ file in the ~projects/org-agent/~ directory (refer to ~.env.example~).
+- A valid ~.env~ file in the ~projects/opencortex/~ directory (refer to ~.env.example~).
 
 * Quick Start
 ** 1. Build and Start
-From the ~projects/org-agent/~ directory:
+From the ~projects/opencortex/~ directory:
 #+begin_src bash
 docker-compose up --build -d
 #+end_src

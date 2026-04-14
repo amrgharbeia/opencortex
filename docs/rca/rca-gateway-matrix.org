@@ -3,7 +3,7 @@
 #+FILETAGS: :rca:gateway:matrix:chat:autonomy:
 
 * Executive Summary
-Successfully implemented the third and final external communication channel (Matrix) for Org-agent v1.0. Resolved integration issues related to case-sensitivity in JSON keys and strict header requirements in `dexador`.
+Successfully implemented the third and final external communication channel (Matrix) for OpenCortex v1.0. Resolved integration issues related to case-sensitivity in JSON keys and strict header requirements in `dexador`.
 
 * 1. Issue: Symbol Casing in JSON Keys
 ** Symptoms
@@ -30,7 +30,7 @@ I was passing a single string or an incorrectly nested list where `dexador` expe
 Standardized all gateway HTTP calls to use proper alist nesting for headers.
 
 * 4. Completion: Communication Track
-With Telegram, Signal, and Matrix gateways now verified and passing tests, the Org-agent has achieved full multi-channel parity.
+With Telegram, Signal, and Matrix gateways now verified and passing tests, the OpenCortex has achieved full multi-channel parity.
 - **Telegram:** Polling via Bot API.
 - **Signal:** Wrapping `signal-cli`.
 - **Matrix:** Polling via `/sync` Client API.

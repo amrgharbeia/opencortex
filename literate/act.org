@@ -11,7 +11,7 @@ The Act stage performs the final side-effects of the reasoning engine. It routes
 The core harness can be configured via environment variables to operate silently or target different default outputs.
 
 #+begin_src lisp :tangle ../src/act.lisp
-(in-package :org-agent)
+(in-package :opencortex)
 
 (defvar *default-actuator* :cli)
 (defvar *silent-actuators* '(:cli :system-message :emacs))
@@ -59,7 +59,7 @@ The `:system` actuator handles internal harness commands like code evaluation an
       (:eval (let ((code (getf payload :code)))
                (eval (read-from-string code))))
       (:create-skill (let* ((filename (getf payload :filename)) (content (getf payload :content))
-                            (skills-dir (merge-pathnames "skills/" (asdf:system-source-directory :org-agent))) 
+                            (skills-dir (merge-pathnames "skills/" (asdf:system-source-directory :opencortex))) 
                             (full-path (merge-pathnames filename skills-dir)))
                        (with-open-file (out full-path :direction :output :if-exists :supersede) (write-string content out))
                        (load-skill-from-org full-path)))

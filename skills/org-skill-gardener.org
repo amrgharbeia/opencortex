@@ -38,7 +38,7 @@ The Gardener runs on a low-priority heartbeat. It performs a "Deep Audit" of the
 
 ** Package Context
 #+begin_src lisp
-(in-package :org-agent)
+(in-package :opencortex)
 #+end_src
 
 ** State: Maintenance Cycle

@@ -5,7 +5,7 @@
 
 * Stage 2: Reason (reason.lisp)
 ** Architectural Intent: Unified Cognition
-The Reason stage is the cognitive engine of the Org-Agent. It unifies two distinct reasoning modes:
+The Reason stage is the cognitive engine of the OpenCortex. It unifies two distinct reasoning modes:
 1. **Probabilistic Reasoning:** Consulting neural models (LLMs) to generate action proposals based on current context.
 2. **Deterministic Reasoning:** Running those proposals through a series of deterministic safety gates (Policy, Invariants, and Skill-specific validation) to ensure alignment and security.
 
@@ -13,7 +13,7 @@ The Reason stage is the cognitive engine of the Org-Agent. It unifies two distin
 We initialize the probabilistic backends and the provider cascade which determines the order in which models are consulted.
 
 #+begin_src lisp :tangle ../src/reason.lisp
-(in-package :org-agent)
+(in-package :opencortex)
 
 (defvar *probabilistic-backends* (make-hash-table :test 'equal))
 (defvar *provider-cascade* nil)

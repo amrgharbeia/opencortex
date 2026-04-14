@@ -8,7 +8,7 @@
 #+DEPENDS_ON: id:credentials-vault-skill
 
 * Overview
-The *Signal Gateway* provides bi-directional communication between the Autonomous and the Org-Agent via the `signal-cli` tool. It features a non-blocking polling sensor and a high-integrity actuator for outbound messaging.
+The *Signal Gateway* provides bi-directional communication between the Autonomous and the OpenCortex via the `signal-cli` tool. It features a non-blocking polling sensor and a high-integrity actuator for outbound messaging.
 
 * Phase A: Demand (PRD)
 :PROPERTIES:
@@ -16,7 +16,7 @@ The *Signal Gateway* provides bi-directional communication between the Autonomou
 :END:
 
 ** 1. Purpose
-Enable secure Signal communication for the Org-Agent.
+Enable secure Signal communication for the OpenCortex.
 
 ** 2. Success Criteria
 - [ ] *Inbound:* Messages received via `signal-cli receive` are injected into the harness Bus.
@@ -117,7 +117,7 @@ Initializes the Signal background thread.
              (loop
                (signal-process-updates)
                (sleep 5)))
-           :name "org-agent-signal-gateway"))
+           :name "opencortex-signal-gateway"))
     (harness-log "SIGNAL: Gateway polling active.")))
 #+end_src
 

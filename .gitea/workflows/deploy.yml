@@ -22,23 +22,23 @@ jobs:
           echo "Piping local compose file to host Docker daemon..."
           
           # We read the compose file from the checked-out code in the runner,
-          # but we tell the host Docker daemon that the "project directory" is /memex/projects/org-agent.
+          # but we tell the host Docker daemon that the "project directory" is /memex/projects/opencortex.
           # The host daemon will use its own /memex files to build the image.
           
           cat deploy/docker/docker-compose.yml | docker-compose \
-            -p org-agent \
-            --project-directory /memex/projects/org-agent \
+            -p opencortex \
+            --project-directory /memex/projects/opencortex \
             -f - \
             down
             
           cat deploy/docker/docker-compose.yml | docker-compose \
-            -p org-agent \
-            --project-directory /memex/projects/org-agent \
+            -p opencortex \
+            --project-directory /memex/projects/opencortex \
             -f - \
-            build --no-cache org-agent
+            build --no-cache opencortex
             
           cat deploy/docker/docker-compose.yml | docker-compose \
-            -p org-agent \
-            --project-directory /memex/projects/org-agent \
+            -p opencortex \
+            --project-directory /memex/projects/opencortex \
             -f - \
-            up -d --force-recreate org-agent
+            up -d --force-recreate opencortex

@@ -1,4 +1,4 @@
-(in-package :org-agent)
+(in-package :opencortex)
 
 (defvar *actuator-registry* (make-hash-table :test 'equal)
   "Global registry mapping target keywords to their physical actuator functions.")

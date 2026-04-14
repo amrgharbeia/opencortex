@@ -16,7 +16,7 @@ The *Matrix Gateway* provides bi-directional communication via the Matrix Client
 :END:
 
 ** 1. Purpose
-Integrate the Org-Agent into the Matrix federation for secure, distributed chat.
+Integrate the OpenCortex into the Matrix federation for secure, distributed chat.
 
 ** 2. Success Criteria
 - [ ] *Inbound:* Messages from Matrix rooms are normalized and injected into the harness Bus.
@@ -147,7 +147,7 @@ Initializes the Matrix background thread.
              (loop
                (matrix-process-sync)
                (sleep 2)))
-           :name "org-agent-matrix-gateway"))
+           :name "opencortex-matrix-gateway"))
     (harness-log "MATRIX: Gateway sync active.")))
 #+end_src
 

@@ -8,7 +8,7 @@
 #+DEPENDS_ON: id:credentials-vault-skill
 
 * Overview
-The *Telegram Gateway* provides bi-directional communication between the Autonomous and the Org-Agent via the Telegram Bot API. It features a non-blocking polling sensor and a high-integrity actuator for outbound messaging.
+The *Telegram Gateway* provides bi-directional communication between the Autonomous and the OpenCortex via the Telegram Bot API. It features a non-blocking polling sensor and a high-integrity actuator for outbound messaging.
 
 * Phase A: Demand (PRD)
 :PROPERTIES:
@@ -16,7 +16,7 @@ The *Telegram Gateway* provides bi-directional communication between the Autonom
 :END:
 
 ** 1. Purpose
-Enable mobile/remote access to the Org-Agent via a secure Telegram bot.
+Enable mobile/remote access to the OpenCortex via a secure Telegram bot.
 
 ** 2. Success Criteria
 - [ ] *Inbound:* Messages from authorized Telegram IDs are injected into the harness Bus.
@@ -133,7 +133,7 @@ Initializes the Telegram background thread.
              (loop
                (telegram-process-updates)
                (sleep 3)))
-           :name "org-agent-telegram-gateway"))
+           :name "opencortex-telegram-gateway"))
     (harness-log "TELEGRAM: Gateway polling active.")))
 #+end_src
 

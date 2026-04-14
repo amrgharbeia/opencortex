@@ -9,7 +9,7 @@
 #+DEPENDS_ON: skill-sub-agent-manager
 
 * Overview
-The *Social Consensus Protocol* enables multi-agent negotiation. It provides a Lisp-native implementation of decentralized agreement, allowing federated `org-agent` instances to coordinate on shared resources and conflicting goals.
+The *Social Consensus Protocol* enables multi-agent negotiation. It provides a Lisp-native implementation of decentralized agreement, allowing federated `opencortex` instances to coordinate on shared resources and conflicting goals.
 
 * Phase A: Demand (PRD)
 :PROPERTIES:
@@ -30,10 +30,10 @@ Enable reliable, cross-instance coordination without a central master.
 #+begin_src lisp
 (defun consensus-propose-vote (proposal)
   "Broadcasts a proposal to the peer swarm and collects votes.
-   Implements org-agent Social Consensus Protocol."
+   Implements opencortex Social Consensus Protocol."
   (let* ((peers (get-swarm-peer-list))
          (votes (loop for peer in peers 
-                      collect (org-agent:send-swarm-packet peer `(:type :REQUEST :action :vote :proposal ,proposal)))))
+                      collect (opencortex:send-swarm-packet peer `(:type :REQUEST :action :vote :proposal ,proposal)))))
     (if (> (count :YES votes) (/ (length peers) 2))
         t ; Consensus reached
         nil)))
@@ -60,7 +60,7 @@ Enable reliable, cross-instance coordination without a central master.
  :END:
 
  ** 1. Architectural Intent
- The consensus protocol should be implemented as a swarm behavior modeled after Raft, but simplified for the constraints of the `org-agent` ecosystem (i.e. eventual consistency, potentially unreliable messaging). The architecture should allow for future extensions, such as dynamically adjusting the voting threshold based on swarm size or node reputation. We use gossip protocols for state sharing.
+ The consensus protocol should be implemented as a swarm behavior modeled after Raft, but simplified for the constraints of the `opencortex` ecosystem (i.e. eventual consistency, potentially unreliable messaging). The architecture should allow for future extensions, such as dynamically adjusting the voting threshold based on swarm size or node reputation. We use gossip protocols for state sharing.
 
  ** 2. Semantic Interfaces
 

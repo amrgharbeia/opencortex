@@ -7,7 +7,7 @@
 #+FILETAGS: :gateway:cli:io:autonomy:
 
 * Overview
-The *CLI Gateway* is the primary interaction point for the Org-Agent MVP. It provides a lightweight TCP socket server that allows local terminal clients to communicate with the daemon. It ensures a frictionless "First Contact" experience immediately following installation.
+The *CLI Gateway* is the primary interaction point for the OpenCortex MVP. It provides a lightweight TCP socket server that allows local terminal clients to communicate with the daemon. It ensures a frictionless "First Contact" experience immediately following installation.
 
 * Phase A: Demand (PRD)
 :PROPERTIES:
@@ -15,7 +15,7 @@ The *CLI Gateway* is the primary interaction point for the Org-Agent MVP. It pro
 :END:
 
 ** 1. Purpose
-Provide a secure, local, and low-latency terminal interface for the Org-Agent.
+Provide a secure, local, and low-latency terminal interface for the OpenCortex.
 
 ** 2. Success Criteria
 - [X] *Ingress:* Accept plain-text messages over TCP port 9105.
@@ -39,7 +39,7 @@ The gateway runs a multi-threaded TCP server. Each connection is handled in its 
 
 ** Package Context
 #+begin_src lisp
-(in-package :org-agent)
+(in-package :opencortex)
 #+end_src
 
 ** State: Server Control
@@ -110,9 +110,9 @@ Listens for new TCP connections on the configured port.
                     (bt:make-thread (lambda () 
                                       (unwind-protect (handle-cli-client stream)
                                         (usocket:socket-close socket)))
-                                    :name "org-agent-cli-client-handler")))
+                                    :name "opencortex-cli-client-handler")))
              (usocket:socket-close *cli-server-socket*)))
-         :name "org-agent-cli-gateway"))
+         :name "opencortex-cli-gateway"))
   (harness-log "CLI: Gateway listening on port ~a" port))
 #+end_src
 
@@ -136,8 +136,8 @@ Listens for new TCP connections on the configured port.
 We tangle a lightweight client script that the user can run on their host machine.
 
 ** The Bash Client
-#+begin_src bash :tangle ../scripts/org-agent-chat.sh :shebang "#!/bin/bash"
-# org-agent-chat: The terminal mouthpiece for the Autonomous Brain.
+#+begin_src bash :tangle ../scripts/opencortex-chat.sh :shebang "#!/bin/bash"
+# opencortex-chat: The terminal mouthpiece for the Autonomous Brain.
 PORT=9105
 HOST=${1:-localhost}
 

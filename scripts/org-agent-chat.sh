@@ -1,5 +1,5 @@
 #!/bin/bash
-# org-agent-chat: The terminal mouthpiece for the Autonomous Brain.
+# opencortex-chat: The terminal mouthpiece for the Autonomous Brain.
 PORT=9105
 HOST=${1:-localhost}
 

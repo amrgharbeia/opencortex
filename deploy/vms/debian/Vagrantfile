@@ -11,12 +11,12 @@ Vagrant.configure("2") do |config|
     apt-get update
     apt-get install -y sbcl curl git ripgrep libsqlite3-dev build-essential
     
-    # Setup for org-agent
-    mkdir -p /home/vagrant/org-agent
-    cp -r /vagrant/* /home/vagrant/org-agent/
-    chown -R vagrant:vagrant /home/vagrant/org-agent
+    # Setup for opencortex
+    mkdir -p /home/vagrant/opencortex
+    cp -r /vagrant/* /home/vagrant/opencortex/
+    chown -R vagrant:vagrant /home/vagrant/opencortex
     
     # Build binary natively
-    sudo -u vagrant bash -c "cd /home/vagrant/org-agent && ./deploy/bare-metal/install.sh"
+    sudo -u vagrant bash -c "cd /home/vagrant/opencortex && ./deploy/bare-metal/install.sh"
   SHELL
 end

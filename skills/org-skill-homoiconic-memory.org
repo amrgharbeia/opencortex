@@ -94,7 +94,7 @@ Ensures every headline has a unique ID property using the system standard `org-i
          (id (getf props :ID)))
     (if (and id (not (equal id "")))
         node
-        (let ((new-id (org-agent:org-id-get-create)))
+        (let ((new-id (opencortex:org-id-get-create)))
           (setf (getf node :properties) (append props (list :ID new-id)))
           (harness-log "MEMORY - Injected standard ID ~a" new-id)
           node))))
@@ -159,16 +159,16 @@ Converts a structured AST back into Org-mode text.
 
 ** 1. Unit Tests (FiveAM)
 #+begin_src lisp
-(defpackage :org-agent-memory-tests
-  (:use :cl :fiveam :org-agent))
-(in-package :org-agent-memory-tests)
+(defpackage :opencortex-memory-tests
+  (:use :cl :fiveam :opencortex))
+(in-package :opencortex-memory-tests)
 
 (def-suite memory-suite :description "Tests for Homoiconic Memory.")
 (in-suite memory-suite)
 
 (test test-id-injection
   (let* ((node (list :type :HEADLINE :properties nil))
-         (normalized (org-agent::memory-ensure-id node)))
+         (normalized (opencortex::memory-ensure-id node)))
     (is (not (null (getf (getf normalized :properties) :ID))))))
 #+end_src
 

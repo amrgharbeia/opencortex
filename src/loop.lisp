@@ -1,4 +1,4 @@
-(in-package :org-agent)
+(in-package :opencortex)
 
 (defvar *interrupt-flag* nil)
 (defvar *interrupt-lock* (bt:make-lock "harness-interrupt-lock"))
@@ -41,12 +41,12 @@
                (sleep interval) 
                ;; inject-stimulus is synchronous for heartbeats, preventing accumulation.
                (inject-stimulus (list :type :EVENT :payload (list :sensor :heartbeat :unix-time (get-universal-time)))))) 
-           :name "org-agent-heartbeat"))))
+           :name "opencortex-heartbeat"))))
 
 (defun main ()
   "Entry point for the Skeleton MVP. Handles initialization and graceful shutdown."
   (let* ((home (uiop:getenv "HOME"))
-         (env-file (uiop:merge-pathnames* ".local/share/org-agent/.env" (uiop:ensure-directory-pathname home))))
+         (env-file (uiop:merge-pathnames* ".local/share/opencortex/.env" (uiop:ensure-directory-pathname home))))
     (when (uiop:file-exists-p env-file) (cl-dotenv:load-env env-file)))
   
   (initialize-actuators)

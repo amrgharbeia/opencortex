@@ -1,4 +1,4 @@
-(defpackage :org-agent
+(defpackage :opencortex
   (:use :cl)
   (:export 
    ;; --- communication protocol ---
@@ -103,7 +103,7 @@
    ;; --- AST Helpers ---
    #:find-headline-missing-id))
 
-(in-package :org-agent)
+(in-package :opencortex)
 
 (defvar *system-logs* nil)
 (defvar *logs-lock* (bt:make-lock "harness-logs-lock"))

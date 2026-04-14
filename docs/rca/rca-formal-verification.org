@@ -17,7 +17,7 @@ System failed to load with `Package STR does not exist`.
 ** Root Cause
 Incorrect assumption about the Quicklisp system name vs. the package name. The library is `cl-str` but the Quicklisp system is `str` and the package is `str`.
 ** Resolution
-1. Updated `org-agent.asd` to depend on `:str`.
+1. Updated `opencortex.asd` to depend on `:str`.
 2. Updated all source code and literate notes to use the `str:` prefix.
 3. Verified via explicit `ql:quickload` in the test runner.
 
@@ -25,7 +25,7 @@ Incorrect assumption about the Quicklisp system name vs. the package name. The l
 - **Path Confinement:** Deterministically proves that any file operation or absolute path in a shell command is strictly within the `/home/user/memex` root.
 - **No Network Exfiltration:** Prevents the shell from invoking common exfiltration tools (`nc`, `ssh`, etc.) by inspecting the parsed command structure.
 
-* 4. org-agent Mandate Alignment
+* 4. opencortex Mandate Alignment
 ** Soundness over Heuristics
 By moving to formal invariants, we have moved from "blacklisting bad things" to "proving safety." Any action that cannot be proven to satisfy all invariants is denied by default.
 ** Literate Granularity

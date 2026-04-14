@@ -110,13 +110,13 @@ The primary secure actuator for host system calls.
     (cond
       ;; 1. Metacharacter check (Injection prevention)
       ((not (shell-command-safe-p cmd-string))
-       (org-agent:inject-stimulus 
+       (opencortex:inject-stimulus 
         `(:type :EVENT :payload (:sensor :shell-response :cmd ,cmd-string :stdout "" :stderr "ERROR - Security Violation: Dangerous metacharacters detected." :exit-code 1))
         :stream (getf context :reply-stream)))
       
       ;; 2. Whitelist check
       ((not (member executable *allowed-commands* :test #'string=))
-       (org-agent:inject-stimulus 
+       (opencortex:inject-stimulus 
         `(:type :EVENT :payload (:sensor :shell-response :cmd ,cmd-string :stdout "" :stderr "ERROR - Command not in security whitelist." :exit-code 1))
         :stream (getf context :reply-stream)))
       
@@ -124,7 +124,7 @@ The primary secure actuator for host system calls.
       (t
        (multiple-value-bind (stdout stderr exit-code)
            (uiop:run-program cmd-string :output :string :error-output :string :ignore-error-status t)
-         (org-agent:inject-stimulus 
+         (opencortex:inject-stimulus 
           `(:type :EVENT :payload (:sensor :shell-response :cmd ,cmd-string :stdout ,(or stdout "") :stderr ,(or stderr "") :exit-code ,exit-code))
           :stream (getf context :reply-stream)))))))
 #+end_src
@@ -139,7 +139,7 @@ Executes a synthesized script (Python/Lisp/JS) in a controlled directory.
   (let* ((payload (getf action :payload))
          (language (getf payload :language))
          (content (getf payload :content))
-         (sandbox-dir "/tmp/org-agent-sandbox/")
+         (sandbox-dir "/tmp/opencortex-sandbox/")
          (filename (format nil "synth-~a.~a" (get-universal-time) (case language (:python "py") (:lisp "lisp") (:js "js") (t "txt"))))
          (full-path (format nil "~a~a" sandbox-dir filename)))
     
@@ -153,7 +153,7 @@ Executes a synthesized script (Python/Lisp/JS) in a controlled directory.
                  (:js (format nil "node ~a" full-path)))))
       (multiple-value-bind (stdout stderr exit-code)
           (uiop:run-program cmd :output :string :error-output :string :ignore-error-status t)
-        (org-agent:inject-stimulus 
+        (opencortex:inject-stimulus 
          `(:type :EVENT :payload (:sensor :shell-response :cmd ,cmd :stdout ,(or stdout "") :stderr ,(or stderr "") :exit-code ,exit-code :synthesis-p t))
          :stream (getf context :reply-stream))))))
 #+end_src
@@ -213,7 +213,7 @@ Hardware-Level Isolation for future security evolution.
 ~a
 #+end_example"
                                    cmd exit-code stdout stderr)))
-          `(:type :request :target :emacs :payload (:action :insert-at-end :buffer "*org-agent-chat*" :text ,result-text))))))
+          `(:type :request :target :emacs :payload (:action :insert-at-end :buffer "*opencortex-chat*" :text ,result-text))))))
 #+end_src
 
 * Registration
@@ -222,7 +222,7 @@ Hardware-Level Isolation for future security evolution.
 Register the shell channel as a physical actuator.
 
 #+begin_src lisp
-(org-agent:register-actuator :shell #'execute-shell-safely)
+(opencortex:register-actuator :shell #'execute-shell-safely)
 #+end_src
 
 ** Registration: Skill

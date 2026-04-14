@@ -4,7 +4,7 @@
 #+STARTUP: content
 
 * Overview
-This document traces the intended User Experience (UX) journey for the ~org-agent~. It serves as a living design document to ensure that architectural decisions align with a frictionless, autonomous, and intuitive user interaction model.
+This document traces the intended User Experience (UX) journey for the ~opencortex~. It serves as a living design document to ensure that architectural decisions align with a frictionless, autonomous, and intuitive user interaction model.
 
 * 1. The Zero-to-One Experience (Onboarding)
 ** Goal
@@ -13,7 +13,7 @@ A user should be able to go from discovering the project to having a running, ca
 ** The Appliance Paradigm (Primary Path)
 The user runs a single command in their terminal:
 #+begin_src bash
-curl -fsSL https://raw.githubusercontent.com/gharbeia/org-agent/main/scripts/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/gharbeia/opencortex/main/scripts/install.sh | bash
 #+end_src
 
 ** The Interactive Wizard
@@ -32,7 +32,7 @@ Immediately after boot, the user needs a way to verify the agent is alive and ca
 ** The Interaction
 The user types a local client command to connect to the background daemon:
 #+begin_src bash
-org-agent chat
+opencortex chat
 #+end_src
 
 This opens a slick, colorful interactive terminal session:
@@ -40,13 +40,13 @@ This opens a slick, colorful interactive terminal session:
 > User: Hello, what are my active projects?
 > Agent: [Thinking...]
 > Agent: You currently have 3 active projects:
->        1. Org-agent v1.0
+>        1. OpenCortex v1.0
 >        2. Home Renovation
 >        3. Read 'The Autonomous Individual'
 #+end_example
 
 ** Behind the Scenes
-1. The ~org-agent chat~ client connects to the daemon's local port (e.g., 9105).
+1. The ~opencortex chat~ client connects to the daemon's local port (e.g., 9105).
 2. It sends a ~:chat-message~ signal.
 3. The core harness routes this to the Probabilistic Engine.
 4. The Context Manager retrieves active projects from the Memex AST.

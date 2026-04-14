@@ -1,4 +1,4 @@
-(in-package :org-agent)
+(in-package :opencortex)
 
 (defvar *default-actuator* :cli)
 (defvar *silent-actuators* '(:cli :system-message :emacs))
@@ -36,7 +36,7 @@
       (:eval (let ((code (getf payload :code)))
                (eval (read-from-string code))))
       (:create-skill (let* ((filename (getf payload :filename)) (content (getf payload :content))
-                            (skills-dir (merge-pathnames "skills/" (asdf:system-source-directory :org-agent))) 
+                            (skills-dir (merge-pathnames "skills/" (asdf:system-source-directory :opencortex))) 
                             (full-path (merge-pathnames filename skills-dir)))
                        (with-open-file (out full-path :direction :output :if-exists :supersede) (write-string content out))
                        (load-skill-from-org full-path)))

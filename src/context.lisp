@@ -1,4 +1,4 @@
-(in-package :org-agent)
+(in-package :opencortex)
 
 (defun context-query-store (&key tag todo-state type)
   "Filters the Memory based on tags, todo states, or types."

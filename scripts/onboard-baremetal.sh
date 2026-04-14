@@ -2,7 +2,7 @@
 set -e
 RED='\033[0;31m'; GREEN='\033[0;32m'; BLUE='\033[0;34m'; NC='\033[0m'
 
-echo -e "${BLUE}=== org-agent: Baremetal Power-User Setup ===${NC}"
+echo -e "${BLUE}=== opencortex: Baremetal Power-User Setup ===${NC}"
 
 if ! command -v sbcl >/dev/null 2>&1; then
     echo -e "${RED}✗ SBCL not found. Please install it first.${NC}"

@@ -1,4 +1,4 @@
-(in-package :org-agent)
+(in-package :opencortex)
 
 (defstruct skill name priority dependencies trigger-fn probabilistic-prompt deterministic-fn)
 
@@ -123,7 +123,7 @@
                (lines (uiop:split-string content :separator '(#\Newline)))
                (in-lisp-block nil) 
                (lisp-code "") 
-               (pkg-name (intern (string-upcase (format nil "ORG-AGENT.SKILLS.~a" skill-base-name)) :keyword)))
+               (pkg-name (intern (string-upcase (format nil "OPENCORTEX.SKILLS.~a" skill-base-name)) :keyword)))
           
           (dolist (line lines)
             (let ((clean-line (string-trim '(#\Space #\Tab #\Return) line)))
@@ -150,7 +150,7 @@
                 (harness-log "HARNESS: Jailing skill '~a' in package ~a" skill-base-name pkg-name)
                 (unless (find-package pkg-name)
                   (let ((new-pkg (make-package pkg-name :use '(:cl))))
-                    (do-external-symbols (sym (find-package :org-agent)) (shadowing-import sym new-pkg))))
+                    (do-external-symbols (sym (find-package :opencortex)) (shadowing-import sym new-pkg))))
                 
                 (let ((*read-eval* nil) (*package* (find-package pkg-name)))
                   (eval (read-from-string (format nil "(progn ~a)" lisp-code))))
@@ -256,9 +256,9 @@ EXAMPLES:
   :guard (lambda (args context)
            (declare (ignore context))
            (let ((code (getf args :code)))
-             (let ((harness-pkg (find-package :org-agent.skills.org-skill-lisp-validator)))
+             (let ((harness-pkg (find-package :opencortex.skills.org-skill-lisp-validator)))
                (if harness-pkg 
-                   (uiop:symbol-call :org-agent.skills.org-skill-lisp-validator :lisp-validator-validate code)
+                   (uiop:symbol-call :opencortex.skills.org-skill-lisp-validator :lisp-validator-validate code)
                    t))))
   :body (lambda (args)
           (let ((code (getf args :code)))

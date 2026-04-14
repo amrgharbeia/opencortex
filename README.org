@@ -1,6 +1,6 @@
 #+TITLE: OpenCortex: The Conductor of your Life Stack
 
-*org-agent* is a minimalist, extensible AI agent framework designed to manage and continuously organize your personal knowledge base. It transforms a static collection of plaintext notes into a live, programmable [[https://en.wikipedia.org/wiki/Memex][Memex]]—an automated, personalized memory system where humans and AI collaborate in the exact same workspace.
+*opencortex* is a minimalist, extensible AI agent framework designed to manage and continuously organize your personal knowledge base. It transforms a static collection of plaintext notes into a live, programmable [[https://en.wikipedia.org/wiki/Memex][Memex]]—an automated, personalized memory system where humans and AI collaborate in the exact same workspace.
 
 * The Problem with Current AI Agents
 
@@ -12,22 +12,22 @@ The current ecosystem of AI agents (typically built in Python or TypeScript) is 
 
 * The Vision: A Modern, Homoiconic Memex
 
-org-agent abandons these fragile paradigms by returning to first principles and embracing two historically powerful technologies: *Org-mode* and *Common Lisp*. 
+opencortex abandons these fragile paradigms by returning to first principles and embracing two historically powerful technologies: *Org-mode* and *Common Lisp*. 
 
 ** 1. Org-mode: The Universal Language
-Instead of wrestling with Markdown parsers or hiding data in opaque databases, org-agent mandates that *Org-mode is the native AST for both humans and machines.* 
+Instead of wrestling with Markdown parsers or hiding data in opaque databases, opencortex mandates that *Org-mode is the native AST for both humans and machines.* 
 
 Org-mode is unique because it seamlessly brings together human-readable prose, structured metadata (properties and tags), lifecycle states (TODO/DONE), and executable code blocks into a single plain-text file. The code is the data, and the data is the interface. When the agent "remembers" a fact or schedules a task, it writes an Org headline. You read exactly what the agent reads.
 
-*The Token Advantage:* Because Org-mode is a strict outline, org-agent never needs to send an entire document to an AI model. It uses *Sparse Trees* to send a high-level table of contents, zooming in only on the specific headline relevant to the task. This drastically reduces token consumption and eliminates context window overflow.
+*The Token Advantage:* Because Org-mode is a strict outline, opencortex never needs to send an entire document to an AI model. It uses *Sparse Trees* to send a high-level table of contents, zooming in only on the specific headline relevant to the task. This drastically reduces token consumption and eliminates context window overflow.
 
 ** 2. Common Lisp: The Engine of Self-Modification
-There is a beautiful irony to org-agent: Lisp was invented in 1958 specifically to achieve Artificial Intelligence, and it has been waiting nearly 70 years for /this exact moment/ in computing history. 
+There is a beautiful irony to opencortex: Lisp was invented in 1958 specifically to achieve Artificial Intelligence, and it has been waiting nearly 70 years for /this exact moment/ in computing history. 
 
 Lisp possesses a unique property called *Homoiconicity*: the primary representation of the program is also a data structure (nested lists) within the language itself. Because Lisp code /is/ Lisp data, it is trivially easy for an AI to generate, manipulate, and safely evaluate new tools at runtime. This makes Lisp the ultimate, un-brittle language for a "self-writing" agent.
 
 ** 3. The Probabilistic-Protodeterministic Loop
-org-agent does not let AI models touch your system directly. Instead, it splits cognition into two distinct engines:
+opencortex does not let AI models touch your system directly. Instead, it splits cognition into two distinct engines:
 - *The Probabilistic Engine (The AI Models):* Provides semantic understanding, multimodal translation, and probabilistic creativity. It looks at your Memex and proposes an action by writing a strictly formatted Lisp s-expression.
 - *The Deterministic Engine (Common Lisp):* Provides deterministic logic, physics, and safety. It intercepts the model's Lisp proposal, formally verifies its structure against your security rules, and only executes it if it is mathematically sound.
 
@@ -35,12 +35,12 @@ Crucially, the Deterministic engine is *continuously progressive*. Right now, it
 
 * Architecture: Thin Harness, Fat Skills
 
-To guarantee long-term stability, org-agent enforces a strict architectural boundary inspired by the "thin harness, fat skills" philosophy.
+To guarantee long-term stability, opencortex enforces a strict architectural boundary inspired by the "thin harness, fat skills" philosophy.
 
 ** The Minimalist Harness
 The Lisp microkernel does almost no actual "work." It is a thin, unbreakable harness strictly responsible for three things:
 1. *The Memory:* Maintaining the live graph of your Memex in RAM.
-2. *The Communication Protocol:* Managing the secure bridge between the agent and the outside world. While power users can connect natively via Emacs or Vim, the vast majority of users will interact with org-agent exclusively through chat clients (like Telegram, Signal, or Matrix), web dashboards, or a Terminal UI (TUI). The harness doesn't care; it just securely routes the messages.
+2. *The Communication Protocol:* Managing the secure bridge between the agent and the outside world. While power users can connect natively via Emacs or Vim, the vast majority of users will interact with opencortex exclusively through chat clients (like Telegram, Signal, or Matrix), web dashboards, or a Terminal UI (TUI). The harness doesn't care; it just securely routes the messages.
 3. *The Cognitive Loop:* Moving signals through the Perceive -> Probabilistic -> Deterministic -> Dispatch pipeline.
 
 Everything else—AI routing, vector embeddings, shell execution, or web browsing—is pushed entirely out of the harness and into *Fat Skills*.
@@ -48,7 +48,7 @@ Everything else—AI routing, vector embeddings, shell execution, or web browsin
 ** Literate, Single-File Skills
 In standard agent frameworks, adding a new capability (like "Search the Web") requires creating a sprawling folder with a Python script, a JSON configuration file, and a separate text file for the AI prompt. This creates massive structural bloat.
 
-In org-agent, a Skill is simply a *single .org file*. 
+In opencortex, a Skill is simply a *single .org file*. 
 
 Using *Literate Programming*, this single file contains everything:
 - The human-readable documentation and architectural intent.
@@ -81,7 +81,7 @@ The agent operates on a matrix that balances cognitive speed with cognitive stat
 
 * The Ecosystem: Core Skill Groups
 
-Because the harness is deliberately thin, every capability of org-agent is implemented as a single-file Literate Skill. This allows you to hot-reload, modify, or completely remove features on the fly without restarting the core environment. 
+Because the harness is deliberately thin, every capability of opencortex is implemented as a single-file Literate Skill. This allows you to hot-reload, modify, or completely remove features on the fly without restarting the core environment. 
 
 The ecosystem is divided into five primary skill groups:
 
@@ -109,13 +109,13 @@ The agent meets you where you are. While it natively integrates with text editor
 
 * Quick Start (The Zero-to-One Experience)
 
-org-agent can be installed and booted with a single command. The unified entrypoint script will detect your OS, offer to install Docker if missing, interactively gather your API keys, and launch the autonomous kernel in the background.
+opencortex can be installed and booted with a single command. The unified entrypoint script will detect your OS, offer to install Docker if missing, interactively gather your API keys, and launch the autonomous kernel in the background.
 
 #+begin_src bash
-curl -fsSL https://raw.githubusercontent.com/gharbeia/org-agent/main/org-agent.sh | bash
+curl -fsSL https://raw.githubusercontent.com/gharbeia/opencortex/main/opencortex.sh | bash
 #+end_src
 
-After installation, simply type `org-agent` in your terminal to start chatting with your autonomous brain.
+After installation, simply type `opencortex` in your terminal to start chatting with your autonomous brain.
 
 For power users who wish to run the agent natively (Baremetal), please refer to the [[file:literate/setup.org][setup.org]] literate documentation.
 
@@ -125,7 +125,7 @@ For power users who wish to run the agent natively (Baremetal), please refer to 
 The initial MVP that establishes a secure, auditable Lisp kernel for a personal operating system. It features a robust metabolic pipeline, mandatory skill enforcement, and background distillation.
 
 ** v1.0.0 (Phase 2.5): The Verified Wrapper (Current Target)
-At this stage, org-agent achieves feature parity with State-of-the-Art autonomous agents (like Devin or SWE-agent) but with Lisp-grade mathematical security.
+At this stage, opencortex achieves feature parity with State-of-the-Art autonomous agents (like Devin or SWE-agent) but with Lisp-grade mathematical security.
 - *The Tools are External:* The agent uses a standard bash shell, a headless browser (via Playwright), and standard file I/O.
 - *The Safety is Internal:* The Bouncer and Formal Verification gates mathematically prove actions are safe before piping them to external tools.
 - *The Result:* An autonomous agent capable of end-to-end software engineering, web research, and system administration, running securely and locally.

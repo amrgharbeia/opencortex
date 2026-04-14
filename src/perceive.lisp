@@ -1,4 +1,4 @@
-(in-package :org-agent)
+(in-package :opencortex)
 
 (defvar *async-sensors* '(:chat-message :delegation :user-command)
   "List of sensors that should be processed asynchronously to avoid blocking gateways.")
@@ -18,7 +18,7 @@
            (restart-case (handler-bind ((error (lambda (c) (harness-log "ASYNC ERROR: ~a" c) (invoke-restart 'skip-event))))
                            (process-signal raw-message)) 
              (skip-event () nil))) 
-         :name "org-agent-async-task")
+         :name "opencortex-async-task")
         (restart-case (handler-bind ((error (lambda (c) (harness-log "SYSTEM ERROR: ~a" c) (invoke-restart 'skip-event)))) 
                         (process-signal raw-message))
           (skip-event () (harness-log "SYSTEM RECOVERY: Stimulus dropped.~%"))))))

@@ -73,7 +73,7 @@ The Engineering Standards skill provides the deterministic enforcement of the wo
     
     ;; If the action involves modifying files, check git status
     (when (member act '(:modify-file :write-file :replace :rename-file :delete-file))
-      (let ((proj-root (asdf:system-source-directory :org-agent)))
+      (let ((proj-root (asdf:system-source-directory :opencortex)))
         (unless (verify-git-clean-p proj-root)
           (harness-log "DETERMINISTIC [Standards]: BLOCKING ACTION. Working tree is dirty. Commit changes before modification.")
           (return-from engineering-standards-gate
@@ -84,4 +84,4 @@ The Engineering Standards skill provides the deterministic enforcement of the wo
 
 * See Also
 - [[file:org-skill-system-invariants.org][System Policy]]
-- [[file:../README.org][org-agent README]]
+- [[file:../README.org][opencortex README]]

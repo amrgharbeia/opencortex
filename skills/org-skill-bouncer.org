@@ -12,7 +12,7 @@ The *Deterministic Engine Bouncer* is the authorization gate for high-risk actio
 
 * Package Context
 #+begin_src lisp
-(in-package :org-agent)
+(in-package :opencortex)
 #+end_src
 
 * Deep Packet Inspection (DPI)

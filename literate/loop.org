@@ -5,7 +5,7 @@
 
 * The Metabolic Loop (loop.lisp)
 ** Architectural Intent: The Heartbeat
-The Metabolic Loop is the high-level coordinator of the Org-Agent. It orchestrates the flow of energy (information) through the system by calling the three metabolic stages in sequence:
+The Metabolic Loop is the high-level coordinator of the OpenCortex. It orchestrates the flow of energy (information) through the system by calling the three metabolic stages in sequence:
 1. **Perceive:** Sensory intake.
 2. **Reason:** Cognitive processing.
 3. **Act:** Physical side-effects.
@@ -14,7 +14,7 @@ The Metabolic Loop is the high-level coordinator of the Org-Agent. It orchestrat
 The loop requires thread-safe interrupt handling to ensure that the agent can be stopped gracefully without leaving the Lisp image in an inconsistent state.
 
 #+begin_src lisp :tangle ../src/loop.lisp
-(in-package :org-agent)
+(in-package :opencortex)
 
 (defvar *interrupt-flag* nil)
 (defvar *interrupt-lock* (bt:make-lock "harness-interrupt-lock"))
@@ -67,7 +67,7 @@ The heartbeat ensures the agent remains "alive" even in the absence of external 
                (sleep interval) 
                ;; inject-stimulus is synchronous for heartbeats, preventing accumulation.
                (inject-stimulus (list :type :EVENT :payload (list :sensor :heartbeat :unix-time (get-universal-time)))))) 
-           :name "org-agent-heartbeat"))))
+           :name "opencortex-heartbeat"))))
 #+end_src
 
 ** Main Entry Point
@@ -77,7 +77,7 @@ The `main` function initializes the environment, loads skills, and starts the he
 (defun main ()
   "Entry point for the Skeleton MVP. Handles initialization and graceful shutdown."
   (let* ((home (uiop:getenv "HOME"))
-         (env-file (uiop:merge-pathnames* ".local/share/org-agent/.env" (uiop:ensure-directory-pathname home))))
+         (env-file (uiop:merge-pathnames* ".local/share/opencortex/.env" (uiop:ensure-directory-pathname home))))
     (when (uiop:file-exists-p env-file) (cl-dotenv:load-env env-file)))
   
   (initialize-actuators)

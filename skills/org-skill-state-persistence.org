@@ -239,9 +239,9 @@ Expose persistence capabilities to the neural Probabilistic Engine.
 
 ** 1. Unit Tests (FiveAM)
 #+begin_src lisp
-(defpackage :org-agent-persistence-tests
-  (:use :cl :fiveam :org-agent))
-(in-package :org-agent-persistence-tests)
+(defpackage :opencortex-persistence-tests
+  (:use :cl :fiveam :opencortex))
+(in-package :opencortex-persistence-tests)
 
 (def-suite persistence-suite :description "Tests for State Persistence Layer.")
 (in-suite persistence-suite)
@@ -253,10 +253,10 @@ Expose persistence capabilities to the neural Probabilistic Engine.
     (let ((obj (make-org-object :id test-id :content "Integrity Check" :hash test-hash)))
       (setf (gethash test-hash *history-store*) obj)
       (setf (gethash test-id *memory*) obj))
-    (org-agent:persistence-dump-local)
+    (opencortex:persistence-dump-local)
     (clrhash *memory*)
     (clrhash *history-store*)
-    (org-agent:persistence-load-local)
+    (opencortex:persistence-load-local)
     (is (not (null (gethash test-id *memory*))))
     (is (equal "Integrity Check" (org-object-content (gethash test-id *memory*))))))
 #+end_src

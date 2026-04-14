@@ -19,11 +19,11 @@ The `execute-shell-safely` function only checked the first space-delimited word 
 ** Symptoms
 `UNDEFINED-FUNCTION EXECUTE-SHELL-SAFELY` during unit tests.
 ** Root Cause
-`src/shell-logic.lisp` was missing an `(in-package :org-agent)` declaration, causing symbols to be defined in the default `COMMON-LISP-USER` package instead of the harness package.
+`src/shell-logic.lisp` was missing an `(in-package :opencortex)` declaration, causing symbols to be defined in the default `COMMON-LISP-USER` package instead of the harness package.
 ** Resolution
 Added the `in-package` header to `shell-logic.lisp`.
 
-* 3. org-agent Mandate Alignment
+* 3. opencortex Mandate Alignment
 ** Invariant Check
 - *High-Integrity Memory:* The shell actuator is now formally verified with 4 new unit tests covering whitelist enforcement and injection blocking.
 - *Literate Programming:* Updated `org-skill-shell-actuator.org` Phase A and Build sections to reflect the hardened logic.

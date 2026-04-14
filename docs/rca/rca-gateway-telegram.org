@@ -9,10 +9,10 @@ Successfully implemented the first external communication channel (Telegram) and
 ** Symptoms
 During compilation, `gateway-telegram.lisp` failed with `UNDEFINED-FUNCTION` for `register-actuator` and `harness-log`.
 ** Root Cause
-Poorly scoped foundational functions. These were defined in `core.lisp` (the loop orchestrator), which was loaded *after* the gateways in `org-agent.asd`. This created a "Circular Intention" where the gateways needed the harness to exist before the harness could load the gateways.
+Poorly scoped foundational functions. These were defined in `core.lisp` (the loop orchestrator), which was loaded *after* the gateways in `opencortex.asd`. This created a "Circular Intention" where the gateways needed the harness to exist before the harness could load the gateways.
 ** Resolution
 1. **Relocation:** Moved `*actuator-registry*` and `register-actuator` to `communication.lisp` (the foundation).
-2. **Reordering:** Adjusted `org-agent.asd` to load `core.lisp` (containing the stimulus loop) immediately after the deterministic gates but before the physical sensors (gateways).
+2. **Reordering:** Adjusted `opencortex.asd` to load `core.lisp` (containing the stimulus loop) immediately after the deterministic gates but before the physical sensors (gateways).
 
 * 2. Issue: Hardcoded Chat UI
 ** Symptoms
@@ -32,7 +32,7 @@ Misinterpretation of the `UIOP` API. `setenv` is not a standard export; the port
 ** Resolution
 Updated all test environment setup to use the `setf` accessor.
 
-* 4. org-agent Mandate Alignment
+* 4. opencortex Mandate Alignment
 ** Autonomous Boundary
 By moving the Telegram API logic to a user-space skill and communicating with the core via standard stimuli, we have respected the microkernel boundary.
 ** Homoiconic Memory

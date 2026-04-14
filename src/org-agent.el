@@ -1,4 +1,4 @@
-;;; org-agent.el --- Probabilistic-Deterministic Lisp Machine Kernel for Org-mode -*- lexical-binding: t; -*-
+;;; opencortex.el --- Probabilistic-Deterministic Lisp Machine Kernel for Org-mode -*- lexical-binding: t; -*-
 
 ;; Copyright (C) 2026 Amr
 ;;
@@ -6,11 +6,11 @@
 ;; Version: 0.1.0
 ;; Package-Requires: ((emacs "27.1"))
 ;; Keywords: convenience, org
-;; URL: https://github.com/amr/org-agent
+;; URL: https://github.com/amr/opencortex
 
 ;;; Commentary:
 
-;; org-agent provides a Probabilistic-Deterministic Lisp Machine interface for Emacs.
+;; opencortex provides a Probabilistic-Deterministic Lisp Machine interface for Emacs.
 ;; It acts as the sensor/actuator array, communicating with a persistent
 ;; Common Lisp daemon over a high-speed communication protocol socket.
 
@@ -21,94 +21,94 @@
 (require 'org-id)
 (require 'org-element)
 
-(defgroup org-agent nil
-  "Emacs interface for the org-agent Common Lisp daemon."
+(defgroup opencortex nil
+  "Emacs interface for the opencortex Common Lisp daemon."
   :group 'org)
 
-(defcustom org-agent-port 9105
-  "The port the org-agent daemon is listening on."
+(defcustom opencortex-port 9105
+  "The port the opencortex daemon is listening on."
   :type 'integer
-  :group 'org-agent)
+  :group 'opencortex)
 
-(defcustom org-agent-host "127.0.0.1"
-  "The host the org-agent daemon is running on."
+(defcustom opencortex-host "127.0.0.1"
+  "The host the opencortex daemon is running on."
   :type 'string
-  :group 'org-agent)
+  :group 'opencortex)
 
-(defcustom org-agent-executable-path "org-agent-server"
-  "Path to the compiled org-agent-server binary.
+(defcustom opencortex-executable-path "opencortex-server"
+  "Path to the compiled opencortex-server binary.
 If nil, Emacs will not attempt to start the daemon automatically and 
 will assume you have started it manually (e.g., via SBCL)."
   :type '(choice (string :tag "Path to executable")
                  (const :tag "Manual daemon management" nil))
-  :group 'org-agent)
+  :group 'opencortex)
 
-(defvar org-agent--network-process nil
+(defvar opencortex--network-process nil
   "The network process connected to the daemon.")
 
-(defvar org-agent--daemon-process nil
+(defvar opencortex--daemon-process nil
   "The spawned daemon child process.")
 
-(defun org-agent--start-daemon ()
+(defun opencortex--start-daemon ()
   "Start the daemon binary if not already running."
-  (when (and org-agent-executable-path
-             (not (process-live-p org-agent--daemon-process)))
-    (message "org-agent: Starting daemon (%s)..." org-agent-executable-path)
-    (setq org-agent--daemon-process
+  (when (and opencortex-executable-path
+             (not (process-live-p opencortex--daemon-process)))
+    (message "opencortex: Starting daemon (%s)..." opencortex-executable-path)
+    (setq opencortex--daemon-process
           (make-process
-           :name "org-agent-daemon"
-           :buffer "*org-agent-daemon*"
-           :command (list org-agent-executable-path (number-to-string org-agent-port))
+           :name "opencortex-daemon"
+           :buffer "*opencortex-daemon*"
+           :command (list opencortex-executable-path (number-to-string opencortex-port))
            :connection-type 'pipe))
     ;; Give it a moment to bind to the port
     (sleep-for 1.0)))
 
-(defun org-agent-connect ()
-  "Connect to the org-agent daemon, starting it if necessary."
+(defun opencortex-connect ()
+  "Connect to the opencortex daemon, starting it if necessary."
   (interactive)
-  (when org-agent--network-process
-    (delete-process org-agent--network-process))
+  (when opencortex--network-process
+    (delete-process opencortex--network-process))
   
-  (org-agent--start-daemon)
+  (opencortex--start-daemon)
   
   (condition-case err
       (progn
-        (setq org-agent--network-process
+        (setq opencortex--network-process
               (make-network-process
-               :name "org-agent"
-               :buffer "*org-agent*"
+               :name "opencortex"
+               :buffer "*opencortex*"
                :family 'ipv4
-               :host org-agent-host
-               :service org-agent-port
-               :filter #'org-agent--filter
-               :sentinel #'org-agent--sentinel))
-        (message "org-agent: Connected to daemon."))
+               :host opencortex-host
+               :service opencortex-port
+               :filter #'opencortex--filter
+               :sentinel #'opencortex--sentinel))
+        (message "opencortex: Connected to daemon."))
     (error
-     (message "org-agent: Failed to connect to daemon at %s:%s. Ensure it is running. Error: %s" 
-              org-agent-host org-agent-port (error-message-string err)))))
+     (message "opencortex: Failed to connect to daemon at %s:%s. Ensure it is running. Error: %s" 
+              opencortex-host opencortex-port (error-message-string err)))))
 
-(defun org-agent-disconnect ()
-  "Disconnect from the org-agent daemon."
+(defun opencortex-disconnect ()
+  "Disconnect from the opencortex daemon."
   (interactive)
-  (when org-agent--network-process
-    (delete-process org-agent--network-process)
-    (setq org-agent--network-process nil)
-    (message "org-agent: Disconnected from network."))
-  (when org-agent--daemon-process
-    (delete-process org-agent--daemon-process)
-    (setq org-agent--daemon-process nil)
-    (message "org-agent: Killed daemon process.")))
+  (when opencortex--network-process
+    (delete-process opencortex--network-process)
+    (setq opencortex--network-process nil)
+    (message "opencortex: Disconnected from network."))
+  (when opencortex--daemon-process
+    (delete-process opencortex--daemon-process)
+    (setq opencortex--daemon-process nil)
+    (message "opencortex: Killed daemon process.")))
 
-(defun org-agent--filter (proc string)
+(defun opencortex--filter (proc string)
   "Handle incoming communication protocol messages from the daemon via PROC with STRING."
   (let ((buf (process-buffer proc)))
     (when (buffer-live-p buf)
       (with-current-buffer buf
         (goto-char (point-max))
         (insert string)
-        (org-agent--process-buffer buf proc)))))
+        (opencortex--process-buffer buf proc)))))
 
-(defun org-agent--process-buffer (buffer &optional proc)
+(defun opencortex--process-buffer (buffer &optional proc)
   "Process the communication protocol message BUFFER, optionally using PROC."
   (with-current-buffer buffer
     (goto-char (point-min))
@@ -121,88 +121,88 @@ will assume you have started it manually (e.g., via SBCL)."
                    (msg-str (buffer-substring msg-start msg-end))
                    (plist (car (read-from-string msg-str))))
               (delete-region (point-min) msg-end)
-              (org-agent--handle-message proc plist))
+              (opencortex--handle-message proc plist))
           ;; Message incomplete, stop loop
           (goto-char (point-max))
           (setq msg-len 1000000)))))) ; Break loop
 
-(defun org-agent--plist-get (plist prop)
+(defun opencortex--plist-get (plist prop)
   "Case-insensitive keyword lookup for communication protocol compatibility."
   (or (plist-get plist prop)
       (plist-get plist (intern (upcase (symbol-name prop))))
       (plist-get plist (intern (downcase (symbol-name prop))))))
 
-(defun org-agent--handle-message (proc plist)
+(defun opencortex--handle-message (proc plist)
   "Route and execute incoming communication protocol messages from PROC using PLIST."
-  (let ((type (org-agent--plist-get plist :type))
-        (id (org-agent--plist-get plist :id))
-        (payload (or (org-agent--plist-get plist :payload) plist)))
+  (let ((type (opencortex--plist-get plist :type))
+        (id (opencortex--plist-get plist :id))
+        (payload (or (opencortex--plist-get plist :payload) plist)))
     (cond
      ((member type '(:request :REQUEST))
-      (org-agent--execute-request proc id payload))
+      (opencortex--execute-request proc id payload))
      ((member type '(:response :RESPONSE))
-      (message "org-agent: Received response for ID %s" id))
+      (message "opencortex: Received response for ID %s" id))
      ((member type '(:log :LOG))
-      (let ((text (org-agent--plist-get payload :text)))
-        (org-agent--insert-to-history (concat "[reasoning] " text "\n") 'org-agent-system-face)))
-     (t (message "org-agent: Received unknown message type %s" type)))))
+      (let ((text (opencortex--plist-get payload :text)))
+        (opencortex--insert-to-history (concat "[reasoning] " text "\n") 'opencortex-system-face)))
+     (t (message "opencortex: Received unknown message type %s" type)))))
 
-(defun org-agent--execute-request (proc id payload)
+(defun opencortex--execute-request (proc id payload)
   "Execute an actuator request from the daemon via PROC with ID and PAYLOAD."
-  (let ((action (org-agent--plist-get payload :action)))
+  (let ((action (opencortex--plist-get payload :action)))
     (cond
      ((member action '(:eval :EVAL))
-      (let ((code (org-agent--plist-get payload :code)))
+      (let ((code (opencortex--plist-get payload :code)))
         (condition-case err
             (let ((result (eval (read code))))
-              (org-agent-send 
+              (opencortex-send 
                `(:type :RESPONSE :id ,id :payload (:status :success :result ,(format "%s" result)))))
           (error
-           (org-agent-send 
+           (opencortex-send 
             `(:type :RESPONSE :id ,id :payload (:status :error :message ,(error-message-string err))))))))
      ((member action '(:message :MESSAGE))
-      (message "org-agent [DAEMON]: %s" (org-agent--plist-get payload :text))
-      (org-agent-send `(:type :RESPONSE :id ,id :payload (:status :success))))
+      (message "opencortex [DAEMON]: %s" (opencortex--plist-get payload :text))
+      (opencortex-send `(:type :RESPONSE :id ,id :payload (:status :success))))
      ((member action '(:insert-at-end :INSERT-AT-END))
-      (let ((text (org-agent--plist-get payload :text)))
-        (org-agent--insert-to-history (concat "\nAGENT: " text "\n\n"))
-        (org-agent-send `(:type :RESPONSE :id ,id :payload (:status :success)))))
+      (let ((text (opencortex--plist-get payload :text)))
+        (opencortex--insert-to-history (concat "\nAGENT: " text "\n\n"))
+        (opencortex-send `(:type :RESPONSE :id ,id :payload (:status :success)))))
      ((member action '(:refactor-subtree :REFACTOR-SUBTREE))
-      (let ((target-id (org-agent--plist-get payload :target-id))
-            (properties (org-agent--plist-get payload :properties)))
+      (let ((target-id (opencortex--plist-get payload :target-id))
+            (properties (opencortex--plist-get payload :properties)))
         (condition-case err
             (save-excursion
               (when target-id (org-id-goto target-id))
               (dolist (prop properties)
                 (org-set-property (car prop) (cdr prop)))
-              (org-agent-send `(:type :RESPONSE :id ,id :payload (:status :success))))
+              (opencortex-send `(:type :RESPONSE :id ,id :payload (:status :success))))
           (error
-           (org-agent-send 
+           (opencortex-send 
             `(:type :RESPONSE :id ,id :payload (:status :error :message ,(error-message-string err))))))))
      (t
-      (message "org-agent: Unknown action %s" action)
-      (org-agent-send `(:type :RESPONSE :id ,id :payload (:status :unsupported)))))))
+      (message "opencortex: Unknown action %s" action)
+      (opencortex-send `(:type :RESPONSE :id ,id :payload (:status :unsupported)))))))
 
-(defun org-agent--sentinel (proc event)
+(defun opencortex--sentinel (proc event)
   "Handle network process PROC lifecycle EVENT."
   (when (string-match "finished" event)
-    (setq org-agent--network-process nil)
-    (message "org-agent: Connection lost.")))
+    (setq opencortex--network-process nil)
+    (message "opencortex: Connection lost.")))
 
-(defun org-agent-send (plist)
+(defun opencortex-send (plist)
   "Send a Lisp PLIST to the daemon using communication protocol framing."
   (let* ((msg (prin1-to-string plist))
          (len (length msg))
          (framed (format "%06x%s" len msg)))
-    (if (and org-agent--network-process (process-live-p org-agent--network-process))
-        (process-send-string org-agent--network-process framed)
-      (message "org-agent (offline): %s" framed))))
+    (if (and opencortex--network-process (process-live-p opencortex--network-process))
+        (process-send-string opencortex--network-process framed)
+      (message "opencortex (offline): %s" framed))))
 
-(defun org-agent--buffer-to-sexp ()
+(defun opencortex--buffer-to-sexp ()
   "Transform the current Org buffer into a pure Lisp AST (plist)."
-  (org-agent--clean-element (org-element-parse-buffer)))
+  (opencortex--clean-element (org-element-parse-buffer)))
 
-(defun org-agent--clean-element (element)
+(defun opencortex--clean-element (element)
   "Recursively transform an Org ELEMENT into a pure Lisp plist."
   (cond
    ((listp element)
@@ -225,86 +225,86 @@ will assume you have started it manually (e.g., via SBCL)."
           (setq cleaned-props (plist-put cleaned-props :TODO-STATE (format "%s" todo)))))
       (list :type type
             :properties cleaned-props
-            :contents (mapcar #'org-agent--clean-element children))))
+            :contents (mapcar #'opencortex--clean-element children))))
    ((stringp element) element)
    (t (format "%s" element))))
 
 ;;; Sensors
 
-(defun org-agent-notify-save ()
+(defun opencortex-notify-save ()
   "Sensor: Notify daemon with full Semantic Perception (AST) when saved."
-  (when (and org-agent--network-process (derived-mode-p 'org-mode))
-    (org-agent-send 
+  (when (and opencortex--network-process (derived-mode-p 'org-mode))
+    (opencortex-send 
      `(:type :EVENT 
        :payload (:sensor :buffer-update 
                  :file ,(buffer-file-name) 
                  :state :saved
-                 :ast ,(org-agent--buffer-to-sexp))))))
+                 :ast ,(opencortex--buffer-to-sexp))))))
 
-(defun org-agent-notify-point ()
+(defun opencortex-notify-point ()
   "Sensor: Notify daemon of the element currently at point (Incremental Perception).
 This is much faster than parsing the entire buffer and allows for real-time
 responsiveness to the user's cursor position."
-  (when (and org-agent--network-process (derived-mode-p 'org-mode))
+  (when (and opencortex--network-process (derived-mode-p 'org-mode))
     (let ((element (org-element-at-point)))
-      (org-agent-send
+      (opencortex-send
        `(:type :EVENT
          :payload (:sensor :point-update
                    :file ,(buffer-file-name)
-                   :element ,(org-agent--clean-element element)))))))
+                   :element ,(opencortex--clean-element element)))))))
 
 ;;; Interaction Commands
 
-(defun org-agent-set-model-cascade (cascade-string)
+(defun opencortex-set-model-cascade (cascade-string)
   "Set the ordered list of LLM providers to use as fallbacks.
 CASCADE-STRING should be a comma-separated list of keywords, 
 e.g., ':gemini,:openai,:ollama'."
   (interactive "sEnter model cascade (e.g. :gemini,:openai): ")
-  (unless org-agent--network-process
-    (org-agent-connect))
+  (unless opencortex--network-process
+    (opencortex-connect))
   (let ((cascade (mapcar #'intern (split-string cascade-string ","))))
-    (org-agent-send 
+    (opencortex-send 
      `(:type :REQUEST 
        :id ,(truncate (float-time))
        :target :system
        :payload (:action :set-cascade :cascade ,cascade)))
-    (message "org-agent: Requesting model cascade update to %s" cascade)))
-(defgroup org-agent-faces nil
-  "Faces for the org-agent chat interface."
-  :group 'org-agent)
+    (message "opencortex: Requesting model cascade update to %s" cascade)))
+(defgroup opencortex-faces nil
+  "Faces for the opencortex chat interface."
+  :group 'opencortex)
 
-(defface org-agent-user-face
+(defface opencortex-user-face
   '((((class color) (background dark)) :foreground "LightSkyBlue" :weight bold)
     (((class color) (background light)) :foreground "blue" :weight bold)
     (t :weight bold :underline t))
   "Face for user messages in chat history."
-  :group 'org-agent-faces)
+  :group 'opencortex-faces)
 
-(defface org-agent-system-face
+(defface opencortex-system-face
   '((t :slant italic :foreground "gray50"))
   "Face for system and reasoning logs."
-  :group 'org-agent-faces)
+  :group 'opencortex-faces)
 
-(defun org-agent-chat ()
-  "Modern chat interface for the org-agent kernel.
+(defun opencortex-chat ()
+  "Modern chat interface for the opencortex kernel.
 Opens a history buffer and a dedicated input area."
   (interactive)
-  (let ((chat-buf (get-buffer-create "*org-agent-chat*"))
-        (input-buf (get-buffer-create "*org-agent-input*")))
+  (let ((chat-buf (get-buffer-create "*opencortex-chat*"))
+        (input-buf (get-buffer-create "*opencortex-input*")))
     ;; History Buffer Setup
     (with-current-buffer chat-buf
       (unless (eq major-mode 'special-mode)
         (special-mode)
         (let ((inhibit-read-only t))
           (erase-buffer)
-          (insert "--- org-agent History ---\n\n"))))
+          (insert "--- opencortex History ---\n\n"))))
     
     ;; Input Buffer Setup
     (with-current-buffer input-buf
       (unless (eq major-mode 'org-mode)
         (org-mode)
-        (local-set-key (kbd "C-c C-c") #'org-agent-chat-send)
-        (local-set-key (kbd "C-c C-k") #'org-agent-interrupt))
+        (local-set-key (kbd "C-c C-c") #'opencortex-chat-send)
+        (local-set-key (kbd "C-c C-k") #'opencortex-interrupt))
       (let ((inhibit-read-only t))
         (delete-region (point-min) (point-max))
         (insert "# Type your message and press C-c C-c to send.\n")))
@@ -315,19 +315,19 @@ Opens a history buffer and a dedicated input area."
     (let ((win (split-window-below -6))) ; 6 lines for input
       (set-window-buffer win input-buf)
       (select-window win))))
-(defun org-agent-interrupt ()
-  "Interrupt the org-agent reasoning loop."
+(defun opencortex-interrupt ()
+  "Interrupt the opencortex reasoning loop."
   (interactive)
-  (unless org-agent--network-process
-    (org-agent-connect))
-  (org-agent-send 
+  (unless opencortex--network-process
+    (opencortex-connect))
+  (opencortex-send 
    `(:type :EVENT 
      :payload (:sensor :interrupt)))
-  (message "org-agent: Interrupt signal sent."))
+  (message "opencortex: Interrupt signal sent."))
 
-(defun org-agent--insert-to-history (text &optional face)
+(defun opencortex--insert-to-history (text &optional face)
   "Insert TEXT into the chat history buffer with optional FACE and scroll."
-  (let ((buf (get-buffer-create "*org-agent-chat*")))
+  (let ((buf (get-buffer-create "*opencortex-chat*")))
     (with-current-buffer buf
       (let ((inhibit-read-only t))
         (save-excursion
@@ -340,16 +340,16 @@ Opens a history buffer and a dedicated input area."
              (set-window-point w (point-max))))
          nil t)))))
 
-(defun org-agent-chat-send ()
+(defun opencortex-chat-send ()
   "Send the current chat buffer content to the agent."
   (interactive)
-  (unless org-agent--network-process
-    (org-agent-connect))
+  (unless opencortex--network-process
+    (opencortex-connect))
   (let* ((text (buffer-substring-no-properties (point-min) (point-max)))
          (clean-text (string-trim (replace-regexp-in-string "^#.*\n" "" text))))
     (when (> (length clean-text) 0)
       ;; Append to history with styling
-      (org-agent--insert-to-history (concat "YOU: " clean-text "\n\n") 'org-agent-user-face)
+      (opencortex--insert-to-history (concat "YOU: " clean-text "\n\n") 'opencortex-user-face)
       
       ;; Clear input buffer
       (let ((inhibit-read-only t))
@@ -357,66 +357,66 @@ Opens a history buffer and a dedicated input area."
         (insert "# Type your message and press C-c C-c to send.\n"))
       
       ;; Send to daemon
-      (org-agent-send 
+      (opencortex-send 
        `(:type :EVENT 
          :payload (:sensor :chat-message 
                    :text ,clean-text)))
-      (message "org-agent: Message sent."))))
+      (message "opencortex: Message sent."))))
 
-(defun org-agent-auth-google (code)
+(defun opencortex-auth-google (code)
   "Submit the Google OAuth authorization CODE to the daemon."
   (interactive "sEnter Google Authorization Code: ")
-  (unless org-agent--network-process
-    (org-agent-connect))
-  (org-agent-send 
+  (unless opencortex--network-process
+    (opencortex-connect))
+  (opencortex-send 
    `(:type :REQUEST 
      :id ,(truncate (float-time))
      :target :system
      :payload (:action :auth-google-code :code ,code)))
-  (message "org-agent: Authorization code sent to daemon."))
+  (message "opencortex: Authorization code sent to daemon."))
 
-(defun org-agent-organize-subtree ()
+(defun opencortex-organize-subtree ()
 ...
   "Command: Ask the agent to organize the current Org subtree."
   (interactive)
-  (org-agent-run-command :organize-subtree))
+  (opencortex-run-command :organize-subtree))
 
-(defun org-agent-summarize-buffer ()
+(defun opencortex-summarize-buffer ()
   "Command: Ask the agent to summarize the current buffer."
   (interactive)
-  (org-agent-run-command :summarize-buffer))
+  (opencortex-run-command :summarize-buffer))
 
-(defun org-agent-run-command (command-type)
+(defun opencortex-run-command (command-type)
   "Generic runner for high-level COMMAND-TYPE."
-  (unless org-agent--network-process
-    (org-agent-connect))
-  (let ((ast (org-agent--buffer-to-sexp)))
-    (org-agent-send 
+  (unless opencortex--network-process
+    (opencortex-connect))
+  (let ((ast (opencortex--buffer-to-sexp)))
+    (opencortex-send 
      `(:type :EVENT 
        :payload (:sensor :user-command 
                  :command ,command-type
                  :file ,(buffer-file-name)
                  :ast ,ast)))
-    (message "org-agent: Requesting '%s'..." command-type)))
+    (message "opencortex: Requesting '%s'..." command-type)))
 
 ;;;###autoload
-(define-minor-mode org-agent-mode
-  "Global minor mode for the org-agent Probabilistic-Deterministic kernel.
+(define-minor-mode opencortex-mode
+  "Global minor mode for the opencortex Probabilistic-Deterministic kernel.
 When enabled, this mode starts the Lisp daemon (if configured)
 and establishes the network connection to enable proactive
 Org-mode sensing."
   :global t
-  :group 'org-agent
-  (if org-agent-mode
+  :group 'opencortex
+  (if opencortex-mode
       (progn
-        (add-hook 'after-save-hook #'org-agent-notify-save)
-        (add-hook 'post-command-hook #'org-agent-notify-point)
-        (add-hook 'kill-emacs-hook #'org-agent-disconnect)
-        (org-agent-connect))
-    (remove-hook 'after-save-hook #'org-agent-notify-save)
-    (remove-hook 'post-command-hook #'org-agent-notify-point)
-    (remove-hook 'kill-emacs-hook #'org-agent-disconnect)
-    (org-agent-disconnect)))
+        (add-hook 'after-save-hook #'opencortex-notify-save)
+        (add-hook 'post-command-hook #'opencortex-notify-point)
+        (add-hook 'kill-emacs-hook #'opencortex-disconnect)
+        (opencortex-connect))
+    (remove-hook 'after-save-hook #'opencortex-notify-save)
+    (remove-hook 'post-command-hook #'opencortex-notify-point)
+    (remove-hook 'kill-emacs-hook #'opencortex-disconnect)
+    (opencortex-disconnect)))
 
-(provide 'org-agent)
-;;; org-agent.el ends here
+(provide 'opencortex)
+;;; opencortex.el ends here

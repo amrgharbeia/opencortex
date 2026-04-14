@@ -7,7 +7,7 @@
 #+FILETAGS: :protocol:communication-protocol:security:validation:autonomy:
 
 * Overview
-The *Communication Protocol Schema Validator* skill provides deep structural validation for all messages entering the org-agent kernel. It ensures that every property list adheres to a strict schema, preventing malformed data from causing harness-level errors.
+The *Communication Protocol Schema Validator* skill provides deep structural validation for all messages entering the opencortex kernel. It ensures that every property list adheres to a strict schema, preventing malformed data from causing harness-level errors.
 
 * Phase A: Demand (PRD)
 :PROPERTIES:
@@ -15,7 +15,7 @@ The *Communication Protocol Schema Validator* skill provides deep structural val
 :END:
 
 ** 1. Purpose
-Enforce a formal grammar for the Org-Agent Control Protocol (communication protocol).
+Enforce a formal grammar for the OpenCortex Control Protocol (communication protocol).
 
 ** 2. User Needs
 - *Type Safety:* Ensure mandatory keys (e.g., `:type`, `:payload`) are present.
@@ -46,7 +46,7 @@ Decouple protocol parsing (framing/unframing) from semantic validation.
 
 ** Schema Enforcement
 #+begin_src lisp :tangle ../src/communication-validator.lisp
-(in-package :org-agent)
+(in-package :opencortex)
 
 (defun validate-communication-protocol-schema (msg)
   "Strict structural validation for incoming communication protocol messages."

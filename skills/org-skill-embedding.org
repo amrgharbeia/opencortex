@@ -7,7 +7,7 @@
 #+FILETAGS: :embedding:vector-search:semantic:autonomy:
 
 * Overview
-The *Vector Embedding* skill provides semantic search and vectorization capabilities to the org-agent. It decouples the specific embedding algorithms and provider-specific API calls from the core kernel.
+The *Vector Embedding* skill provides semantic search and vectorization capabilities to the opencortex. It decouples the specific embedding algorithms and provider-specific API calls from the core kernel.
 
 * Phase A: Demand (PRD)
 :PROPERTIES:
