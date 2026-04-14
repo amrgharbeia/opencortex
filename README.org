@@ -107,14 +107,38 @@ The agent meets you where you are. While it natively integrates with text editor
 - *The Journal Scribe:* Periodically distills messy chronological logs into clean, permanent notes.
 - *The Gardener:* A heartbeat-driven worker that flags broken links, finds orphaned ideas, and maintains the structural health of your Memex.
 
-* The Long-Term Vision: A Modern Lisp Machine
+* Quick Start (The Zero-to-One Experience)
 
-Today, org-agent relies on external tools to interact with the world. We use Python wrappers for web browsing, external binaries for chat, and external AI models for semantic reasoning. 
+org-agent can be installed and booted with a single command. The onboarding script will detect your OS, offer to install Docker if missing, interactively gather your API keys, and launch the sovereign kernel in the background.
 
-But the long-term trajectory of this project is to progressively pull those boundaries inward. 
+#+begin_src bash
+curl -fsSL https://raw.githubusercontent.com/gharbeia/org-agent/main/scripts/install.sh | bash
+#+end_src
 
-As the *Deterministic Engine* grows more sophisticated, it will take on more of the heavy logical reasoning, utilizing native Lisp unification and logic engines. The Probabilistic AI models will be relegated to what they do best: acting as a natural language translation layer to make sense of the messy, unstructured outside world.
+For power users who wish to run the agent natively (Baremetal) without Docker to allow direct manipulation of their local =~/.emacs.d=, please refer to the [[file:literate/setup.org][setup.org]] literate documentation.
 
-We will systematically rewrite external dependencies in Common Lisp. The endgame of org-agent is not just to be an AI assistant, but to resurrect the dream of the *Lisp Machine*: a unified computing environment where the operating system, the text editor, the web browser, and the AI agent all share the exact same memory space, the exact same AST, and the exact same language. 
+* The Evolutionary Roadmap (v1.0.0 to v4.0.0+)
 
-Zero Inter-Process Communication (IPC). Zero translation latency. Total synergy between human thought and machine actuation.
+** v1.0.0 (Phase 2.5): The Verified Wrapper (Current Target)
+At this stage, org-agent achieves feature parity with State-of-the-Art autonomous agents (like Devin or SWE-agent) but with Lisp-grade mathematical security.
+- *The Tools are External:* The agent uses a standard bash shell, a headless browser (via Playwright), and standard file I/O.
+- *The Safety is Internal:* The Bouncer and Formal Verification gates mathematically prove actions are safe before piping them to external tools.
+- *The Result:* An autonomous agent capable of end-to-end software engineering, web research, and system administration, running securely and locally.
+
+** v2.0.0 (Phase 3): The Cannibalization
+Replacing string-based tool wrappers with native Lisp data structures to eliminate LLM fragility.
+- *Cannibalizing the Browser:* Ingesting the DOM as a native Lisp AST rather than fighting with Playwright scripts.
+- *Cannibalizing the Shell & Editor:* Moving from bash execution to native OS API bindings. Emacs becomes a viewport for the live AST, not a master.
+- *The Result:* The LLM no longer has to guess at messy `stdout` or raw HTML strings; it manipulates deterministic data structures directly.
+
+** v3.0.0 (Phase 4): True Symbolic Determinism
+The great inversion. The Lisp engine takes the wheel, and the LLM is relegated to translation.
+- *The Semantic Translator:* The LLM exclusively translates unstructured human intent (natural language, images) into strict Lisp S-expressions.
+- *Deterministic Planning (The Solver):* The core reasoning engine uses formal logic, graph traversal, and constraint solving to plan and execute workflows.
+- *Self-Correcting Syntax:* The Lisp engine catches and repairs hallucinated syntax errors without consulting the LLM.
+
+** v4.0.0+ (Phase 5): The Neurosymbolic Singularity
+The ultimate vision realized. The agent achieves homoiconic sovereignty.
+- *Homoiconic Self-Writing:* The agent inspects its own literate source code, proposes optimizations, formally verifies them, and hot-reloads itself at runtime.
+- *Asynchronous Swarm Cognition:* The agent spawns isolated sub-agents in jailed Lisp packages to solve sub-tasks in parallel.
+- *The Digital Extension of Self:* A perfect, asynchronous operating system for your digital life, managing the Memex with zero structural degradation.
