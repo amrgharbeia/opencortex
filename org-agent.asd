@@ -2,7 +2,7 @@
   :name "org-agent"
   :author "Amr"
   :version "0.1.0"
-  :license "MIT"
+  :license "AGPLv3"
   :description "The Probabilistic-Deterministic Lisp Machine Harness"
   :depends-on (:usocket ::bordeaux-threads :dexador :uiop :cl-dotenv :cl-ppcre :hunchentoot :ironclad :str :cl-json)
   :serial t
