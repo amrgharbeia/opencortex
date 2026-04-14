@@ -75,7 +75,7 @@ Handles an individual TCP connection. It reads lines until the connection is clo
   "Reads lines from a CLI client and injects them as stimuli."
   (harness-log "CLI: Client connected.")
   (format stream "--------------------------------------------------~%")
-  (format stream "  Connected to the Autonomous Brain (v0.1.0)~%")
+  (format stream "  Connected to OpenCortex~%")
   (format stream "--------------------------------------------------~%")
   (finish-output stream)
   (handler-case

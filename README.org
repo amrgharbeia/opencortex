@@ -1,4 +1,4 @@
-#+TITLE: org-agent: A Self-Writing Agentic Environment in Common Lisp
+#+TITLE: OpenCortex: The Conductor of your Life Stack
 
 *org-agent* is a minimalist, extensible AI agent framework designed to manage and continuously organize your personal knowledge base. It transforms a static collection of plaintext notes into a live, programmable [[https://en.wikipedia.org/wiki/Memex][Memex]]—an automated, personalized memory system where humans and AI collaborate in the exact same workspace.
 
@@ -142,8 +142,3 @@ The great inversion. The Lisp engine takes the wheel, and the LLM is relegated t
 - *Deterministic Planning (The Solver):* The core reasoning engine uses formal logic, graph traversal, and constraint solving to plan and execute workflows.
 - *Self-Correcting Syntax:* The Lisp engine catches and repairs hallucinated syntax errors without consulting the LLM.
 
-** v4.0.0+ (Phase 5): The Neurosymbolic Singularity
-The ultimate vision realized. The agent achieves homoiconic autonomy.
-- *Homoiconic Self-Writing:* The agent inspects its own literate source code, proposes optimizations, formally verifies them, and hot-reloads itself at runtime.
-- *Asynchronous Swarm Cognition:* The agent spawns isolated sub-agents in jailed Lisp packages to solve sub-tasks in parallel.
-- *The Digital Extension of Self:* A perfect, asynchronous operating system for your digital life, managing the Memex with zero structural degradation.
