@@ -1,0 +1,171 @@
+:PROPERTIES:
+:ID:       scribe-skill
+:CREATED:  [2026-04-13 Mon 18:40]
+:END:
+#+TITLE: SKILL: Sovereign Scribe (Knowledge Distillation)
+#+STARTUP: content
+#+FILETAGS: :scribe:distillation:memex:psf:
+
+* Overview
+The *Sovereign Scribe* is the background architect of the Memex. It is responsible for the "Nightly Distillation": a process that scans chronological daily logs, extracts evergreen concepts, and formalizes them into atomic Zettelkasten notes.
+
+* Phase A: Demand (PRD)
+:PROPERTIES:
+:STATUS: SIGNED
+:END:
+
+** 1. Purpose
+Automate the conversion of ephemeral, time-stamped thoughts into a permanent, structured knowledge graph.
+
+** 2. Success Criteria
+- [ ] *Capture:* Identify new headlines in the `daily/` directory that haven't been distilled yet.
+- [ ] *Privacy:* Strictly ignore any node tagged with `@personal`.
+- [ ] *Extraction:* Use neural reasoning to extract atomic concepts from raw logs.
+- [ ] *Formalization:* Create new `.org` files in the `notes/` directory with proper Org-ID and back-links to the source.
+
+* Phase B: Blueprint (PROTOCOL)
+:PROPERTIES:
+:STATUS: SIGNED
+:END:
+
+** 1. Architectural Intent
+The Scribe reacts to the `:heartbeat` sensor. It maintains a state file (`scribe-state.lisp`) to track the last processed timestamp. It performs a "Read-Reason-Write" loop:
+1. **Read:** Scan `daily/*.org` for nodes updated after the last checkpoint.
+2. **Reason:** Ask the LLM to "Extract atomic notes from this text".
+3. **Write:** Commit the resulting nodes to the `notes/` directory.
+
+** 2. Semantic Interfaces
+- Trigger: `(:sensor :heartbeat)`
+- Action: `(:type :REQUEST :target :system :action :create-note :title "..." :content "..." :source-id "...")`
+
+* Phase D: Build (Implementation)
+
+** Package Context
+#+begin_src lisp
+(in-package :org-agent)
+#+end_src
+
+** State: Checkpoint Management
+We track the last processed universal time to avoid redundant distillation.
+
+#+begin_src lisp
+(defvar *scribe-last-checkpoint* 0
+  "The universal-time of the last successful distillation run.")
+
+(defun scribe-load-state ()
+  "Loads the scribe checkpoint from the state directory."
+  (let ((state-file (uiop:merge-pathnames* "state/scribe-checkpoint.lisp" (asdf:system-source-directory :org-agent))))
+    (if (uiop:file-exists-p state-file)
+        (setf *scribe-last-checkpoint* (read-from-string (uiop:read-file-string state-file)))
+        (setf *scribe-last-checkpoint* 0))))
+
+(defun scribe-save-state ()
+  "Saves the current universal-time as the new checkpoint."
+  (let ((state-file (uiop:merge-pathnames* "state/scribe-checkpoint.lisp" (asdf:system-source-directory :org-agent))))
+    (ensure-directories-exist state-file)
+    (with-open-file (out state-file :direction :output :if-exists :supersede)
+      (format out "~a" (get-universal-time)))))
+#+end_src
+
+** Filtering: Privacy & Relevance
+The Scribe only cares about non-personal, non-distilled headlines.
+
+#+begin_src lisp
+(defun scribe-get-distillable-nodes ()
+  "Returns a list of org-objects from the daily/ folder that require distillation."
+  (let ((results nil))
+    (maphash (lambda (id obj)
+               (declare (ignore id))
+               (let* ((attrs (org-object-attributes obj))
+                      (tags (getf attrs :TAGS))
+                      (type (org-object-type obj)))
+                 (when (and (eq type :HEADLINE)
+                            (not (member "@personal" tags :test #'string-equal))
+                            (not (member "distilled" tags :test #'string-equal)))
+                   ;; Basic check: is it in a file starting with '20' (daily format)?
+                   (push obj results))))
+             *memory*)
+    results))
+#+end_src
+
+** Probabilistic: Extraction Prompt
+The LLM is tasked with identifying atomic concepts within the raw text.
+
+#+begin_src lisp
+(defun probabilistic-skill-scribe (context)
+  "Generates the extraction prompt for the Scribe."
+  (let* ((payload (getf context :payload))
+         (nodes (scribe-get-distillable-nodes)))
+    (if nodes
+        (let ((text-to-process ""))
+          (dolist (node nodes)
+            (setf text-to-process (concatenate 'string text-to-process 
+                                               (format nil "ID: ~a~%TITLE: ~a~%CONTENT: ~a~%---~%" 
+                                                       (org-object-id node)
+                                                       (getf (org-object-attributes node) :TITLE)
+                                                       (org-object-content node)))))
+          (format nil "DISTILLATION TASK:
+Below are raw chronological logs from my daily journal.
+Extract ATOMIC EVERGREEN NOTES from this text.
+
+RULES:
+1. One note per distinct concept.
+2. Output a list of Lisp plists: ((:title \"...\" :content \"...\" :source-id \"...\") ...)
+3. The content should be in Org-mode format.
+4. Keep titles descriptive and snake_case.
+
+TEXT:
+~a" text-to-process))
+        nil)))
+#+end_src
+
+** Deterministic: Note Committal
+The deterministic gate receives the list of proposed notes and writes them to the filesystem.
+
+#+begin_src lisp
+(defun scribe-commit-notes (proposals)
+  "Writes proposed atomic notes to the notes/ directory."
+  (let ((notes-dir (uiop:merge-pathnames* "notes/" (asdf:system-source-directory :org-agent))))
+    (ensure-directories-exist notes-dir)
+    (dolist (note proposals)
+      (let* ((title (getf note :title))
+             (content (getf note :content))
+             (source-id (getf note :source-id))
+             (filename (format nil "~a.org" (string-downcase (cl-ppcre:regex-replace-all " " title "_"))))
+             (path (merge-pathnames filename notes-dir)))
+        (with-open-file (out path :direction :output :if-exists :supersede)
+          (format out ":PROPERTIES:~%:ID: ~a~%:SOURCE_ID: ~a~%:END:~%#+TITLE: ~a~%~%~a" 
+                  (org-id-new) source-id title content))
+        (harness-log "SCRIBE: Created evergreen note ~a" filename)))))
+
+(defun verify-skill-scribe (action context)
+  "Executes the note creation and marks source nodes as distilled."
+  (declare (ignore context))
+  (when (and (listp action) (not (member (getf action :type) '(:LOG :EVENT))))
+    ;; Action is the list of note plists from the LLM
+    (scribe-commit-notes action)
+    (scribe-save-state)
+    (harness-log "SCRIBE: Distillation complete.")
+    ;; Return a log event to stop the loop
+    (list :type :LOG :payload (list :text "Distillation successful."))))
+#+end_src
+
+** Skill Registration
+#+begin_src lisp
+(defskill :skill-scribe
+  :priority 50
+  :trigger (lambda (ctx)
+             (let* ((payload (getf ctx :payload))
+                    (sensor (getf payload :sensor)))
+               (and (eq sensor :heartbeat)
+                    ;; Only run once per hour to check if we need to distill
+                    (> (- (get-universal-time) *scribe-last-checkpoint*) 3600)
+                    (scribe-get-distillable-nodes))))
+  :probabilistic #'probabilistic-skill-scribe
+  :deterministic #'verify-skill-scribe)
+#+end_src
+
+** Initialization
+#+begin_src lisp
+(scribe-load-state)
+#+end_src
