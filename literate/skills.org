@@ -295,7 +295,11 @@ Wraps the skill loader in a thread with a hard timeout to prevent a single malfo
 #+end_src
 
 ** Initializing All Skills (initialize-all-skills)
-The unified orchestrator for the system boot sequence.
+The `initialize-all-skills` function is the unified orchestrator for the system boot sequence. It enforces the **Verification Lock**:
+1. **Mandatory Check:** It reads the `MANDATORY_SKILLS` environment variable and ensures every required skill exists in the source directory.
+2. **Topological Boot:** It resolves inter-skill dependencies to ensure policies and actuators are loaded in the correct order.
+3. **Timed Loading:** Every skill is loaded with a 5-second timeout.
+4. **Boot Halt:** If a *mandatory* skill fails to load (e.g., due to a syntax error), the entire system halts with a `BOOT FAILURE` to prevent an unaligned or unsecure state.
 
 #+begin_src lisp :tangle ../src/skills.lisp
 (defun initialize-all-skills ()
