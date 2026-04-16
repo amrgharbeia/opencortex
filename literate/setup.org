@@ -10,7 +10,7 @@ The *Setup & Onboarding* process ensures that users can boot the ~opencortex~ Li
 This script handles the entire lifecycle: Bootstrap, Setup, Boot, and Interaction.
 
 #+begin_src bash :tangle ../opencortex.sh :shebang "#!/bin/bash"
-# OpenCortex: The Unified Conductor
+# OpenCortex: The Unified Conductor v1.3
 set -e
 
 PORT=9105
@@ -18,9 +18,10 @@ HOST=${1:-localhost}
 RED='\033[0;31m'; GREEN='\033[0;32m'; BLUE='\033[0;34m'; YELLOW='\033[0;33m'; NC='\033[0m'
 
 command_exists() { command -v "$1" >/dev/null 2>&1; }
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 
 # --- 1. BOOTSTRAP (Clone) ---
-if [ ! -d ".git" ] && [[ ! "$(pwd)" =~ "opencortex" ]]; then
+if [ ! -d "$SCRIPT_DIR/.git" ] && [[ ! "$(pwd)" =~ "opencortex" ]]; then
     echo -e "${BLUE}=== OpenCortex: Zero-to-One Bootstrapper ===${NC}"
     TARGET_DIR="opencortex"
     if [ ! -d "$TARGET_DIR" ]; then
@@ -33,24 +34,31 @@ if [ ! -d ".git" ] && [[ ! "$(pwd)" =~ "opencortex" ]]; then
 fi
 
 # --- 2. SETUP (Deps & Tangle) ---
-setup_system() {
+prompt_user() {
+    local prompt="$1"
+    local default="$2"
+    local var_name="$3"
+    local result=""
+    echo -n -e "${YELLOW}$prompt (default: $default): ${NC}" >&2
+    # Use 10s timeout. If run via non-interactive pipe, it will use default.
+    if read -t 10 result; then :; else result="$default"; echo -e "${BLUE} [Auto-Selected: $default]${NC}" >&2; fi
+    val=${result:-$default}
+    eval "$var_name=\"$val\""
+}
+
+if [ ! -f "$SCRIPT_DIR/src/package.lisp" ] || [ ! -f "$SCRIPT_DIR/.env" ]; then
     echo -e "${BLUE}=== OpenCortex: Initializing System ===${NC}"
-    
-    # Dependencies
+    cd "$SCRIPT_DIR"
     if ! command_exists sbcl; then
         echo -e "Installing dependencies..."
         sudo apt-get update && sudo apt-get install -y sbcl emacs git curl socat || true
     fi
-
-    # Quicklisp
     if [ ! -d "$HOME/quicklisp" ]; then
         echo -e "Installing Quicklisp..."
         curl -O https://beta.quicklisp.org/quicklisp.lisp
         sbcl --non-interactive --load quicklisp.lisp --eval "(quicklisp-quickstart:install)" --eval "(ql-util:without-prompting (ql:add-to-init-file))"
         rm quicklisp.lisp
     fi
-
-    # Tangle
     if [ ! -f "src/package.lisp" ]; then
         echo -e "Tangling brain from literate source..."
         mkdir -p src
@@ -58,51 +66,64 @@ setup_system() {
             emacs --batch --eval "(require 'org)" --eval "(org-babel-tangle-file \"$f\")" >/dev/null 2>&1 || true
         done
     fi
-
-    # .env
     if [ ! -f .env ]; then
         cp .env.example .env
-        sed -i "s/MEMEX_USER=.*/MEMEX_USER=\"User\"/g" .env
-        sed -i "s/MEMEX_ASSISTANT=.*/MEMEX_ASSISTANT=\"OpenCortex\"/g" .env
-        sed -i "s|SKILLS_DIR=.*|SKILLS_DIR=\"$(pwd)/skills\"|g" .env
+        prompt_user "What is your name?" "User" "U_NAME"
+        sed -i "s/MEMEX_USER=.*/MEMEX_USER=\"$U_NAME\"/g" .env
+        prompt_user "Enter Gemini API Key" "" "U_KEY"
+        sed -i "s/GEMINI_API_KEY=.*/GEMINI_API_KEY=\"$U_KEY\"/g" .env
+        sed -i "s|SKILLS_DIR=.*|SKILLS_DIR=\"$SCRIPT_DIR/skills\"|g" .env
     fi
-
-    # PATH installation
     mkdir -p "$HOME/.local/bin"
-    ln -sf "$(pwd)/opencortex.sh" "$HOME/.local/bin/opencortex"
-    echo -e "${GREEN}✓ Setup complete. 'opencortex' command ready in PATH.${NC}"
-}
-
-if [ ! -f "src/package.lisp" ] || [ ! -f .env ]; then
-    setup_system
+    ln -sf "$SCRIPT_DIR/opencortex.sh" "$HOME/.local/bin/opencortex"
+    echo -e "${GREEN}✓ Setup complete.${NC}"
 fi
 
 # --- 3. BOOT (The Brain) ---
 if [[ "$1" == "--boot" ]]; then
     echo -e "${BLUE}Starting OpenCortex Brain...${NC}"
-    if [ -f .env ]; then
+    if [ -f "$SCRIPT_DIR/.env" ]; then
         while IFS='=' read -r key value || [ -n "$key" ]; do
             if [[ $key =~ ^[a-zA-Z_][a-zA-Z0-9_]*$ ]]; then
-                value=$(echo "$value" | sed 's/^"//;s/"$//')
-                export "$key=$value"
+                # Strip quotes and export
+                val=$(echo "$value" | sed 's/^"//;s/"$//')
+                export "$key=$val"
             fi
-        done < .env
+        done < "$SCRIPT_DIR/.env"
     fi
     exec sbcl --non-interactive \
          --eval "(load \"~/quicklisp/setup.lisp\")" \
-         --eval "(push \"$(cd "$(dirname "$0")" && pwd)/\" asdf:*central-registry*)" \
+         --eval "(push \"$SCRIPT_DIR/\" asdf:*central-registry*)" \
          --eval "(ql:quickload :opencortex)" \
          --eval "(opencortex:main)"
 fi
 
 # --- 4. INTERACT (The Client) ---
-if command_exists socat && socat - TCP:$HOST:$PORT,connect-timeout=1 2>/dev/null; then
-    socat - TCP:$HOST:$PORT
-    exit 0
-fi
+connect() {
+    if command_exists socat && socat - TCP:$HOST:$PORT,connect-timeout=1 2>/dev/null; then
+        socat - TCP:$HOST:$PORT
+        return 0
+    elif command_exists nc && nc -z $HOST $PORT 2>/dev/null; then
+        nc $HOST $PORT
+        return 0
+    fi
+    return 1
+}
 
+# 1. Try to connect immediately
+if connect; then exit 0; fi
+
+# 2. Not running? Boot once and poll.
 echo -e "${YELLOW}Brain is offline. Awakening...${NC}"
-./opencortex.sh --boot > brain.log 2>&1 &
-sleep 15
-exec ./opencortex.sh "$@"
+"$SCRIPT_DIR/opencortex.sh" --boot > "$SCRIPT_DIR/brain.log" 2>&1 &
+
+for i in {1..15}; do
+    sleep 2
+    if connect; then exit 0; fi
+    echo -n "."
+done
+
+echo -e "${RED}\n✗ Connection failed.${NC}"
+echo "Check logs: tail -n 20 $SCRIPT_DIR/brain.log"
+exit 1
 #+end_src
