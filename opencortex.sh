@@ -86,7 +86,7 @@ fi
 
 # --- 4. INTERACT (The Client) ---
 if command_exists socat && socat - TCP:$HOST:$PORT,connect-timeout=1 2>/dev/null; then
-    socat READLINE,history=$HOME/.org_agent_history TCP:$HOST:$PORT
+    socat - TCP:$HOST:$PORT
     exit 0
 fi
 
