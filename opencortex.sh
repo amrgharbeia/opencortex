@@ -29,7 +29,7 @@ bootstrap_opencortex() {
     fi
 
     echo -e "${BLUE}Cloning repository into $TARGET_DIR...${NC}"
-    git clone http://10.10.10.201:3000/amr/opencortex.git "$TARGET_DIR"
+    git clone http://10.10.10.201:3001/amr/opencortex.git "$TARGET_DIR"
     
     cd "$TARGET_DIR"
     git submodule update --init --recursive
