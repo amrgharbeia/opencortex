@@ -22,7 +22,7 @@ install_deps() {
 
 if ! command -v sbcl >/dev/null 2>&1 || ! command -v emacs >/dev/null 2>&1; then
     echo -e "${YELLOW}! Missing dependencies (SBCL/Emacs).${NC}"
-    read -p "Should I attempt to install them for you? [Y/n]: " INSTALL_CHOICE
+    read -p "Should I attempt to install them for you? [Y/n]: " INSTALL_CHOICE < /dev/tty
     if [[ ! "$INSTALL_CHOICE" =~ ^[Nn]$ ]]; then
         install_deps
     else
@@ -34,7 +34,7 @@ fi
 # 2. Quicklisp Installation
 if [ ! -d "$HOME/quicklisp" ] && [ ! -d "$HOME/.quicklisp" ]; then
     echo -e "${YELLOW}! Quicklisp not found.${NC}"
-    read -p "Install Quicklisp now? [Y/n]: " QL_CHOICE
+    read -p "Install Quicklisp now? [Y/n]: " QL_CHOICE < /dev/tty
     if [[ ! "$QL_CHOICE" =~ ^[Nn]$ ]]; then
         curl -O https://beta.quicklisp.org/quicklisp.lisp
         sbcl --non-interactive --load quicklisp.lisp \
@@ -53,22 +53,22 @@ echo -e "${GREEN}✓ Core tangled.${NC}"
 # 4. Environment Configuration
 if [ ! -f .env ]; then cp .env.example .env; fi
 
-read -p "What is your name? (default: User): " USER_NAME
+read -p "What is your name? (default: User): " USER_NAME < /dev/tty
 USER_NAME=${USER_NAME:-User}
 sed -i "s/MEMEX_USER=.*/MEMEX_USER=\"$USER_NAME\"/g" .env
 
-read -p "What shall we name your Assistant? (default: OpenCortex): " AGENT_NAME
+read -p "What shall we name your Assistant? (default: OpenCortex): " AGENT_NAME < /dev/tty
 AGENT_NAME=${AGENT_NAME:-OpenCortex}
 sed -i "s/MEMEX_ASSISTANT=.*/MEMEX_ASSISTANT=\"$AGENT_NAME\"/g" .env
 
 echo -e "\nSelect primary neural provider:"
 echo "1) Gemini (Free/Official)"; echo "2) OpenRouter"; echo "3) Anthropic"; echo "4) OpenAI"
-read -p "Choice [1-4]: " LLM_CHOICE
+read -p "Choice [1-4]: " LLM_CHOICE < /dev/tty
 case $LLM_CHOICE in
-    2) read -p "Enter OpenRouter Key: " INPUT; sed -i "s/OPENROUTER_API_KEY=.*/OPENROUTER_API_KEY=\"$INPUT\"/g" .env ;;
-    3) read -p "Enter Anthropic Key: " INPUT; sed -i "s/ANTHROPIC_API_KEY=.*/ANTHROPIC_API_KEY=\"$INPUT\"/g" .env ;;
-    4) read -p "Enter OpenAI Key: " INPUT; sed -i "s/OPENAI_API_KEY=.*/OPENAI_API_KEY=\"$INPUT\"/g" .env ;;
-    *) read -p "Enter Gemini Key: " INPUT; sed -i "s/GEMINI_API_KEY=.*/GEMINI_API_KEY=\"$INPUT\"/g" .env ;;
+    2) read -p "Enter OpenRouter Key: " INPUT < /dev/tty; sed -i "s/OPENROUTER_API_KEY=.*/OPENROUTER_API_KEY=\"$INPUT\"/g" .env ;;
+    3) read -p "Enter Anthropic Key: " INPUT < /dev/tty; sed -i "s/ANTHROPIC_API_KEY=.*/ANTHROPIC_API_KEY=\"$INPUT\"/g" .env ;;
+    4) read -p "Enter OpenAI Key: " INPUT < /dev/tty; sed -i "s/OPENAI_API_KEY=.*/OPENAI_API_KEY=\"$INPUT\"/g" .env ;;
+    *) read -p "Enter Gemini Key: " INPUT < /dev/tty; sed -i "s/GEMINI_API_KEY=.*/GEMINI_API_KEY=\"$INPUT\"/g" .env ;;
 esac
 
 # 5. Path Alignment
