@@ -118,13 +118,17 @@ prompt_user "Select provider (1:Gemini, 2:OpenRouter)" "1" "LLM_CHOICE"
 sed -i "s/MEMEX_USER=.*/MEMEX_USER=\"$USER_NAME\"/g" .env
 sed -i "s/MEMEX_ASSISTANT=.*/MEMEX_ASSISTANT=\"$AGENT_NAME\"/g" .env
 
-# Path Alignment
+# Final Path Alignment
 ROOT_DIR=$(pwd)
 sed -i "s|MEMEX_DIR=.*|MEMEX_DIR=\"$(dirname $ROOT_DIR)\"|g" .env
 sed -i "s|SKILLS_DIR=.*|SKILLS_DIR=\"$ROOT_DIR/skills\"|g" .env
 
+mkdir -p "$HOME/.local/bin"
+ln -sf "$ROOT_DIR/opencortex.sh" "$HOME/.local/bin/opencortex"
+echo -e "${GREEN}✓ Installed 'opencortex' command to ~/.local/bin${NC}"
+
 echo -e "\n${GREEN}==============================================${NC}"
 echo -e "${GREEN}    OpenCortex Installation Complete!        ${NC}"
 echo -e "${GREEN}==============================================${NC}"
-echo -e "To start: ./opencortex.sh"
+echo -e "To start: opencortex"
 #+end_src
