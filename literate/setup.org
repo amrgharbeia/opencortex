@@ -56,6 +56,7 @@ fi
 # ... (Local Mode)
 if [ -f "opencortex.asd" ] || [ -d "literate" ]; then
     if [ ! -f .env ]; then ./scripts/onboard-baremetal.sh; fi
+    export SKILLS_DIR="$(grep "^SKILLS_DIR=" .env | cut -d"\"" -f2)"
     echo -e "${BLUE}Starting OpenCortex via SBCL...${NC}"
     sbcl --non-interactive \
          --eval "(load \"~/quicklisp/setup.lisp\")" \
