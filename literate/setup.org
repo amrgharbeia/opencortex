@@ -4,118 +4,9 @@
 #+STARTUP: content
 
 * Overview: The Zero-to-One Experience
-The *Setup & Onboarding* process ensures that users can boot the ~opencortex~ Lisp Machine with zero friction. We follow the *Appliance Paradigm* for standard users (Docker-first) and provide a *Power User Path* (Baremetal) for those wanting deep native integration.
+The *Setup & Onboarding* process ensures that users can boot the ~opencortex~ Lisp Machine with zero friction.
 
-This file is a Literate Devops document. Tangling it generates the Docker configuration and the unified entrypoint script (~opencortex.sh~).
-
-* 1. The Appliance Paradigm (Docker First)
-The easiest way to run the agent is via Docker. This prevents the user from having to manually manage SBCL, Quicklisp, Python virtual environments, Playwright binaries, and Java (for Signal).
-
-** The Dockerfile
-The container wraps all messy OS dependencies and pre-caches the Lisp environment for rapid booting.
-
-#+begin_src dockerfile :tangle ../Dockerfile
-# OPENCORTEX v1.0 Production Environment
-FROM debian:bookworm-slim
-
-# Prevent interactive prompts during build
-ENV DEBIAN_FRONTEND=noninteractive
-
-# 1. Install System Dependencies
-# - sbcl: The Lisp Runtime
-# - curl/git/unzip: Standard tools for Quicklisp and binaries
-# - default-jre: Required by signal-cli
-# - python3/pip: Required for Playwright bridge
-# - socat: Required for stateful CLI interaction
-RUN apt-get update && apt-get install -y \
-    sbcl \
-    curl \
-    git \
-    unzip \
-    default-jre \
-    libsqlite3-0 \
-    python3 \
-    python3-pip \
-    python3-venv \
-    emacs-nox \
-    socat \
-    && rm -rf /var/lib/apt/lists/*
-
-# 2. Setup Playwright (High-Fidelity Browsing)
-RUN python3 -m venv /opt/venv
-ENV PATH="/opt/venv/bin:$PATH"
-RUN pip install playwright \
-    && playwright install --with-deps chromium
-
-# 3. Install signal-cli (v0.14.0)
-ENV SIGNAL_CLI_VERSION=0.14.0
-RUN curl -L https://github.com/AsamK/signal-cli/releases/download/v${SIGNAL_CLI_VERSION}/signal-cli-${SIGNAL_CLI_VERSION}-Linux.tar.gz | tar xz -C /opt \
-    && ln -s /opt/signal-cli-${SIGNAL_CLI_VERSION}/bin/signal-cli /usr/local/bin/signal-cli
-
-# 4. Install Quicklisp & Pin Distribution
-# Pinned to 2026-04-01 for bit-rot resistance.
-WORKDIR /root
-RUN curl -O https://beta.quicklisp.org/quicklisp.lisp \
-    && sbcl --non-interactive \
-        --load quicklisp.lisp \
-        --eval '(quicklisp-quickstart:install)' \
-        --eval '(ql-dist:install-dist "http://beta.quicklisp.org/dist/quicklisp/2026-04-01/distinfo.txt" :prompt nil :replace t)'
-
-# 5. Configure SBCL to load Quicklisp on startup
-RUN echo '(let ((quicklisp-init (merge-pathnames "quicklisp/setup.lisp" (user-homedir-pathname)))) (when (probe-file quicklisp-init) (load quicklisp-init)))' > /root/.sbclrc
-
-# 6. Setup Application Directory
-WORKDIR /app
-COPY . /app/projects/opencortex
-
-# 7. Pre-cache Lisp Dependencies
-RUN sbcl --non-interactive \
-    --eval '(push #p"/app/projects/opencortex/" asdf:*central-registry*)' \
-    --eval '(ql:quickload :opencortex)'
-
-# 8. Environment & Volumes
-# The host's memex root should be mounted to /memex
-ENV MEMEX_DIR=/memex
-VOLUME ["/memex"]
-
-# Default Ports
-EXPOSE 9105 8080
-
-# Entrypoint
-CMD ["sbcl", "--non-interactive", \
-     "--eval", "(push #p\"/app/projects/opencortex/\" asdf:*central-registry*)", \
-     "--eval", "(ql:quickload :opencortex)", \
-     "--eval", "(opencortex:main)"]
-#+end_src
-
-** Docker Compose
-#+begin_src yaml :tangle ../docker-compose.yml
-services:
-  opencortex:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    container_name: opencortex
-    env_file: .env
-    volumes:
-      # Mount the entire memex directory (2 levels up from projects/opencortex)
-      - ../..:/memex
-      # Ensure signal-cli state is preserved
-      - signal-state:/root/.local/share/signal-cli
-    ports:
-      - "${ORG_AGENT_DAEMON_PORT:-9105}:9105"
-      - "${ORG_AGENT_WEB_PORT:-8080}:8080"
-    restart: unless-stopped
-
-volumes:
-  signal-state:
-#+end_src
-
-* 2. The Unified Entrypoint (opencortex.sh)
-We combine the installation script, the daemon launcher, and the CLI chat client into a single, elegant bash script. 
-
-If the agent is running, it connects to the chat. If it's installed but offline, it boots the daemon. If it's not installed at all, it walks the user through the onboarding wizard.
-
+* 1. The Unified Entrypoint (opencortex.sh)
 #+begin_src bash :tangle ../opencortex.sh :shebang "#!/bin/bash"
 set -e
 
@@ -130,241 +21,110 @@ NC='\033[0m'
 
 command_exists() { command -v "$1" >/dev/null 2>&1; }
 
-update_opencortex() {
-    echo -e "${BLUE}Updating OpenCortex...${NC}"
+# --- Bootstrap Mode ---
+bootstrap_opencortex() {
+    echo -e "${BLUE}=== OpenCortex: Zero-to-One Bootstrapper ===${NC}"
     if [ -d ".git" ]; then
-        echo "Pulling latest changes from repository..."
-        git pull origin main
+        return
     fi
-    if [ -f .env ]; then
-        SKILLS_DIR=$(grep "^SKILLS_DIR=" .env | cut -d"\"" -f2)
-        SKILLS_DIR=${SKILLS_DIR:-$(pwd)/notes}
-        echo "Synchronizing core skills to $SKILLS_DIR..."
-        mkdir -p "$SKILLS_DIR"
-        cp -n skills/*.org "$SKILLS_DIR/" 2>/dev/null || true
-    fi
-    if command_exists docker-compose && [ -f "docker-compose.yml" ]; then
-        echo "Rebuilding Docker image..."
-        docker-compose up -d --build
-    fi
-    echo -e "${GREEN}✓ Update complete.${NC}"
-    exit 0
-}
 
-if [[ "$1" == "--update" ]]; then
-    update_opencortex
-fi
-
-# 1. Try to drop straight into the CLI chat
-if command_exists socat && socat - TCP:$HOST:$PORT,connect-timeout=1 2>/dev/null; then
-    echo -e "${BLUE}Connected to autonomous brain at $HOST:$PORT...${NC}"
-    # Use socat with READLINE for history and arrow-key support.
-    # It establishes a persistent bidirectional connection.
-    socat READLINE,history=$HOME/.org_agent_history TCP:$HOST:$PORT
-    exit 0
-elif command_exists nc && nc -z $HOST $PORT 2>/dev/null; then
-    echo -e "${YELLOW}socat not found. Falling back to nc (no line-editing).${NC}"
-    echo -e "${BLUE}Connected to autonomous brain at $HOST:$PORT...${NC}"
-    while true; do
-        read -p "User: " MESSAGE
-        if [ -z "$MESSAGE" ]; then continue; fi
-        echo "$MESSAGE" | nc -N $HOST $PORT
-    done
-    exit 0
-fi
-
-# 2. Check if we have an existing installation we can boot
-if [ -f "$HOME/.opencortex-path" ]; then
-    INSTALL_DIR=$(cat "$HOME/.opencortex-path")
-    if [ -d "$INSTALL_DIR" ] && [ -f "$INSTALL_DIR/docker-compose.yml" ]; then
-        echo -e "${YELLOW}Daemon is offline. Booting from $INSTALL_DIR...${NC}"
-        cd "$INSTALL_DIR"
-        docker-compose up -d
-        echo "Waiting for brain to initialize..."
-        sleep 5
-        # Re-run to enter chat
-        exec "$0" "$@"
-    fi
-fi
-
-# 3. If we are running this inside a cloned repo, configure and boot
-if [ -f "docker-compose.yml" ] && [ -d "literate" ]; then
-    echo -e "${YELLOW}Local repository detected. Ensuring configuration...${NC}"
-    INSTALL_DIR=$(pwd)
-    echo "$INSTALL_DIR" > "$HOME/.opencortex-path"
-    
-    if [ ! -f .env ]; then
-        cp .env.example .env
-        read -p "What is your name? (default: User): " USER_NAME
-        USER_NAME=${USER_NAME:-User}
-        sed -i "s/MEMEX_USER=.*/MEMEX_USER=\"$USER_NAME\"/g" .env
-
-        read -p "What shall we name your Assistant? (default: Agent): " AGENT_NAME
-        AGENT_NAME=${AGENT_NAME:-Agent}
-        sed -i "s/MEMEX_ASSISTANT=.*/MEMEX_ASSISTANT=\"$AGENT_NAME\"/g" .env
-
-        echo -e "\nSelect your primary neural provider:"
-        echo "1) Google Gemini (Free Tier / Official)"
-        echo "2) OpenRouter (Unified / Paid)"
-        echo "3) Anthropic (Claude / API Key)"
-        echo "4) OpenAI (GPT / API Key)"
-        read -p "Choice [1-4]: " LLM_CHOICE
-
-        case $LLM_CHOICE in
-            2) read -p "Enter OpenRouter API Key: " INPUT; sed -i "s/OPENROUTER_API_KEY=.*/OPENROUTER_API_KEY=\"$INPUT\"/g" .env ;;
-            3) read -p "Enter Anthropic API Key: " INPUT; sed -i "s/ANTHROPIC_API_KEY=.*/ANTHROPIC_API_KEY=\"$INPUT\"/g" .env ;;
-            4) read -p "Enter OpenAI API Key: " INPUT; sed -i "s/OPENAI_API_KEY=.*/OPENAI_API_KEY=\"$INPUT\"/g" .env ;;
-            *) read -p "Enter Gemini API Key: " INPUT; sed -i "s/GEMINI_API_KEY=.*/GEMINI_API_KEY=\"$INPUT\"/g" .env ;;
-        esac
-
-        # Seed Core Skills
-        echo -e "\n${BLUE}Seeding Skills...${NC}"
-        MEMEX_TARGET=$(dirname $(dirname "$INSTALL_DIR"))
-        SKILLS_DIR=$(grep "^SKILLS_DIR=" .env | cut -d"\"" -f2) ; SKILLS_DIR=${SKILLS_DIR:-$MEMEX_TARGET/notes}
-        mkdir -p "$SKILLS_DIR"
-        cp -n skills/*.org "$SKILLS_DIR/" 2>/dev/null || true
-        echo -e "${GREEN}✓ Core skills seeded to $SKILLS_DIR.${NC}"
+    TARGET_DIR="opencortex"
+    if [ ! -d "$TARGET_DIR" ]; then
+        echo -e "${BLUE}Cloning repository into $TARGET_DIR...${NC}"
+        git clone http://10.10.10.201:3001/amr/opencortex.git "$TARGET_DIR"
     fi
     
-    docker-compose up -d --build
-    echo "Waiting for brain to initialize..."
-    sleep 5
-    exec "$0" "$@"
-fi
-
-# 4. Zero-to-One Onboarding (No installation found)
-echo -e "${BLUE}==================================================${NC}"
-echo -e "${BLUE} opencortex: Autonomous Intelligence Onboarding     ${NC}"
-echo -e "${BLUE}==================================================${NC}"
-
-# --- OS & Docker Detection ---
-echo -e "\n${BLUE}[1/2] Verifying Environment...${NC}"
-
-install_docker() {
-    echo -e "${YELLOW}Docker is required to run opencortex natively without messy dependencies.${NC}"
-    read -p "Would you like me to attempt to install Docker? [Y/n]: " install_choice
-    install_choice=${install_choice:-Y}
-    if [[ "$install_choice" =~ ^[Yy]$ ]]; then
-        if [[ "$OSTYPE" == "linux-gnu"* ]]; then
-            if command_exists apt-get; then
-                echo "Installing Docker via apt..."
-                sudo apt-get update
-                sudo apt-get install -y docker.io docker-compose
-            elif command_exists dnf; then
-                echo "Installing Docker via dnf..."
-                sudo dnf install -y docker docker-compose
-                sudo systemctl start docker
-                sudo systemctl enable docker
-            else
-                echo -e "${RED}Unsupported package manager. Please install Docker manually.${NC}"
-                exit 1
-            fi
-        elif [[ "$OSTYPE" == "darwin"* ]]; then
-            if command_exists brew; then
-                echo "Installing Docker Desktop via Homebrew..."
-                brew install --cask docker
-                echo -e "${YELLOW}Please start Docker Desktop from your Applications folder, then re-run this script.${NC}"
-                exit 0
-            else
-                echo -e "${RED}Homebrew not found. Please install Docker Desktop for Mac manually.${NC}"
-                exit 1
-            fi
-        else
-            echo -e "${RED}Unsupported OS for automated Docker installation. Please install manually.${NC}"
-            exit 1
-        fi
+    cd "$TARGET_DIR"
+    git submodule update --init --recursive
+    
+    echo -e "${GREEN}✓ Repository prepared.${NC}"
+    
+    if [ -t 0 ]; then
+        ./scripts/onboard-baremetal.sh
     else
-        echo -e "${RED}Docker is required. Aborting.${NC}"
-        exit 1
+        ./scripts/onboard-baremetal.sh < /dev/tty 2>/dev/null || ./scripts/onboard-baremetal.sh < /dev/null
     fi
+    
+    echo -e "${GREEN}✓ Setup phase complete.${NC}"
+    exit 0
 }
 
-if ! command_exists docker || ! command_exists docker-compose; then
-    install_docker
-else
-    echo -e "${GREEN}✓ Docker and docker-compose detected.${NC}"
+if [ ! -d ".git" ]; then
+    bootstrap_opencortex
 fi
 
-# --- Repository Setup ---
-echo -e "\n${BLUE}[2/2] Downloading Kernel...${NC}"
-MEMEX_DEFAULT="$HOME/memex"
-read -p "Where is your Memex located? (default: $MEMEX_DEFAULT): " MEMEX_TARGET
-MEMEX_TARGET=${MEMEX_TARGET:-$MEMEX_DEFAULT}
-
-mkdir -p "$MEMEX_TARGET/projects"
-cd "$MEMEX_TARGET/projects"
-
-if [ ! -d "opencortex" ]; then
-    echo "Cloning opencortex..."
-    git clone https://github.com/gharbeia/opencortex.git
-    cd opencortex
-else
-    echo -e "${GREEN}✓ Repository already exists.${NC}"
-    cd opencortex
-    git pull origin main
+# ... (Local Mode)
+if [ -f "opencortex.asd" ] || [ -d "literate" ]; then
+    if [ ! -f .env ]; then ./scripts/onboard-baremetal.sh; fi
+    echo -e "${BLUE}Starting OpenCortex via SBCL...${NC}"
+    sbcl --non-interactive \
+         --eval "(load \"~/quicklisp/setup.lisp\")" \
+         --eval "(ql:quickload :opencortex)" \
+         --eval "(opencortex:main)"
 fi
-
-mkdir -p "$HOME/.local/bin"
-ln -sf "$(pwd)/opencortex.sh" "$HOME/.local/bin/opencortex"
-echo -e "${GREEN}✓ Installed 'opencortex' command to ~/.local/bin${NC}"
-
-# Ensure proper ownership if sudo was used for apt
-if [ -n "$SUDO_USER" ]; then
-    chown -R "$SUDO_USER" "$MEMEX_TARGET/projects/opencortex"
-fi
-
-# Execute the newly cloned script to run configuration (Step 3)
-exec ./opencortex.sh
 #+end_src
 
-* 3. The Power-User Path (Baremetal Onboarding)
-For users who want to run the Lisp Machine natively on their host OS (typically Emacs users who want the agent to directly manipulate their local =.emacs.d=), we provide the baremetal setup script. This script verifies the host has SBCL and Quicklisp installed, and configures the paths natively.
-
+* 2. The Baremetal Path (onboard-baremetal.sh)
 #+begin_src bash :tangle ../scripts/onboard-baremetal.sh :shebang "#!/bin/bash"
-set -e
-RED='\033[0;31m'; GREEN='\033[0;32m'; BLUE='\033[0;34m'; NC='\033[0m'
+# OpenCortex Final-Mile Installer (Bulletproof Edition)
+RED='\033[0;31m'; GREEN='\033[0;32m'; BLUE='\033[0;34m'; YELLOW='\033[0;33m'; NC='\033[0m'
 
-echo -e "${BLUE}=== opencortex: Baremetal Power-User Setup ===${NC}"
+echo -e "${BLUE}=== OpenCortex: Baremetal Power-User Setup ===${NC}"
 
+prompt_user() {
+    local prompt="$1"
+    local default="$2"
+    local var_name="$3"
+    local result=""
+    echo -n -e "${YELLOW}$prompt (default: $default): ${NC}" >&2
+    if read -t 5 result; then :; else result="$default"; echo -e "${BLUE} [Auto-Selected: $default]${NC}" >&2; fi
+    val=${result:-$default}
+    eval "$var_name=\"$val\""
+}
+
+# 1. Dependencies
 if ! command -v sbcl >/dev/null 2>&1; then
-    echo -e "${RED}✗ SBCL not found. Please install it first.${NC}"
-    exit 1
+    echo -e "${BLUE}Installing dependencies...${NC}"
+    sudo apt-get update && sudo apt-get install -y sbcl emacs git curl socat || true
 fi
 
-if [ ! -d "$HOME/quicklisp" ] && [ ! -d "$HOME/.quicklisp" ]; then
-    echo -e "${RED}✗ Quicklisp not found. Please install Quicklisp.${NC}"
-    exit 1
+# 2. Quicklisp
+if [ ! -d "$HOME/quicklisp" ]; then
+    curl -O https://beta.quicklisp.org/quicklisp.lisp
+    sbcl --non-interactive --load quicklisp.lisp --eval "(quicklisp-quickstart:install)" --eval "(ql-util:without-prompting (ql:add-to-init-file))"
+    rm quicklisp.lisp
 fi
 
+# 3. Tangling
+echo -e "${BLUE}Tangling source files...${NC}"
+mkdir -p src
+for f in literate/*.org; do
+    echo "  - Tangling $f"
+    emacs --batch --eval "(require 'org)" --eval "(org-babel-tangle-file \"$f\")" >/dev/null 2>&1
+done
+
+if [ -f "src/package.lisp" ]; then
+    echo -e "${GREEN}✓ Core tangled successfully.${NC}"
+else
+    echo -e "${RED}✗ Tangle failed!${NC}"
+fi
+
+# 4. Config
 if [ ! -f .env ]; then cp .env.example .env; fi
+prompt_user "What is your name?" "User" "USER_NAME"
+prompt_user "What shall we name your Assistant?" "OpenCortex" "AGENT_NAME"
+prompt_user "Select provider (1:Gemini, 2:OpenRouter)" "1" "LLM_CHOICE"
 
-read -p "What is your name? (default: User): " USER_NAME
-USER_NAME=${USER_NAME:-User}
 sed -i "s/MEMEX_USER=.*/MEMEX_USER=\"$USER_NAME\"/g" .env
-
-read -p "What shall we name your Assistant? (default: Agent): " AGENT_NAME
-AGENT_NAME=${AGENT_NAME:-Agent}
 sed -i "s/MEMEX_ASSISTANT=.*/MEMEX_ASSISTANT=\"$AGENT_NAME\"/g" .env
 
-echo "Select primary neural provider:"
-echo "1) Gemini"; echo "2) OpenRouter"; echo "3) Anthropic"; echo "4) OpenAI"
-read -p "Choice [1-4]: " LLM_CHOICE
-case $LLM_CHOICE in
-    2) read -p "Enter OpenRouter Key: " INPUT; sed -i "s/OPENROUTER_API_KEY=.*/OPENROUTER_API_KEY=\"$INPUT\"/g" .env ;;
-    3) read -p "Enter Anthropic Key: " INPUT; sed -i "s/ANTHROPIC_API_KEY=.*/ANTHROPIC_API_KEY=\"$INPUT\"/g" .env ;;
-    4) read -p "Enter OpenAI Key: " INPUT; sed -i "s/OPENAI_API_KEY=.*/OPENAI_API_KEY=\"$INPUT\"/g" .env ;;
-    *) read -p "Enter Gemini Key: " INPUT; sed -i "s/GEMINI_API_KEY=.*/GEMINI_API_KEY=\"$INPUT\"/g" .env ;;
-esac
+# Path Alignment
+ROOT_DIR=$(pwd)
+sed -i "s|MEMEX_DIR=.*|MEMEX_DIR=\"$(dirname $ROOT_DIR)\"|g" .env
+sed -i "s|SKILLS_DIR=.*|SKILLS_DIR=\"$ROOT_DIR/skills\"|g" .env
 
-# Update baremetal paths based on current directory structure
-PROJECT_ROOT=$(pwd)
-PARENT_DIR=$(dirname "$PROJECT_ROOT")
-sed -i "s|MEMEX_DIR=.*|MEMEX_DIR=\"$PARENT_DIR\"|g" .env
-sed -i "s|ZETTELKASTEN_DIR=.*|ZETTELKASTEN_DIR=\"$PARENT_DIR/notes\"|g" .env
-sed -i "s|SKILLS_DIR=.*|SKILLS_DIR=\"$PARENT_DIR/notes\"|g" .env
-
-mkdir -p "$PARENT_DIR/notes"
-cp -n skills/*.org "$PARENT_DIR/notes/" 2>/dev/null || true
-
-echo -e "${GREEN}Baremetal setup complete. Run 'make run' to start.${NC}"
+echo -e "\n${GREEN}==============================================${NC}"
+echo -e "${GREEN}    OpenCortex Installation Complete!        ${NC}"
+echo -e "${GREEN}==============================================${NC}"
+echo -e "To start: ./opencortex.sh"
 #+end_src

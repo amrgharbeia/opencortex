@@ -30,8 +30,6 @@ bootstrap_opencortex() {
     
     echo -e "${GREEN}✓ Repository prepared.${NC}"
     
-    # Run the setup script. We don't use exec here so we can stay in control.
-    # We try to give it a TTY, but fallback to /dev/null if that causes a hang.
     if [ -t 0 ]; then
         ./scripts/onboard-baremetal.sh
     else
@@ -46,8 +44,12 @@ if [ ! -d ".git" ]; then
     bootstrap_opencortex
 fi
 
-# ... (rest of local mode)
+# ... (Local Mode)
 if [ -f "opencortex.asd" ] || [ -d "literate" ]; then
     if [ ! -f .env ]; then ./scripts/onboard-baremetal.sh; fi
-    sbcl --non-interactive --eval "(load \"~/quicklisp/setup.lisp\")" --eval "(ql:quickload :opencortex)" --eval "(opencortex:main)"
+    echo -e "${BLUE}Starting OpenCortex via SBCL...${NC}"
+    sbcl --non-interactive \
+         --eval "(load \"~/quicklisp/setup.lisp\")" \
+         --eval "(ql:quickload :opencortex)" \
+         --eval "(opencortex:main)"
 fi
