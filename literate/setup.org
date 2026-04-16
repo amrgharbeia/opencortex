@@ -50,12 +50,17 @@ fi
 # 2. Launch
 if [ -f "opencortex.asd" ]; then
     if [ -f .env ]; then
-        export \$(grep -v '^#' .env | xargs)
+        # Robustly export variables without triggering shell syntax errors
+        while IFS= read -r line || [[ -n "$line" ]]; do
+            if [[ ! "$line" =~ ^# ]] && [[ "$line" =~ = ]]; then
+                export "$line"
+            fi
+        done < .env
     fi
     echo -e "${BLUE}Starting OpenCortex Brain...${NC}"
     sbcl --non-interactive \
          --eval "(load \"~/quicklisp/setup.lisp\")" \
-         --eval "(push \"\$(pwd)/\" asdf:*central-registry*)" \
+         --eval "(push \"$(pwd)/\" asdf:*central-registry*)" \
          --eval "(ql:quickload :opencortex)" \
          --eval "(opencortex:main)"
 fi
@@ -73,7 +78,7 @@ prompt_user() {
     local var_name="$3"
     local result=""
     echo -n -e "${YELLOW}$prompt (default: $default): ${NC}" >&2
-    if read -t 5 result; then :; else result="$default"; echo -e "${BLUE} [Auto-Selected: $default]${NC}" >&2; fi
+    if read -t 5 result; then :; else result="$default"; echo -e "${BLUE} [Auto-Selected: $default]${NC}" >&2 fi
     val=${result:-$default}
     eval "$var_name=\"$val\""
 }

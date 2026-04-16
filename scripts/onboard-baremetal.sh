@@ -9,7 +9,7 @@ prompt_user() {
     local var_name="$3"
     local result=""
     echo -n -e "${YELLOW}$prompt (default: $default): ${NC}" >&2
-    if read -t 5 result; then :; else result="$default"; echo -e "${BLUE} [Auto-Selected: $default]${NC}" >&2; fi
+    if read -t 5 result; then :; else result="$default"; echo -e "${BLUE} [Auto-Selected: $default]${NC}" >&2 fi
     val=${result:-$default}
     eval "$var_name=\"$val\""
 }
