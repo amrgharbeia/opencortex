@@ -48,13 +48,7 @@ if command_exists socat && socat - TCP:$HOST:$PORT,connect-timeout=1 2>/dev/null
 fi
 
 # 2. Launch
-if [ -f "opencortex.asd" ]; then
-    if [ -f .env ]; then
-        # Robustly export variables without triggering shell syntax errors
-        while IFS= read -r line || [[ -n "$line" ]]; do
-            if [[ ! "$line" =~ ^# ]] && [[ "$line" =~ = ]]; then
-                export "$line"
-            fi
+if [ -f "opencortex.asd" ]; then echo -e "${YELLOW}Brain is offline. Starting it now...${NC}"; $0 --boot > brain.log 2>&1 & sleep 10; exec $0 "$@"; fi
         done < .env
     fi
     echo -e "${BLUE}Starting OpenCortex Brain...${NC}"
