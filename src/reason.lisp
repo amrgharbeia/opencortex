@@ -58,14 +58,16 @@
     (maphash (lambda (name skill) (declare (ignore name)) (when (skill-deterministic-fn skill) (push skill skills))) *skills-registry*)
     (setf skills (sort skills #'> :key #'skill-priority))
     
-    ;; 2. Execute gates sequentially
+    ;; 2. Execute gates sequentially if their trigger allows
     (dolist (skill skills)
-      (let ((gate (skill-deterministic-fn skill)))
-        (setf current-action (funcall gate current-action context))
-        ;; If any gate returns a LOG or EVENT, it has intercepted the action.
-        (when (and (listp current-action) (member (getf current-action :type) '(:LOG :EVENT)))
-          (harness-log "DETERMINISTIC: Intercepted by skill '~a'" (skill-name skill))
-          (return-from deterministic-verify current-action))))
+      (let ((trigger (skill-trigger-fn skill))
+            (gate (skill-deterministic-fn skill)))
+        (when (or (null trigger) (ignore-errors (funcall trigger context)))
+          (setf current-action (funcall gate current-action context))
+          ;; If any gate returns a LOG or EVENT, it has intercepted the action.
+          (when (and (listp current-action) (member (getf current-action :type) '(:LOG :EVENT :log :event)))
+            (harness-log "DETERMINISTIC: Intercepted by skill '~a'" (skill-name skill))
+            (return-from deterministic-verify current-action)))))
     current-action))
 
 (defun reason-gate (signal)

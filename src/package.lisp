@@ -17,6 +17,7 @@
    #:ingest-ast
    #:lookup-object
    #:list-objects-by-type
+   #:org-id-new
    #:*memory*
    #:*history-store*
    #:org-object
@@ -51,7 +52,9 @@
    #:perceive-gate
    #:probabilistic-gate
    #:consensus-gate
-   #:decide-gate
+   #:act-gate
+   #:reason-gate
+   #:perceive-gate
    #:dispatch-gate
    #:inject-stimulus
    #:initialize-actuators
@@ -96,9 +99,13 @@
    #:distill-prompt
    #:*provider-cascade*
    
+   ;; --- Security Vault ---
+   #:vault-get-secret
+   #:vault-set-secret
+   
    ;; --- Deterministic Logic ---
    #:list-objects-with-attribute
-   #:decide
+   #:deterministic-verify
    
    ;; --- AST Helpers ---
    #:find-headline-missing-id))

@@ -148,6 +148,10 @@ Restores the state of the Memex from one of the previous snapshots.
 Basic functions for retrieving objects by ID or type.
 
 #+begin_src lisp :tangle ../src/memory.lisp
+(defun org-id-new ()
+  "Generates a new UUID string for Org-mode identification."
+  (string-downcase (format nil "~a" (uuid:make-v4-uuid))))
+
 (defun lookup-object (id) 
   "Retrieves an object from the store by its unique ID."
   (gethash id *memory*))

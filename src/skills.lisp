@@ -205,30 +205,30 @@
                                    '("org-skill-policy" "org-skill-bouncer"))))
         (dolist (req mandatory-skills)
           (unless (member req sorted-files :key #'pathname-name :test #'string-equal)
-            (error "BOOT FAILURE: Mandatory skill '~a' not found in skills directory." req))))
+            (error "BOOT FAILURE: Mandatory skill '~a' not found in skills directory." req)))
       
-      (harness-log "==================================================")
-      (harness-log " LOADER: Initializing ~a skills..." (length sorted-files))
-      
-      (dolist (file sorted-files)
-        (let* ((skill-name (pathname-name file))
-               (is-mandatory (member skill-name mandatory-skills :test #'string-equal)))
-          (harness-log " LOADER: Loading ~a..." skill-name)
-          (let ((status (load-skill-with-timeout file 5)))
-            (unless (eq status :success)
-              (if is-mandatory
-                  (error "BOOT FAILURE: Mandatory skill '~a' failed to load (Status: ~a)." skill-name status)
-                  (harness-log "LOADER WARNING: Skill '~a' failed to load." skill-name))))))
-      
-      ;; Final Summary
-      (let ((ready 0) (failed 0))
-        (maphash (lambda (k v) 
-                   (declare (ignore k))
-                   (if (eq (skill-entry-status v) :ready) (incf ready) (incf failed)))
-                 *skill-catalog*)
-        (harness-log " LOADER: Boot Complete. [Ready: ~a] [Failed: ~a]" ready failed)
         (harness-log "==================================================")
-        (values ready failed)))))
+        (harness-log " LOADER: Initializing ~a skills..." (length sorted-files))
+      
+        (dolist (file sorted-files)
+          (let* ((skill-name (pathname-name file))
+                 (is-mandatory (member skill-name mandatory-skills :test #'string-equal)))
+            (harness-log " LOADER: Loading ~a..." skill-name)
+            (let ((status (load-skill-with-timeout file 5)))
+              (unless (eq status :success)
+                (if is-mandatory
+                    (error "BOOT FAILURE: Mandatory skill '~a' failed to load (Status: ~a)." skill-name status)
+                    (harness-log "LOADER WARNING: Skill '~a' failed to load." skill-name))))))
+      
+        ;; Final Summary
+        (let ((ready 0) (failed 0))
+          (maphash (lambda (k v) 
+                     (declare (ignore k))
+                     (if (eq (skill-entry-status v) :ready) (incf ready) (incf failed)))
+                   *skill-catalog*)
+          (harness-log " LOADER: Boot Complete. [Ready: ~a] [Failed: ~a]" ready failed)
+          (harness-log "==================================================")
+          (values ready failed))))))
 
 (defun generate-tool-belt-prompt ()
   "Aggregates all registered cognitive tools into a descriptive prompt."

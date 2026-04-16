@@ -4,7 +4,7 @@
   :version "0.1.0"
   :license "AGPLv3"
   :description "The Probabilistic-Deterministic Lisp Machine Harness"
-  :depends-on (:usocket ::bordeaux-threads :dexador :uiop :cl-dotenv :cl-ppcre :hunchentoot :ironclad :str :cl-json)
+  :depends-on (:usocket :bordeaux-threads :dexador :uiop :cl-dotenv :cl-ppcre :hunchentoot :ironclad :str :cl-json :uuid)
   :serial t
   :components ((:file "src/package")
                (:file "src/skills")
@@ -14,7 +14,9 @@
                (:file "src/memory")
                (:file "src/context")
                (:file "src/probabilistic")
-               (:file "src/deterministic")
+               (:file "src/perceive")
+               (:file "src/reason")
+               (:file "src/act")
                (:file "src/loop"))
   :build-operation "program-op"
   :build-pathname "opencortex-server"
@@ -24,6 +26,7 @@
   :depends-on (:opencortex :fiveam)
   :components ((:file "tests/communication-tests")
                (:file "tests/pipeline-tests")
+               (:file "tests/act-tests")
                (:file "tests/boot-sequence-tests")
                (:file "tests/memory-tests")
                (:file "tests/immune-system-tests"))

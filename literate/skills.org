@@ -11,7 +11,18 @@ A static, hardcoded architecture is inherently fragile. To build a autonomous ag
 Skills unify the **"Why"** (Literate Org documentation) and the **"How"** (Functional Lisp implementation). This allows the harness to "learn" new behaviors without a full system restart, enabling a continuous evolutionary loop where the agent can eventually inspect and improve its own code.
 
 *** The True Microkernel (Decoupled Core Skills)
-Historically, "core" skills (like State Persistence or Gateways) were statically compiled into the harness for performance. We have fundamentally decoupled this. Now, *all* behavioral skills are pure user-space dynamic modules. They do not tangle to `src/` and are not listed in `opencortex.asd`. The harness simply boots, scans the `skills/` directory, and evaluates the code inside a jailed package. If a user wishes to swap the IPFS persistence skill for an AWS S3 one, they simply swap the `.org` file; no kernel recompilation is required.
+Historically, "core" skills (like State Persistence or Gateways) were statically compiled into the harness for performance. We have fundamentally decoupled this. Now, *all* behavioral skills are pure user-space dynamic modules. 
+
+**** MANDATE: Dynamic Loading (No Tangling)
+Skills are defined as single-file Literate Org notes. Unlike the core harness, **Skills MUST NOT use :tangle headers.** 
+
+Instead of being compiled into static source files, skills are:
+1. **Discovered:** The harness scans the `skills/` directory for `.org` files.
+2. **Parsed:** The harness extracts Lisp code blocks directly from the Org AST.
+3. **Jailed:** Each skill is evaluated inside its own temporary, isolated package namespace.
+4. **Hot-Loaded:** Skills can be added, modified, or removed at runtime without restarting the Lisp image.
+
+This ensures the agent can safely read, write, and repair its own capabilities without breaking the physical file structure. If a user wishes to swap the IPFS persistence skill for an AWS S3 one, they simply swap the `.org` file; no kernel recompilation is required.
 
 *** Dormant Verification (Tests)
 Because skills are no longer statically compiled into the core `opencortex` ASDF system, their associated `FiveAM` test blocks are currently dormant during a standard static build. The tests still exist within the literate `.org` files as verifiable documentation, but executing them requires either dynamic evaluation at runtime or a dedicated test-loader skill.
@@ -322,30 +333,30 @@ The `initialize-all-skills` function is the unified orchestrator for the system 
                                    '("org-skill-policy" "org-skill-bouncer"))))
         (dolist (req mandatory-skills)
           (unless (member req sorted-files :key #'pathname-name :test #'string-equal)
-            (error "BOOT FAILURE: Mandatory skill '~a' not found in skills directory." req))))
+            (error "BOOT FAILURE: Mandatory skill '~a' not found in skills directory." req)))
       
-      (harness-log "==================================================")
-      (harness-log " LOADER: Initializing ~a skills..." (length sorted-files))
-      
-      (dolist (file sorted-files)
-        (let* ((skill-name (pathname-name file))
-               (is-mandatory (member skill-name mandatory-skills :test #'string-equal)))
-          (harness-log " LOADER: Loading ~a..." skill-name)
-          (let ((status (load-skill-with-timeout file 5)))
-            (unless (eq status :success)
-              (if is-mandatory
-                  (error "BOOT FAILURE: Mandatory skill '~a' failed to load (Status: ~a)." skill-name status)
-                  (harness-log "LOADER WARNING: Skill '~a' failed to load." skill-name))))))
-      
-      ;; Final Summary
-      (let ((ready 0) (failed 0))
-        (maphash (lambda (k v) 
-                   (declare (ignore k))
-                   (if (eq (skill-entry-status v) :ready) (incf ready) (incf failed)))
-                 *skill-catalog*)
-        (harness-log " LOADER: Boot Complete. [Ready: ~a] [Failed: ~a]" ready failed)
         (harness-log "==================================================")
-        (values ready failed)))))
+        (harness-log " LOADER: Initializing ~a skills..." (length sorted-files))
+      
+        (dolist (file sorted-files)
+          (let* ((skill-name (pathname-name file))
+                 (is-mandatory (member skill-name mandatory-skills :test #'string-equal)))
+            (harness-log " LOADER: Loading ~a..." skill-name)
+            (let ((status (load-skill-with-timeout file 5)))
+              (unless (eq status :success)
+                (if is-mandatory
+                    (error "BOOT FAILURE: Mandatory skill '~a' failed to load (Status: ~a)." skill-name status)
+                    (harness-log "LOADER WARNING: Skill '~a' failed to load." skill-name))))))
+      
+        ;; Final Summary
+        (let ((ready 0) (failed 0))
+          (maphash (lambda (k v) 
+                     (declare (ignore k))
+                     (if (eq (skill-entry-status v) :ready) (incf ready) (incf failed)))
+                   *skill-catalog*)
+          (harness-log " LOADER: Boot Complete. [Ready: ~a] [Failed: ~a]" ready failed)
+          (harness-log "==================================================")
+          (values ready failed))))))
 #+end_src
 
 ** Toolbelt Prompt Generation (generate-tool-belt-prompt)

@@ -79,6 +79,10 @@
                (harness-log "MEMORY - Memory rolled back to snapshot ~a" index))
         (harness-log "MEMORY ERROR - Snapshot ~a not found." index))))
 
+(defun org-id-new ()
+  "Generates a new UUID string for Org-mode identification."
+  (string-downcase (format nil "~a" (uuid:make-v4-uuid))))
+
 (defun lookup-object (id) 
   "Retrieves an object from the store by its unique ID."
   (gethash id *memory*))

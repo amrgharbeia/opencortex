@@ -68,15 +68,18 @@
          (type (getf signal :type))
          (feedback nil))
     
-    ;; 1. Last-Mile Safety Check (The Bouncer)
+    ;; 1. Last-Mile Safety Check (The Bouncer & Deterministic Gates)
     (when approved
-      (let ((verified (decide approved signal)))
-        (if (and (listp verified) (member (getf verified :type) '(:LOG :EVENT)))
+      (let ((verified (deterministic-verify approved signal)))
+        (if (and (listp verified) (member (getf verified :type) '(:LOG :EVENT :log :event)))
             (progn
               (harness-log "ACT BLOCKED: Action failed last-mile deterministic check.")
+              (setf (getf signal :approved-action) nil)
               (setf approved nil)
               (setf feedback verified))
-            (setf approved verified))))
+            (progn
+              (setf (getf signal :approved-action) verified)
+              (setf approved verified)))))
 
     ;; 2. Actuation Logic
     (case type

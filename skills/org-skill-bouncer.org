@@ -125,7 +125,6 @@ The Bouncer skill reacts to approval requirements by creating flight plan nodes,
 #+begin_src lisp
 (defun bouncer-deterministic-gate (action context)
   "Main gate for the bouncer skill."
-  (declare (ignore action))
   (let* ((payload (getf context :payload))
          (sensor (getf payload :sensor)))
     (case sensor
@@ -142,16 +141,16 @@ The Bouncer skill reacts to approval requirements by creating flight plan nodes,
       (:heartbeat
        ;; Periodically check for approvals
        (bouncer-process-approvals)
-       nil))))
+       (if action (bouncer-check action context) action))
+      (otherwise
+       (if action (bouncer-check action context) action)))))
 #+end_src
 
 ** Skill Registration
 #+begin_src lisp
 (defskill :skill-bouncer
   :priority 150
-  :trigger (lambda (ctx) 
-             (or (eq (getf (getf ctx :payload) :sensor) :approval-required)
-                 (eq (getf (getf ctx :payload) :sensor) :heartbeat)))
+  :trigger (lambda (ctx) t) ;; Bouncer evaluates all actions deterministically
   :probabilistic nil
   :deterministic #'bouncer-deterministic-gate)
 #+end_src

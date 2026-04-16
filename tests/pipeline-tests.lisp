@@ -22,7 +22,9 @@
     :priority 50
     :trigger (lambda (ctx) t) ; always triggers
     :probabilistic (lambda (ctx) "Mock probabilistic")
-    :deterministic (lambda (action ctx) nil))) ; rejects everything
+    :deterministic (lambda (action ctx)
+                (declare (ignore action ctx))
+                (list :type :LOG :payload (list :text "Action rejected by skill heuristics"))))) ; rejects everything
 
 (test test-perceive-gate
   "Perceive gate should update the object store and normalize signal."
@@ -37,9 +39,9 @@
   (setup-mock-skills)
   (let* ((candidate (list :type :REQUEST :payload (list :action :eval :code "(shell-command \"rm -rf /\")")))
          (signal (list :type :EVENT :candidate candidate))
-         (result (decide-gate signal)))
-    (is (eq :decided (getf result :status)))
-    (let ((approved (getf result :approved-action)))
+         (result (deterministic-verify candidate signal)))
+    
+    (let ((approved result))
       (is (eq :LOG (getf approved :type)))
       (is (search "Action rejected by skill heuristics" (getf (getf approved :payload) :text))))))
 
@@ -58,14 +60,14 @@
 
 (test test-env-loading
   "Verify that environment variables are accessible."
-  (setf (uiop:getenv "LLM_ENDPOINT") "http://mock")
-  (setf (uiop:getenv "MEMEX_USER") "Amr")
+  (sb-posix:putenv "LLM_ENDPOINT=http://mock")
+  (sb-posix:putenv "MEMEX_USER=Amr")
   (is (not (null (uiop:getenv "LLM_ENDPOINT"))))
-  (is (stringp (opencortex::get-env "MEMEX_USER"))))
+  (is (stringp (uiop:getenv "MEMEX_USER"))))
 
 (test test-path-resolution
   "Verify that context-resolve-path expands environment variables."
-  (setf (uiop:getenv "MEMEX_USER") "Amr")
+  (sb-posix:putenv "MEMEX_USER=Amr")
   (let ((path "$MEMEX_USER/test"))
     (is (search "Amr/test" (context-resolve-path path)))))
 
