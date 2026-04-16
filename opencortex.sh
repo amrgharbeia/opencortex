@@ -24,12 +24,23 @@ bootstrap_opencortex() {
     TARGET_DIR=${TARGET_DIR:-opencortex}
 
     if [ -d "$TARGET_DIR" ]; then
-        echo -e "${RED}✗ Error: Directory '$TARGET_DIR' already exists.${NC}"
-        exit 1
+        if [ -d "$TARGET_DIR/.git" ]; then
+            echo -e "${YELLOW}! Directory '$TARGET_DIR' already contains a repository. Using it...${NC}"
+        else
+            echo -e "${RED}✗ Error: Directory '$TARGET_DIR' exists and is NOT a repository.${NC}"
+            read -p "Choose a different name or 'WIPE' to delete it: " NEW_INPUT
+            if [[ "$NEW_INPUT" == "WIPE" ]]; then
+                rm -rf "$TARGET_DIR"
+            else
+                TARGET_DIR=${NEW_INPUT:-opencortex-2}
+            fi
+        fi
     fi
 
-    echo -e "${BLUE}Cloning repository into $TARGET_DIR...${NC}"
-    git clone http://10.10.10.201:3001/amr/opencortex.git "$TARGET_DIR"
+    if [ ! -d "$TARGET_DIR" ]; then
+        echo -e "${BLUE}Cloning repository into $TARGET_DIR...${NC}"
+        git clone http://10.10.10.201:3001/amr/opencortex.git "$TARGET_DIR"
+    fi
     
     cd "$TARGET_DIR"
     git submodule update --init --recursive
