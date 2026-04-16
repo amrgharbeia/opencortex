@@ -24,53 +24,47 @@ command_exists() { command -v "$1" >/dev/null 2>&1; }
 # --- Bootstrap Mode ---
 bootstrap_opencortex() {
     echo -e "${BLUE}=== OpenCortex: Zero-to-One Bootstrapper ===${NC}"
-    if [ -d ".git" ]; then
-        return
-    fi
-
+    if [ -d ".git" ]; then return; fi
     TARGET_DIR="opencortex"
     if [ ! -d "$TARGET_DIR" ]; then
         echo -e "${BLUE}Cloning repository into $TARGET_DIR...${NC}"
         git clone http://10.10.10.201:3001/amr/opencortex.git "$TARGET_DIR"
     fi
-    
     cd "$TARGET_DIR"
     git submodule update --init --recursive
-    
     echo -e "${GREEN}✓ Repository prepared.${NC}"
-    
-    if [ -t 0 ]; then
-        ./scripts/onboard-baremetal.sh
-    else
-        ./scripts/onboard-baremetal.sh < /dev/tty 2>/dev/null || ./scripts/onboard-baremetal.sh < /dev/null
-    fi
-    
+    ./scripts/onboard-baremetal.sh
     echo -e "${GREEN}✓ Setup phase complete.${NC}"
     exit 0
 }
 
-if [ ! -d ".git" ]; then
-    bootstrap_opencortex
+if [ ! -d ".git" ]; then bootstrap_opencortex; fi
+
+# 1. Try to drop straight into the CLI chat
+if command_exists socat && socat - TCP:$HOST:$PORT,connect-timeout=1 2>/dev/null; then
+    echo -e "${BLUE}Connected to autonomous brain at $HOST:$PORT...${NC}"
+    socat READLINE,history=$HOME/.org_agent_history TCP:$HOST:$PORT
+    exit 0
 fi
 
-# ... (Local Mode)
-if [ -f "opencortex.asd" ] || [ -d "literate" ]; then
-    if [ ! -f .env ]; then ./scripts/onboard-baremetal.sh; fi
-    export SKILLS_DIR="$(grep "^SKILLS_DIR=" .env | cut -d"\"" -f2)"
-    while read -r line; do if [[ ! "$line" =~ ^# ]] && [[ "$line" =~ = ]]; then export "$line"; fi; done < .env
-    echo -e "${BLUE}Starting OpenCortex via SBCL...${NC}"
+# 2. Launch
+if [ -f "opencortex.asd" ]; then
+    if [ -f .env ]; then
+        export \$(grep -v '^#' .env | xargs)
+    fi
+    echo -e "${BLUE}Starting OpenCortex Brain...${NC}"
     sbcl --non-interactive \
          --eval "(load \"~/quicklisp/setup.lisp\")" \
-         --eval "(push "$(pwd)/" asdf:*central-registry*) (ql:quickload :opencortex)" \
+         --eval "(push \"\$(pwd)/\" asdf:*central-registry*)" \
+         --eval "(ql:quickload :opencortex)" \
          --eval "(opencortex:main)"
 fi
 #+end_src
 
 * 2. The Baremetal Path (onboard-baremetal.sh)
 #+begin_src bash :tangle ../scripts/onboard-baremetal.sh :shebang "#!/bin/bash"
-# OpenCortex Final-Mile Installer (Bulletproof Edition)
+# OpenCortex Final-Mile Installer
 RED='\033[0;31m'; GREEN='\033[0;32m'; BLUE='\033[0;34m'; YELLOW='\033[0;33m'; NC='\033[0m'
-
 echo -e "${BLUE}=== OpenCortex: Baremetal Power-User Setup ===${NC}"
 
 prompt_user() {
@@ -84,34 +78,22 @@ prompt_user() {
     eval "$var_name=\"$val\""
 }
 
-# 1. Dependencies
 if ! command -v sbcl >/dev/null 2>&1; then
-    echo -e "${BLUE}Installing dependencies...${NC}"
     sudo apt-get update && sudo apt-get install -y sbcl emacs git curl socat || true
 fi
 
-# 2. Quicklisp
 if [ ! -d "$HOME/quicklisp" ]; then
     curl -O https://beta.quicklisp.org/quicklisp.lisp
     sbcl --non-interactive --load quicklisp.lisp --eval "(quicklisp-quickstart:install)" --eval "(ql-util:without-prompting (ql:add-to-init-file))"
     rm quicklisp.lisp
 fi
 
-# 3. Tangling
 echo -e "${BLUE}Tangling source files...${NC}"
 mkdir -p src
 for f in literate/*.org; do
-    echo "  - Tangling $f"
     emacs --batch --eval "(require 'org)" --eval "(org-babel-tangle-file \"$f\")" >/dev/null 2>&1
 done
 
-if [ -f "src/package.lisp" ]; then
-    echo -e "${GREEN}✓ Core tangled successfully.${NC}"
-else
-    echo -e "${RED}✗ Tangle failed!${NC}"
-fi
-
-# 4. Config
 if [ ! -f .env ]; then cp .env.example .env; fi
 prompt_user "What is your name?" "User" "USER_NAME"
 prompt_user "What shall we name your Assistant?" "OpenCortex" "AGENT_NAME"
@@ -120,7 +102,6 @@ prompt_user "Select provider (1:Gemini, 2:OpenRouter)" "1" "LLM_CHOICE"
 sed -i "s/MEMEX_USER=.*/MEMEX_USER=\"$USER_NAME\"/g" .env
 sed -i "s/MEMEX_ASSISTANT=.*/MEMEX_ASSISTANT=\"$AGENT_NAME\"/g" .env
 
-# Final Path Alignment
 ROOT_DIR=$(pwd)
 sed -i "s|MEMEX_DIR=.*|MEMEX_DIR=\"$(dirname $ROOT_DIR)\"|g" .env
 sed -i "s|SKILLS_DIR=.*|SKILLS_DIR=\"$ROOT_DIR/skills\"|g" .env

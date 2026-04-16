@@ -15,34 +15,21 @@ command_exists() { command -v "$1" >/dev/null 2>&1; }
 # --- Bootstrap Mode ---
 bootstrap_opencortex() {
     echo -e "${BLUE}=== OpenCortex: Zero-to-One Bootstrapper ===${NC}"
-    if [ -d ".git" ]; then
-        return
-    fi
-
+    if [ -d ".git" ]; then return; fi
     TARGET_DIR="opencortex"
     if [ ! -d "$TARGET_DIR" ]; then
         echo -e "${BLUE}Cloning repository into $TARGET_DIR...${NC}"
         git clone http://10.10.10.201:3001/amr/opencortex.git "$TARGET_DIR"
     fi
-    
     cd "$TARGET_DIR"
     git submodule update --init --recursive
-    
     echo -e "${GREEN}✓ Repository prepared.${NC}"
-    
-    if [ -t 0 ]; then
-        ./scripts/onboard-baremetal.sh
-    else
-        ./scripts/onboard-baremetal.sh < /dev/tty 2>/dev/null || ./scripts/onboard-baremetal.sh < /dev/null
-    fi
-    
+    ./scripts/onboard-baremetal.sh
     echo -e "${GREEN}✓ Setup phase complete.${NC}"
     exit 0
 }
 
-if [ ! -d ".git" ]; then
-    bootstrap_opencortex
-fi
+if [ ! -d ".git" ]; then bootstrap_opencortex; fi
 
 # 1. Try to drop straight into the CLI chat
 if command_exists socat && socat - TCP:$HOST:$PORT,connect-timeout=1 2>/dev/null; then
@@ -51,17 +38,15 @@ if command_exists socat && socat - TCP:$HOST:$PORT,connect-timeout=1 2>/dev/null
     exit 0
 fi
 
-# 2. Local repository detection and launch
-if [ -f "opencortex.asd" ] || [ -d "literate" ]; then
-    if [ ! -f .env ]; then
-        ./scripts/onboard-baremetal.sh
+# 2. Launch
+if [ -f "opencortex.asd" ]; then
+    if [ -f .env ]; then
+        export \$(grep -v '^#' .env | xargs)
     fi
-    
-    echo -e "${BLUE}Starting OpenCortex via SBCL...${NC}"
-    # EXPLICITLY push current directory to ASDF registry
+    echo -e "${BLUE}Starting OpenCortex Brain...${NC}"
     sbcl --non-interactive \
          --eval "(load \"~/quicklisp/setup.lisp\")" \
-         --eval "(push \"$(pwd)/\" asdf:*central-registry*)" \
+         --eval "(push \"\$(pwd)/\" asdf:*central-registry*)" \
          --eval "(ql:quickload :opencortex)" \
          --eval "(opencortex:main)"
 fi
