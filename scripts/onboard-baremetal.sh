@@ -47,7 +47,13 @@ fi
 
 # 3. Literate Tangling
 echo -e "${BLUE}Tangling Literate Org files into source code...${NC}"
-emacs --batch --eval "(require 'org)" --eval "(mapc 'org-babel-tangle-file (file-expand-wildcards \"literate/*.org\"))"
+# Use || true because Emacs might return non-zero on warnings, but we only care if src/ actually gets populated
+emacs --batch --eval "(require 'org)" --eval "(mapc 'org-babel-tangle-file (file-expand-wildcards \"literate/*.org\"))" || echo -e "${YELLOW}! Emacs finished with warnings.${NC}"
+
+if [ ! -f "src/package.lisp" ]; then
+    echo -e "${RED}✗ Tangling failed. Source files not generated.${NC}"
+    exit 1
+fi
 echo -e "${GREEN}✓ Core tangled.${NC}"
 
 # 4. Environment Configuration
