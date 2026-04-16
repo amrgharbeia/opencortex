@@ -44,12 +44,24 @@ if [ ! -d ".git" ]; then
     bootstrap_opencortex
 fi
 
-# ... (Local Mode)
+# 1. Try to drop straight into the CLI chat
+if command_exists socat && socat - TCP:$HOST:$PORT,connect-timeout=1 2>/dev/null; then
+    echo -e "${BLUE}Connected to autonomous brain at $HOST:$PORT...${NC}"
+    socat READLINE,history=$HOME/.org_agent_history TCP:$HOST:$PORT
+    exit 0
+fi
+
+# 2. Local repository detection and launch
 if [ -f "opencortex.asd" ] || [ -d "literate" ]; then
-    if [ ! -f .env ]; then ./scripts/onboard-baremetal.sh; fi
+    if [ ! -f .env ]; then
+        ./scripts/onboard-baremetal.sh
+    fi
+    
     echo -e "${BLUE}Starting OpenCortex via SBCL...${NC}"
+    # EXPLICITLY push current directory to ASDF registry
     sbcl --non-interactive \
          --eval "(load \"~/quicklisp/setup.lisp\")" \
+         --eval "(push \"$(pwd)/\" asdf:*central-registry*)" \
          --eval "(ql:quickload :opencortex)" \
          --eval "(opencortex:main)"
 fi

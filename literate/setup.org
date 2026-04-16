@@ -59,7 +59,7 @@ if [ -f "opencortex.asd" ] || [ -d "literate" ]; then
     echo -e "${BLUE}Starting OpenCortex via SBCL...${NC}"
     sbcl --non-interactive \
          --eval "(load \"~/quicklisp/setup.lisp\")" \
-         --eval "(ql:quickload :opencortex)" \
+         --eval "(push "$(pwd)/" asdf:*central-registry*) (ql:quickload :opencortex)" \
          --eval "(opencortex:main)"
 fi
 #+end_src
