@@ -20,14 +20,43 @@ fi
 setup_system() {
     echo -e "${BLUE}=== OpenCortex: Initializing System ===${NC}"
     cd "$SCRIPT_DIR"
-    [ ! -f .env ] && cp .env.example .env
+    if [ ! -f .env ]; then
+        cp .env.example .env
+        echo -e "\n${YELLOW}--- LLM Configuration ---${NC}"
+        echo "You can enter your LLM API keys now, or press Enter to skip and configure them later."
+        read -p "Gemini API Key: " gemini_key
+        [ -n "$gemini_key" ] && sed -i "s|GEMINI_API_KEY=.*|GEMINI_API_KEY=\"$gemini_key\"|" .env
+        read -p "Anthropic API Key: " anthropic_key
+        [ -n "$anthropic_key" ] && sed -i "s|ANTHROPIC_API_KEY=.*|ANTHROPIC_API_KEY=\"$anthropic_key\"|" .env
+        read -p "OpenAI API Key: " openai_key
+        [ -n "$openai_key" ] && sed -i "s|OPENAI_API_KEY=.*|OPENAI_API_KEY=\"$openai_key\"|" .env
+
+        echo -e "\n${YELLOW}--- Memex Folder Structure ---${NC}"
+        echo "Enter the absolute paths for your existing folder structure (press Enter to accept default)."
+        read -p "Memex Root [/memex]: " memex_dir
+        memex_dir=${memex_dir:-/memex}
+        sed -i "s|MEMEX_DIR=.*|MEMEX_DIR=\"$memex_dir\"|" .env
+        
+        read -p "Inbox Directory [$memex_dir/inbox]: " inbox_dir
+        inbox_dir=${inbox_dir:-$memex_dir/inbox}
+        sed -i "s|INBOX_DIR=.*|INBOX_DIR=\"$inbox_dir\"|" .env
+        
+        read -p "Daily Directory [$memex_dir/daily]: " daily_dir
+        daily_dir=${daily_dir:-$memex_dir/daily}
+        sed -i "s|DAILY_DIR=.*|DAILY_DIR=\"$daily_dir\"|" .env
+        
+        read -p "Projects Directory [$memex_dir/projects]: " proj_dir
+        proj_dir=${proj_dir:-$memex_dir/projects}
+        sed -i "s|PROJECTS_DIR=.*|PROJECTS_DIR=\"$proj_dir\"|" .env
+    fi
+
     mkdir -p src
     for f in literate/*.org; do
         emacs --batch --eval "(require 'org)" --eval "(org-babel-tangle-file \"$f\")" >/dev/null 2>&1 || true
     done
     mkdir -p "$HOME/.local/bin"
     ln -sf "$SCRIPT_DIR/opencortex.sh" "$HOME/.local/bin/opencortex"
-    echo -e "${GREEN}✓ Setup complete.${NC}"
+    echo -e "${GREEN}✓ Setup complete. You can now run 'opencortex tui\.${NC}"
 }
 
 if [ ! -f "$SCRIPT_DIR/src/package.lisp" ] || [ ! -f "$SCRIPT_DIR/.env" ]; then
@@ -52,6 +81,28 @@ if [[ "$1" == "--boot" ]]; then
 fi
 
 # --- 4. INTERACT ---
+if [[ "$1" == "tui" ]]; then
+    # Ensure daemon is running
+    if ! (nc -z $HOST $PORT 2>/dev/null || (command_exists socat && socat - TCP:$HOST:$PORT,connect-timeout=1 2>/dev/null)); then
+        echo -e "${YELLOW}Brain is offline. Awakening...${NC}"
+        "$SCRIPT_DIR/opencortex.sh" --boot > "$SCRIPT_DIR/brain.log" 2>&1 &
+        for i in {1..15}; do
+            sleep 2
+            if nc -z $HOST $PORT 2>/dev/null || (command_exists socat && socat - TCP:$HOST:$PORT,connect-timeout=1 2>/dev/null); then break; fi
+            echo -n "."
+        done
+        echo ""
+    fi
+    
+    # Launch TUI
+    echo -e "${BLUE}Launching Croatoan TUI...${NC}"
+    exec sbcl --non-interactive \
+         --load ~/quicklisp/setup.lisp \
+         --eval "(push (truename \"$SCRIPT_DIR/\") asdf:*central-registry*)" \
+         --eval "(ql:quickload :opencortex/tui :silent t)" \
+         --eval "(opencortex.tui:main)"
+fi
+
 connect() {
     if command_exists socat && socat - TCP:$HOST:$PORT,connect-timeout=1 2>/dev/null; then
         socat - TCP:$HOST:$PORT
