@@ -11,14 +11,23 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 # --- 1. BOOTSTRAP ---
 if [ ! -d "$SCRIPT_DIR/.git" ] && [[ ! "$(pwd)" =~ "opencortex" ]]; then
     echo -e "${BLUE}=== OpenCortex: Zero-to-One Bootstrapper ===${NC}"
-    git clone http://10.10.10.201:3001/amr/opencortex.git opencortex
-    cd opencortex && git submodule update --init --recursive
+    git clone http://10.10.10.201:3001/amr/opencortex.git ~/.opencortex
+    cd ~/.opencortex && git submodule update --init --recursive
     exec ./opencortex.sh "$@"
 fi
 
 # --- 2. SETUP ---
 setup_system() {
     echo -e "${BLUE}=== OpenCortex: Initializing System ===${NC}"
+    echo -e "${YELLOW}--- Installing System Dependencies ---${NC}"
+    if command_exists apt-get; then
+        sudo apt-get update && sudo apt-get install -y sbcl emacs-nox rlwrap netcat-openbsd curl git socat
+    fi
+    if [ ! -d "$HOME/quicklisp" ]; then
+        curl -O https://beta.quicklisp.org/quicklisp.lisp
+        sbcl --non-interactive --load quicklisp.lisp --eval "(quicklisp-quickstart:install)" --eval "(ql-util:without-prompting (ql:add-to-init-file))"
+        rm quicklisp.lisp
+    fi
     cd "$SCRIPT_DIR"
     if [ ! -f .env ]; then
         cp .env.example .env
