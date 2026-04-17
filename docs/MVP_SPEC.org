@@ -53,3 +53,41 @@ Define detailed specifications for the OpenCortex MVP (v0.1.0). This MVP establi
   - Update ~LICENSE~ and finalize ~CHANGELOG.org~.
 - *End-to-End Walkthrough:* Execute a clean-slate test of the installation script, boot sequence, environment variable parsing, and autonomous background worker triggers.
 - *Marketing & Launch:* Migrate the canonical repository to GitHub (configure topics, badges, and issue templates). Record a high-fidelity GIF/video of the new TUI interaction and execute announcements on Hacker News, Reddit, and X/Twitter.
+
+* 6. User-Centric End-to-End Test Plan
+
+This section defines the precise workflow and expected user experience for the v0.1.0 MVP. It serves as the definitive manual testing script before release.
+
+** Phase 1: The One-Liner Installation & Boot
+- *Action:* The user executes the canonical curl-bash script: ~curl -fsSL https://raw.githubusercontent.com/gharbeia/opencortex/main/opencortex.sh | bash~
+- *Expected Experience:* 
+  1. The script detects the OS and installs any missing system dependencies (e.g., Docker, SBCL, Quicklisp).
+  2. It interactively prompts the user for their primary LLM API key (e.g., Gemini or Anthropic) and Memex path.
+  3. It generates a valid ~.env~ file and provisions the directory structure (~/memex/inbox~, ~/memex/daily~, etc.).
+  4. It compiles and launches the ~opencortex-server~ daemon in the background.
+  5. The user is greeted with a success message instructing them to run ~opencortex-tui~.
+
+** Phase 2: First Contact (The TUI Experience)
+- *Action:* The user types ~opencortex-tui~ in their terminal.
+- *Expected Experience:*
+  1. The terminal clears and launches the Croatoan UI.
+  2. The *Status Bar* appears at the bottom, indicating: ~[Scribe: Idle] [Gardener: Sleeping]~.
+  3. The user types a natural language message in the input box: "Hello, what is my current Memex structure?" and presses Enter.
+  4. The input box clears, and the user's message appears in the main viewport.
+  5. A few seconds later, the agent responds with a formatted Org-mode list of the directories, demonstrating successful Lisp s-expression communication over the TCP socket and valid probabilistic reasoning.
+
+** Phase 3: The Autonomous Subroutines
+- *Action:* The user creates a messy text file in ~/memex/daily/YYYY-MM-DD.org~ with a scattered thought about a new project, then waits.
+- *Expected Experience:*
+  1. Without any user prompting, the *Status Bar* updates to ~[Scribe: Distilling...]~.
+  2. A quiet log message appears in the TUI viewport: ~*System*: Scribe extracted 1 new Zettelkasten note.~
+  3. The user inspects ~/memex/notes/~ and finds a cleanly formatted, semantically tagged Org node containing the distilled thought.
+  4. The user intentionally breaks an Org-roam link in one of their notes. Minutes later, the Gardener awakens (~[Gardener: Auditing]~), and a log message appears indicating the link was repaired or flagged.
+
+** Phase 4: Deterministic Actuation (Slash Commands)
+- *Action:* The user types ~/status~ in the TUI.
+- *Expected Experience:* The TUI instantly prints a diagnostic report showing memory usage, uptime, and git status, bypassing the LLM entirely.
+- *Action:* The user types ~/commit~.
+- *Expected Experience:* The system runs the Engineering Standard gate, stages all changes in ~/memex~, and creates a git commit. The TUI confirms success.
+- *Action:* The user types ~/exit~.
+- *Expected Experience:* The TUI client gracefully disconnects and closes, returning the user to their standard bash prompt. The ~opencortex-server~ continues running safely in the background.
