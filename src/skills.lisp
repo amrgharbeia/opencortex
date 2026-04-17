@@ -202,7 +202,7 @@
              (mandatory-skills (if mandatory-env 
                                    (mapcar (lambda (s) (string-trim '(#\Space) s)) 
                                            (uiop:split-string mandatory-env :separator '(#\,)))
-                                   '("org-skill-policy" "org-skill-bouncer"))))
+                                   '("org-skill-policy" "org-skill-bouncer")))
         (dolist (req mandatory-skills)
           (unless (member req sorted-files :key #'pathname-name :test #'string-equal)
             (error "BOOT FAILURE: Mandatory skill '~a' not found in skills directory: ~a" req (uiop:native-namestring skills-dir))))
@@ -224,7 +224,7 @@
         (let ((ready 0) (failed 0))
           (maphash (lambda (k v) 
                      (declare (ignore k))
-                     (if (eq (skill-entry-status v) :ready) (incf ready) (incf failed)))
+                     (if (eq (skill-entry-status v) :ready) (incf ready) (incf failed))))
                    *skill-catalog*)
           (harness-log " LOADER: Boot Complete. [Ready: ~a] [Failed: ~a]" ready failed)
           (harness-log "==================================================")
@@ -241,7 +241,7 @@ EXAMPLES:
 (:target :tool :action :call :tool \"shell\" :args (:cmd \"ls -la\"))
 
 ---
-")))
+" )))
     (maphash (lambda (name tool)
                (setf output (concatenate 'string output
                                          (format nil "- ~a: ~a~%  Parameters: ~s~%~%"
