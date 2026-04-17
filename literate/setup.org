@@ -31,6 +31,17 @@ setup_system() {
     cd "$SCRIPT_DIR"
     if [ ! -f .env ]; then
         cp .env.example .env
+        
+        echo -e "\n${YELLOW}--- Identity Configuration ---${NC}"
+        echo "Let's personalize your OpenCortex experience."
+        read -p "Your Name [User]: " user_name
+        user_name=${user_name:-User}
+        sed -i "s|MEMEX_USER=.*|MEMEX_USER=\"$user_name\"|" .env
+        
+        read -p "Agent Name [OpenCortex]: " agent_name
+        agent_name=${agent_name:-OpenCortex}
+        sed -i "s|MEMEX_ASSISTANT=.*|MEMEX_ASSISTANT=\"$agent_name\"|" .env
+        
         echo -e "\n${YELLOW}--- LLM Configuration ---${NC}"
         echo "You can enter your LLM API keys now, or press Enter to skip and configure them later."
         read -p "Gemini API Key: " gemini_key
@@ -65,7 +76,7 @@ setup_system() {
     done
     mkdir -p "$HOME/.local/bin"
     ln -sf "$SCRIPT_DIR/opencortex.sh" "$HOME/.local/bin/opencortex"
-    echo -e "${GREEN}✓ Setup complete. You can now run 'opencortex tui\.${NC}"
+    echo -e "${GREEN}✓ Setup complete. You can now run 'opencortex tui'.${NC}"
 }
 
 if [ ! -f "$SCRIPT_DIR/src/package.lisp" ] || [ ! -f "$SCRIPT_DIR/.env" ]; then
