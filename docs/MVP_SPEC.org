@@ -62,13 +62,13 @@ This section defines the precise workflow and expected user experience for the v
 - *Action:* The user executes the canonical curl-bash script: ~curl -fsSL https://raw.githubusercontent.com/gharbeia/opencortex/main/opencortex.sh | bash~
 - *Expected Experience:* 
   1. The script detects the OS and installs any missing system dependencies (e.g., Docker, SBCL, Quicklisp).
-  2. It interactively prompts the user for their primary LLM API key (e.g., Gemini or Anthropic) and Memex path.
-  3. It generates a valid ~.env~ file and provisions the directory structure (~/memex/inbox~, ~/memex/daily~, etc.).
+  2. It interactively prompts the user to enter as many LLM API keys as they choose to (e.g., Gemini, Anthropic, OpenAI). The user can skip this step and configure them later.
+  3. It asks the user for their existing folder structure and fills in the corresponding values (INBOX_DIR, DAILY_DIR, etc.) in ~.env.example~ to generate a valid ~.env~ file.
   4. It compiles and launches the ~opencortex-server~ daemon in the background.
-  5. The user is greeted with a success message instructing them to run ~opencortex-tui~.
+  5. The user is greeted with a success message instructing them to run ~opencortex tui~.
 
 ** Phase 2: First Contact (The TUI Experience)
-- *Action:* The user types ~opencortex-tui~ in their terminal.
+- *Action:* The user types ~opencortex tui~ in their terminal.
 - *Expected Experience:*
   1. The terminal clears and launches the Croatoan UI.
   2. The *Status Bar* appears at the bottom, indicating: ~[Scribe: Idle] [Gardener: Sleeping]~.
