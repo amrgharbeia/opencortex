@@ -42,8 +42,8 @@ setup_system() {
     echo -e "${YELLOW}--- Installing System Dependencies ---${NC}"
     if command_exists apt-get; then
         sudo apt-get update && sudo apt-get install -y sbcl emacs-nox rlwrap netcat-openbsd curl git socat libssl-dev libncurses5-dev libffi-dev zlib1g-dev libsqlite3-dev
-    fi
-    if [ ! -d "$HOME/quicklisp" ]; then
+ fi
+ if [ ! -d "$HOME/quicklisp" ]; then
         curl -O https://beta.quicklisp.org/quicklisp.lisp
         sbcl --non-interactive --load quicklisp.lisp --eval "(quicklisp-quickstart:install)" --eval "(ql-util:without-prompting (ql:add-to-init-file))"
         rm quicklisp.lisp
@@ -125,8 +125,7 @@ setup_system() {
 
 
     echo -e "${YELLOW}--- Compiling and Loading OpenCortex (this may take a minute) ---${NC}"
-    sbcl --non-interactive \
-         --eval "(load (merge-pathnames \"quicklisp/setup.lisp\" (user-homedir-pathname)))" \
+    sbcl --non-interactive   --eval "(load (merge-pathnames \"quicklisp/setup.lisp\" (user-homedir-pathname)))" \
          --eval "(push (truename \"$SCRIPT_DIR/\") asdf:*central-registry*)" \
          --eval "(ql:quickload '(:opencortex :croatoan))"
 
@@ -206,8 +205,7 @@ if [[ "$1" == "tui" ]]; then
 # Force absolute paths for core system directories
 export SKILLS_DIR="${SCRIPT_DIR}/skills"
 [ -z "$MEMEX_DIR" ] && export MEMEX_DIR="$HOME/memex"
-exec sbcl \
-         --eval "(load (merge-pathnames \"quicklisp/setup.lisp\" (user-homedir-pathname)))" \
+exec sbcl   --eval "(load (merge-pathnames \"quicklisp/setup.lisp\" (user-homedir-pathname)))" \
          --eval "(push (truename \"$SCRIPT_DIR/\") asdf:*central-registry*)" \
          --eval "(ql:quickload :opencortex/tui)" \
          --eval "(opencortex.tui:main)"
