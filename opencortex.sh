@@ -41,6 +41,8 @@ setup_system() {
         [ -n "$anthropic_key" ] && sed -i "s|ANTHROPIC_API_KEY=.*|ANTHROPIC_API_KEY=\"$anthropic_key\"|" .env
         read -p "OpenAI API Key: " openai_key < /dev/tty
         [ -n "$openai_key" ] && sed -i "s|OPENAI_API_KEY=.*|OPENAI_API_KEY=\"$openai_key\"|" .env
+        read -p "OpenRouter API Key: " openrouter_key < /dev/tty
+        [ -n "$openrouter_key" ] && sed -i "s|OPENROUTER_API_KEY=.*|OPENROUTER_API_KEY=\"$openrouter_key\"|" .env
 
         echo -e "\n${YELLOW}--- Memex Folder Structure ---${NC}"
         echo "Enter the absolute paths for your existing folder structure (press Enter to accept default)."
