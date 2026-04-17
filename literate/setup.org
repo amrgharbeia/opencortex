@@ -34,39 +34,39 @@ setup_system() {
         
         echo -e "\n${YELLOW}--- Identity Configuration ---${NC}"
         echo "Let's personalize your OpenCortex experience."
-        read -p "Your Name [User]: " user_name
+        read -p "Your Name [User]: " user_name < /dev/tty
         user_name=${user_name:-User}
         sed -i "s|MEMEX_USER=.*|MEMEX_USER=\"$user_name\"|" .env
         
-        read -p "Agent Name [OpenCortex]: " agent_name
+        read -p "Agent Name [OpenCortex]: " agent_name < /dev/tty
         agent_name=${agent_name:-OpenCortex}
         sed -i "s|MEMEX_ASSISTANT=.*|MEMEX_ASSISTANT=\"$agent_name\"|" .env
         
         echo -e "\n${YELLOW}--- LLM Configuration ---${NC}"
         echo "You can enter your LLM API keys now, or press Enter to skip and configure them later."
-        read -p "Gemini API Key: " gemini_key
+        read -p "Gemini API Key: " gemini_key < /dev/tty
         [ -n "$gemini_key" ] && sed -i "s|GEMINI_API_KEY=.*|GEMINI_API_KEY=\"$gemini_key\"|" .env
-        read -p "Anthropic API Key: " anthropic_key
+        read -p "Anthropic API Key: " anthropic_key < /dev/tty
         [ -n "$anthropic_key" ] && sed -i "s|ANTHROPIC_API_KEY=.*|ANTHROPIC_API_KEY=\"$anthropic_key\"|" .env
-        read -p "OpenAI API Key: " openai_key
+        read -p "OpenAI API Key: " openai_key < /dev/tty
         [ -n "$openai_key" ] && sed -i "s|OPENAI_API_KEY=.*|OPENAI_API_KEY=\"$openai_key\"|" .env
 
         echo -e "\n${YELLOW}--- Memex Folder Structure ---${NC}"
         echo "Enter the absolute paths for your existing folder structure (press Enter to accept default)."
-        read -p "Memex Root [/memex]: " memex_dir
+        read -p "Memex Root [/memex]: " memex_dir < /dev/tty
         memex_dir=${memex_dir:-/memex}
         sed -i "s|MEMEX_DIR=.*|MEMEX_DIR=\"$memex_dir\"|" .env
         sed -i "s|\"/memex/|\"$memex_dir/|g" .env
         
-        read -p "Inbox Directory [$memex_dir/inbox]: " inbox_dir
+        read -p "Inbox Directory [$memex_dir/inbox]: " inbox_dir < /dev/tty
         inbox_dir=${inbox_dir:-$memex_dir/inbox}
         sed -i "s|INBOX_DIR=.*|INBOX_DIR=\"$inbox_dir\"|" .env
         
-        read -p "Daily Directory [$memex_dir/daily]: " daily_dir
+        read -p "Daily Directory [$memex_dir/daily]: " daily_dir < /dev/tty
         daily_dir=${daily_dir:-$memex_dir/daily}
         sed -i "s|DAILY_DIR=.*|DAILY_DIR=\"$daily_dir\"|" .env
         
-        read -p "Projects Directory [$memex_dir/projects]: " proj_dir
+        read -p "Projects Directory [$memex_dir/projects]: " proj_dir < /dev/tty
         proj_dir=${proj_dir:-$memex_dir/projects}
         sed -i "s|PROJECTS_DIR=.*|PROJECTS_DIR=\"$proj_dir\"|" .env
     fi
