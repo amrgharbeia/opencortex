@@ -65,3 +65,25 @@
         :payload (list :action :handshake 
                        :version version 
                        :capabilities '(:auth :swank :org-ast))))
+
+(defun read-framed-message (stream)
+  "Reads a hex-length prefixed message from the stream securely."
+  (let ((length-buffer (make-string 6)))
+    (handler-case
+        (progn
+          ;; 1. Read the 6-char hex length
+          (let ((count (read-sequence length-buffer stream)))
+            (when (< count 6) (return-from read-framed-message :eof))
+            (let ((len (ignore-errors (parse-integer length-buffer :radix 16))))
+              (unless len (error "Invalid protocol header: ~a" length-buffer))
+              
+              ;; 2. Read exactly LEN bytes
+              (let ((msg-buffer (make-string len)))
+                (read-sequence msg-buffer stream)
+                (let ((*read-eval* nil))
+                  (let ((msg (read-from-string msg-buffer)))
+                    (validate-communication-protocol-schema msg)
+                    msg))))))
+      (error (c) 
+        (harness-log "PROTOCOL READ ERROR: ~a" c)
+        :error))))
