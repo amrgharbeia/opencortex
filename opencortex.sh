@@ -51,17 +51,17 @@ setup_system() {
     cd "$SCRIPT_DIR"
     if [ ! -f .env ]; then
         cp .env.example .env
-        
+
         echo -e "\n${YELLOW}--- Identity Configuration ---${NC}"
         echo "Let's personalize your OpenCortex experience."
         read -p "Your Name [User]: " user_name < /dev/tty
         user_name=${user_name:-User}
         sed -i "s|MEMEX_USER=.*|MEMEX_USER=\"$user_name\"|" .env
-        
+
         read -p "Agent Name [OpenCortex]: " agent_name < /dev/tty
         agent_name=${agent_name:-OpenCortex}
         sed -i "s|MEMEX_ASSISTANT=.*|MEMEX_ASSISTANT=\"$agent_name\"|" .env
-        
+
         echo -e "\n${YELLOW}--- LLM Configuration ---${NC}"
         echo "You can enter your LLM API keys now, or press Enter to skip and configure them later."
         read -p "Gemini API Key: " gemini_key < /dev/tty
@@ -82,15 +82,15 @@ setup_system() {
         sed -i "s|SKILLS_DIR=.*|SKILLS_DIR=\"$SCRIPT_DIR/skills\"|" .env
         sed -i "s|ZETTELKASTEN_DIR=.*|ZETTELKASTEN_DIR=\"$memex_dir/notes\"|" .env
 
-        
+
         read -p "Inbox Directory [$memex_dir/inbox]: " inbox_dir < /dev/tty
         inbox_dir=${inbox_dir:-$memex_dir/inbox}
         sed -i "s|INBOX_DIR=.*|INBOX_DIR=\"$inbox_dir\"|" .env
-        
+
         read -p "Daily Directory [$memex_dir/daily]: " daily_dir < /dev/tty
         daily_dir=${daily_dir:-$memex_dir/daily}
         sed -i "s|DAILY_DIR=.*|DAILY_DIR=\"$daily_dir\"|" .env
-        
+
         read -p "Projects Directory [$memex_dir/projects]: " proj_dir < /dev/tty
         proj_dir=${proj_dir:-$memex_dir/projects}
         sed -i "s|PROJECTS_DIR=.*|PROJECTS_DIR=\"$proj_dir\"|" .env
@@ -123,13 +123,13 @@ setup_system() {
     done
     export PATH="$HOME/.local/bin:$PATH"
 
-    
+
     echo -e "${YELLOW}--- Compiling and Loading OpenCortex (this may take a minute) ---${NC}"
     sbcl --non-interactive \
          --eval "(load (merge-pathnames \"quicklisp/setup.lisp\" (user-homedir-pathname)))" \
          --eval "(push (truename \"$SCRIPT_DIR/\") asdf:*central-registry*)" \
          --eval "(ql:quickload '(:opencortex :croatoan))"
-    
+
     if [ $? -ne 0 ]; then
         echo -e "${RED}✗ Compilation or Loading failed.${NC}"
         exit 1
@@ -139,7 +139,7 @@ setup_system() {
     # Nuke any existing brain logs
     > "$SCRIPT_DIR/brain.log"
     "$SCRIPT_DIR/opencortex.sh" --boot > "$SCRIPT_DIR/brain.log" 2>&1 &
-    
+
     local success=false
     for i in {1..30}; do
         if nc -z localhost $PORT 2>/dev/null; then
@@ -149,7 +149,7 @@ setup_system() {
         sleep 2
         echo -n "."
     done
-    
+
     if [ "$success" = true ]; then
         echo -e "\n${GREEN}✓ Brain is alive and responsive on port $PORT.${NC}"
         echo -e "${GREEN}✓ Setup complete. You can now run 'opencortex tui'.${NC}"
@@ -201,7 +201,7 @@ if [[ "$1" == "tui" ]]; then
         done
         echo ""
     fi
-    
+
     # Launch TUI
     echo -e "${BLUE}Launching Croatoan TUI...${NC}"
     exec sbcl \
