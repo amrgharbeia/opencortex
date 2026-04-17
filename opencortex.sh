@@ -14,7 +14,7 @@ while [ -h "$SOURCE" ]; do
     SOURCE="$(readlink "$SOURCE")"
     [[ $SOURCE != /* ]] && SOURCE="$DIR/$SOURCE"
 done
-SCRIPT_DIR="$( cd -P "$( dirname "$SOURCE" )" && pwd )"
+export SCRIPT_DIR="$( cd -P "$( dirname "$SOURCE" )" && pwd )"
 
 # Load environment variables if they exist
 if [ -f "$SCRIPT_DIR/.env" ]; then
@@ -29,7 +29,6 @@ if [ -f "$SCRIPT_DIR/.env" ]; then
 fi
 
 # --- 1. BOOTSTRAP ---
-# Only bootstrap if we are not in a git repo and the target hidden folder does not exist
 if [ ! -d "$SCRIPT_DIR/.git" ] && [ ! -d "$HOME/.opencortex" ] && [[ ! "$(pwd)" =~ "opencortex" ]]; then
     echo -e "${BLUE}=== OpenCortex: Zero-to-One Bootstrapper ===${NC}"
     git clone http://10.10.10.201:3001/amr/opencortex.git ~/.opencortex
@@ -55,7 +54,6 @@ setup_system() {
         cp .env.example .env
 
         echo -e "\n${YELLOW}--- Identity Configuration ---${NC}"
-        echo "Let's personalize your OpenCortex experience."
         read -p "Your Name [User]: " user_name < /dev/tty
         user_name=${user_name:-User}
         sed -i "s|MEMEX_USER=.*|MEMEX_USER=\"$user_name\"|" .env
@@ -65,7 +63,6 @@ setup_system() {
         sed -i "s|MEMEX_ASSISTANT=.*|MEMEX_ASSISTANT=\"$agent_name\"|" .env
 
         echo -e "\n${YELLOW}--- LLM Configuration ---${NC}"
-        echo "You can enter your LLM API keys now, or press Enter to skip and configure them later."
         read -p "Gemini API Key: " gemini_key < /dev/tty
         [ -n "$gemini_key" ] && sed -i "s|GEMINI_API_KEY=.*|GEMINI_API_KEY=\"$gemini_key\"|" .env
         read -p "Anthropic API Key: " anthropic_key < /dev/tty
@@ -76,7 +73,6 @@ setup_system() {
         [ -n "$openrouter_key" ] && sed -i "s|OPENROUTER_API_KEY=.*|OPENROUTER_API_KEY=\"$openrouter_key\"|" .env
 
         echo -e "\n${YELLOW}--- Memex Folder Structure ---${NC}"
-        echo "Enter the absolute paths for your existing folder structure (press Enter to accept default)."
         read -p "Memex Root [\$HOME/memex]: " memex_dir < /dev/tty
         memex_dir=${memex_dir:-\$HOME/memex}
         sed -i "s|MEMEX_DIR=.*|MEMEX_DIR=\"$memex_dir\"|" .env
@@ -96,7 +92,6 @@ setup_system() {
         proj_dir=${proj_dir:-\$memex_dir/projects}
         sed -i "s|PROJECTS_DIR=.*|PROJECTS_DIR=\"$proj_dir\"|" .env
         
-        # Ensure the directories actually exist
         mkdir -p "$memex_dir" "$inbox_dir" "$daily_dir" "$proj_dir"
         mkdir -p "$memex_dir/notes" "$memex_dir/areas" "$memex_dir/resources" "$memex_dir/archives" "$memex_dir/system"
     fi
@@ -109,7 +104,6 @@ setup_system() {
     mkdir -p "$HOME/.local/bin"
     ln -sf "$SCRIPT_DIR/opencortex.sh" "$HOME/.local/bin/opencortex"
 
-    # Ensure ~/.local/bin is in PATH for future sessions
     for shell_config in "$HOME/.bashrc" "$HOME/.profile"; do
         if [ -f "$shell_config" ]; then
             if ! grep -q ".local/bin" "$shell_config"; then
@@ -120,7 +114,7 @@ setup_system() {
     export PATH="$HOME/.local/bin:$PATH"
 
     echo -e "${YELLOW}--- Compiling and Loading OpenCortex (this may take a minute) ---${NC}"
-    sbcl --non-interactive --eval "(load (merge-pathnames \"quicklisp/setup.lisp\" (user-homedir-pathname)))" --eval "(push (truename \"$SCRIPT_DIR/\") asdf:*central-registry*)" --eval "(ql:quickload '(:opencortex :croatoan))"
+    sbcl --non-interactive --eval '(load (merge-pathnames "quicklisp/setup.lisp" (user-homedir-pathname)))' --eval '(push (truename (uiop:getenv "SCRIPT_DIR")) asdf:*central-registry*)' --eval "(ql:quickload '(:opencortex :croatoan))"
     
     if [ $? -ne 0 ]; then
         echo -e "${RED}✗ Compilation or Loading failed.${NC}"
@@ -166,7 +160,7 @@ fi
 if [[ "$1" == "--boot" ]]; then
     export SKILLS_DIR="${SCRIPT_DIR}/skills"
     [ -z "$MEMEX_DIR" ] && export MEMEX_DIR="$HOME/memex"
-    exec sbcl --eval "(load (merge-pathnames \"quicklisp/setup.lisp\" (user-homedir-pathname)))" --eval "(setf *debugger-hook* (lambda (c h) (declare (ignore h)) (format *error-output* \"FATAL LISP ERROR: ~a~%\" c) (uiop:print-backtrace :stream *error-output*) (uiop:quit 1)))" --eval "(push (truename \"$SCRIPT_DIR/\") asdf:*central-registry*)" --eval "(format t \"--- Quickloading OpenCortex ---~%\")" --eval "(ql:quickload '(:opencortex :croatoan))" --eval "(opencortex:main)"
+    exec sbcl --eval '(load (merge-pathnames "quicklisp/setup.lisp" (user-homedir-pathname)))' --eval '(setf *debugger-hook* (lambda (c h) (declare (ignore h)) (format *error-output* "FATAL LISP ERROR: ~a~%" c) (uiop:print-backtrace :stream *error-output*) (uiop:quit 1)))' --eval '(push (truename (uiop:getenv "SCRIPT_DIR")) asdf:*central-registry*)' --eval '(format t "--- Quickloading OpenCortex ---~%")' --eval "(ql:quickload '(:opencortex :croatoan))" --eval '(opencortex:main)'
 fi
 
 # --- 5. INTERACT ---
@@ -184,7 +178,7 @@ if [[ "$1" == "tui" ]]; then
     echo -e "${BLUE}Launching Croatoan TUI...${NC}"
     export SKILLS_DIR="${SCRIPT_DIR}/skills"
     [ -z "$MEMEX_DIR" ] && export MEMEX_DIR="$HOME/memex"
-    exec sbcl --eval "(load (merge-pathnames \"quicklisp/setup.lisp\" (user-homedir-pathname)))" --eval "(push (truename \"$SCRIPT_DIR/\") asdf:*central-registry*)" --eval "(ql:quickload :opencortex/tui)" --eval "(opencortex.tui:main)"
+    exec sbcl --eval '(load (merge-pathnames "quicklisp/setup.lisp" (user-homedir-pathname)))' --eval '(push (truename (uiop:getenv "SCRIPT_DIR")) asdf:*central-registry*)' --eval '(ql:quickload :opencortex/tui)' --eval '(opencortex.tui:main)'
 fi
 
 # --- 6. CLI FALLBACK ---

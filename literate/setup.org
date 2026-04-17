@@ -24,7 +24,7 @@ while [ -h "$SOURCE" ]; do
     SOURCE="$(readlink "$SOURCE")"
     [[ $SOURCE != /* ]] && SOURCE="$DIR/$SOURCE"
 done
-SCRIPT_DIR="$( cd -P "$( dirname "$SOURCE" )" && pwd )"
+export SCRIPT_DIR="$( cd -P "$( dirname "$SOURCE" )" && pwd )"
 
 # Load environment variables if they exist
 if [ -f "$SCRIPT_DIR/.env" ]; then
@@ -64,7 +64,6 @@ setup_system() {
         cp .env.example .env
 
         echo -e "\n${YELLOW}--- Identity Configuration ---${NC}"
-        echo "Let's personalize your OpenCortex experience."
         read -p "Your Name [User]: " user_name < /dev/tty
         user_name=${user_name:-User}
         sed -i "s|MEMEX_USER=.*|MEMEX_USER=\"$user_name\"|" .env
@@ -125,7 +124,7 @@ setup_system() {
     export PATH="$HOME/.local/bin:$PATH"
 
     echo -e "${YELLOW}--- Compiling and Loading OpenCortex (this may take a minute) ---${NC}"
-    sbcl --non-interactive --eval "(load (merge-pathnames \"quicklisp/setup.lisp\" (user-homedir-pathname)))" --eval "(push (truename \"$SCRIPT_DIR/\") asdf:*central-registry*)" --eval "(ql:quickload '(:opencortex :croatoan))"
+    sbcl --non-interactive --eval '(load (merge-pathnames "quicklisp/setup.lisp" (user-homedir-pathname)))' --eval '(push (truename (uiop:getenv "SCRIPT_DIR")) asdf:*central-registry*)' --eval "(ql:quickload '(:opencortex :croatoan))"
     
     if [ $? -ne 0 ]; then
         echo -e "${RED}✗ Compilation or Loading failed.${NC}"
@@ -162,16 +161,19 @@ setup_system() {
     fi
 }
 
+# --- 3. AUTO-SETUP ---
 if [ ! -f "$SCRIPT_DIR/src/package.lisp" ] || [ ! -f "$SCRIPT_DIR/.env" ]; then
     setup_system
 fi
 
+# --- 4. BOOT ---
 if [[ "$1" == "--boot" ]]; then
     export SKILLS_DIR="${SCRIPT_DIR}/skills"
     [ -z "$MEMEX_DIR" ] && export MEMEX_DIR="$HOME/memex"
-    exec sbcl --eval "(load (merge-pathnames \"quicklisp/setup.lisp\" (user-homedir-pathname)))" --eval "(setf *debugger-hook* (lambda (c h) (declare (ignore h)) (format *error-output* \"FATAL LISP ERROR: ~a~%\" c) (uiop:print-backtrace :stream *error-output*) (uiop:quit 1)))" --eval "(push (truename \"$SCRIPT_DIR/\") asdf:*central-registry*)" --eval "(format t \"--- Quickloading OpenCortex ---~%\")" --eval "(ql:quickload '(:opencortex :croatoan))" --eval "(opencortex:main)"
+    exec sbcl --eval '(load (merge-pathnames "quicklisp/setup.lisp" (user-homedir-pathname)))' --eval '(setf *debugger-hook* (lambda (c h) (declare (ignore h)) (format *error-output* "FATAL LISP ERROR: ~a~%" c) (uiop:print-backtrace :stream *error-output*) (uiop:quit 1)))' --eval '(push (truename (uiop:getenv "SCRIPT_DIR")) asdf:*central-registry*)' --eval '(format t "--- Quickloading OpenCortex ---~%")' --eval "(ql:quickload '(:opencortex :croatoan))" --eval '(opencortex:main)'
 fi
 
+# --- 5. INTERACT ---
 if [[ "$1" == "tui" ]]; then
     if ! nc -z $HOST $PORT 2>/dev/null; then
         echo -e "${YELLOW}Brain is offline. Awakening...${NC}"
@@ -186,9 +188,10 @@ if [[ "$1" == "tui" ]]; then
     echo -e "${BLUE}Launching Croatoan TUI...${NC}"
     export SKILLS_DIR="${SCRIPT_DIR}/skills"
     [ -z "$MEMEX_DIR" ] && export MEMEX_DIR="$HOME/memex"
-    exec sbcl --eval "(load (merge-pathnames \"quicklisp/setup.lisp\" (user-homedir-pathname)))" --eval "(push (truename \"$SCRIPT_DIR/\") asdf:*central-registry*)" --eval "(ql:quickload :opencortex/tui)" --eval "(opencortex.tui:main)"
+    exec sbcl --eval '(load (merge-pathnames "quicklisp/setup.lisp" (user-homedir-pathname)))' --eval '(push (truename (uiop:getenv "SCRIPT_DIR")) asdf:*central-registry*)' --eval '(ql:quickload :opencortex/tui)' --eval '(opencortex.tui:main)'
 fi
 
+# --- 6. CLI FALLBACK ---
 if [ -z "$1" ]; then
     if ! nc -z $HOST $PORT 2>/dev/null; then
         echo -e "${YELLOW}Brain is offline. Awakening...${NC}"
