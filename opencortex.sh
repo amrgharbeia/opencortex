@@ -6,6 +6,7 @@ HOST=${1:-localhost}
 RED='\033[0;31m'; GREEN='\033[0;32m'; BLUE='\033[0;34m'; YELLOW='\033[0;33m'; NC='\033[0m'
 
 command_exists() { command -v "$1" >/dev/null 2>&1; }
+
 # Resolve symlinks to find the actual repository location
 SOURCE="${BASH_SOURCE[0]}"
 while [ -h "$SOURCE" ]; do
@@ -42,12 +43,13 @@ setup_system() {
     echo -e "${YELLOW}--- Installing System Dependencies ---${NC}"
     if command_exists apt-get; then
         sudo apt-get update && sudo apt-get install -y sbcl emacs-nox rlwrap netcat-openbsd curl git socat libssl-dev libncurses5-dev libffi-dev zlib1g-dev libsqlite3-dev
- fi
- if [ ! -d "$HOME/quicklisp" ]; then
+    fi
+    if [ ! -d "$HOME/quicklisp" ]; then
         curl -O https://beta.quicklisp.org/quicklisp.lisp
         sbcl --non-interactive --load quicklisp.lisp --eval "(quicklisp-quickstart:install)" --eval "(ql-util:without-prompting (ql:add-to-init-file))"
         rm quicklisp.lisp
     fi
+    
     cd "$SCRIPT_DIR"
     if [ ! -f .env ]; then
         cp .env.example .env
@@ -75,41 +77,35 @@ setup_system() {
 
         echo -e "\n${YELLOW}--- Memex Folder Structure ---${NC}"
         echo "Enter the absolute paths for your existing folder structure (press Enter to accept default)."
-        read -p "Memex Root [$HOME/memex]: " memex_dir < /dev/tty
-        memex_dir=${memex_dir:-$HOME/memex}
+        read -p "Memex Root [\$HOME/memex]: " memex_dir < /dev/tty
+        memex_dir=${memex_dir:-\$HOME/memex}
         sed -i "s|MEMEX_DIR=.*|MEMEX_DIR=\"$memex_dir\"|" .env
         sed -i "s|\"/memex/|\"$memex_dir/|g" .env
         sed -i "s|SKILLS_DIR=.*|SKILLS_DIR=\"$SCRIPT_DIR/skills\"|" .env
         sed -i "s|ZETTELKASTEN_DIR=.*|ZETTELKASTEN_DIR=\"$memex_dir/notes\"|" .env
 
-
-        read -p "Inbox Directory [$memex_dir/inbox]: " inbox_dir < /dev/tty
-        inbox_dir=${inbox_dir:-$memex_dir/inbox}
+        read -p "Inbox Directory [\$memex_dir/inbox]: " inbox_dir < /dev/tty
+        inbox_dir=${inbox_dir:-\$memex_dir/inbox}
         sed -i "s|INBOX_DIR=.*|INBOX_DIR=\"$inbox_dir\"|" .env
 
-        read -p "Daily Directory [$memex_dir/daily]: " daily_dir < /dev/tty
-        daily_dir=${daily_dir:-$memex_dir/daily}
+        read -p "Daily Directory [\$memex_dir/daily]: " daily_dir < /dev/tty
+        daily_dir=${daily_dir:-\$memex_dir/daily}
         sed -i "s|DAILY_DIR=.*|DAILY_DIR=\"$daily_dir\"|" .env
 
-        read -p "Projects Directory [$memex_dir/projects]: " proj_dir < /dev/tty
-        proj_dir=${proj_dir:-$memex_dir/projects}
+        read -p "Projects Directory [\$memex_dir/projects]: " proj_dir < /dev/tty
+        proj_dir=${proj_dir:-\$memex_dir/projects}
         sed -i "s|PROJECTS_DIR=.*|PROJECTS_DIR=\"$proj_dir\"|" .env
-    fi
+        
         # Ensure the directories actually exist
-        mkdir -p "$memex_dir"
-        mkdir -p "$inbox_dir"
-        mkdir -p "$daily_dir"
-        mkdir -p "$proj_dir"
-        mkdir -p "$memex_dir/notes"
-        mkdir -p "$memex_dir/areas"
-        mkdir -p "$memex_dir/resources"
-        mkdir -p "$memex_dir/archives"
-        mkdir -p "$memex_dir/system"
+        mkdir -p "$memex_dir" "$inbox_dir" "$daily_dir" "$proj_dir"
+        mkdir -p "$memex_dir/notes" "$memex_dir/areas" "$memex_dir/resources" "$memex_dir/archives" "$memex_dir/system"
+    fi
 
     mkdir -p src
     for f in literate/*.org; do
         emacs --batch --eval "(require 'org)" --eval "(org-babel-tangle-file \"$f\")" >/dev/null 2>&1 || true
     done
+    
     mkdir -p "$HOME/.local/bin"
     ln -sf "$SCRIPT_DIR/opencortex.sh" "$HOME/.local/bin/opencortex"
 
@@ -123,17 +119,15 @@ setup_system() {
     done
     export PATH="$HOME/.local/bin:$PATH"
 
-
     echo -e "${YELLOW}--- Compiling and Loading OpenCortex (this may take a minute) ---${NC}"
-sbcl --non-interactive   --eval "(load (merge-pathnames \"quicklisp/setup.lisp\" (user-homedir-pathname)))" --eval "(push (truename \"$SCRIPT_DIR/\") asdf:*central-registry*)" --eval "(ql:quickload '(:opencortex :croatoan))"
-
+    sbcl --non-interactive --eval "(load (merge-pathnames \"quicklisp/setup.lisp\" (user-homedir-pathname)))" --eval "(push (truename \"$SCRIPT_DIR/\") asdf:*central-registry*)" --eval "(ql:quickload '(:opencortex :croatoan))"
+    
     if [ $? -ne 0 ]; then
         echo -e "${RED}✗ Compilation or Loading failed.${NC}"
         exit 1
     fi
 
     echo -e "${YELLOW}--- Finalizing: Awakening the Brain as a background daemon ---${NC}"
-    # Nuke any existing brain logs
     > "$SCRIPT_DIR/brain.log"
     "$SCRIPT_DIR/opencortex.sh" --boot > "$SCRIPT_DIR/brain.log" 2>&1 &
 
@@ -149,84 +143,65 @@ sbcl --non-interactive   --eval "(load (merge-pathnames \"quicklisp/setup.lisp\"
 
     if [ "$success" = true ]; then
         echo -e "\n${GREEN}✓ Brain is alive and responsive on port $PORT.${NC}"
-        echo -e "${GREEN}✓ Setup complete. You can now run 'opencortex tui'.${NC}"
+        echo -e "${GREEN}✓ Setup complete.${NC}"
+        if command -v opencortex >/dev/null 2>&1; then
+            echo -e "${BLUE}To start, run:${NC} ${GREEN}opencortex tui${NC}"
+        else
+            echo -e "${BLUE}To start, run:${NC} ${GREEN}exec bash && opencortex tui${NC}"
+        fi
     else
         echo -e "\n${RED}✗ Brain failed to wake up.${NC}"
         echo -e "${YELLOW}Full Log Path: $(realpath "$SCRIPT_DIR/brain.log")${NC}"
-        echo -e "${YELLOW}--- LOG START ---${NC}"
         cat "$SCRIPT_DIR/brain.log"
-        echo -e "${YELLOW}--- LOG END ---${NC}"
-        # Kill the background process if it exists
-        pkill -f "sbcl.*opencortex" || true
         exit 1
     fi
 }
 
+# --- 3. AUTO-SETUP ---
 if [ ! -f "$SCRIPT_DIR/src/package.lisp" ] || [ ! -f "$SCRIPT_DIR/.env" ]; then
     setup_system
 fi
 
-# --- 3. BOOT ---
+# --- 4. BOOT ---
 if [[ "$1" == "--boot" ]]; then
-    if [ -f "$SCRIPT_DIR/.env" ]; then
-        while IFS='=' read -r key value || [ -n "$key" ]; do
-          if [[ $key =~ ^[a-zA-Z_][a-zA-Z0-9_]*$ ]]; then
-            val=$(echo "$value" | sed 's/^"//;s/"$//')
-            export "$key=$val"
-          fi
-        done < "$SCRIPT_DIR/.env"
-    fi
-
-# Force absolute paths for core system directories
-export SKILLS_DIR="${SCRIPT_DIR}/skills"
-[ -z "$MEMEX_DIR" ] && export MEMEX_DIR="$HOME/memex"
-exec sbcl --eval "(load (merge-pathnames \"quicklisp/setup.lisp\" (user-homedir-pathname)))" --eval "(setf *debugger-hook* (lambda (c h) (declare (ignore h)) (format *error-output* \"FATAL LISP ERROR: ~a~%\" c) (uiop:print-backtrace :stream *error-output*) (uiop:quit 1)))" --eval "(push (truename \"$SCRIPT_DIR/\") asdf:*central-registry*)" --eval "(format t \"--- Quickloading OpenCortex ---~%\")" --eval "(ql:quickload '(:opencortex :croatoan))" --eval "(opencortex:main)"
+    export SKILLS_DIR="${SCRIPT_DIR}/skills"
+    [ -z "$MEMEX_DIR" ] && export MEMEX_DIR="$HOME/memex"
+    exec sbcl --eval "(load (merge-pathnames \"quicklisp/setup.lisp\" (user-homedir-pathname)))" --eval "(setf *debugger-hook* (lambda (c h) (declare (ignore h)) (format *error-output* \"FATAL LISP ERROR: ~a~%\" c) (uiop:print-backtrace :stream *error-output*) (uiop:quit 1)))" --eval "(push (truename \"$SCRIPT_DIR/\") asdf:*central-registry*)" --eval "(format t \"--- Quickloading OpenCortex ---~%\")" --eval "(ql:quickload '(:opencortex :croatoan))" --eval "(opencortex:main)"
 fi
 
-# --- 4. INTERACT ---
+# --- 5. INTERACT ---
 if [[ "$1" == "tui" ]]; then
-    # Ensure daemon is running
-    if ! (nc -z $HOST $PORT 2>/dev/null || (command_exists socat && socat - TCP:$HOST:$PORT,connect-timeout=1 2>/dev/null)); then
+    if ! nc -z $HOST $PORT 2>/dev/null; then
         echo -e "${YELLOW}Brain is offline. Awakening...${NC}"
         "$SCRIPT_DIR/opencortex.sh" --boot > "$SCRIPT_DIR/brain.log" 2>&1 &
         for i in {1..15}; do
             sleep 2
-            if nc -z $HOST $PORT 2>/dev/null || (command_exists socat && socat - TCP:$HOST:$PORT,connect-timeout=1 2>/dev/null); then break; fi
+            if nc -z $HOST $PORT 2>/dev/null; then break; fi
             echo -n "."
         done
         echo ""
     fi
-
-    # Launch TUI
     echo -e "${BLUE}Launching Croatoan TUI...${NC}"
-
-# Force absolute paths for core system directories
-export SKILLS_DIR="${SCRIPT_DIR}/skills"
-[ -z "$MEMEX_DIR" ] && export MEMEX_DIR="$HOME/memex"
-exec sbcl   --eval "(load (merge-pathnames \"quicklisp/setup.lisp\" (user-homedir-pathname)))" --eval "(push (truename \"$SCRIPT_DIR/\") asdf:*central-registry*)" --eval "(ql:quickload :opencortex/tui)" --eval "(opencortex.tui:main)"
+    export SKILLS_DIR="${SCRIPT_DIR}/skills"
+    [ -z "$MEMEX_DIR" ] && export MEMEX_DIR="$HOME/memex"
+    exec sbcl --eval "(load (merge-pathnames \"quicklisp/setup.lisp\" (user-homedir-pathname)))" --eval "(push (truename \"$SCRIPT_DIR/\") asdf:*central-registry*)" --eval "(ql:quickload :opencortex/tui)" --eval "(opencortex.tui:main)"
 fi
 
-connect() {
-    if command_exists socat && socat - TCP:$HOST:$PORT,connect-timeout=1 2>/dev/null; then
-        socat - TCP:$HOST:$PORT
-        return 0
-    elif command_exists nc && nc -z $HOST $PORT 2>/dev/null; then
-        nc $HOST $PORT
-        return 0
+# --- 6. CLI FALLBACK ---
+if [ -z "$1" ]; then
+    if ! nc -z $HOST $PORT 2>/dev/null; then
+        echo -e "${YELLOW}Brain is offline. Awakening...${NC}"
+        "$SCRIPT_DIR/opencortex.sh" --boot > "$SCRIPT_DIR/brain.log" 2>&1 &
+        for i in {1..15}; do
+            sleep 2
+            if nc -z $HOST $PORT 2>/dev/null; then break; fi
+            echo -n "."
+        done
+        echo ""
     fi
-    return 1
-}
-
-if connect; then exit 0; fi
-
-echo -e "${YELLOW}Brain is offline. Awakening...${NC}"
-"$SCRIPT_DIR/opencortex.sh" --boot > "$SCRIPT_DIR/brain.log" 2>&1 &
-
-for i in {1..15}; do
-    sleep 2
-    if connect; then exit 0; fi
-    echo -n "."
-done
-
-echo -e "${RED}\n✗ Failed to connect to brain.${NC}"
-exit 1
+    if command_exists socat; then
+        exec socat - TCP:$HOST:$PORT
+    else
+        exec nc $HOST $PORT
+    fi
+fi
