@@ -179,7 +179,11 @@ if [[ "$1" == "--boot" ]]; then
           fi
         done < "$SCRIPT_DIR/.env"
     fi
-    exec sbcl \
+    
+# Force absolute paths for core system directories
+export SKILLS_DIR="${SCRIPT_DIR}/skills"
+[ -z "$MEMEX_DIR" ] && export MEMEX_DIR="$HOME/memex"
+exec sbcl \
          --eval "(load (merge-pathnames \"quicklisp/setup.lisp\" (user-homedir-pathname)))" \
          --eval "(setf *debugger-hook* (lambda (c h) (declare (ignore h)) (format *error-output* \"FATAL LISP ERROR: ~a~%\" c) (uiop:print-backtrace :stream *error-output*) (uiop:quit 1)))" \
          --eval "(push (truename \"$SCRIPT_DIR/\") asdf:*central-registry*)" \
@@ -204,7 +208,11 @@ if [[ "$1" == "tui" ]]; then
 
     # Launch TUI
     echo -e "${BLUE}Launching Croatoan TUI...${NC}"
-    exec sbcl \
+    
+# Force absolute paths for core system directories
+export SKILLS_DIR="${SCRIPT_DIR}/skills"
+[ -z "$MEMEX_DIR" ] && export MEMEX_DIR="$HOME/memex"
+exec sbcl \
          --eval "(load (merge-pathnames \"quicklisp/setup.lisp\" (user-homedir-pathname)))" \
          --eval "(push (truename \"$SCRIPT_DIR/\") asdf:*central-registry*)" \
          --eval "(ql:quickload :opencortex/tui)" \
