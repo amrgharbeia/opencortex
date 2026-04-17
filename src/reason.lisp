@@ -44,8 +44,9 @@
                      ;; Ensure we are working with a string for read-from-string
                      (cleaned (if (stringp thought) (string-trim '(#\Space #\Newline #\Tab) thought) thought)))
                 (if (stringp cleaned)
-                    (handler-case (read-from-string cleaned)
-                      (error (c) (list :type :EVENT :payload (list :sensor :syntax-error :code cleaned :error (format nil "~a" c)))))
+                    (let ((*read-eval* nil))
+                      (handler-case (read-from-string cleaned)
+                        (error (c) (list :type :EVENT :payload (list :sensor :syntax-error :code cleaned :error (format nil "~a" c))))))
                     cleaned))
               (list :type :LOG :payload (list :text (format nil "Skill '~a' triggered (Deterministic only)" (skill-name active-skill))))))
         nil)))
