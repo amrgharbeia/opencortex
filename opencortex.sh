@@ -90,7 +90,18 @@ setup_system() {
     mkdir -p "$HOME/.local/bin"
     ln -sf "$SCRIPT_DIR/opencortex.sh" "$HOME/.local/bin/opencortex"
 
-    echo -e "${YELLOW}--- Finalizing: Awakening the Brain for the first time ---${NC}"
+    
+    echo -e "${YELLOW}--- Compiling and Loading OpenCortex (this may take a minute) ---${NC}"
+    sbcl --non-interactive \
+         --eval "(load (merge-pathnames \"quicklisp/setup.lisp\" (user-homedir-pathname)))" \
+         --eval "(push (truename \"$SCRIPT_DIR/\") asdf:*central-registry*)" \
+         --eval "(ql:quickload :opencortex)"
+    
+    if [ $? -ne 0 ]; then
+        echo -e "${RED}✗ Compilation or Loading failed.${NC}"
+        exit 1
+    fi
+\n    echo -e "${YELLOW}--- Finalizing: Awakening the Brain as a background daemon ---${NC}"
     # Nuke any existing brain logs
     > "$SCRIPT_DIR/brain.log"
     "$SCRIPT_DIR/opencortex.sh" --boot > "$SCRIPT_DIR/brain.log" 2>&1 &
