@@ -15,6 +15,18 @@ while [ -h "$SOURCE" ]; do
 done
 SCRIPT_DIR="$( cd -P "$( dirname "$SOURCE" )" && pwd )"
 
+# Load environment variables if they exist
+if [ -f "$SCRIPT_DIR/.env" ]; then
+    while IFS="=" read -r key value || [ -n "$key" ]; do
+        if [[ $key =~ ^[a-zA-Z_][a-zA-Z0-9_]*$ ]]; then
+            val=$(echo "$value" | sed "s/^\"//;s/\"$//")
+            export "$key=$val"
+        fi
+    done < "$SCRIPT_DIR/.env"
+    [ -n "$HARNESS_PORT" ] && PORT=$HARNESS_PORT
+    [ -n "$HARNESS_HOST" ] && HOST=$HARNESS_HOST
+fi
+
 # --- 1. BOOTSTRAP ---
 # Only bootstrap if we are not in a git repo and the target hidden folder does not exist
 if [ ! -d "$SCRIPT_DIR/.git" ] && [ ! -d "$HOME/.opencortex" ] && [[ ! "$(pwd)" =~ "opencortex" ]]; then
@@ -167,7 +179,7 @@ if [[ "$1" == "--boot" ]]; then
           fi
         done < "$SCRIPT_DIR/.env"
     fi
-    exec sbcl --non-interactive \
+    exec sbcl \
          --eval "(load (merge-pathnames \"quicklisp/setup.lisp\" (user-homedir-pathname)))" \
          --eval "(setf *debugger-hook* (lambda (c h) (declare (ignore h)) (format *error-output* \"FATAL LISP ERROR: ~a~%\" c) (uiop:print-backtrace :stream *error-output*) (uiop:quit 1)))" \
          --eval "(push (truename \"$SCRIPT_DIR/\") asdf:*central-registry*)" \
@@ -192,7 +204,7 @@ if [[ "$1" == "tui" ]]; then
     
     # Launch TUI
     echo -e "${BLUE}Launching Croatoan TUI...${NC}"
-    exec sbcl --non-interactive \
+    exec sbcl \
          --eval "(load (merge-pathnames \"quicklisp/setup.lisp\" (user-homedir-pathname)))" \
          --eval "(push (truename \"$SCRIPT_DIR/\") asdf:*central-registry*)" \
          --eval "(ql:quickload :opencortex/tui)" \
