@@ -54,15 +54,14 @@ The CLI actuator writes the agent's response back to the client's network stream
 
 #+begin_src lisp
 (defun execute-cli-action (action context)
-  "Sends a message back to the connected CLI client via its network stream."
+  "Sends a framed message back to the connected CLI client."
   (let* ((payload (getf action :payload))
          (text (or (getf payload :text) (getf action :text)))
          (stream (getf context :reply-stream)))
     (handler-case
         (if (and stream (open-stream-p stream))
             (progn
-              (prin1 (list :type :chat :text text) stream)
-              (terpri stream)
+              (format stream "~a~%" (frame-message (format nil "~s" (list :type :chat :text text))))
               (finish-output stream))
             (harness-log "CLI ERROR: No active or open reply stream for signal."))
       (error (c) (harness-log "CLI ACTUATOR ERROR: ~a" c)))))
@@ -76,8 +75,7 @@ Handles an individual TCP connection. It reads lines until the connection is clo
   "Handles TUI slash commands by returning structured Lisp s-expressions."
   (cond
     ((string= cmd "/status")
-     (prin1 '(:type :status :scribe :idle :gardener :sleeping) stream)
-     (terpri stream)
+     (format stream "~a~%" (frame-message (format nil "~s" '(:type :status :scribe :idle :gardener :sleeping))))
      (finish-output stream))
     ((string= cmd "/exit")
      (prin1 '(:type :info :text "Goodbye!") stream)
@@ -88,22 +86,24 @@ Handles an individual TCP connection. It reads lines until the connection is clo
        (finish-output stream))))
 
 (defun handle-cli-client (stream)
-  "Reads lines from a CLI client and injects them as stimuli."
+  "Reads framed messages from a CLI client and injects them as stimuli."
   (harness-log "CLI: Client connected.")
   (handler-case
-      (loop for line = (read-line stream nil nil)
-            while line do
-            (let ((trimmed (string-trim '(#\Space #\Tab #\Newline #\Return) line)))
-              (when (> (length trimmed) 0)
-                (if (and (> (length trimmed) 0) (char= (char trimmed 0) #\/))
-                    (handle-cli-slash-command trimmed stream)
-                    (progn
-                      (harness-log "CLI: Received input -> ~a" trimmed)
-                      (inject-stimulus (list :type :EVENT 
-                                             :payload (list :sensor :chat-message 
-                                                            :channel :cli 
-                                                            :text trimmed))
-                                       :stream stream))))))
+      (progn
+        ;; 1. Send Handshake
+        (format stream "~a~%" (frame-message (format nil "~s" (make-hello-message "0.1.0"))))
+        (finish-output stream)
+        
+        ;; 2. Communication Loop
+        (loop
+          (let ((msg (read-framed-message stream)))
+            (cond ((eq msg :eof) (return))
+                  ((eq msg :error) (return))
+                  (t (if (and (listp msg) (stringp (getf msg :text)) (char= (char (getf msg :text) 0) #\/))
+                         (handle-cli-slash-command (getf msg :text) stream)
+                         (progn
+                           (harness-log "CLI: Received input -> ~s" msg)
+                           (inject-stimulus msg :stream stream))))))))
     (error (c) (harness-log "CLI CLIENT DISCONNECT: ~a" c)))
   (harness-log "CLI: Client disconnected."))
 #+end_src

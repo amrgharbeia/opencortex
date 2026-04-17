@@ -82,7 +82,7 @@ The `main` function initializes the environment, loads skills, and starts the he
   
   (initialize-actuators)
   (initialize-all-skills)
-  (start-daemon)
+
   (start-heartbeat)
   
   ;; Graceful shutdown handler for SBCL

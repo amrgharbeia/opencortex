@@ -51,7 +51,7 @@
   
   (initialize-actuators)
   (initialize-all-skills)
-  (start-daemon)
+
   (start-heartbeat)
   
   ;; Graceful shutdown handler for SBCL
