@@ -4,3 +4,5 @@ opencortex-server
 *.log
 *~
 \#*#
+opencortex-tui
+test_input.txt
