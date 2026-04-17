@@ -130,7 +130,11 @@ setup_system() {
     
     if [ "$success" = true ]; then
         echo -e "\n${GREEN}✓ Brain is alive and responsive on port $PORT.${NC}"
+    # Reload PATH for the current subshell so the next message is accurate
+    export PATH="$HOME/.local/bin:$PATH"
         echo -e "${GREEN}✓ Setup complete. You can now run 'opencortex tui'.${NC}"
+    echo -e "${YELLOW}Please run: source ~/.bashrc${NC}"
+    exit 0
     else
         echo -e "\n${RED}✗ Brain failed to wake up.${NC}"
         echo -e "${YELLOW}Full Log Path: $(realpath "$SCRIPT_DIR/brain.log")${NC}"

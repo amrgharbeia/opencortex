@@ -205,7 +205,7 @@
                                    '("org-skill-policy" "org-skill-bouncer"))))
         (dolist (req mandatory-skills)
           (unless (member req sorted-files :key #'pathname-name :test #'string-equal)
-            (error "BOOT FAILURE: Mandatory skill '~a' not found in skills directory: ~a" req (uiop:native-namestring skills-dir)))
+            (error "BOOT FAILURE: Mandatory skill '~a' not found in skills directory: ~a" req (uiop:native-namestring skills-dir))))
       
         (harness-log "==================================================")
         (harness-log " LOADER: Initializing ~a skills..." (length sorted-files))
@@ -228,7 +228,7 @@
                    *skill-catalog*)
           (harness-log " LOADER: Boot Complete. [Ready: ~a] [Failed: ~a]" ready failed)
           (harness-log "==================================================")
-          (values ready failed))))))
+          (values ready failed)))))
 
 (defun generate-tool-belt-prompt ()
   "Aggregates all registered cognitive tools into a descriptive prompt."
