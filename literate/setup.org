@@ -56,6 +56,7 @@ setup_system() {
         read -p "Memex Root [/memex]: " memex_dir
         memex_dir=${memex_dir:-/memex}
         sed -i "s|MEMEX_DIR=.*|MEMEX_DIR=\"$memex_dir\"|" .env
+        sed -i "s|\"/memex/|\"$memex_dir/|g" .env
         
         read -p "Inbox Directory [$memex_dir/inbox]: " inbox_dir
         inbox_dir=${inbox_dir:-$memex_dir/inbox}

@@ -1,0 +1,9 @@
+TestUser
+TestAgent
+test_gemini_key
+
+
+/home/user/memex/test_memex
+/home/user/memex/test_memex/inbox
+/home/user/memex/test_memex/daily
+/home/user/memex/test_memex/projects
