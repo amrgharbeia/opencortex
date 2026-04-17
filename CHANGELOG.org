@@ -13,6 +13,10 @@ This is the initial MVP release of the ~opencortex~. It establishes a secure, au
 - **Unified Onboarding:** Single-command installation (~opencortex.sh~) with Docker-first deployment and OS detection.
 - **CLI Gateway:** Local TCP socket server and interactive chat client for frictionless first contact.
 
+** Licensing & Community
+- **AGPLv3 License:** OpenCortex is now officially licensed under the GNU Affero General Public License v3.0, ensuring the system remains free and open for self-hosters.
+- **Contributor License Agreement:** Implemented a broad CLA (~CLA.org~) to allow the core maintainer to enforce the AGPLv3 while retaining flexible commercial rights.
+
 ** Architectural Shift
 - Transitioned to **Literate Granularity**: Every function and invariant is now documented in its own Org block.
 - **Configuration Externalization:** All timing, thresholds, and identities are now driven by environment variables.
