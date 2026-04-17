@@ -101,7 +101,8 @@ setup_system() {
         echo -e "${RED}✗ Compilation or Loading failed.${NC}"
         exit 1
     fi
-\n    echo -e "${YELLOW}--- Finalizing: Awakening the Brain as a background daemon ---${NC}"
+
+    echo -e "${YELLOW}--- Finalizing: Awakening the Brain as a background daemon ---${NC}"
     # Nuke any existing brain logs
     > "$SCRIPT_DIR/brain.log"
     "$SCRIPT_DIR/opencortex.sh" --boot > "$SCRIPT_DIR/brain.log" 2>&1 &
