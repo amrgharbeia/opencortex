@@ -1,0 +1,55 @@
+#+TITLE: OpenCortex MVP (v0.1.0) Specification & Release Plan
+#+STARTUP: content
+
+* Objective
+Define detailed specifications for the OpenCortex MVP (v0.1.0). This MVP establishes the autonomous foundation and introduces a native Common Lisp Terminal User Interface (TUI) for improved UX, alongside a comprehensive release plan.
+
+* 1. Core Architecture & Environment (Completed)
+- *System Harness:* A minimal, un-brittle Common Lisp (SBCL) microkernel that orchestrates the Perceive -> Probabilistic -> Deterministic -> Dispatch pipeline.
+- *Dual-Engine Cognition:*
+  - /Probabilistic Engine:/ The LLM gateway handling semantic translation, multi-modal ingestion, and intent parsing (supporting Anthropic, Gemini, Groq, OpenAI, and Ollama).
+  - /Deterministic Engine:/ The Lisp logical core that mathematically verifies LLM-proposed actions against system rules prior to execution.
+- *Data Stores:*
+  - /Linguistic Substrate:/ Org-mode plaintext files acting as the universal Abstract Syntax Tree (AST) for both humans and the agent.
+  - /Lisp Memory:/ A live, threaded graph of Lisp objects representing the Memex in RAM for instant, token-efficient traversal (Sparse Trees).
+- *Skill Architecture:* All agent capabilities are encapsulated in single-file Literate Programs (~org-skill-*.org~). They are topologically loaded, dynamically compiled, and hot-reloadable.
+
+* 2. Mandatory Security & Containment (Completed)
+- *Formal Verification Gate:* Evaluates actions before they hit the OS.
+  - /Path Confinement:/ Guarantees file writes are physically locked to the `~/memex/` root directory.
+  - /Network Exfiltration:/ Intercepts and blocks unauthorized external generic HTTP or socket requests.
+- *System Policy Gate:* Enforces the "Zero-Bloat" and "Autonomy Above All" invariants.
+- *Credentials Vault:* API keys and ~.env~ files are stored in a secure, masked Lisp enclave, rendering them invisible to the LLM's context window.
+
+* 3. Autonomous Background Workers (Completed)
+- *The Scribe (~org-skill-scribe.org~):* A distillation engine that periodically reads the chronological logs (e.g., daily journal files) and autonomously extracts concepts into permanent Zettelkasten notes.
+- *The Gardener (~org-skill-gardener.org~):* A heartbeat-driven, idle process that continuously walks the memory graph. It automatically repairs broken internal links, infers missing metadata, and flags orphaned ideas for the user.
+
+* 4. Native Terminal User Interface (UX Target)
+- *Objective:* Eliminate raw ~stdout~ shell piping in favor of a rich, structured, and interactive Common Lisp TUI.
+- *Library:* ~croatoan~ (A high-level CLOS wrapper for ncurses) will be used for rapid, robust UI development.
+- *Layout:*
+  - /Main Viewport:/ A read-only, scrollable panel that renders Org-mode headlines, syntax-highlighted Lisp/Python code blocks, and system logs.
+  - /Input Box:/ A fixed, multi-line input area pinned to the bottom of the screen, supporting standard Readline keybindings.
+  - /Status Bar:/ A persistent bar at the top or bottom displaying the health and current activity of background workers (Scribe/Gardener) and memory usage.
+- *Interactive Control (Slash Commands):*
+  - ~/help~: View system overview and command syntax.
+  - ~/clear~: Clear the viewport buffer.
+  - ~/skill-load <skill-name>~: Dynamically reload a modified Lisp skill into the active image.
+  - ~/exit~: Gracefully shut down the harness and exit the environment.
+  - ~/status~: Print diagnostic report (memory, git status, worker uptimes).
+  - ~/config~: Display active config/env vars (masking secrets).
+  - ~/search <query>~: Raw deterministic regex/vector search across the Memex.
+  - ~/commit~: Trigger Engineering Standard check, stage, and commit Memex state.
+- *Refactoring:* Reroute the existing ~:cli~ actuator and inbound gateway to exclusively utilize the new TUI rendering engine.
+
+* 5. Release & Publication Plan (v0.1.0)
+- *Documentation:*
+  - ~USER_MANUAL.md~: A comprehensive guide on the one-liner installation (~opencortex.sh~), daily workflow, and navigating the Memex directory structure.
+  - ~CONTRIBUTING.md~: A guide to "Literate Granularity" engineering standards and creating new ~org-skill-*.org~ files.
+- *Legal Finalization:* 
+  - Assign the *AGPLv3* open-source license. 
+  - Implement a broad *Contributor License Agreement (CLA)* process for external contributors to license rights back to the core project.
+  - Update ~LICENSE~ and finalize ~CHANGELOG.org~.
+- *End-to-End Walkthrough:* Execute a clean-slate test of the installation script, boot sequence, environment variable parsing, and autonomous background worker triggers.
+- *Marketing & Launch:* Migrate the canonical repository to GitHub (configure topics, badges, and issue templates). Record a high-fidelity GIF/video of the new TUI interaction and execute announcements on Hacker News, Reddit, and X/Twitter.
