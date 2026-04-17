@@ -62,7 +62,9 @@ The CLI actuator writes the agent's response back to the client's network stream
         (if (and stream (open-stream-p stream))
             (progn
               (format stream "~a~%" (frame-message (format nil "~s" (list :type :chat :text text))))
-              (finish-output stream))
+              (finish-output stream)
+        (format stream "~a~%" (frame-message (format nil "~s" '(:type :status :scribe :idle :gardener :sleeping))))
+        (finish-output stream))
             (harness-log "CLI ERROR: No active or open reply stream for signal."))
       (error (c) (harness-log "CLI ACTUATOR ERROR: ~a" c)))))
 #+end_src
@@ -92,6 +94,8 @@ Handles an individual TCP connection. It reads lines until the connection is clo
       (progn
         ;; 1. Send Handshake
         (format stream "~a~%" (frame-message (format nil "~s" (make-hello-message "0.1.0"))))
+        (finish-output stream)
+        (format stream "~a~%" (frame-message (format nil "~s" '(:type :status :scribe :idle :gardener :sleeping))))
         (finish-output stream)
         
         ;; 2. Communication Loop
