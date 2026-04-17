@@ -59,6 +59,9 @@ setup_system() {
         memex_dir=${memex_dir:-$HOME/memex}
         sed -i "s|MEMEX_DIR=.*|MEMEX_DIR=\"$memex_dir\"|" .env
         sed -i "s|\"/memex/|\"$memex_dir/|g" .env
+        sed -i "s|SKILLS_DIR=.*|SKILLS_DIR=\"$SCRIPT_DIR/skills\"|" .env
+        sed -i "s|ZETTELKASTEN_DIR=.*|ZETTELKASTEN_DIR=\"$memex_dir/notes\"|" .env
+
         
         read -p "Inbox Directory [$memex_dir/inbox]: " inbox_dir < /dev/tty
         inbox_dir=${inbox_dir:-$memex_dir/inbox}
