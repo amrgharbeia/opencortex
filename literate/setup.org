@@ -64,8 +64,8 @@ setup_system() {
 
         echo -e "\n${YELLOW}--- Memex Folder Structure ---${NC}"
         echo "Enter the absolute paths for your existing folder structure (press Enter to accept default)."
-        read -p "Memex Root [/memex]: " memex_dir < /dev/tty
-        memex_dir=${memex_dir:-/memex}
+        read -p "Memex Root [$HOME/memex]: " memex_dir < /dev/tty
+        memex_dir=${memex_dir:-$HOME/memex}
         sed -i "s|MEMEX_DIR=.*|MEMEX_DIR=\"$memex_dir\"|" .env
         sed -i "s|\"/memex/|\"$memex_dir/|g" .env
         
@@ -81,6 +81,16 @@ setup_system() {
         proj_dir=${proj_dir:-$memex_dir/projects}
         sed -i "s|PROJECTS_DIR=.*|PROJECTS_DIR=\"$proj_dir\"|" .env
     fi
+        # Ensure the directories actually exist
+        mkdir -p "$memex_dir"
+        mkdir -p "$inbox_dir"
+        mkdir -p "$daily_dir"
+        mkdir -p "$proj_dir"
+        mkdir -p "$memex_dir/notes"
+        mkdir -p "$memex_dir/areas"
+        mkdir -p "$memex_dir/resources"
+        mkdir -p "$memex_dir/archives"
+        mkdir -p "$memex_dir/system"
 
     mkdir -p src
     for f in literate/*.org; do
