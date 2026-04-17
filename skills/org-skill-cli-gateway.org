@@ -61,7 +61,8 @@ The CLI actuator writes the agent's response back to the client's network stream
     (handler-case
         (if (and stream (open-stream-p stream))
             (progn
-              (format stream "Agent: ~a~%" text)
+              (format stream "{\"type\": \"chat\", \"text\": \"~a\"}" text)
+              (terpri stream)
               (finish-output stream))
             (harness-log "CLI ERROR: No active or open reply stream for signal."))
       (error (c) (harness-log "CLI ACTUATOR ERROR: ~a" c)))))
@@ -71,24 +72,38 @@ The CLI actuator writes the agent's response back to the client's network stream
 Handles an individual TCP connection. It reads lines until the connection is closed.
 
 #+begin_src lisp
+(defun handle-cli-slash-command (cmd stream)
+  "Handles TUI slash commands by returning structured JSON."
+  (cond
+    ((string= cmd "/status")
+     (format stream "{\"type\": \"status\", \"scribe\": \"idle\", \"gardener\": \"sleeping\"}")
+     (terpri stream)
+     (finish-output stream))
+    ((string= cmd "/exit")
+     (format stream "{\"type\": \"info\", \"text\": \"Goodbye!\"}")
+     (terpri stream)
+     (finish-output stream))
+    (t (format stream "{\"type\": \"error\", \"text\": \"Unknown command: ~a\"}" cmd)
+       (terpri stream)
+       (finish-output stream))))
+
 (defun handle-cli-client (stream)
   "Reads lines from a CLI client and injects them as stimuli."
   (harness-log "CLI: Client connected.")
-  (format stream "--------------------------------------------------~%")
-  (format stream "  Connected to OpenCortex~%")
-  (format stream "--------------------------------------------------~%")
-  (finish-output stream)
   (handler-case
       (loop for line = (read-line stream nil nil)
             while line do
             (let ((trimmed (string-trim '(#\Space #\Tab #\Newline #\Return) line)))
               (when (> (length trimmed) 0)
-                (harness-log "CLI: Received input -> ~a" trimmed)
-                (inject-stimulus (list :type :EVENT 
-                                       :payload (list :sensor :chat-message 
-                                                      :channel :cli 
-                                                      :text trimmed))
-                                 :stream stream))))
+                (if (and (> (length trimmed) 0) (char= (char trimmed 0) #\/))
+                    (handle-cli-slash-command trimmed stream)
+                    (progn
+                      (harness-log "CLI: Received input -> ~a" trimmed)
+                      (inject-stimulus (list :type :EVENT 
+                                             :payload (list :sensor :chat-message 
+                                                            :channel :cli 
+                                                            :text trimmed))
+                                       :stream stream))))))
     (error (c) (harness-log "CLI CLIENT DISCONNECT: ~a" c)))
   (harness-log "CLI: Client disconnected."))
 #+end_src

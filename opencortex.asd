@@ -4,7 +4,7 @@
   :version "0.1.0"
   :license "AGPLv3"
   :description "The Probabilistic-Deterministic Lisp Machine Harness"
-  :depends-on (:usocket :bordeaux-threads :dexador :uiop :cl-dotenv :cl-ppcre :hunchentoot :ironclad :str :cl-json :uuid)
+  :depends-on (:usocket :bordeaux-threads :dexador :uiop :cl-dotenv :cl-ppcre :hunchentoot :ironclad :str :cl-json :uuid :croatoan)
   :serial t
   :components ((:file "src/package")
                (:file "src/skills")
@@ -37,3 +37,10 @@
              (uiop:symbol-call :fiveam :run! (uiop:find-symbol* :boot-suite :opencortex-boot-tests))
              (uiop:symbol-call :fiveam :run! (uiop:find-symbol* :memory-suite :opencortex-memory-tests))
              (uiop:symbol-call :fiveam :run! (uiop:find-symbol* :immune-suite :opencortex-immune-system-tests))))
+
+(defsystem :opencortex/tui
+  :depends-on (:opencortex :croatoan :usocket :bordeaux-threads :cl-json)
+  :components ((:file "src/tui-client"))
+  :build-operation "program-op"
+  :build-pathname "opencortex-tui"
+  :entry-point "opencortex.tui:main")

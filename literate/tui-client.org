@@ -1,0 +1,131 @@
+:PROPERTIES:
+:ID:       tui-client-spec
+:CREATED:  [2026-04-17 Fri 11:00]
+:END:
+#+TITLE: OpenCortex TUI Client (Standalone)
+#+STARTUP: content
+#+FILETAGS: :tui:ux:client:
+
+* Overview
+The OpenCortex TUI Client is a standalone Common Lisp executable providing a rich, interactive terminal experience via the ~croatoan~ library.
+
+* Phase D: Build (Implementation)
+
+** Package Definition
+#+begin_src lisp :tangle ../src/tui-client.lisp
+(in-package :cl-user)
+(defpackage :opencortex.tui
+  (:use :cl :croatoan)
+  (:export :main))
+(in-package :opencortex.tui)
+#+end_src
+
+** State & Global Queues
+#+begin_src lisp :tangle ../src/tui-client.lisp
+(defvar *daemon-host* "127.0.0.1")
+(defvar *daemon-port* 9105)
+(defvar *socket* nil)
+(defvar *stream* nil)
+(defvar *chat-history* (list))
+(defvar *status-text* "Connecting...")
+(defvar *input-buffer* (make-array 0 :element-type 'char :fill-pointer 0 :adjustable t))
+(defvar *is-running* t)
+(defvar *queue-lock* (bt:make-lock))
+(defvar *incoming-msgs* nil)
+#+end_src
+
+** Networking Thread
+#+begin_src lisp :tangle ../src/tui-client.lisp
+(defun enqueue-msg (msg)
+  (bt:with-lock-held (*queue-lock*)
+    (push msg *incoming-msgs*)))
+
+(defun dequeue-msgs ()
+  (bt:with-lock-held (*queue-lock*)
+    (let ((msgs (nreverse *incoming-msgs*)))
+      (setf *incoming-msgs* nil)
+      msgs)))
+
+(defun listen-thread ()
+  (loop while *is-running* do
+    (handler-case
+        (when (and *stream* (open-stream-p *stream*))
+          (let ((line (read-line *stream* nil :eof)))
+            (if (eq line :eof)
+                (setf *is-running* nil)
+                (let ((json (ignore-errors (cl-json:decode-json-from-string line))))
+                  (if json
+                      (cond
+                        ((string= (cdr (assoc :type json)) "status")
+                         (setf *status-text* (format nil "[Scribe: ~a] [Gardener: ~a]" 
+                                                     (cdr (assoc :scribe json))
+                                                     (cdr (assoc :gardener json)))))
+                        ((string= (cdr (assoc :type json)) "chat")
+                         (enqueue-msg (cdr (assoc :text json))))
+                        (t (enqueue-msg line)))
+                      (enqueue-msg line))))))
+      (error () (setf *is-running* nil)))
+    (sleep 0.05)))
+#+end_src
+
+** Main TUI Loop
+#+begin_src lisp :tangle ../src/tui-client.lisp
+(defun main ()
+  (handler-case
+      (setf *socket* (usocket:socket-connect *daemon-host* *daemon-port*))
+    (error (e) (format t "Error connecting: ~a~%" e) (return-from main)))
+  (setf *stream* (usocket:socket-stream *socket*))
+  (bt:make-thread #'listen-thread :name "tui-listener")
+  
+  (unwind-protect
+    (with-screen (scr :input-echoing nil :input-blocking nil :enable-colors t :cursor-visible t)
+      (let* ((h (height scr))
+             (w (width scr))
+             (chat-win (make-window (list (- h 2) w 0 0)))
+             (status-win (make-window (list 1 w (- h 2) 0)))
+             (input-win (make-window (list 1 w (- h 1) 0))))
+        
+        (loop while *is-running* do
+          ;; Handle incoming messages
+          (let ((new-msgs (dequeue-msgs)))
+            (when new-msgs
+              (dolist (msg new-msgs)
+                (push msg *chat-history*)
+                (setf *chat-history* (subseq *chat-history* 0 (min (length *chat-history*) 500))))
+              
+              (clear chat-win)
+              (let ((line-num 0))
+                (dolist (m (reverse (subseq *chat-history* 0 (min (length *chat-history*) (- h 3)))))
+                  (add-string chat-win m :y line-num :x 0)
+                  (incf line-num)))
+              (refresh chat-win)))
+
+          ;; Render Status Bar
+          (clear status-win)
+          (add-string status-win *status-text* :attributes '(:reverse))
+          (refresh status-win)
+
+          ;; Handle Keyboard Input
+          (let ((ch (get-char scr)))
+            (when ch
+              (cond
+                ((eq ch #\Newline)
+                 (let ((cmd (coerce *input-buffer* 'string)))
+                   (setf (fill-pointer *input-buffer*) 0)
+                   (format *stream* "~a~%" cmd)
+                   (finish-output *stream*)
+                   (when (string= cmd "/exit") (setf *is-running* nil))))
+                ((eq ch :backspace)
+                 (when (> (length *input-buffer*) 0)
+                   (decf (fill-pointer *input-buffer*))))
+                ((characterp ch)
+                 (vector-push-extend ch *input-buffer*)))
+              
+              (clear input-win)
+              (add-string input-win (concatenate 'string "> " (coerce *input-buffer* 'string)))
+              (refresh input-win)))
+          
+          (sleep 0.02))))
+    (setf *is-running* nil)
+    (when *socket* (usocket:socket-close *socket*))))
+#+end_src
