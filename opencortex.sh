@@ -179,7 +179,7 @@ if [[ "$1" == "--boot" ]]; then
           fi
         done < "$SCRIPT_DIR/.env"
     fi
-    
+
 # Force absolute paths for core system directories
 export SKILLS_DIR="${SCRIPT_DIR}/skills"
 [ -z "$MEMEX_DIR" ] && export MEMEX_DIR="$HOME/memex"
@@ -208,7 +208,7 @@ if [[ "$1" == "tui" ]]; then
 
     # Launch TUI
     echo -e "${BLUE}Launching Croatoan TUI...${NC}"
-    
+
 # Force absolute paths for core system directories
 export SKILLS_DIR="${SCRIPT_DIR}/skills"
 [ -z "$MEMEX_DIR" ] && export MEMEX_DIR="$HOME/memex"
