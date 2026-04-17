@@ -61,7 +61,7 @@ The CLI actuator writes the agent's response back to the client's network stream
     (handler-case
         (if (and stream (open-stream-p stream))
             (progn
-              (format stream "{\"type\": \"chat\", \"text\": \"~a\"}" text)
+              (prin1 (list :type :chat :text text) stream)
               (terpri stream)
               (finish-output stream))
             (harness-log "CLI ERROR: No active or open reply stream for signal."))
@@ -73,17 +73,17 @@ Handles an individual TCP connection. It reads lines until the connection is clo
 
 #+begin_src lisp
 (defun handle-cli-slash-command (cmd stream)
-  "Handles TUI slash commands by returning structured JSON."
+  "Handles TUI slash commands by returning structured Lisp s-expressions."
   (cond
     ((string= cmd "/status")
-     (format stream "{\"type\": \"status\", \"scribe\": \"idle\", \"gardener\": \"sleeping\"}")
+     (prin1 '(:type :status :scribe :idle :gardener :sleeping) stream)
      (terpri stream)
      (finish-output stream))
     ((string= cmd "/exit")
-     (format stream "{\"type\": \"info\", \"text\": \"Goodbye!\"}")
+     (prin1 '(:type :info :text "Goodbye!") stream)
      (terpri stream)
      (finish-output stream))
-    (t (format stream "{\"type\": \"error\", \"text\": \"Unknown command: ~a\"}" cmd)
+    (t (prin1 (list :type :error :text (format nil "Unknown command: ~a" cmd)) stream)
        (terpri stream)
        (finish-output stream))))
 

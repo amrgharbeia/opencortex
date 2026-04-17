@@ -39,7 +39,7 @@
              (uiop:symbol-call :fiveam :run! (uiop:find-symbol* :immune-suite :opencortex-immune-system-tests))))
 
 (defsystem :opencortex/tui
-  :depends-on (:opencortex :croatoan :usocket :bordeaux-threads :cl-json)
+  :depends-on (:opencortex :croatoan :usocket :bordeaux-threads)
   :components ((:file "src/tui-client"))
   :build-operation "program-op"
   :build-pathname "opencortex-tui"
