@@ -101,6 +101,16 @@ setup_system() {
     mkdir -p "$HOME/.local/bin"
     ln -sf "$SCRIPT_DIR/opencortex.sh" "$HOME/.local/bin/opencortex"
 
+    # Ensure ~/.local/bin is in PATH for future sessions
+    for shell_config in "$HOME/.bashrc" "$HOME/.profile"; do
+        if [ -f "$shell_config" ]; then
+            if ! grep -q ".local/bin" "$shell_config"; then
+                echo 'export PATH="$HOME/.local/bin:$PATH"' >> "$shell_config"
+            fi
+        fi
+    done
+    export PATH="$HOME/.local/bin:$PATH"
+
     
     echo -e "${YELLOW}--- Compiling and Loading OpenCortex (this may take a minute) ---${NC}"
     sbcl --non-interactive \
@@ -183,9 +193,9 @@ if [[ "$1" == "tui" ]]; then
     # Launch TUI
     echo -e "${BLUE}Launching Croatoan TUI...${NC}"
     exec sbcl --non-interactive \
-         --load ~/quicklisp/setup.lisp \
+         --eval "(load (merge-pathnames \"quicklisp/setup.lisp\" (user-homedir-pathname)))" \
          --eval "(push (truename \"$SCRIPT_DIR/\") asdf:*central-registry*)" \
-         --eval "(ql:quickload '(:opencortex :croatoan)/tui :silent t)" \
+         --eval "(ql:quickload :opencortex/tui)" \
          --eval "(opencortex.tui:main)"
 fi
 
