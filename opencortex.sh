@@ -6,10 +6,18 @@ HOST=${1:-localhost}
 RED='\033[0;31m'; GREEN='\033[0;32m'; BLUE='\033[0;34m'; YELLOW='\033[0;33m'; NC='\033[0m'
 
 command_exists() { command -v "$1" >/dev/null 2>&1; }
-SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+# Resolve symlinks to find the actual repository location
+SOURCE="${BASH_SOURCE[0]}"
+while [ -h "$SOURCE" ]; do
+    DIR="$( cd -P "$( dirname "$SOURCE" )" && pwd )"
+    SOURCE="$(readlink "$SOURCE")"
+    [[ $SOURCE != /* ]] && SOURCE="$DIR/$SOURCE"
+done
+SCRIPT_DIR="$( cd -P "$( dirname "$SOURCE" )" && pwd )"
 
 # --- 1. BOOTSTRAP ---
-if [ ! -d "$SCRIPT_DIR/.git" ] && [[ ! "$(pwd)" =~ "opencortex" ]]; then
+# Only bootstrap if we are not in a git repo and the target hidden folder does not exist
+if [ ! -d "$SCRIPT_DIR/.git" ] && [ ! -d "$HOME/.opencortex" ] && [[ ! "$(pwd)" =~ "opencortex" ]]; then
     echo -e "${BLUE}=== OpenCortex: Zero-to-One Bootstrapper ===${NC}"
     git clone http://10.10.10.201:3001/amr/opencortex.git ~/.opencortex
     cd ~/.opencortex && git submodule update --init --recursive
