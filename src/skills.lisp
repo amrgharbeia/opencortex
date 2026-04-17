@@ -128,7 +128,6 @@
           (dolist (line lines)
             (let ((clean-line (string-trim '(#\Space #\Tab #\Return) line)))
               (cond ((uiop:string-prefix-p "#+begin_src lisp" (string-downcase clean-line))
-                     ;; Only load blocks that are NOT tangled to src/ or elsewhere
                      (if (search ":tangle" (string-downcase clean-line))
                          (setf in-lisp-block nil)
                          (setf in-lisp-block t)))
@@ -140,21 +139,16 @@
                        (setf lisp-code (concatenate 'string lisp-code line (string #\Newline))))))))
           
           (if (= (length lisp-code) 0)
-              (progn (setf (skill-entry-status entry) :ready) t) ;; Valid empty skill
+              (progn (setf (skill-entry-status entry) :ready) t)
               (progn
-                ;; PRE-FLIGHT: Syntax Validation
                 (multiple-value-bind (valid-p err) (validate-lisp-syntax lisp-code)
-                  (unless valid-p
-                    (error "Syntax Error: ~a" err)))
-                
+                  (unless valid-p (error "Syntax Error: ~a" err)))
                 (harness-log "HARNESS: Jailing skill '~a' in package ~a" skill-base-name pkg-name)
                 (unless (find-package pkg-name)
                   (let ((new-pkg (make-package pkg-name :use '(:cl))))
                     (do-external-symbols (sym (find-package :opencortex)) (shadowing-import sym new-pkg))))
-                
                 (let ((*read-eval* nil) (*package* (find-package pkg-name)))
                   (eval (read-from-string (format nil "(progn ~a)" lisp-code))))
-                
                 (setf (skill-entry-status entry) :ready)
                 t)))
       (error (c)
@@ -197,12 +191,11 @@
       (return-from initialize-all-skills nil))
 
     (let ((sorted-files (topological-sort-skills skills-dir)))
-      ;; MANDATE: Configurable mandatory skills must be present for a safe boot
       (let* ((mandatory-env (uiop:getenv "MANDATORY_SKILLS"))
              (mandatory-skills (if mandatory-env 
                                    (mapcar (lambda (s) (string-trim '(#\Space) s)) 
                                            (uiop:split-string mandatory-env :separator '(#\,)))
-                                   '("org-skill-policy" "org-skill-bouncer")))
+                                   '("org-skill-policy" "org-skill-bouncer"))))
         (dolist (req mandatory-skills)
           (unless (member req sorted-files :key #'pathname-name :test #'string-equal)
             (error "BOOT FAILURE: Mandatory skill '~a' not found in skills directory: ~a" req (uiop:native-namestring skills-dir))))
@@ -220,15 +213,14 @@
                     (error "BOOT FAILURE: Mandatory skill '~a' failed to load (Status: ~a)." skill-name status)
                     (harness-log "LOADER WARNING: Skill '~a' failed to load." skill-name))))))
       
-        ;; Final Summary
         (let ((ready 0) (failed 0))
           (maphash (lambda (k v) 
                      (declare (ignore k))
-                     (if (eq (skill-entry-status v) :ready) (incf ready) (incf failed))))
+                     (if (eq (skill-entry-status v) :ready) (incf ready) (incf failed)))
                    *skill-catalog*)
           (harness-log " LOADER: Boot Complete. [Ready: ~a] [Failed: ~a]" ready failed)
           (harness-log "==================================================")
-          (values ready failed)))))
+          (values ready failed))))))
 
 (defun generate-tool-belt-prompt ()
   "Aggregates all registered cognitive tools into a descriptive prompt."
