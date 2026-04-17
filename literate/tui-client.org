@@ -86,9 +86,9 @@ The OpenCortex TUI Client is a standalone Common Lisp executable providing a ric
     (with-screen (scr :input-echoing nil :input-blocking nil :enable-colors t :cursor-visible t)
       (let* ((h (height scr))
              (w (width scr))
-             (chat-win (make-window (list (- h 2) w 0 0)))
-             (status-win (make-window (list 1 w (- h 2) 0)))
-             (input-win (make-window (list 1 w (- h 1) 0))))
+             (chat-win (make-instance 'window :height (- h 2) :width w :position (list 0 0)))
+             (status-win (make-instance 'window :height 1 :width w :position (list (- h 2) 0)))
+             (input-win (make-instance 'window :height 1 :width w :position (list (- h 1) 0))))
         
         (loop while *is-running* do
           ;; Handle incoming messages
