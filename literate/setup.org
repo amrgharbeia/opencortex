@@ -115,7 +115,7 @@ setup_system() {
     sbcl --non-interactive \
          --eval "(load (merge-pathnames \"quicklisp/setup.lisp\" (user-homedir-pathname)))" \
          --eval "(push (truename \"$SCRIPT_DIR/\") asdf:*central-registry*)" \
-         --eval "(ql:quickload :opencortex)"
+         --eval "(ql:quickload '(:opencortex :croatoan))"
     
     if [ $? -ne 0 ]; then
         echo -e "${RED}✗ Compilation or Loading failed.${NC}"
@@ -171,7 +171,7 @@ if [[ "$1" == "--boot" ]]; then
          --eval "(setf *debugger-hook* (lambda (c h) (declare (ignore h)) (format *error-output* \"FATAL LISP ERROR: ~a~%\" c) (uiop:print-backtrace :stream *error-output*) (uiop:quit 1)))" \
          --eval "(push (truename \"$SCRIPT_DIR/\") asdf:*central-registry*)" \
          --eval "(format t \"--- Quickloading OpenCortex ---~%\")" \
-         --eval "(ql:quickload :opencortex)" \
+         --eval "(ql:quickload '(:opencortex :croatoan))" \
          --eval "(opencortex:main)"
 fi
 
@@ -194,7 +194,7 @@ if [[ "$1" == "tui" ]]; then
     exec sbcl --non-interactive \
          --load ~/quicklisp/setup.lisp \
          --eval "(push (truename \"$SCRIPT_DIR/\") asdf:*central-registry*)" \
-         --eval "(ql:quickload :opencortex/tui :silent t)" \
+         --eval "(ql:quickload '(:opencortex :croatoan)/tui :silent t)" \
          --eval "(opencortex.tui:main)"
 fi
 

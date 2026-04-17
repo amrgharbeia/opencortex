@@ -37,3 +37,7 @@
              (uiop:symbol-call :fiveam :run! (uiop:find-symbol* :boot-suite :opencortex-boot-tests))
              (uiop:symbol-call :fiveam :run! (uiop:find-symbol* :memory-suite :opencortex-memory-tests))
              (uiop:symbol-call :fiveam :run! (uiop:find-symbol* :immune-suite :opencortex-immune-system-tests))))
+
+(defsystem :opencortex/tui
+  :depends-on (:opencortex :croatoan :usocket :bordeaux-threads)
+  :components ((:file "src/tui-client")))

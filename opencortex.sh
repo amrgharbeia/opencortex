@@ -106,7 +106,7 @@ setup_system() {
     sbcl --non-interactive \
          --eval "(load (merge-pathnames \"quicklisp/setup.lisp\" (user-homedir-pathname)))" \
          --eval "(push (truename \"$SCRIPT_DIR/\") asdf:*central-registry*)" \
-         --eval "(ql:quickload :opencortex)"
+         --eval "(ql:quickload '(:opencortex :croatoan))"
     
     if [ $? -ne 0 ]; then
         echo -e "${RED}✗ Compilation or Loading failed.${NC}"
@@ -157,12 +157,12 @@ if [[ "$1" == "--boot" ]]; then
           fi
         done < "$SCRIPT_DIR/.env"
     fi
-    exec sbcl --non-interactive \
+    exec sbcl --non-interactive \\
          --eval "(load (merge-pathnames \"quicklisp/setup.lisp\" (user-homedir-pathname)))" \
          --eval "(setf *debugger-hook* (lambda (c h) (declare (ignore h)) (format *error-output* \"FATAL LISP ERROR: ~a~%\" c) (uiop:print-backtrace :stream *error-output*) (uiop:quit 1)))" \
          --eval "(push (truename \"$SCRIPT_DIR/\") asdf:*central-registry*)" \
          --eval "(format t \"--- Quickloading OpenCortex ---~%\")" \
-         --eval "(ql:quickload :opencortex)" \
+         --eval "(ql:quickload '(:opencortex :croatoan))" \
          --eval "(opencortex:main)"
 fi
 
@@ -182,34 +182,28 @@ if [[ "$1" == "tui" ]]; then
     
     # Launch TUI
     echo -e "${BLUE}Launching Croatoan TUI...${NC}"
-    exec sbcl --non-interactive \
-         --load ~/quicklisp/setup.lisp \
+    exec sbcl --non-interactive \\
+         --eval "(load (merge-pathnames \"quicklisp/setup.lisp\" (user-homedir-pathname)))" \
          --eval "(push (truename \"$SCRIPT_DIR/\") asdf:*central-registry*)" \
-         --eval "(ql:quickload :opencortex/tui :silent t)" \
+         --eval "(format t \"--- Loading TUI ---~%\")" --eval "(ql:quickload :opencortex/tui)" \
          --eval "(opencortex.tui:main)"
 fi
 
+
 connect() {
-    if command_exists socat && socat - TCP:$HOST:$PORT,connect-timeout=1 2>/dev/null; then
-        socat - TCP:$HOST:$PORT
-        return 0
-    elif command_exists nc && nc -z $HOST $PORT 2>/dev/null; then
-        nc $HOST $PORT
-        return 0
-    fi
+    if nc -z $HOST $PORT 2>/dev/null; then return 0; fi
     return 1
 }
 
-if connect; then exit 0; fi
-
-echo -e "${YELLOW}Brain is offline. Awakening...${NC}"
-"$SCRIPT_DIR/opencortex.sh" --boot > "$SCRIPT_DIR/brain.log" 2>&1 &
-
-for i in {1..15}; do
-    sleep 2
-    if connect; then exit 0; fi
-    echo -n "."
-done
-
-echo -e "${RED}\n✗ Failed to connect to brain.${NC}"
-exit 1
+if [ -z "$1" ]; then
+    if ! connect; then
+        echo -e "${YELLOW}Brain is offline. Awakening...${NC}"
+        "$SCRIPT_DIR/opencortex.sh" --boot > "$SCRIPT_DIR/brain.log" 2>&1 &
+        for i in {1..15}; do sleep 2; if connect; then break; fi; echo -n "."; done; echo ""
+    fi
+    if connect; then
+        if command_exists socat; then exec socat - TCP:$HOST:$PORT; else exec nc $HOST $PORT; fi
+    else
+        echo -e "${RED}✗ Failed to connect to brain.${NC}"; exit 1
+    fi
+fi

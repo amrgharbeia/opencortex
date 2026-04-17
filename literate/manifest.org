@@ -75,3 +75,12 @@ This system contains the empirical tests required by the Engineering Standards. 
              (uiop:symbol-call :fiveam :run! (uiop:find-symbol* :memory-suite :opencortex-memory-tests))
              (uiop:symbol-call :fiveam :run! (uiop:find-symbol* :immune-suite :opencortex-immune-system-tests))))
 #+end_src
+
+** TUI Client Definition
+This system defines the native Croatoan TUI client.
+
+#+begin_src lisp :tangle ../opencortex.asd
+(defsystem :opencortex/tui
+  :depends-on (:opencortex :croatoan :usocket :bordeaux-threads)
+  :components ((:file "src/tui-client")))
+#+end_src
