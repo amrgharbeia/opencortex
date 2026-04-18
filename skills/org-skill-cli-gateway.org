@@ -63,8 +63,8 @@ The CLI actuator writes the agent's response back to the client's network stream
             (progn
               (format stream "~a~%" (frame-message (format nil "~s" (list :type :chat :text text))))
               (finish-output stream)
-        (format stream "~a~%" (frame-message (format nil "~s" '(:type :status :scribe :idle :gardener :sleeping))))
-        (finish-output stream))
+              (format stream "~a~%" (frame-message (format nil "~s" '(:type :status :scribe :idle :gardener :sleeping))))
+              (finish-output stream))
             (harness-log "CLI ERROR: No active or open reply stream for signal."))
       (error (c) (harness-log "CLI ACTUATOR ERROR: ~a" c)))))
 #+end_src

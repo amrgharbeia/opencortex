@@ -149,7 +149,6 @@ setup_system() {
         cat "$SCRIPT_DIR/brain.log"
         exit 1
     fi
-    exit 0
 }
 
 # --- 3. AUTO-SETUP ---

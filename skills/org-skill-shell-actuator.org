@@ -213,7 +213,7 @@ Hardware-Level Isolation for future security evolution.
 ~a
 #+end_example"
                                    cmd exit-code stdout stderr)))
-          `(:type :request :target :emacs :payload (:action :insert-at-end :buffer "*opencortex-chat*" :text ,result-text))))))
+          `(:type :request :target :emacs :payload (:action :insert-at-end :buffer "*opencortex-chat*" :text ,result-text)))))
 #+end_src
 
 * Registration

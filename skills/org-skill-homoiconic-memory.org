@@ -75,26 +75,26 @@ We define the standard `org-node` structure used throughout the harness.
         :contents children))
 #+end_src
 
-** ID Generation (org-id-get-create)
+** ID Generation (org-id-new)
 Mandated standard for ID creation. This function ensures that every node in the Memex has a unique, deterministic identifier.
 
 #+begin_src lisp
-(defun org-id-get-create ()
+(defun org-id-new ()
   "Generates a new unique ID for an Org node. This is the system-wide standard."
   (format nil "node-~a" (get-universal-time)))
 #+end_src
 
 ** ID Injection (memory-ensure-id)
-Ensures every headline has a unique ID property using the system standard `org-id-get-create`. This is foundational for the Merkle-Tree object store.
+Ensures every headline has a unique ID property using the system standard `org-id-new`. This is foundational for the Merkle-Tree object store.
 
 #+begin_src lisp
 (defun memory-ensure-id (node)
-  "Injects a unique ID into an Org node if missing, using the standard org-id-get-create mechanism."
+  "Injects a unique ID into an Org node if missing, using the standard org-id-new mechanism."
   (let* ((props (getf node :properties))
          (id (getf props :ID)))
     (if (and id (not (equal id "")))
         node
-        (let ((new-id (opencortex:org-id-get-create)))
+        (let ((new-id (opencortex:org-id-new)))
           (setf (getf node :properties) (append props (list :ID new-id)))
           (harness-log "MEMORY - Injected standard ID ~a" new-id)
           node))))
