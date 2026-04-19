@@ -38,26 +38,36 @@ The OpenCortex TUI Client is a standalone Common Lisp application built on **Cro
       (setf *incoming-msgs* nil)
       msgs)))
 
+(defun clean-keywords (msg)
+  (if (listp msg)
+      (let ((clean nil))
+        (loop for (k v) on msg by #'cddr
+              do (push (intern (string k) :keyword) clean)
+                 (push v clean))
+        (nreverse clean))
+      msg))
+
 (defun listen-thread ()
   (loop while *is-running* do
     (handler-case
         (when (and *stream* (open-stream-p *stream*))
-          (let ((msg (opencortex:read-framed-message *stream*)))
-            (cond ((eq msg :eof) (setf *is-running* nil))
-                  ((eq msg :error) (setf *status-text* "Protocol Error"))
-                  ((and (listp msg) (eq (getf msg :TYPE) :EVENT))
-                   (let ((payload (getf msg :PAYLOAD)))
-                     (when (eq (getf payload :ACTION) :handshake)
-                       (setf *status-text* "Ready"))))
-                  ((and (listp msg) (eq (getf msg :TYPE) :STATUS))
-                   (setf *status-text* (format nil "[Scribe: ~a] [Gardener: ~a]" 
-                                               (getf msg :SCRIBE)
-                                               (getf msg :GARDENER))))
-                  ((and (listp msg) (eq (getf msg :TYPE) :CHAT))
-                   (enqueue-msg (getf msg :TEXT)))
-                  (t (enqueue-msg (format nil "~s" msg))))))
-      (error (c) (setf *status-text* (format nil "Net Error: ~a" c)) (setf *is-running* nil)))
-    (sleep 0.05)))
+          (let ((raw-msg (opencortex:read-framed-message *stream*)))
+            (unless (member raw-msg '(:eof :error))
+              (let ((msg (clean-keywords raw-msg)))
+                (cond ((and (listp msg) (eq (getf msg :TYPE) :EVENT))
+                       (let ((payload (getf msg :PAYLOAD)))
+                         (when (eq (getf payload :ACTION) :handshake)
+                           (setf *status-text* "Ready"))))
+                      ((and (listp msg) (eq (getf msg :TYPE) :STATUS))
+                       (setf *status-text* (format nil "[Scribe: ~a] [Gardener: ~a]" 
+                                                   (getf msg :SCRIBE)
+                                                   (getf msg :GARDENER))))
+                      ((and (listp msg) (eq (getf msg :TYPE) :CHAT))
+                       (enqueue-msg (getf msg :TEXT)))
+                      (t (enqueue-msg (format nil "~s" msg))))))
+            (when (eq raw-msg :eof) (setf *is-running* nil))
+            (when (eq raw-msg :error) (setf *status-text* "Protocol Error"))))
+
 
 (defun main ()
   (handler-case
