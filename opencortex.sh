@@ -143,6 +143,7 @@ setup_system() {
         else
             echo -e "${BLUE}To start, run:${NC} ${GREEN}exec bash && opencortex tui${NC}"
         fi
+        exit 0
     else
         echo -e "\n${RED}✗ Brain failed to wake up.${NC}"
         echo -e "${YELLOW}Full Log Path: $(realpath "$SCRIPT_DIR/brain.log")${NC}"
