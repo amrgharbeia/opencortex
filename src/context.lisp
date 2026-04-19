@@ -103,13 +103,6 @@
                 (setf result (ppcre:regex-replace (format nil "\\$~a" var-name) result var-val)))))
           result)
         path)))
-      (let ((result path-string))
-        (ppcre:do-register-groups (var-name) ("\\$([A-Za-z0-9_]+)" path-string)
-          (let ((var-val (uiop:getenv var-name)))
-            (when var-val
-              (setf result (ppcre:regex-replace (format nil "\\$~a" var-name) result var-val)))))
-        result)
-      path-string))
 
 (defun context-assemble-global-awareness (&optional signal)
   "Produces a high-level skeletal outline of the current Memory for the LLM."

@@ -191,13 +191,6 @@ A utility function that expands environment variables (like ~$HOME~ or ~$MEMEX_R
                 (setf result (ppcre:regex-replace (format nil "\\$~a" var-name) result var-val)))))
           result)
         path)))
-      (let ((result path-string))
-        (ppcre:do-register-groups (var-name) ("\\$([A-Za-z0-9_]+)" path-string)
-          (let ((var-val (uiop:getenv var-name)))
-            (when var-val
-              (setf result (ppcre:regex-replace (format nil "\\$~a" var-name) result var-val)))))
-        result)
-      path-string))
 #+end_src
 
 ** Global Awareness (context-assemble-global-awareness)
