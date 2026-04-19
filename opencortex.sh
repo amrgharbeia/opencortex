@@ -123,7 +123,7 @@ setup_system() {
 
     echo -e "${YELLOW}--- Finalizing: Awakening the Brain as a background daemon ---${NC}"
     > "$SCRIPT_DIR/brain.log"
-    "$SCRIPT_DIR/opencortex.sh" --boot > "$SCRIPT_DIR/brain.log" 2>&1 &
+    bash "$SCRIPT_DIR/opencortex.sh" --boot > "$SCRIPT_DIR/brain.log" 2>&1 &
 
     local success=false
     for i in {1..30}; do
@@ -175,7 +175,7 @@ case "$COMMAND" in
     tui)
         if ! nc -z $HOST $PORT 2>/dev/null; then
             echo -e "Brain is offline. Awakening..."
-            "$SCRIPT_DIR/opencortex.sh" --boot > "$SCRIPT_DIR/brain.log" 2>&1 &
+            bash "$SCRIPT_DIR/opencortex.sh" --boot > "$SCRIPT_DIR/brain.log" 2>&1 &
             for i in {1..15}; do
                 sleep 2
                 if nc -z $HOST $PORT 2>/dev/null; then break; fi
@@ -192,7 +192,7 @@ case "$COMMAND" in
     cli)
         if ! nc -z $HOST $PORT 2>/dev/null; then
             echo -e "Brain is offline. Awakening..."
-            "$SCRIPT_DIR/opencortex.sh" --boot > "$SCRIPT_DIR/brain.log" 2>&1 &
+            bash "$SCRIPT_DIR/opencortex.sh" --boot > "$SCRIPT_DIR/brain.log" 2>&1 &
             for i in {1..15}; do
                 sleep 2
                 if nc -z $HOST $PORT 2>/dev/null; then break; fi
