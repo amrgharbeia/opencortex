@@ -61,7 +61,7 @@
                (status-win (make-instance 'window :height 1 :width w :position (list (- h 2) 0)))
                (input-win (make-instance 'window :height 1 :width w :position (list (- h 1) 0))))
           
-          (setf (keypad-p input-win) t)
+          (setf (function-keys-enabled-p input-win) t)
 
           (loop while *is-running* do
             ;; 1. Handle incoming messages
