@@ -4,8 +4,12 @@
    ;; --- communication protocol ---
    #:frame-message
    #:read-framed-message
+   #:PROTO-GET
+   #:LIST-OBJECTS-WITH-ATTRIBUTE
+   #:COSINE-SIMILARITY
+   #:VAULT-MASK-STRING
+   #:*VAULT-MEMORY*
    #:parse-message
-   #:proto-get
    #:make-hello-message
    #:validate-communication-protocol-schema
    
