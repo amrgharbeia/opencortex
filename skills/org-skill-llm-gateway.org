@@ -70,7 +70,9 @@ A robust utility to navigate deeply nested JSON alists produced by `cl-json`, ha
       ;; Descend into arrays
       (loop while (and (listp val) (listp (car val)) (not (keywordp (caar val))))
             do (setf val (car val)))
-      (let ((pair (assoc k val)))
+      (let ((pair (or (assoc k val)
+                            (assoc (intern (string-upcase (string k)) :keyword) val)
+                            (assoc (intern (string-downcase (string k)) :keyword) val))))
         (if pair
             (setf val (cdr pair))
             (return-from get-nested nil))))
