@@ -167,6 +167,7 @@ case "$COMMAND" in
         ;;
         
     --boot|boot)
+        rm -rf "/home/user/.cache/common-lisp"
         export SKILLS_DIR="${SCRIPT_DIR}/skills"
         [ -z "$MEMEX_DIR" ] && export MEMEX_DIR="$HOME/memex"
         exec sbcl --eval '(load (merge-pathnames "quicklisp/setup.lisp" (user-homedir-pathname)))' --eval '(setf *debugger-hook* (lambda (c h) (declare (ignore h)) (format *error-output* "FATAL LISP ERROR: ~a~%" c) (uiop:print-backtrace :stream *error-output*) (uiop:quit 1)))' --eval '(push (truename (uiop:getenv "SCRIPT_DIR")) asdf:*central-registry*)' --eval '(format t "--- Quickloading OpenCortex ---~%")' --eval "(ql:quickload '(:opencortex :croatoan))" --eval '(opencortex:main)'
@@ -184,6 +185,7 @@ case "$COMMAND" in
             echo ""
         fi
         echo -e "Launching Croatoan TUI..."
+        rm -rf "/home/user/.cache/common-lisp"
         export SKILLS_DIR="${SCRIPT_DIR}/skills"
         [ -z "$MEMEX_DIR" ] && export MEMEX_DIR="$HOME/memex"
         exec sbcl --eval '(load (merge-pathnames "quicklisp/setup.lisp" (user-homedir-pathname)))' --eval '(push (truename (uiop:getenv "SCRIPT_DIR")) asdf:*central-registry*)' --eval '(ql:quickload :opencortex/tui)' --eval '(opencortex.tui:main)'

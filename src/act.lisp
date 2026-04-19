@@ -5,8 +5,8 @@
 
 (defun initialize-actuators ()
   "Loads actuator routing defaults from environment variables and registers core harness actuators."
-  (let ((def (uiop:getenv "DEFAULT_ACTUATOR"))
-        (silent (uiop:getenv "SILENT_ACTUATORS")))
+  (let ((def (string-trim '(#\Space #\" #\') (or (uiop:getenv "DEFAULT_ACTUATOR") "CLI")))
+        (silent (or (uiop:getenv "SILENT_ACTUATORS") "CLI,SYSTEM-MESSAGE,EMACS")))
     (when def
       (let ((clean-def (string-trim '(#\Space #\" #\') def)))
         (setf *default-actuator* (intern (string-upcase clean-def) "KEYWORD"))))
@@ -24,10 +24,10 @@
 (defun dispatch-action (action context)
   "Routes an approved action to its registered physical actuator."
   (when (and action (listp action))
-    (let* ((raw-target (or (ignore-errors (getf action :target)) 
-                           (ignore-errors (getf action :TARGET))
+    (let* ((raw-target (or (ignore-errors (getf action :TARGET))
+                           (ignore-errors (getf action :target))
                            *default-actuator*))
-           (target (if (keywordp raw-target) raw-target (intern (string-upcase (string raw-target)) :keyword)))
+           (target (intern (string-upcase (string raw-target)) :keyword))
            (actuator-fn (gethash target *actuator-registry*)))
       (if actuator-fn 
           (funcall actuator-fn action context) 
