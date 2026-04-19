@@ -13,7 +13,8 @@ def wait_for_brain():
         if os.path.exists('brain.log'):
             with open('brain.log', 'r') as f:
                 if 'Boot Complete' in f.read():
-                    print("[UI TEST] Brain is Green.")
+                    print("[UI TEST] Brain is Green. Waiting for TCP listener...")
+                    time.sleep(5)
                     return True
         time.sleep(2)
     return False
@@ -26,7 +27,14 @@ def test_tui_boot_and_input():
     print("[UI TEST] Launching TUI and sending 'Hi'...")
     
     # We run the TUI script via bash
-    command = ["bash", "opencortex.sh", "tui"]
+    
+    # Direct SBCL launch to bypass shell script noise
+    command = ["sbcl", "--disable-debugger", 
+               "--eval", "(load (merge-pathnames \"quicklisp/setup.lisp\" (user-homedir-pathname)))",
+               "--eval", "(push (truename \"\") asdf:*central-registry*)",
+               "--eval", "(ql:quickload :opencortex/tui)",
+               "--eval", "(opencortex.tui:main)"]
+
     vt = run_test(command, "Hi\r", wait_time=15)
     
     screen = vt.get_screen()
