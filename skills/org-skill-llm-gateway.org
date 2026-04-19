@@ -127,8 +127,9 @@ This is the primary actuator for neural reasoning. It handles the specific JSON 
                       (t (cl-json:encode-json-to-string `((model . ,(or model (case provider (:groq "llama-3.3-70b-versatile") (:openai "gpt-4o") (t "google/gemini-2.0-flash-001"))))
                                                          (messages . (( (role . "system") (content . ,system-prompt) ) ( (role . "user") (content . ,prompt) )))))))))
          (handler-case 
-             (harness-log "LLM DEBUG: Sending body to ~a: ~a" endpoint body)
-       (let* ((response (dex:post endpoint :headers headers :content body :connect-timeout 10 :read-timeout 30))
+             (let* ((response (progn 
+                                (harness-log "LLM DEBUG: Sending body to ~a: ~a" endpoint body)
+                                (dex:post endpoint :headers headers :content body :connect-timeout 10 :read-timeout 30)))
                     (json (cl-json:decode-json-from-string response)))
                (harness-log "LLM DEBUG: Raw Response: ~a" response)
                (let ((content (case provider
