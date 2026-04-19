@@ -67,10 +67,9 @@ A robust utility to navigate deeply nested JSON alists produced by `cl-json`, ha
   "Recursively extracts nested values from an alist, handling both objects and arrays."
   (let ((val alist))
     (dolist (k keys)
-      ;; If val is an array (a list where the first element is a list but NOT a pair),
-      ;; descend into the first element.
-      (when (and (listp val) (listp (car val)) (not (keywordp (caar val))))
-        (setf val (car val)))
+      ;; Descend into arrays
+      (loop while (and (listp val) (listp (car val)) (not (keywordp (caar val))))
+            do (setf val (car val)))
       (let ((pair (assoc k val)))
         (if pair
             (setf val (cdr pair))
@@ -100,8 +99,10 @@ This is the primary actuator for neural reasoning. It handles the specific JSON 
               (url (format nil "http://~a/api/generate" host))
               (body (cl-json:encode-json-to-string `((model . ,(or model "llama3")) (prompt . ,full-prompt) (stream . :false)))))
          (handler-case 
-             (let* ((response (dex:post url :headers '(("Content-Type" . "application/json")) :content body :connect-timeout 5 :read-timeout 60))
+             (harness-log "LLM DEBUG: Sending body to ~a: ~a" endpoint body)
+       (let* ((response (dex:post url :headers '(("Content-Type" . "application/json")) :content body :connect-timeout 5 :read-timeout 60))
                     (json (cl-json:decode-json-from-string response)))
+               (harness-log "LLM DEBUG: Raw Response: ~a" response)
                (list :status :success :content (cdr (assoc :response json))))
            (error (c) (list :status :error :message (format nil "Ollama Failure: ~a" c))))))
 
@@ -123,11 +124,13 @@ This is the primary actuator for neural reasoning. It handles the specific JSON 
               (body (case provider
                       (:anthropic (cl-json:encode-json-to-string `((model . ,(or model "claude-3-5-sonnet-20240620")) (max_tokens . 4096) (system . ,system-prompt) (messages . (( (role . "user") (content . ,prompt) ))))))
                       (:gemini-api (cl-json:encode-json-to-string `((contents . (((parts . (((text . ,full-prompt))))))))))
-                      (t (cl-json:encode-json-to-string `((model . ,(or model (case provider (:groq "llama-3.3-70b-versatile") (:openai "gpt-4o") (t "openrouter/auto"))))
+                      (t (cl-json:encode-json-to-string `((model . ,(or model (case provider (:groq "llama-3.3-70b-versatile") (:openai "gpt-4o") (t "google/gemini-2.0-flash-001"))))
                                                          (messages . (( (role . "system") (content . ,system-prompt) ) ( (role . "user") (content . ,prompt) )))))))))
          (handler-case 
-             (let* ((response (dex:post endpoint :headers headers :content body :connect-timeout 10 :read-timeout 30))
+             (harness-log "LLM DEBUG: Sending body to ~a: ~a" endpoint body)
+       (let* ((response (dex:post endpoint :headers headers :content body :connect-timeout 10 :read-timeout 30))
                     (json (cl-json:decode-json-from-string response)))
+               (harness-log "LLM DEBUG: Raw Response: ~a" response)
                (let ((content (case provider
                                 (:anthropic (get-nested json :content :text))
                                 (:gemini-api (get-nested json :candidates :parts :text))
