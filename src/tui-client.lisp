@@ -108,7 +108,9 @@
                    (let ((cmd (coerce *input-buffer* 'string)))
                      (setf (fill-pointer *input-buffer*) 0)
                      (when (> (length cmd) 0)
+                       ;; Local Echo
                        (enqueue-msg (concatenate 'string "> " cmd))
+                       ;; Send to Brain
                        (let ((framed (opencortex:frame-message (format nil "~s" (list :TYPE :EVENT :PAYLOAD (list :SENSOR :chat-message :TEXT cmd))))))
                          (format *stream* "~a" framed)
                          (finish-output *stream*)))
