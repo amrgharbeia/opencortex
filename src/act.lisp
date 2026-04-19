@@ -8,11 +8,14 @@
   (let ((def (uiop:getenv "DEFAULT_ACTUATOR"))
         (silent (uiop:getenv "SILENT_ACTUATORS")))
     (when def
-      (setf *default-actuator* (intern (string-upcase def) "KEYWORD")))
+      (let ((clean-def (string-trim '(#\Space #\" #\') def)))
+        (setf *default-actuator* (intern (string-upcase clean-def) "KEYWORD"))))
     (when silent
       (setf *silent-actuators*
-            (mapcar (lambda (s) (intern (string-upcase (string-trim '(#\Space) s)) "KEYWORD"))
-                    (str:split "," silent)))))
+            (mapcar (lambda (s) 
+                      (let ((clean-s (string-trim '(#\Space #\" #\') s)))
+                        (intern (string-upcase clean-s) "KEYWORD")))
+                    (uiop:split-string silent :separator '(#\,))))))
   
   ;; Register core harness actuators
   (register-actuator :system #'execute-system-action)
