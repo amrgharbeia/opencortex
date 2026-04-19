@@ -171,8 +171,6 @@ Basic functions for retrieving objects by ID or type.
                    (push obj results))))
              *memory*)
     results))
-
-    results))
 #+end_src
 
 ** Structural Helpers

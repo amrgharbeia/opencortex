@@ -103,8 +103,6 @@
              *memory*)
     results))
 
-    results))
-
 (defun find-headline-missing-id (ast)
   "Traverses an AST to find headlines that lack an :ID: property."
   (when (listp ast)
