@@ -115,7 +115,7 @@ The OpenCortex TUI Client is a standalone Common Lisp executable providing a ric
                    (setf (fill-pointer *input-buffer*) 0)
                    (when (> (length cmd) 0)
                      (let ((framed (opencortex:frame-message (format nil "~s" (list :type :EVENT :payload (list :sensor :chat-message :text cmd))))))
-                       (format *stream* "~a~%" framed)
+                       (format *stream* "~a" framed)
                        (finish-output *stream*)))
                    (when (string= cmd "/exit") (setf *is-running* nil))))
                 ((eq ch :backspace)
