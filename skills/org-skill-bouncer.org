@@ -87,7 +87,7 @@ The primary entry point for all high-impact actions. It blocks or queues actions
       ;; 3. High-Impact Target Vector (Authorization Required)
       ((or (member target '(:shell))
            (and (eq target :tool) (member (getf payload :tool) '("shell" "repair-file") :test #'string=))
-           (and (eq target :emacs) (eq (getf payload :action) :eval)))
+           (and (eq target :EMACS) (eq (getf payload :action) :eval)))
        (harness-log "SECURITY: High-impact action ~a requires approval." (or (getf payload :tool) target))
        `(:type :EVENT :payload (:sensor :approval-required :action ,action)))
 
@@ -134,7 +134,7 @@ The Bouncer skill reacts to approval requirements by creating flight plan nodes,
               (id (org-id-new)))
          (harness-log "BOUNCER: Creating flight plan node...")
          ;; Create the node in Emacs (or inbox)
-         (list :type :REQUEST :target :emacs :action :insert-node 
+         (list :type :REQUEST :target :EMACS :action :insert-node 
                :id id :attributes `(:TITLE "Flight Plan: High-Risk Action" 
                                     :TODO "PLAN" 
                                     :TAGS ("FLIGHT_PLAN")

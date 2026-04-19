@@ -1,7 +1,7 @@
 (in-package :opencortex)
 
-(defvar *default-actuator* :cli)
-(defvar *silent-actuators* '(:cli :system-message :emacs))
+(defvar *default-actuator* :CLI)
+(defvar *silent-actuators* '(:CLI :SYSTEM-MESSAGE :EMACS))
 
 (defun initialize-actuators ()
   "Loads actuator routing defaults from environment variables and registers core harness actuators."
