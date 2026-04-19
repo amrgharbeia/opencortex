@@ -101,13 +101,12 @@
                  (when (> (length *input-buffer*) 0)
                    (decf (fill-pointer *input-buffer*))))
                 ((characterp ch)
-                 (vector-push-extend ch *input-buffer*)))
-              
-              (clear input-win)
-              (add-string input-win (concatenate 'string "> " (coerce *input-buffer* 'string)))
-              (refresh input-win)))
-          
-          (refresh scr)
-          (sleep 0.02))))
+                 (vector-push-extend ch *input-buffer*))))
+            
+            (clear input-win)
+            (add-string input-win (concatenate 'string "> " (coerce *input-buffer* 'string)))
+            (refresh input-win)
+            
+            (sleep 0.02))))
     (setf *is-running* nil)
     (when *socket* (usocket:socket-close *socket*))))
