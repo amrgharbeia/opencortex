@@ -92,6 +92,18 @@
   (let ((results nil))
     (maphash (lambda (id obj) (declare (ignore id)) (when (eq (org-object-type obj) type) (push obj results))) *memory*)
     results))
+(defun list-objects-with-attribute (attr-name value)
+  "Returns a list of all objects where ATTR-NAME matches VALUE."
+  (let ((results nil))
+    (maphash (lambda (id obj)
+               (declare (ignore id))
+               (let ((attrs (org-object-attributes obj)))
+                 (when (equal (getf attrs attr-name) value)
+                   (push obj results))))
+             *memory*)
+    results))
+
+    results))
 
 (defun find-headline-missing-id (ast)
   "Traverses an AST to find headlines that lack an :ID: property."
