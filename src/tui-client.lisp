@@ -54,54 +54,54 @@
   (bt:make-thread #'listen-thread :name "tui-listener")
   
   (unwind-protect
-    (with-screen (scr :input-echoing nil :input-blocking nil :enable-colors t :cursor-visible t)
-      (let* ((h (height scr))
-             (w (width scr))
-             (chat-win (make-instance 'window :height (- h 2) :width w :position (list 0 0)))
-             (status-win (make-instance 'window :height 1 :width w :position (list (- h 2) 0)))
-             (input-win (make-instance 'window :height 1 :width w :position (list (- h 1) 0))))
-        
-        ;; Initial Prompt
-        (add-string input-win "> ")
-        (refresh input-win)
+      (with-screen (scr :input-echoing nil :input-blocking nil :enable-colors t :cursor-visible t)
+        (let* ((h (height scr))
+               (w (width scr))
+               (chat-win (make-instance 'window :height (- h 2) :width w :position (list 0 0)))
+               (status-win (make-instance 'window :height 1 :width w :position (list (- h 2) 0)))
+               (input-win (make-instance 'window :height 1 :width w :position (list (- h 1) 0))))
+          
+          ;; Initial Prompt
+          (add-string input-win "> ")
+          (refresh input-win)
 
-        (loop while *is-running* do
-          ;; 1. Handle incoming messages
-          (let ((new-msgs (dequeue-msgs)))
-            (when new-msgs
-              (dolist (msg new-msgs)
-                (push msg *chat-history*)
-                (setf *chat-history* (subseq *chat-history* 0 (min (length *chat-history*) 500))))
-              
-              (clear chat-win)
-              (let ((line-num 0))
-                (dolist (m (reverse (subseq *chat-history* 0 (min (length *chat-history*) (- h 3)))))
-                  (add-string chat-win m :y line-num :x 0)
-                  (incf line-num)))
-              (refresh chat-win)))
+          (loop while *is-running* do
+            ;; 1. Handle incoming messages
+            (let ((new-msgs (dequeue-msgs)))
+              (when new-msgs
+                (dolist (msg new-msgs)
+                  (push msg *chat-history*)
+                  (setf *chat-history* (subseq *chat-history* 0 (min (length *chat-history*) 500))))
+                
+                (clear chat-win)
+                (let ((line-num 0))
+                  (dolist (m (reverse (subseq *chat-history* 0 (min (length *chat-history*) (- h 3)))))
+                    (add-string chat-win m :y line-num :x 0)
+                    (incf line-num)))
+                (refresh chat-win)))
 
-          ;; 2. Render Status Bar
-          (clear status-win)
-          (add-string status-win *status-text* :attributes '(:reverse))
-          (refresh status-win)
+            ;; 2. Render Status Bar
+            (clear status-win)
+            (add-string status-win *status-text* :attributes '(:reverse))
+            (refresh status-win)
 
-          ;; 3. Handle Keyboard Input
-          (let ((ch (get-char scr)))
-            (when ch
-              (cond
-                ((eq ch #\Newline)
-                 (let ((cmd (coerce *input-buffer* 'string)))
-                   (setf (fill-pointer *input-buffer*) 0)
-                   (when (> (length cmd) 0)
-                     (let ((framed (opencortex:frame-message (format nil "~s" (list :type :EVENT :payload (list :sensor :chat-message :text cmd))))))
-                       (format *stream* "~a" framed)
-                       (finish-output *stream*)))
-                   (when (string= cmd "/exit") (setf *is-running* nil))))
-                ((eq ch :backspace)
-                 (when (> (length *input-buffer*) 0)
-                   (decf (fill-pointer *input-buffer*))))
-                ((characterp ch)
-                 (vector-push-extend ch *input-buffer*))))
+            ;; 3. Handle Keyboard Input
+            (let ((ch (get-char scr)))
+              (when ch
+                (cond
+                  ((eq ch #\Newline)
+                   (let ((cmd (coerce *input-buffer* 'string)))
+                     (setf (fill-pointer *input-buffer*) 0)
+                     (when (> (length cmd) 0)
+                       (let ((framed (opencortex:frame-message (format nil "~s" (list :type :EVENT :payload (list :sensor :chat-message :text cmd))))))
+                         (format *stream* "~a" framed)
+                         (finish-output *stream*)))
+                     (when (string= cmd "/exit") (setf *is-running* nil))))
+                  ((eq ch :backspace)
+                   (when (> (length *input-buffer*) 0)
+                     (decf (fill-pointer *input-buffer*))))
+                  ((characterp ch)
+                   (vector-push-extend ch *input-buffer*)))))
             
             (clear input-win)
             (add-string input-win (concatenate 'string "> " (coerce *input-buffer* 'string)))
