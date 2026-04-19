@@ -30,11 +30,12 @@ A static, hardcoded architecture is inherently fragile. The ~opencortex~ Skill E
   (load-time 0))
 
 (defun find-triggered-skill (context)
-  "Returns the highest priority skill whose trigger condition matches the context."
+  "Returns the highest priority skill whose trigger matches context AND has a probabilistic prompt."
   (let ((triggered nil))
     (maphash (lambda (name skill) 
                (declare (ignore name)) 
-               (when (ignore-errors (funcall (skill-trigger-fn skill) context)) 
+               (when (and (skill-probabilistic-prompt skill)
+                          (ignore-errors (funcall (skill-trigger-fn skill) context)))
                  (push skill triggered))) 
              *skills-registry*)
     (first (sort triggered #'> :key #'skill-priority))))

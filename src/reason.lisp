@@ -36,22 +36,20 @@
          (global-context (context-assemble-global-awareness))
          (system-logs (context-get-system-logs))
          (assistant-name (or (uiop:getenv "MEMEX_ASSISTANT") "Agent")))
-    (if active-skill
-        (let* ((prompt-generator (skill-probabilistic-prompt active-skill))
-               (raw-prompt (when prompt-generator (funcall prompt-generator context)))
-               (system-prompt (format nil "IDENTITY: Actuator for ~a. MANDATE: ONE Lisp plist. ~a ~a RECENT_LOGS: ~a" 
-                                      assistant-name global-context tool-belt system-logs)))
-          (if (and raw-prompt (> (length raw-prompt) 1))
-              (let* ((thought (probabilistic-call raw-prompt :system-prompt system-prompt :context context))
-                     ;; Ensure we are working with a string for read-from-string
-                     (cleaned (if (stringp thought) (string-trim '(#\Space #\Newline #\Tab) thought) thought)))
-                (if (stringp cleaned)
-                    (let ((*read-eval* nil))
-                      (handler-case (read-from-string cleaned)
-                        (error (c) (list :type :EVENT :payload (list :sensor :syntax-error :code cleaned :error (format nil "~a" c))))))
-                    cleaned))
-              (list :type :LOG :payload (list :text (format nil "Skill '~a' triggered (Deterministic only)" (skill-name active-skill))))))
-        nil)))
+    (let* ((prompt-generator (when active-skill (skill-probabilistic-prompt active-skill)))
+           (raw-prompt (if prompt-generator 
+                           (funcall prompt-generator context)
+                           (let ((p (proto-get (proto-get context :payload) :text)))
+                             (if (and p (stringp p)) p "Maintain metabolic stasis."))))
+           (system-prompt (format nil "IDENTITY: ~a. MANDATE: Respond with ONE Lisp plist. ~a ~a RECENT_LOGS: ~a" 
+                                  assistant-name global-context tool-belt system-logs)))
+      (let* ((thought (probabilistic-call raw-prompt :system-prompt system-prompt :context context))
+             (cleaned (if (stringp thought) (string-trim '(#\Space #\Newline #\Tab) thought) thought)))
+        (if (stringp cleaned)
+            (let ((*read-eval* nil))
+              (handler-case (read-from-string cleaned)
+                (error (c) (list :type :EVENT :payload (list :sensor :syntax-error :code cleaned :error (format nil "~a" c))))))
+            cleaned)))))
 
 (defun deterministic-verify (proposed-action context)
   "Iterates through all skill deterministic-gates sorted by priority."
