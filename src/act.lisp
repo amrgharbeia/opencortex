@@ -63,8 +63,12 @@
         (handler-case
             (let* ((clean-args (if (and (listp tool-args) (listp (car tool-args))) (car tool-args) tool-args))
                    (result (funcall (cognitive-tool-body tool) clean-args)))
-              (list :type :EVENT :depth (1+ depth) :reply-stream (getf context :reply-stream)
-                    :payload (list :sensor :tool-output :result result :tool tool-name)))
+              (let ((feedback (list :TYPE :EVENT :DEPTH (1+ depth) :REPLY-STREAM (getf context :REPLY-STREAM)
+                                    :PAYLOAD (list :SENSOR :tool-output :RESULT result :TOOL tool-name))))
+                ;; If we have a reply stream, also send a chat message with the result
+                (when (getf context :REPLY-STREAM)
+                   (dispatch-action (list :TYPE :CHAT :TEXT (format nil "TOOL [~a] RESULT: ~a" tool-name result)) context))
+                feedback))
           (error (c)
             (list :type :EVENT :depth (1+ depth) :reply-stream (getf context :reply-stream)
                   :payload (list :sensor :tool-error :tool tool-name :message (format nil "~a" c)))))
