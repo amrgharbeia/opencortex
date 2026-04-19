@@ -59,9 +59,11 @@
                (w (width scr))
                (chat-win (make-instance 'window :height (- h 2) :width w :position (list 0 0)))
                (status-win (make-instance 'window :height 1 :width w :position (list (- h 2) 0)))
-               (input-win (make-instance 'window :height 1 :width w :position (list (- h 1) 0))))
+               (input-win (make-instance 'window :height 1 :width w :position (list (- h 1) 0)))
+               (last-status nil))
           
           (setf (function-keys-enabled-p input-win) t)
+          (setf (input-blocking input-win) nil)
 
           (loop while *is-running* do
             ;; 1. Handle incoming messages
@@ -79,9 +81,11 @@
                 (refresh chat-win)))
 
             ;; 2. Render Status Bar
-            (clear status-win)
-            (add-string status-win *status-text* :attributes '(:reverse))
-            (refresh status-win)
+            (unless (equal *status-text* last-status)
+              (clear status-win)
+              (add-string status-win *status-text* :attributes '(:reverse))
+              (refresh status-win)
+              (setf last-status *status-text*))
 
             ;; 3. Handle Keyboard Input
             (let ((ch (get-char input-win)))
