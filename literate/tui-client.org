@@ -7,21 +7,16 @@
 #+FILETAGS: :tui:ux:client:
 
 * Overview
-The OpenCortex TUI Client is a standalone Common Lisp executable providing a rich, interactive terminal experience via the ~croatoan~ library.
+The OpenCortex TUI Client is a standalone Common Lisp application built on **Croatoan** (a high-level CLOS wrapper for ncurses). It provides a real-time, multi-window interface for interacting with the OpenCortex daemon.
 
-* Phase D: Build (Implementation)
-
-** Package Definition
+* Implementation
 #+begin_src lisp :tangle ../src/tui-client.lisp
 (in-package :cl-user)
 (defpackage :opencortex.tui
   (:use :cl :croatoan)
   (:export :main))
 (in-package :opencortex.tui)
-#+end_src
 
-** State & Global Queues
-#+begin_src lisp :tangle ../src/tui-client.lisp
 (defvar *daemon-host* "127.0.0.1")
 (defvar *daemon-port* 9105)
 (defvar *socket* nil)
@@ -32,10 +27,7 @@ The OpenCortex TUI Client is a standalone Common Lisp executable providing a ric
 (defvar *is-running* t)
 (defvar *queue-lock* (bt:make-lock))
 (defvar *incoming-msgs* nil)
-#+end_src
 
-** Networking Thread
-#+begin_src lisp :tangle ../src/tui-client.lisp
 (defun enqueue-msg (msg)
   (bt:with-lock-held (*queue-lock*)
     (push msg *incoming-msgs*)))
@@ -54,7 +46,6 @@ The OpenCortex TUI Client is a standalone Common Lisp executable providing a ric
             (cond ((eq msg :eof) (setf *is-running* nil))
                   ((eq msg :error) (setf *status-text* "Protocol Error"))
                   ((and (listp msg) (eq (getf msg :type) :EVENT))
-                   ;; Handle Handshake or other events
                    (let ((payload (getf msg :payload)))
                      (when (eq (getf payload :action) :handshake)
                        (setf *status-text* "Ready"))))
@@ -67,10 +58,7 @@ The OpenCortex TUI Client is a standalone Common Lisp executable providing a ric
                   (t (enqueue-msg (format nil "~s" msg))))))
       (error (c) (setf *status-text* (format nil "Net Error: ~a" c)) (setf *is-running* nil)))
     (sleep 0.05)))
-#+end_src
 
-** Main TUI Loop
-#+begin_src lisp :tangle ../src/tui-client.lisp
 (defun main ()
   (handler-case
       (setf *socket* (usocket:socket-connect *daemon-host* *daemon-port*))
@@ -86,13 +74,12 @@ The OpenCortex TUI Client is a standalone Common Lisp executable providing a ric
              (status-win (make-instance 'window :height 1 :width w :position (list (- h 2) 0)))
              (input-win (make-instance 'window :height 1 :width w :position (list (- h 1) 0))))
         
-        ;; Initial Render
+        ;; Initial Prompt
         (add-string input-win "> ")
         (refresh input-win)
 
-        
         (loop while *is-running* do
-          ;; Handle incoming messages
+          ;; 1. Handle incoming messages
           (let ((new-msgs (dequeue-msgs)))
             (when new-msgs
               (dolist (msg new-msgs)
@@ -106,12 +93,12 @@ The OpenCortex TUI Client is a standalone Common Lisp executable providing a ric
                   (incf line-num)))
               (refresh chat-win)))
 
-          ;; Render Status Bar
+          ;; 2. Render Status Bar
           (clear status-win)
           (add-string status-win *status-text* :attributes '(:reverse))
           (refresh status-win)
 
-          ;; Handle Keyboard Input
+          ;; 3. Handle Keyboard Input
           (let ((ch (get-char scr)))
             (when ch
               (cond
@@ -131,9 +118,9 @@ The OpenCortex TUI Client is a standalone Common Lisp executable providing a ric
               
               (clear input-win)
               (add-string input-win (concatenate 'string "> " (coerce *input-buffer* 'string)))
-              (refresh input-win))
-          (refresh scr)
+              (refresh input-win)))
           
+          (refresh scr)
           (sleep 0.02))))
     (setf *is-running* nil)
     (when *socket* (usocket:socket-close *socket*))))

@@ -33,7 +33,6 @@
             (cond ((eq msg :eof) (setf *is-running* nil))
                   ((eq msg :error) (setf *status-text* "Protocol Error"))
                   ((and (listp msg) (eq (getf msg :type) :EVENT))
-                   ;; Handle Handshake or other events
                    (let ((payload (getf msg :payload)))
                      (when (eq (getf payload :action) :handshake)
                        (setf *status-text* "Ready"))))
@@ -62,13 +61,12 @@
              (status-win (make-instance 'window :height 1 :width w :position (list (- h 2) 0)))
              (input-win (make-instance 'window :height 1 :width w :position (list (- h 1) 0))))
         
-        ;; Initial Render
+        ;; Initial Prompt
         (add-string input-win "> ")
         (refresh input-win)
 
-        
         (loop while *is-running* do
-          ;; Handle incoming messages
+          ;; 1. Handle incoming messages
           (let ((new-msgs (dequeue-msgs)))
             (when new-msgs
               (dolist (msg new-msgs)
@@ -82,12 +80,12 @@
                   (incf line-num)))
               (refresh chat-win)))
 
-          ;; Render Status Bar
+          ;; 2. Render Status Bar
           (clear status-win)
           (add-string status-win *status-text* :attributes '(:reverse))
           (refresh status-win)
 
-          ;; Handle Keyboard Input
+          ;; 3. Handle Keyboard Input
           (let ((ch (get-char scr)))
             (when ch
               (cond
@@ -107,9 +105,9 @@
               
               (clear input-win)
               (add-string input-win (concatenate 'string "> " (coerce *input-buffer* 'string)))
-              (refresh input-win))
-          (refresh scr)
+              (refresh input-win)))
           
+          (refresh scr)
           (sleep 0.02))))
     (setf *is-running* nil)
     (when *socket* (usocket:socket-close *socket*))))
