@@ -54,7 +54,8 @@
                       (t (enqueue-msg (format nil "~s" msg))))))
             (when (eq raw-msg :eof) (setf *is-running* nil))
             (when (eq raw-msg :error) (setf *status-text* "Protocol Error"))))
-
+      (error (c) (setf *status-text* (format nil "Net Error: ~a" c)) (setf *is-running* nil)))
+    (sleep 0.05)))
 
 (defun main ()
   (handler-case
@@ -90,7 +91,7 @@
                     (incf line-num)))
                 (refresh chat-win)))
 
-            ;; 2. Render Status Bar
+            ;; 2. Render Status Bar ONLY if changed
             (unless (equal *status-text* last-status)
               (clear status-win)
               (add-string status-win *status-text* :attributes '(:reverse))
@@ -115,6 +116,7 @@
                      (decf (fill-pointer *input-buffer*))))
                   ((characterp ch)
                    (vector-push-extend ch *input-buffer*))))
+              
               (clear input-win)
               (add-string input-win (concatenate 'string "> " (coerce *input-buffer* 'string)))
               (move input-win 0 (+ 2 (length *input-buffer*)))

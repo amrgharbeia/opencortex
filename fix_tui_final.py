@@ -1,4 +1,6 @@
-:PROPERTIES:
+import os
+
+content = r""":PROPERTIES:
 :ID:       tui-client-spec
 :CREATED:  [2026-04-17 Fri 11:00]
 :END:
@@ -139,3 +141,7 @@ The OpenCortex TUI Client is a standalone Common Lisp application built on **Cro
     (setf *is-running* nil)
     (when *socket* (usocket:socket-close *socket*))))
 #+end_src
+"""
+
+with open("literate/tui-client.org", "w") as f:
+    f.write(content)
