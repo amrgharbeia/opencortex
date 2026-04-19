@@ -101,10 +101,11 @@ The OpenCortex TUI Client is a standalone Common Lisp application built on **Cro
               (setf last-status *status-text*))
 
             ;; 3. Handle Keyboard Input
-            (let ((ch (get-char input-win)))
+            (let* ((event (get-wide-event input-win))
+                   (ch (and event (typep event 'event) (event-key event))))
               (when ch
                 (cond
-                  ((eq ch #\Newline)
+                  ((or (eq ch #\Newline) (eq ch #\Return))
                    (let ((cmd (coerce *input-buffer* 'string)))
                      (setf (fill-pointer *input-buffer*) 0)
                      (when (> (length cmd) 0)
@@ -112,12 +113,11 @@ The OpenCortex TUI Client is a standalone Common Lisp application built on **Cro
                          (format *stream* "~a" framed)
                          (finish-output *stream*)))
                      (when (string= cmd "/exit") (setf *is-running* nil))))
-                  ((eq ch :backspace)
+                  ((or (eq ch :backspace) (eq ch #\Backspace) (eq ch #\Rubout) (eq ch #\Del))
                    (when (> (length *input-buffer*) 0)
                      (decf (fill-pointer *input-buffer*))))
                   ((characterp ch)
                    (vector-push-extend ch *input-buffer*))))
-              
               (clear input-win)
               (add-string input-win (concatenate 'string "> " (coerce *input-buffer* 'string)))
               (move input-win 0 (+ 2 (length *input-buffer*)))
