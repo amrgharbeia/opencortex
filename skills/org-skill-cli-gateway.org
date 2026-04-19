@@ -32,8 +32,8 @@ Provide a secure, local, and low-latency terminal interface for the OpenCortex.
 The gateway runs a multi-threaded TCP server. Each connection is handled in its own thread. Inbound lines are wrapped in a Signal and processed. The `:cli` actuator retrieves the `:reply-stream` from the signal context to send the response back to the specific connected client.
 
 ** 2. Semantic Interfaces
-- Inbound: `(:sensor :chat-message :channel :cli :text "...")`
-- Outbound: `(:type :REQUEST :target :cli :text "...")`
+- Inbound: `(:SENSOR :chat-message :channel :cli :TEXT "...")`
+- Outbound: `(:TYPE :REQUEST :target :cli :TEXT "...")`
 
 * Phase D: Build (Implementation)
 
@@ -55,15 +55,15 @@ The CLI actuator writes the agent's response back to the client's network stream
 #+begin_src lisp
 (defun execute-cli-action (action context)
   "Sends a framed message back to the connected CLI client."
-  (let* ((payload (getf action :payload))
-         (text (or (getf payload :text) (getf action :text)))
+  (let* ((payload (getf action :PAYLOAD))
+         (text (or (getf payload :TEXT) (getf action :TEXT)))
          (stream (getf context :reply-stream)))
     (handler-case
         (if (and stream (open-stream-p stream))
             (progn
-              (format stream "~a" (frame-message (format nil "~s" (list :type :CHAT :text text))))
+              (format stream "~a" (frame-message (format nil "~s" (list :TYPE :CHAT :TEXT text))))
               (finish-output stream)
-              (format stream "~a" (frame-message (format nil "~s" '(:TYPE :STATUS :scribe :idle :gardener :sleeping))))
+              (format stream "~a" (frame-message (format nil "~s" '(:TYPE :STATUS :SCRIBE :idle :GARDENER :sleeping))))
               (finish-output stream))
             (harness-log "CLI ERROR: No active or open reply stream for signal."))
       (error (c) (harness-log "CLI ACTUATOR ERROR: ~a" c)))))
@@ -77,13 +77,13 @@ Handles an individual TCP connection. It reads lines until the connection is clo
   "Handles TUI slash commands by returning structured Lisp s-expressions."
   (cond
     ((string= cmd "/status")
-     (format stream "~a" (frame-message (format nil "~s" '(:TYPE :STATUS :scribe :idle :gardener :sleeping))))
+     (format stream "~a" (frame-message (format nil "~s" '(:TYPE :STATUS :SCRIBE :idle :GARDENER :sleeping))))
      (finish-output stream))
     ((string= cmd "/exit")
-     (prin1 '(:type :info :text "Goodbye!") stream)
+     (prin1 '(:TYPE :info :TEXT "Goodbye!") stream)
      (terpri stream)
      (finish-output stream))
-    (t (prin1 (list :type :error :text (format nil "Unknown command: ~a" cmd)) stream)
+    (t (prin1 (list :TYPE :error :TEXT (format nil "Unknown command: ~a" cmd)) stream)
        (terpri stream)
        (finish-output stream))))
 
@@ -95,7 +95,7 @@ Handles an individual TCP connection. It reads lines until the connection is clo
         ;; 1. Send Handshake
         (format stream "~a" (frame-message (format nil "~s" (make-hello-message "0.1.0"))))
         (finish-output stream)
-        (format stream "~a" (frame-message (format nil "~s" '(:TYPE :STATUS :scribe :idle :gardener :sleeping))))
+        (format stream "~a" (frame-message (format nil "~s" '(:TYPE :STATUS :SCRIBE :idle :GARDENER :sleeping))))
         (finish-output stream)
         
         ;; 2. Communication Loop
@@ -103,8 +103,8 @@ Handles an individual TCP connection. It reads lines until the connection is clo
           (let ((msg (read-framed-message stream)))
             (cond ((eq msg :eof) (return))
                   ((eq msg :error) (return))
-                  (t (if (and (listp msg) (stringp (getf msg :text)) (char= (char (getf msg :text) 0) #\/))
-                         (handle-cli-slash-command (getf msg :text) stream)
+                  (t (if (and (listp msg) (stringp (getf msg :TEXT)) (char= (char (getf msg :TEXT) 0) #\/))
+                         (handle-cli-slash-command (getf msg :TEXT) stream)
                          (progn
                            (harness-log "CLI: Received input -> ~s" msg)
                            (inject-stimulus msg :stream stream))))))))
