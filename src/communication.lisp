@@ -93,3 +93,10 @@
       (error (c) 
         (harness-log "PROTOCOL READ ERROR: ~a" c)
         :error))))
+
+(defun proto-get (plist key)
+  "Robustly retrieves a value from a plist, checking both uppercase and lowercase keyword versions."
+  (let* ((s (string key))
+         (up (intern (string-upcase s) :keyword))
+         (dn (intern (string-downcase s) :keyword)))
+    (or (getf plist up) (getf plist dn))))

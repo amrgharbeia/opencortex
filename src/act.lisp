@@ -22,6 +22,9 @@
   (register-actuator :tool #'execute-tool-action))
 
 (defun dispatch-action (action context)
+  (let ((payload (proto-get action :payload)))
+    (when (eq (proto-get payload :sensor) :heartbeat)
+      (return-from dispatch-action nil)))
   "Routes an approved action to its registered physical actuator."
   (when (and action (listp action))
     (let* ((raw-target (or (ignore-errors (getf action :TARGET))
@@ -70,8 +73,8 @@
 
 (defun act-gate (signal)
   "Final Stage: Actuation and feedback generation."
-  (let* ((approved (getf signal :approved-action))
-         (type (getf signal :type))
+  (let* ((approved (proto-get signal :approved-action))
+         (type (proto-get signal :type))
          (feedback nil))
     
     ;; 1. Last-Mile Safety Check (The Bouncer & Deterministic Gates)
@@ -83,11 +86,11 @@
                  (not (member original-type '(:LOG :EVENT :log :event))))
             (progn
               (harness-log "ACT BLOCKED: Action failed last-mile deterministic check.")
-              (setf (getf signal :approved-action) nil)
+              (setf (proto-get signal :approved-action) nil)
               (setf approved nil)
               (setf feedback verified))
             (progn
-              (setf (getf signal :approved-action) verified)
+              (setf (proto-get signal :approved-action) verified)
               (setf approved verified)))))
 
     ;; 2. Actuation Logic
@@ -96,18 +99,18 @@
       (:LOG (dispatch-action signal signal))
       (:EVENT 
        (if approved
-           (let* ((target (getf approved :target))
+           (let* ((target (proto-get approved :target))
                   (result (dispatch-action approved signal)))
              ;; If the actuator returns a signal (like :tool-output), it becomes the feedback.
              ;; Otherwise, generate tool-output feedback for non-silent actuators.
              (cond ((and (listp result) (member (getf result :type) '(:EVENT :LOG)))
                     (setf feedback result))
                    ((and result (not (member target *silent-actuators*)))
-                    (setf feedback (list :type :EVENT :depth (1+ (getf signal :depth 0)) 
-                                         :reply-stream (getf signal :reply-stream)
+                    (setf feedback (list :type :EVENT :depth (1+ (or (proto-get signal :depth) 0)) 
+                                         :reply-stream (proto-get signal :reply-stream)
                                          :payload (list :sensor :tool-output :result result :tool approved))))))
            ;; If no approved action but we have a reply-stream, this might be a raw event/log stimulus.
-           (when (getf signal :reply-stream)
+           (when (proto-get signal :reply-stream)
              (dispatch-action signal signal)))))
     
     (setf (getf signal :status) :acted)

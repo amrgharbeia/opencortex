@@ -5,6 +5,7 @@
    #:frame-message
    #:read-framed-message
    #:parse-message
+   #:proto-get
    #:make-hello-message
    #:validate-communication-protocol-schema
    
