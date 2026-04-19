@@ -67,10 +67,15 @@
                        :capabilities '(:auth :swank :org-ast))))
 
 (defun read-framed-message (stream)
-  "Reads a hex-length prefixed message from the stream securely."
+  "Reads a hex-length prefixed message from the stream securely. Skips leading whitespace."
   (let ((length-buffer (make-string 6)))
     (handler-case
         (progn
+          ;; 0. Skip leading whitespace (newlines, spaces, etc.)
+          (loop for char = (peek-char nil stream nil :eof)
+                while (and (not (eq char :eof)) (member char '(#\Space #\Newline #\Tab #\Return)))
+                do (read-char stream))
+
           ;; 1. Read the 6-char hex length
           (let ((count (read-sequence length-buffer stream)))
             (when (< count 6) (return-from read-framed-message :eof))

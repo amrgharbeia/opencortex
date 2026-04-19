@@ -15,10 +15,16 @@
           (bt:with-lock-held (*interrupt-lock*) (setf *interrupt-flag* nil))
           (return nil))
         (handler-case
-            (progn
+            (let ((parent-metadata (list :reply-stream (getf current-signal :reply-stream)
+                                         :foveal-focus (getf current-signal :foveal-focus))))
               (setf current-signal (perceive-gate current-signal))
               (setf current-signal (reason-gate current-signal))
-              (setf current-signal (act-gate current-signal)))
+              (setf current-signal (act-gate current-signal))
+              ;; Inherit metadata for the next metabolic cycle if feedback was generated.
+              (when (and current-signal (not (getf current-signal :reply-stream)))
+                (setf (getf current-signal :reply-stream) (getf parent-metadata :reply-stream)))
+              (when (and current-signal (not (getf current-signal :foveal-focus)))
+                (setf (getf current-signal :foveal-focus) (getf parent-metadata :foveal-focus))))
           (error (c)
             (let ((sensor (ignore-errors (getf (getf current-signal :payload) :sensor))))
               (harness-log "METABOLISM CRASH [~a]: ~a" (or sensor :unknown) c)

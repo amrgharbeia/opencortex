@@ -84,18 +84,22 @@
     ;; 2. Actuation Logic
     (case type
       (:REQUEST (dispatch-action signal signal))
+      (:LOG (dispatch-action signal signal))
       (:EVENT 
-       (when approved
-         (let* ((target (getf approved :target))
-                (result (dispatch-action approved signal)))
-           ;; If the actuator returns a signal (like :tool-output), it becomes the feedback.
-           ;; Otherwise, generate tool-output feedback for non-silent actuators.
-           (cond ((and (listp result) (member (getf result :type) '(:EVENT :LOG)))
-                  (setf feedback result))
-                 ((and result (not (member target *silent-actuators*)))
-                  (setf feedback (list :type :EVENT :depth (1+ (getf signal :depth 0)) 
-                                       :reply-stream (getf signal :reply-stream)
-                                       :payload (list :sensor :tool-output :result result :tool approved)))))))))
+       (if approved
+           (let* ((target (getf approved :target))
+                  (result (dispatch-action approved signal)))
+             ;; If the actuator returns a signal (like :tool-output), it becomes the feedback.
+             ;; Otherwise, generate tool-output feedback for non-silent actuators.
+             (cond ((and (listp result) (member (getf result :type) '(:EVENT :LOG)))
+                    (setf feedback result))
+                   ((and result (not (member target *silent-actuators*)))
+                    (setf feedback (list :type :EVENT :depth (1+ (getf signal :depth 0)) 
+                                         :reply-stream (getf signal :reply-stream)
+                                         :payload (list :sensor :tool-output :result result :tool approved))))))
+           ;; If no approved action but we have a reply-stream, this might be a raw event/log stimulus.
+           (when (getf signal :reply-stream)
+             (dispatch-action signal signal)))))
     
     (setf (getf signal :status) :acted)
     feedback))

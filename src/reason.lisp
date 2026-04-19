@@ -20,10 +20,12 @@
                      (result (if model 
                                  (funcall backend-fn prompt system-prompt :model model)
                                  (funcall backend-fn prompt system-prompt))))
-                ;; If the result is valid and doesn't contain a failure log, return it.
-                (unless (or (null result) 
-                            (and (stringp result) (search ":LOG" result)))
-                  (return result))))))
+                ;; If the result is valid, return it.
+                ;; If it is an error plist from the gateway, continue the cascade but log it.
+                (cond ((and (listp result) (eq (getf result :status) :success))
+                       (return (getf result :content)))
+                      ((stringp result) (return result))
+                      (t (harness-log "PROBABILISTIC: Backend ~a failed: ~a" backend (getf result :message))))))))
         ;; Final fallback if all backends in the cascade fail.
         (list :type :LOG :payload (list :text "Neural Cascade Failure: All providers exhausted.")))))
 
@@ -64,11 +66,16 @@
       (let ((trigger (skill-trigger-fn skill))
             (gate (skill-deterministic-fn skill)))
         (when (or (null trigger) (ignore-errors (funcall trigger context)))
-          (setf current-action (funcall gate current-action context))
-          ;; If any gate returns a LOG or EVENT, it has intercepted the action.
-          (when (and (listp current-action) (member (getf current-action :type) '(:LOG :EVENT :log :event)))
-            (harness-log "DETERMINISTIC: Intercepted by skill '~a'" (skill-name skill))
-            (return-from deterministic-verify current-action)))))
+          (let ((next-action (funcall gate current-action context)))
+            ;; Interception occurs if the gate returns a signal (LOG/EVENT) AND either:
+            ;; 1. The original action was NOT a signal (e.g. it was a REQUEST).
+            ;; 2. The gate returned a DIFFERENT signal than it was given.
+            (when (and (listp next-action) 
+                       (member (getf next-action :type) '(:LOG :EVENT :log :event))
+                       (not (eq next-action current-action)))
+              (harness-log "DETERMINISTIC: Intercepted by skill '~a'" (skill-name skill))
+              (return-from deterministic-verify next-action))
+            (setf current-action next-action)))))
     current-action))
 
 (defun reason-gate (signal)
