@@ -172,7 +172,7 @@ case "$COMMAND" in
         [ -z "$MEMEX_DIR" ] && export MEMEX_DIR="$HOME/memex"
                 # 1. Warm the cache in the foreground (Blocking)
         echo -e "--- Pre-compiling Neural Dependencies ---"
-        sbcl --non-interactive --load (merge-pathnames "quicklisp/setup.lisp" (user-homedir-pathname)) \
+        sbcl --non-interactive --load '(merge-pathnames "quicklisp/setup.lisp" (user-homedir-pathname))' \
              --eval "(push (truename \"\") asdf:*central-registry*)" \
              --eval "(ql:quickload '(:opencortex :opencortex/tui :croatoan))"
         
@@ -196,7 +196,7 @@ case "$COMMAND" in
         [ -z "$MEMEX_DIR" ] && export MEMEX_DIR="$HOME/memex"
                 # 1. Warm the cache in the foreground (Blocking)
         echo -e "--- Pre-compiling Neural Dependencies ---"
-        sbcl --non-interactive --load (merge-pathnames "quicklisp/setup.lisp" (user-homedir-pathname)) \
+        sbcl --non-interactive --load '(merge-pathnames "quicklisp/setup.lisp" (user-homedir-pathname))' \
              --eval "(push (truename \"\") asdf:*central-registry*)" \
              --eval "(ql:quickload '(:opencortex :opencortex/tui :croatoan))"
         
