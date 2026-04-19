@@ -7,7 +7,7 @@
   
   (let ((type (let ((raw (proto-get msg :type))) (if (keywordp raw) (intern (string-upcase (string raw)) :keyword) raw))))
     (unless (member type '(:REQUEST :EVENT :RESPONSE :LOG :STATUS))
-      (error "Communication Protocol Schema Error: Invalid message type '~a'" type))
+      (progn (harness-log "REJECTED MSG: ~s" msg) (error "Communication Protocol Schema Error: Invalid message type '~a'" type)))
     
     (case type
       (:REQUEST 
