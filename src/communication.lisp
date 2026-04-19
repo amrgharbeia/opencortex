@@ -1,11 +1,12 @@
 (in-package :opencortex)
 
-(defvar *actuator-registry* (make-hash-table :test 'equal)
+(defvar *actuator-registry* (make-hash-table :test 'equalp)
   "Global registry mapping target keywords to their physical actuator functions.")
 
 (defun register-actuator (name fn) 
   "Registers an actuator function. Actuators receive: (ACTION CONTEXT)."
-  (setf (gethash name *actuator-registry*) fn))
+  (let ((key (if (keywordp name) name (intern (string-upcase (string name)) :keyword))))
+    (setf (gethash key *actuator-registry*) fn)))
 
 (defun frame-message (msg-string)
   "Prefixes MSG-STRING with a 6-character hex length.

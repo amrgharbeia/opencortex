@@ -21,11 +21,14 @@
 (defun dispatch-action (action context)
   "Routes an approved action to its registered physical actuator."
   (when (and action (listp action))
-    (let* ((target (or (ignore-errors (getf action :target)) *default-actuator*)) 
+    (let* ((raw-target (or (ignore-errors (getf action :target)) 
+                           (ignore-errors (getf action :TARGET))
+                           *default-actuator*))
+           (target (if (keywordp raw-target) raw-target (intern (string-upcase (string raw-target)) :keyword)))
            (actuator-fn (gethash target *actuator-registry*)))
       (if actuator-fn 
           (funcall actuator-fn action context) 
-          (harness-log "ACT ERROR: No actuator for ~a" target)))))
+          (harness-log "ACT ERROR: No actuator for ~s (from ~s)" target raw-target)))))
 
 (defun execute-system-action (action context)
   "Processes internal harness commands. (ACTUATOR)"
