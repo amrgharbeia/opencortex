@@ -86,11 +86,11 @@
                  (not (member original-type '(:LOG :EVENT :log :event))))
             (progn
               (harness-log "ACT BLOCKED: Action failed last-mile deterministic check.")
-              (setf (proto-get signal :approved-action) nil)
+              (setf (getf signal :APPROVED-ACTION) nil)
               (setf approved nil)
               (setf feedback verified))
             (progn
-              (setf (proto-get signal :approved-action) verified)
+              (setf (getf signal :APPROVED-ACTION) verified)
               (setf approved verified)))))
 
     ;; 2. Actuation Logic
