@@ -2,7 +2,7 @@
   (:use :cl)
   (:export 
    ;; --- communication protocol ---
-   #:frame-message
+   #:frame-message\n   #:read-framed-message
    #:parse-message
    #:make-hello-message
    #:validate-communication-protocol-schema
