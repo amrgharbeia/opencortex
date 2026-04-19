@@ -44,7 +44,11 @@
              (cleaned (if (stringp thought) (string-trim '(#\Space #\Newline #\Tab) thought) thought)))
         (if (stringp cleaned)
             (let ((*read-eval* nil))
-              (handler-case (read-from-string cleaned)
+              (handler-case 
+                  (let ((parsed (read-from-string cleaned)))
+                    (if (and (listp parsed) (getf parsed :response))
+                        (list :TYPE :CHAT :TEXT (getf parsed :response))
+                        parsed))
                 (error (c) (list :type :EVENT :payload (list :sensor :syntax-error :code cleaned :error (format nil "~a" c))))))
             cleaned)))))
 
