@@ -6,7 +6,7 @@
     (error "Communication Protocol Schema Error: Message must be a property list (got ~s)" (type-of msg)))
   
   (let ((type (getf msg :type)))
-    (unless (member type '(:REQUEST :EVENT :RESPONSE :LOG))
+    (unless (member type '(:REQUEST :EVENT :RESPONSE :LOG :STATUS))
       (error "Communication Protocol Schema Error: Invalid message type '~a'" type))
     
     (case type
