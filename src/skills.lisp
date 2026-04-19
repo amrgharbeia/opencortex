@@ -151,7 +151,7 @@
                 (harness-log "HARNESS: Jailing skill '~a' in package ~a" skill-base-name pkg-name)
                 (unless (find-package pkg-name)
                   (let ((new-pkg (make-package pkg-name :use '(:cl))))
-                    (do-external-symbols (sym (find-package :opencortex)) (shadowing-import sym new-pkg))))
+                    (do-external-symbols (sym (find-package :opencortex)) (import sym new-pkg))))
                 (let ((*read-eval* nil) (*package* (find-package pkg-name)))
                   (eval (read-from-string (format nil "(progn ~a)" lisp-code))))
                 (setf (skill-entry-status entry) :ready)

@@ -3,6 +3,7 @@
 :CREATED:  [2026-04-11 Sat 15:20]
 :EDITED:   [2026-04-13 Mon 18:35]
 :END:
+#+DEPENDS_ON: org-skill-credentials-vault
 #+TITLE: SKILL: Deterministic Engine Bouncer (Authorization Gate)
 #+STARTUP: content
 #+FILETAGS: :system:bouncer:authorization:autonomy:
