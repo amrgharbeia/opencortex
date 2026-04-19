@@ -170,6 +170,13 @@ case "$COMMAND" in
         rm -rf "/home/user/.cache/common-lisp"
         export SKILLS_DIR="${SCRIPT_DIR}/skills"
         [ -z "$MEMEX_DIR" ] && export MEMEX_DIR="$HOME/memex"
+                # 1. Warm the cache in the foreground (Blocking)
+        echo -e "--- Pre-compiling Neural Dependencies ---"
+        sbcl --non-interactive --load (merge-pathnames "quicklisp/setup.lisp" (user-homedir-pathname)) \
+             --eval "(push (truename \"\") asdf:*central-registry*)" \
+             --eval "(ql:quickload '(:opencortex :opencortex/tui :croatoan))"
+        
+        # 2. Now launch the actual daemon
         exec sbcl --eval '(load (merge-pathnames "quicklisp/setup.lisp" (user-homedir-pathname)))' --eval '(setf *debugger-hook* (lambda (c h) (declare (ignore h)) (format *error-output* "FATAL LISP ERROR: ~a~%" c) (uiop:print-backtrace :stream *error-output*) (uiop:quit 1)))' --eval '(push (truename (uiop:getenv "SCRIPT_DIR")) asdf:*central-registry*)' --eval '(format t "--- Quickloading OpenCortex ---~%")' --eval "(ql:quickload '(:opencortex :croatoan))" --eval '(opencortex:main)'
         ;;
         
@@ -187,6 +194,13 @@ case "$COMMAND" in
         echo -e "Launching Croatoan TUI..."
         export SKILLS_DIR="${SCRIPT_DIR}/skills"
         [ -z "$MEMEX_DIR" ] && export MEMEX_DIR="$HOME/memex"
+                # 1. Warm the cache in the foreground (Blocking)
+        echo -e "--- Pre-compiling Neural Dependencies ---"
+        sbcl --non-interactive --load (merge-pathnames "quicklisp/setup.lisp" (user-homedir-pathname)) \
+             --eval "(push (truename \"\") asdf:*central-registry*)" \
+             --eval "(ql:quickload '(:opencortex :opencortex/tui :croatoan))"
+        
+        # 2. Now launch the actual daemon
         exec sbcl --eval '(load (merge-pathnames "quicklisp/setup.lisp" (user-homedir-pathname)))' --eval '(push (truename (uiop:getenv "SCRIPT_DIR")) asdf:*central-registry*)' --eval '(ql:quickload :opencortex/tui)' --eval '(opencortex.tui:main)'
         ;;
         
