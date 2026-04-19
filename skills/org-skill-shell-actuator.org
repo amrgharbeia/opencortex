@@ -86,7 +86,7 @@ Whitelist of permitted host binaries.
 Dangerous characters that are banned to prevent command injection.
 
 #+begin_src lisp
-(defparameter *shell-metacharacters* '(#\; #\& #\| #\> #\< #\$ #\` #\\ #\!)
+(defparameter *shell-metacharacters* '(#\; #\& #\| #\> #\< #\$ #` #\\ #\!)
   "Characters that are banned in shell commands to prevent injection.")
 #+end_src
 

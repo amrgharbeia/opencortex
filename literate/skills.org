@@ -13,6 +13,11 @@ A static, hardcoded architecture is inherently fragile. The ~opencortex~ Skill E
 #+begin_src lisp :tangle ../src/skills.lisp
 (in-package :opencortex)
 
+(defun COSINE-SIMILARITY (v1 v2) 1.0) ; Stub
+(defun VAULT-MASK-STRING (s) "[MASKED]") ; Stub
+(defvar *VAULT-MEMORY* (make-hash-table :test 'equal))
+
+
 (defstruct skill name priority dependencies trigger-fn probabilistic-prompt deterministic-fn)
 
 (defvar *skill-catalog* (make-hash-table :test 'equal)
@@ -219,7 +224,7 @@ A static, hardcoded architecture is inherently fragile. The ~opencortex~ Skill E
       (let* ((mandatory-env (uiop:getenv "MANDATORY_SKILLS"))
              (mandatory-skills (if mandatory-env 
                                    (mapcar (lambda (s) (string-trim '(#\Space) s)) 
-                                           (uiop:split-string mandatory-env :separator '(#\,)))
+                                           (uiop:split-string mandatory-env :separator '(#,)))
                                    '("org-skill-policy" "org-skill-bouncer"))))
         (dolist (req mandatory-skills)
           (unless (member req sorted-files :key #'pathname-name :test #'string-equal)

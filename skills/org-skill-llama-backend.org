@@ -7,15 +7,15 @@
 #+FILETAGS: :llm:backend:llama:sovereignty:
 
 * Overview
-The *Llama.cpp Backend* allows the OpenCortex to use local, air-gapped inference. It connects to a \`llama.cpp\` server (typically running on the local network) and registers itself as a provider in the kernel's probabilistic cascade.
+The *Llama.cpp Backend* allows the OpenCortex to use local, air-gapped inference. It connects to a `llama.cpp` server (typically running on the local network) and registers itself as a provider in the kernel's probabilistic cascade.
 
 * Phase B: Blueprint (PROTOCOL)
 ** 1. Architectural Intent
-This skill acts as a proxy between the OpenCortex kernel and the Lisp-agnostic \`llama.cpp\` REST API. It implements the standard backend signature required by \`register-probabilistic-backend\`.
+This skill acts as a proxy between the OpenCortex kernel and the Lisp-agnostic `llama.cpp` REST API. It implements the standard backend signature required by `register-probabilistic-backend`.
 
 ** 2. Semantic Interfaces
-- Endpoint: \`(uiop:getenv "LLAMACPP_ENDPOINT")\` (e.g., "http://10.10.10.x:8080")
-- Method: \`POST /completion\`
+- Endpoint: `(uiop:getenv "LLAMACPP_ENDPOINT")` (e.g., "http://10.10.10.x:8080")
+- Method: `POST /completion`
 - Response: JSON (parsed into Lisp)
 
 * Phase D: Build (Implementation)
@@ -37,7 +37,7 @@ This skill acts as a proxy between the OpenCortex kernel and the Lisp-agnostic \
     (handler-case
         (let* ((full-prompt (format nil "System: ~a~%User: ~a~%Assistant:" system-prompt prompt))
                (payload (cl-json:encode-json-to-string 
-                         \`((:prompt . ,full-prompt)
+                         `((:prompt . ,full-prompt)
                            (:n_predict . 1024)
                            (:stop . ("User:" "System:")))))
                (response (dex:post (format nil "~a/completion" endpoint)
