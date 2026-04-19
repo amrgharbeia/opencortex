@@ -54,7 +54,7 @@ Decouple protocol parsing (framing/unframing) from semantic validation.
     (error "Communication Protocol Schema Error: Message must be a property list (got ~s)" (type-of msg)))
   
   (let ((type (let ((raw (proto-get msg :type))) (if (keywordp raw) (intern (string-upcase (string raw)) :keyword) raw))))
-    (unless (member type '(:REQUEST :EVENT :RESPONSE :LOG :STATUS))
+    (unless (member type '(:REQUEST :EVENT :RESPONSE :LOG :STATUS :CHAT))
       (progn (harness-log "REJECTED MSG: ~s" msg) (error "Communication Protocol Schema Error: Invalid message type '~a'" type)))
     
     (case type
