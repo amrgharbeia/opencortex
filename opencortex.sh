@@ -154,48 +154,48 @@ setup_system() {
 
 # --- 3. COMMAND ROUTER ---
 # By default, if no arguments are provided, we assume the user wants the CLI fallback.
-COMMAND="cli"
+COMMAND=${1:-"cli"}
 
 # However, if the system is completely uninitialized, we force the 'setup' command.
-if [ ! -f "/src/package.lisp" ] || [ ! -f "/.env" ]; then
+if [ ! -f "$SCRIPT_DIR/src/package.lisp" ] || [ ! -f "$SCRIPT_DIR/.env" ]; then
     COMMAND="setup"
 fi
 
-case "" in
+case "$COMMAND" in
     setup)
         setup_system
         ;;
         
     --boot|boot)
-        export SKILLS_DIR="/skills"
-        [ -z "" ] && export MEMEX_DIR="/home/user/memex"
+        export SKILLS_DIR="${SCRIPT_DIR}/skills"
+        [ -z "$MEMEX_DIR" ] && export MEMEX_DIR="$HOME/memex"
         exec sbcl --eval '(load (merge-pathnames "quicklisp/setup.lisp" (user-homedir-pathname)))' --eval '(setf *debugger-hook* (lambda (c h) (declare (ignore h)) (format *error-output* "FATAL LISP ERROR: ~a~%" c) (uiop:print-backtrace :stream *error-output*) (uiop:quit 1)))' --eval '(push (truename (uiop:getenv "SCRIPT_DIR")) asdf:*central-registry*)' --eval '(format t "--- Quickloading OpenCortex ---~%")' --eval "(ql:quickload '(:opencortex :croatoan))" --eval '(opencortex:main)'
         ;;
         
     tui)
-        if ! nc -z   2>/dev/null; then
+        if ! nc -z $HOST $PORT 2>/dev/null; then
             echo -e "Brain is offline. Awakening..."
-            "/opencortex.sh" --boot > "/brain.log" 2>&1 &
+            "$SCRIPT_DIR/opencortex.sh" --boot > "$SCRIPT_DIR/brain.log" 2>&1 &
             for i in {1..15}; do
                 sleep 2
-                if nc -z   2>/dev/null; then break; fi
+                if nc -z $HOST $PORT 2>/dev/null; then break; fi
                 echo -n "."
             done
             echo ""
         fi
         echo -e "Launching Croatoan TUI..."
-        export SKILLS_DIR="/skills"
-        [ -z "" ] && export MEMEX_DIR="/home/user/memex"
+        export SKILLS_DIR="${SCRIPT_DIR}/skills"
+        [ -z "$MEMEX_DIR" ] && export MEMEX_DIR="$HOME/memex"
         exec sbcl --eval '(load (merge-pathnames "quicklisp/setup.lisp" (user-homedir-pathname)))' --eval '(push (truename (uiop:getenv "SCRIPT_DIR")) asdf:*central-registry*)' --eval '(ql:quickload :opencortex/tui)' --eval '(opencortex.tui:main)'
         ;;
         
     cli)
-        if ! nc -z   2>/dev/null; then
+        if ! nc -z $HOST $PORT 2>/dev/null; then
             echo -e "Brain is offline. Awakening..."
-            "/opencortex.sh" --boot > "/brain.log" 2>&1 &
+            "$SCRIPT_DIR/opencortex.sh" --boot > "$SCRIPT_DIR/brain.log" 2>&1 &
             for i in {1..15}; do
                 sleep 2
-                if nc -z   2>/dev/null; then break; fi
+                if nc -z $HOST $PORT 2>/dev/null; then break; fi
                 echo -n "."
             done
             echo ""
@@ -208,7 +208,7 @@ case "" in
         ;;
         
     *)
-        echo -e "Unknown command: "
+        echo -e "Unknown command: $COMMAND"
         echo "Available commands: setup, boot, tui, cli"
         exit 1
         ;;
