@@ -156,7 +156,6 @@ if [ ! -f "$SCRIPT_DIR/src/package.lisp" ] || [ ! -f "$SCRIPT_DIR/.env" ]; then
     setup_system
 fi
 
-
 # --- 4. BOOT ---
 if [[ "$1" == "--boot" ]]; then
     export SKILLS_DIR="${SCRIPT_DIR}/skills"
