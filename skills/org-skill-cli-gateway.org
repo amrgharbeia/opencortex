@@ -61,9 +61,9 @@ The CLI actuator writes the agent's response back to the client's network stream
     (handler-case
         (if (and stream (open-stream-p stream))
             (progn
-              (format stream "~a" (frame-message (format nil "~s" (list :type :chat :text text))))
+              (format stream "~a" (frame-message (format nil "~s" (list :type :CHAT :text text))))
               (finish-output stream)
-              (format stream "~a" (frame-message (format nil "~s" '(:type :status :scribe :idle :gardener :sleeping))))
+              (format stream "~a" (frame-message (format nil "~s" '(:TYPE :STATUS :scribe :idle :gardener :sleeping))))
               (finish-output stream))
             (harness-log "CLI ERROR: No active or open reply stream for signal."))
       (error (c) (harness-log "CLI ACTUATOR ERROR: ~a" c)))))
@@ -77,7 +77,7 @@ Handles an individual TCP connection. It reads lines until the connection is clo
   "Handles TUI slash commands by returning structured Lisp s-expressions."
   (cond
     ((string= cmd "/status")
-     (format stream "~a" (frame-message (format nil "~s" '(:type :status :scribe :idle :gardener :sleeping))))
+     (format stream "~a" (frame-message (format nil "~s" '(:TYPE :STATUS :scribe :idle :gardener :sleeping))))
      (finish-output stream))
     ((string= cmd "/exit")
      (prin1 '(:type :info :text "Goodbye!") stream)
@@ -95,7 +95,7 @@ Handles an individual TCP connection. It reads lines until the connection is clo
         ;; 1. Send Handshake
         (format stream "~a" (frame-message (format nil "~s" (make-hello-message "0.1.0"))))
         (finish-output stream)
-        (format stream "~a" (frame-message (format nil "~s" '(:type :status :scribe :idle :gardener :sleeping))))
+        (format stream "~a" (frame-message (format nil "~s" '(:TYPE :STATUS :scribe :idle :gardener :sleeping))))
         (finish-output stream)
         
         ;; 2. Communication Loop

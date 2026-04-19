@@ -49,11 +49,11 @@ The OpenCortex TUI Client is a standalone Common Lisp application built on **Cro
                    (let ((payload (getf msg :payload)))
                      (when (eq (getf payload :action) :handshake)
                        (setf *status-text* "Ready"))))
-                  ((and (listp msg) (eq (getf msg :type) :status))
+                  ((and (listp msg) (eq (getf msg :type) :STATUS))
                    (setf *status-text* (format nil "[Scribe: ~a] [Gardener: ~a]" 
                                                (getf msg :scribe)
                                                (getf msg :gardener))))
-                  ((and (listp msg) (eq (getf msg :type) :chat))
+                  ((and (listp msg) (eq (getf msg :type) :CHAT))
                    (enqueue-msg (getf msg :text)))
                   (t (enqueue-msg (format nil "~s" msg))))))
       (error (c) (setf *status-text* (format nil "Net Error: ~a" c)) (setf *is-running* nil)))
