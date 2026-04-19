@@ -123,7 +123,7 @@ setup_system() {
 
     echo -e "${YELLOW}--- Finalizing: Awakening the Brain as a background daemon ---${NC}"
     > "$SCRIPT_DIR/brain.log"
-    bash "$SCRIPT_DIR/opencortex.sh" --boot > "$SCRIPT_DIR/brain.log" 2>&1 &
+    "$SCRIPT_DIR/opencortex.sh" --boot > "$SCRIPT_DIR/brain.log" 2>&1 &
 
     local success=false
     for i in {1..30}; do
@@ -157,7 +157,7 @@ setup_system() {
 COMMAND=${1:-"cli"}
 
 # However, if the system is completely uninitialized, we force the 'setup' command.
-if [ ! -f "$SCRIPT_DIR/src/package.lisp" ] || [ ! -f "$SCRIPT_DIR/.env" ]; then
+if [ ! -f "$SCRIPT_DIR/src/package.lisp" ] || [ ! -f "$SCRIPT_DIR/.env" ] && [ ! -f "$HOME/.local/share/opencortex/.env" ]; then
     COMMAND="setup"
 fi
 
@@ -169,13 +169,13 @@ case "$COMMAND" in
     --boot|boot)
         export SKILLS_DIR="${SCRIPT_DIR}/skills"
         [ -z "$MEMEX_DIR" ] && export MEMEX_DIR="$HOME/memex"
-        exec sbcl --disable-debugger --eval '(load (merge-pathnames "quicklisp/setup.lisp" (user-homedir-pathname)))' --eval '(setf *debugger-hook* (lambda (c h) (declare (ignore h)) (format *error-output* "FATAL LISP ERROR: ~a~%" c) (uiop:print-backtrace :stream *error-output*) (uiop:quit 1)))' --eval '(push (truename (uiop:getenv "SCRIPT_DIR")) asdf:*central-registry*)' --eval '(format t "--- Quickloading OpenCortex ---~%")' --eval "(ql:quickload '(:opencortex :croatoan))" --eval '(opencortex:main)'
+        exec sbcl --eval '(load (merge-pathnames "quicklisp/setup.lisp" (user-homedir-pathname)))' --eval '(setf *debugger-hook* (lambda (c h) (declare (ignore h)) (format *error-output* "FATAL LISP ERROR: ~a~%" c) (uiop:print-backtrace :stream *error-output*) (uiop:quit 1)))' --eval '(push (truename (uiop:getenv "SCRIPT_DIR")) asdf:*central-registry*)' --eval '(format t "--- Quickloading OpenCortex ---~%")' --eval "(ql:quickload '(:opencortex :croatoan))" --eval '(opencortex:main)'
         ;;
         
     tui)
         if ! nc -z $HOST $PORT 2>/dev/null; then
             echo -e "Brain is offline. Awakening..."
-            bash "$SCRIPT_DIR/opencortex.sh" --boot > "$SCRIPT_DIR/brain.log" 2>&1 &
+            "$SCRIPT_DIR/opencortex.sh" --boot > "$SCRIPT_DIR/brain.log" 2>&1 &
             for i in {1..15}; do
                 sleep 2
                 if nc -z $HOST $PORT 2>/dev/null; then break; fi
@@ -186,13 +186,13 @@ case "$COMMAND" in
         echo -e "Launching Croatoan TUI..."
         export SKILLS_DIR="${SCRIPT_DIR}/skills"
         [ -z "$MEMEX_DIR" ] && export MEMEX_DIR="$HOME/memex"
-        exec sbcl --disable-debugger --eval '(load (merge-pathnames "quicklisp/setup.lisp" (user-homedir-pathname)))' --eval '(push (truename (uiop:getenv "SCRIPT_DIR")) asdf:*central-registry*)' --eval '(ql:quickload :opencortex/tui)' --eval '(opencortex.tui:main)'
+        exec sbcl --eval '(load (merge-pathnames "quicklisp/setup.lisp" (user-homedir-pathname)))' --eval '(push (truename (uiop:getenv "SCRIPT_DIR")) asdf:*central-registry*)' --eval '(ql:quickload :opencortex/tui)' --eval '(opencortex.tui:main)'
         ;;
         
     cli)
         if ! nc -z $HOST $PORT 2>/dev/null; then
             echo -e "Brain is offline. Awakening..."
-            bash "$SCRIPT_DIR/opencortex.sh" --boot > "$SCRIPT_DIR/brain.log" 2>&1 &
+            "$SCRIPT_DIR/opencortex.sh" --boot > "$SCRIPT_DIR/brain.log" 2>&1 &
             for i in {1..15}; do
                 sleep 2
                 if nc -z $HOST $PORT 2>/dev/null; then break; fi

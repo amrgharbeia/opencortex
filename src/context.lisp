@@ -91,8 +91,18 @@
     output))
 
 (defun context-resolve-path (path-string)
-  "Expands all environment variables ($VAR) within a path string."
-  (if (and (stringp path-string) (search "$" path-string))
+  "Expands environment variables and strips literal quotes from a path string."
+  (let ((path (if (stringp path-string) 
+                  (string-trim '(#\" #\' #\Space) path-string)
+                  path-string)))
+    (if (and (stringp path) (search "$" path))
+        (let ((result path))
+          (ppcre:do-register-groups (var-name) ("\\$([A-Za-z0-9_]+)" path)
+            (let ((var-val (uiop:getenv var-name)))
+              (when var-val
+                (setf result (ppcre:regex-replace (format nil "\\$~a" var-name) result var-val)))))
+          result)
+        path)))
       (let ((result path-string))
         (ppcre:do-register-groups (var-name) ("\\$([A-Za-z0-9_]+)" path-string)
           (let ((var-val (uiop:getenv var-name)))
