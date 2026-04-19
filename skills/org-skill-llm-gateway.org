@@ -159,6 +159,16 @@ Register the unified gateway as a cognitive tool.
 Register each supported provider with the harness's neural registry.
 
 #+begin_src lisp
+
+(let* ((env-cascade (uiop:getenv "PROVIDER_CASCADE"))
+       (default-list '(:openrouter :openai :anthropic :groq :gemini-api :ollama))
+       (final-list (if (and env-cascade (not (string= env-cascade "")))
+                       (mapcar (lambda (s) (intern (string-upcase (string-trim '(#\Space) s)) :keyword))
+                               (uiop:split-string env-cascade :separator '(#\,)))
+                       default-list)))
+  (setf opencortex::*provider-cascade* final-list)
+  (opencortex:harness-log "PROBABILISTIC: Neural Cascade Initialized -> ~a" final-list))
+
 (dolist (p '(:anthropic :gemini-api :gemini-web :groq :ollama :openai :openrouter))
   (opencortex:register-probabilistic-backend p (lambda (prompt system-prompt &key model)
                                         (execute-llm-request prompt system-prompt :provider p :model model))))
