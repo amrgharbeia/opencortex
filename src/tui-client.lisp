@@ -62,6 +62,11 @@
              (status-win (make-instance 'window :height 1 :width w :position (list (- h 2) 0)))
              (input-win (make-instance 'window :height 1 :width w :position (list (- h 1) 0))))
         
+        ;; Initial Render
+        (add-string input-win "> ")
+        (refresh input-win)
+
+        
         (loop while *is-running* do
           ;; Handle incoming messages
           (let ((new-msgs (dequeue-msgs)))
@@ -102,7 +107,8 @@
               
               (clear input-win)
               (add-string input-win (concatenate 'string "> " (coerce *input-buffer* 'string)))
-              (refresh input-win)))
+              (refresh input-win))
+          (refresh scr)
           
           (sleep 0.02))))
     (setf *is-running* nil)
