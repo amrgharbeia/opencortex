@@ -177,7 +177,7 @@ case "$COMMAND" in
         if ! nc -z $HOST $PORT 2>/dev/null; then
             echo -e "Brain is offline. Awakening..."
             "$SCRIPT_DIR/opencortex.sh" --boot > "$SCRIPT_DIR/brain.log" 2>&1 &
-            for i in {1..15}; do
+            for i in {1..30}; do
                 sleep 2
                 if nc -z $HOST $PORT 2>/dev/null; then break; fi
                 echo -n "."
@@ -195,7 +195,7 @@ case "$COMMAND" in
         if ! nc -z $HOST $PORT 2>/dev/null; then
             echo -e "Brain is offline. Awakening..."
             "$SCRIPT_DIR/opencortex.sh" --boot > "$SCRIPT_DIR/brain.log" 2>&1 &
-            for i in {1..15}; do
+            for i in {1..30}; do
                 sleep 2
                 if nc -z $HOST $PORT 2>/dev/null; then break; fi
                 echo -n "."
