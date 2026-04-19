@@ -30,7 +30,7 @@ Retrieves all active secrets from the vault and scans the payload for potential 
                  (when (and val (stringp val) (> (length val) 5))
                    (when (search val text)
                      (setf found-secret key))))
-               opencortex::opencortex::*vault-memory*)
+               opencortex::*vault-memory*)
       found-secret)))
 #+end_src
 
