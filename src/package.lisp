@@ -4,6 +4,9 @@
    ;; --- communication protocol ---
    #:frame-message
    #:read-framed-message
+   #:*VAULT-MEMORY*
+   #:COSINE-SIMILARITY
+   #:VAULT-MASK-STRING
    #:parse-message
    #:make-hello-message
    #:validate-communication-protocol-schema
