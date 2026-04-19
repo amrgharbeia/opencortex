@@ -137,7 +137,7 @@ Listens for new TCP connections on the configured port.
 
 ** Registration
 #+begin_src lisp
-(register-actuator :cli #'execute-cli-action)
+(register-actuator :CLI #'execute-cli-action)
 
 (defskill :skill-gateway-cli
   :priority 200
