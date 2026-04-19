@@ -5,26 +5,26 @@
   (unless (listp msg)
     (error "Communication Protocol Schema Error: Message must be a property list (got ~s)" (type-of msg)))
   
-  (let ((type (getf msg :type)))
+  (let ((type (proto-get msg :type)))
     (unless (member type '(:REQUEST :EVENT :RESPONSE :LOG :STATUS))
       (error "Communication Protocol Schema Error: Invalid message type '~a'" type))
     
     (case type
       (:REQUEST 
-       (unless (getf msg :target)
+       (unless (proto-get msg :target)
          (error "Communication Protocol Schema Error: REQUEST missing mandatory :target"))
-       (unless (getf msg :payload)
+       (unless (proto-get msg :payload)
          (error "Communication Protocol Schema Error: REQUEST missing mandatory :payload")))
       
       (:EVENT
-       (let ((payload (getf msg :payload)))
+       (let ((payload (proto-get msg :payload)))
          (unless (and payload (listp payload))
            (error "Communication Protocol Schema Error: EVENT missing or invalid :payload"))
-         (unless (or (getf payload :action) (getf payload :sensor))
+         (unless (or (proto-get payload :action) (proto-get payload :sensor))
            (error "Communication Protocol Schema Error: EVENT payload must contain :action or :sensor"))))
       
       (:RESPONSE
-       (unless (getf msg :payload)
+       (unless (proto-get msg :payload)
          (error "Communication Protocol Schema Error: RESPONSE missing mandatory :payload"))))
     
     t))

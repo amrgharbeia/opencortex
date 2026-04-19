@@ -70,10 +70,10 @@
                    (dispatch-action (list :TYPE :CHAT :TEXT (format nil "TOOL [~a] RESULT: ~a" tool-name result)) context))
                 feedback))
           (error (c)
-            (list :type :EVENT :depth (1+ depth) :reply-stream (getf context :reply-stream)
-                  :payload (list :sensor :tool-error :tool tool-name :message (format nil "~a" c)))))
-        (list :type :EVENT :depth (1+ depth) :reply-stream (getf context :reply-stream)
-              :payload (list :sensor :tool-error :message "Tool not found")))))
+            (list :TYPE :EVENT :DEPTH (1+ depth) :REPLY-STREAM (proto-get context :REPLY-STREAM)
+                  :PAYLOAD (list :SENSOR :tool-error :tool tool-name :message (format nil "~a" c)))))
+        (list :TYPE :EVENT :DEPTH (1+ depth) :REPLY-STREAM (proto-get context :REPLY-STREAM)
+              :PAYLOAD (list :SENSOR :tool-error :message "Tool not found")))))
 
 (defun act-gate (signal)
   "Final Stage: Actuation and feedback generation."
@@ -110,7 +110,7 @@
              (cond ((and (listp result) (member (getf result :type) '(:EVENT :LOG)))
                     (setf feedback result))
                    ((and result (not (member target *silent-actuators*)))
-                    (setf feedback (list :type :EVENT :depth (1+ (or (proto-get signal :depth) 0)) 
+                    (setf feedback (list :TYPE :EVENT :depth (1+ (or (proto-get signal :depth) 0)) 
                                          :reply-stream (proto-get signal :reply-stream)
                                          :payload (list :sensor :tool-output :result result :tool approved))))))
            ;; If no approved action but we have a reply-stream, this might be a raw event/log stimulus.

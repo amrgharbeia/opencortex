@@ -1,97 +1,60 @@
 :PROPERTIES:
 :ID:       llm-gateway-skill
 :CREATED:  [2026-04-09 Thu]
-:EDITED:   [2026-04-11 Sat]
+:EDITED:   [2026-04-19 Sun]
 :END:
 #+TITLE: SKILL: Unified LLM Gateway (Universal Literate Note)
 #+STARTUP: content
 #+FILETAGS: :llm:gateway:infrastructure:autonomy:
-#+DEPENDS_ON: id:credentials-vault-skill
+#+DEPENDS_ON: org-skill-credentials-vault
 
 * Overview
 The *Unified LLM Gateway* is the single sensory and reasoning interface for all neural backends. It consolidates the previously fragmented provider skills into a high-integrity dispatch layer, standardizing credential management, error handling, and payload formatting.
 
-* Phase A: Demand (PRD)
-:PROPERTIES:
-:STATUS: SIGNED
-:END:
-
-** 1. Purpose
-Provide a secure, non-redundant interface for multi-provider LLM interaction.
-
-** 2. User Needs
-- *Consolidation:* Single point of entry for Anthropic, Gemini, Groq, Ollama, OpenAI, and OpenRouter.
-- *Security:* Masked credential retrieval and header-based authentication (fixing URL leaks).
-- *Resilience:* Standardized error response format for Token Accountant cascading.
-- *Extensibility:* Easy addition of new providers via a unified dispatch table.
-
 * Phase B: Blueprint (PROTOCOL)
-:PROPERTIES:
-:STATUS: SIGNED
-:END:
 
 ** 1. Architectural Intent
 The gateway utilizes a functional dispatch pattern. A single entry point, `execute-llm-request`, resolves the provider-specific nuances (URLs, headers, JSON structures) while exposing a uniform interface to the harness.
 
-** 2. Semantic Interfaces
-#+begin_src lisp
-(defun execute-llm-request (prompt system-prompt &key provider model)
-  "Executes a neural request. Returns (:status :success :content ...) or (:status :error :message ...).")
-#+end_src
-
-* Phase C: Success (QUALITY)
-:PROPERTIES:
-:STATUS: SIGNED
-:END:
-
-** 1. Success Criteria
-- [ ] *Credential Safety:* API keys are never logged or hardcoded.
-- [ ] *Header Integrity:* Correct headers (x-api-key, Bearer) for each provider.
-- [ ] *Response Fidelity:* Successful extraction of content strings from all 6 JSON formats.
-- [ ] *Resilience:* Standardized error return on timeout or 4xx/5xx responses.
-
-** 2. TDD Plan
-Verification will occur via `tests/llm-gateway-tests.lisp` using the FiveAM framework. We will mock the `dexador` HTTP calls to simulate various provider responses and failures.
-
 * Phase D: Build (Implementation)
 
-** Package Context
+** Implementation
 #+begin_src lisp
-#+end_src
+(in-package :cl-user)
+(defpackage :opencortex.skills.org-skill-llm-gateway
+  (:use :cl :opencortex))
+(in-package :opencortex.skills.org-skill-llm-gateway)
 
-** Nested Extraction Helper (get-nested)
-A robust utility to navigate deeply nested JSON alists produced by `cl-json`, handling both objects and arrays.
-
-#+begin_src lisp
 (defun get-nested (alist &rest keys)
   "Recursively extracts nested values from an alist, handling both objects and arrays."
   (let ((val alist))
     (dolist (k keys)
-      ;; Descend into arrays
+      ;; Descend into arrays (cl-json style: ((key . val)) or ( ( (key . val) ) ))
       (loop while (and (listp val) (listp (car val)) (not (keywordp (caar val))))
             do (setf val (car val)))
       (let ((pair (or (assoc k val)
-                            (assoc (intern (string-upcase (string k)) :keyword) val)
-                            (assoc (intern (string-downcase (string k)) :keyword) val))))
+                      (assoc (intern (string-upcase (string k)) :keyword) val)
+                      (assoc (intern (string-downcase (string k)) :keyword) val))))
         (if pair
             (setf val (cdr pair))
             (return-from get-nested nil))))
     val))
-#+end_src
 
-** Unified Request Executor (execute-llm-request)
-This is the primary actuator for neural reasoning. It handles the specific JSON payload formats and HTTP headers required by each provider. It retrieves secrets from the [[file:org-skill-credentials-vault.org][Credentials Vault]], ensuring that API keys are masked in all diagnostic output.
-
-#+begin_src lisp
 (defun execute-llm-request (prompt system-prompt &key provider model)
-  "Unified entry point for all LLM providers."
-  (let ((api-key (vault-get-secret provider :type :api-key))
-        (full-prompt (format nil "~a~%~%Prompt: ~a" system-prompt prompt)))
+  "Unified entry point for all LLM providers. Respects the global cascade."
+  (let* ((active-provider (or provider (car opencortex::*provider-cascade*) :openrouter))
+         (api-key (vault-get-secret active-provider :type :api-key))
+         (full-prompt (format nil "~a~%~%Prompt: ~a" system-prompt prompt)))
 
-    (harness-log "PROBABILISTIC ENGINE: Requesting ~a (Model: ~a) [Key: ~a]" 
-                provider (or model "default") (vault-mask-string api-key))
+    (harness-log "PROBABILISTIC ENGINE: Requesting ~a (Model: ~s)" 
+                active-provider (or model "default"))
 
-    (case provider
+    ;; If the specifically requested provider has no key, try falling back to the cascade
+    (when (or (null api-key) (string= api-key ""))
+       (harness-log "GATEWAY: Provider ~a has no key. Cascade fallback would trigger here." active-provider)
+       (return-from execute-llm-request (list :status :error :message "API Key missing.")))
+
+    (case active-provider
       (:gemini-web
        (let ((res (uiop:symbol-call :opencortex.skills.org-skill-web-research :ask-gemini-web full-prompt)))
          (if res (list :status :success :content res) (list :status :error :message "Web Research Failure"))))
@@ -101,73 +64,48 @@ This is the primary actuator for neural reasoning. It handles the specific JSON 
               (url (format nil "http://~a/api/generate" host))
               (body (cl-json:encode-json-to-string `((model . ,(or model "llama3")) (prompt . ,full-prompt) (stream . :false)))))
          (handler-case 
-             (harness-log "LLM DEBUG: Sending body to ~a: ~a" endpoint body)
-       (let* ((response (dex:post url :headers '(("Content-Type" . "application/json")) :content body :connect-timeout 5 :read-timeout 60))
-                    (json (cl-json:decode-json-from-string response)))
-               (harness-log "LLM DEBUG: Raw Response: ~a" response)
-               (list :status :success :content (cdr (assoc :response json))))
+             (progn
+               (harness-log "LLM DEBUG: Requesting Ollama...")
+               (let* ((response (dex:post url :headers '(("Content-Type" . "application/json")) :content body :connect-timeout 5 :read-timeout 60))
+                      (json (cl-json:decode-json-from-string response)))
+                 (list :status :success :content (cdr (assoc :response json)))))
            (error (c) (list :status :error :message (format nil "Ollama Failure: ~a" c))))))
 
       (t ;; Cloud Providers (Anthropic, Gemini API, Groq, OpenAI, OpenRouter)
-       (when (or (null api-key) (string= api-key ""))
-         (return-from execute-llm-request (list :status :error :message (format nil "API Key missing for ~a" provider))))
-       (let* ((endpoint (case provider
+       (let* ((endpoint (case active-provider
                           (:anthropic "https://api.anthropic.com/v1/messages")
                           (:gemini-api (format nil "https://generativelanguage.googleapis.com/v1/models/~a:generateContent" (or model "gemini-1.5-flash-latest")))
                           (:groq "https://api.groq.com/openai/v1/chat/completions")
-                          (:openrouter "https://api.openai.com/v1/chat/completions")
+                          (:openai "https://api.openai.com/v1/chat/completions")
                           (:openrouter "https://openrouter.ai/api/v1/chat/completions")))
-              (headers (case provider
+              (headers (case active-provider
                          (:anthropic `(("Content-Type" . "application/json") ("x-api-key" . ,api-key) ("anthropic-version" . "2023-06-01")))
                          (:gemini-api `(("Content-Type" . "application/json") ("x-goog-api-key" . ,api-key)))
                          (:openrouter `(("Content-Type" . "application/json") ("Authorization" . ,(format nil "Bearer ~a" api-key)) 
                                         ("HTTP-Referer" . "https://github.com/amr/opencortex") ("X-Title" . "opencortex Autonomous Kernel")))
                          (t `(("Content-Type" . "application/json") ("Authorization" . ,(format nil "Bearer ~a" api-key))))))
-              (body (case provider
+              (body (case active-provider
                       (:anthropic (cl-json:encode-json-to-string `((model . ,(or model "claude-3-5-sonnet-20240620")) (max_tokens . 4096) (system . ,system-prompt) (messages . (( (role . "user") (content . ,prompt) ))))))
                       (:gemini-api (cl-json:encode-json-to-string `((contents . (((parts . (((text . ,full-prompt))))))))))
-                      (t (cl-json:encode-json-to-string `((model . ,(or model (case provider (:groq "llama-3.3-70b-versatile") (:openrouter "gpt-4o") (t "google/gemini-2.0-flash-001"))))
+                      (t (cl-json:encode-json-to-string `((model . ,(or model (case active-provider (:groq "llama-3.3-70b-versatile") (t "google/gemini-2.0-flash-001"))))
                                                          (messages . (( (role . "system") (content . ,system-prompt) ) ( (role . "user") (content . ,prompt) )))))))))
          (handler-case 
-             (let* ((response (progn 
-                                (harness-log "LLM DEBUG: Sending body to ~a: ~a" endpoint body)
-                                (dex:post endpoint :headers headers :content body :connect-timeout 10 :read-timeout 30)))
-                    (json (cl-json:decode-json-from-string response)))
-               (harness-log "LLM DEBUG: Raw Response: ~a" response)
-               (let ((content (case provider
-                                (:anthropic (get-nested json :content :text))
-                                (:gemini-api (get-nested json :candidates :parts :text))
-                                (t (get-nested json :choices :message :content)))))
-                 (if content
-                     (list :status :success :content content)
-                     (list :status :error :message (format nil "Failed to parse ~a response structure." provider)))))
-           (error (c) (list :status :error :message (format nil "LLM Gateway Failure (~a): ~a" provider c)))))))))
-#+end_src
+             (progn
+               (harness-log "LLM DEBUG: Requesting ~a..." active-provider)
+               (let* ((response (dex:post endpoint :headers headers :content body :connect-timeout 10 :read-timeout 30))
+                      (json (cl-json:decode-json-from-string response)))
+                 (let ((content (case active-provider
+                                  (:anthropic (get-nested json :content :text))
+                                  (:gemini-api (get-nested json :candidates :parts :text))
+                                  (t (get-nested json :choices :message :content)))))
+                   (if content
+                       (list :status :success :content content)
+                       (list :status :error :message (format nil "Failed to parse ~a response structure." active-provider))))))
+           (error (c) (list :status :error :message (format nil "LLM Gateway Failure (~a): ~a" active-provider c)))))))))
 
-** Cognitive Tools
-The `:ask-llm` tool exposes the gateway's power to Probabilistic Engine, allowing it to explicitly request reasoning from a specific provider when the default cascade is insufficient.
-** Registration: Tool
-Register the unified gateway as a cognitive tool.
-
-#+begin_src lisp
-(def-cognitive-tool :ask-llm 
-  "Queries an LLM provider via the unified gateway."
-  ((:prompt :type :string :description "The user prompt.")
-   (:system-prompt :type :string :description "The system instructions.")
-   (:provider :type :keyword :description "The provider (e.g., :gemini-api, :anthropic, :groq, :openrouter, :openrouter, :ollama, :gemini-web).")
-   (:model :type :string :description "Optional specific model ID."))
-  :body (lambda (args)
-          (execute-llm-request (getf args :prompt) 
-                               (or (getf args :system-prompt) "You are a helpful assistant.")
-                               :provider (getf args :provider)
-                               :model (getf args :model))))
-#+end_src
-Register each supported provider with the harness's neural registry.
-
-#+begin_src lisp
-
+;; Initialize Cascade
 (let* ((env-cascade (uiop:getenv "PROVIDER_CASCADE"))
-       (default-list '(:openrouter :openrouter :anthropic :groq :gemini-api :ollama))
+       (default-list '(:openrouter :openai :anthropic :groq :gemini-api :ollama))
        (final-list (if (and env-cascade (not (string= env-cascade "")))
                        (mapcar (lambda (s) (intern (string-upcase (string-trim '(#\Space) s)) :keyword))
                                (uiop:split-string env-cascade :separator '(#\,)))
@@ -175,31 +113,26 @@ Register each supported provider with the harness's neural registry.
   (setf opencortex::*provider-cascade* final-list)
   (opencortex:harness-log "PROBABILISTIC: Neural Cascade Initialized -> ~a" final-list))
 
-(dolist (p '(:anthropic :gemini-api :gemini-web :groq :ollama :openrouter :openrouter))
+;; Register Providers
+(dolist (p '(:anthropic :gemini-api :gemini-web :groq :ollama :openrouter :openai))
   (opencortex:register-probabilistic-backend p (lambda (prompt system-prompt &key model)
                                         (execute-llm-request prompt system-prompt :provider p :model model))))
-#+end_src
 
-** Registration: Skill
-Define the foundational skill entry for the gateway.
+(def-cognitive-tool :ask-llm 
+  "Queries an LLM provider via the unified gateway."
+  ((:prompt :type :string :description "The user prompt.")
+   (:system-prompt :type :string :description "The system instructions.")
+   (:provider :type :keyword :description "The provider.")
+   (:model :type :string :description "Optional specific model ID."))
+  :body (lambda (args)
+          (execute-llm-request (getf args :prompt) 
+                               (or (getf args :system-prompt) "You are a helpful assistant.")
+                               :provider (getf args :provider)
+                               :model (getf args :model))))
 
-#+begin_src lisp
 (defskill :skill-llm-gateway
-  :priority 150 ; Higher than individual old skills
+  :priority 150
   :trigger (lambda (context) (declare (ignore context)) nil)
   :probabilistic (lambda (context) (declare (ignore context)) nil)
   :deterministic (lambda (action context) (declare (ignore context)) action))
 #+end_src
-
-* Phase E: Chaos (Verification)
-
-** 1. Unit Tests (FiveAM)
-Verification is performed in `tests/llm-gateway-tests.lisp` by mocking the `dex:post` client.
-
-** 2. Chaos Scenarios
-- *Scenario A (Key Exhaustion):* Use the `chaos` skill to temporarily clear an API key and verify the `token-accountant` successfully falls back to the next healthy provider.
-- *Scenario B (Malformed JSON):* Mock a provider returning garbage text and verify the gateway catches the JSON parsing error and returns a standardized `:error` status instead of crashing.
-
-* Phase F: Memory (RCA)
-- *[2026-04-09 Thu]:* Refactored 6 providers into this unified gateway to solve the URL key-leakage security vulnerability and reduce boilerplate by 60%.
-- *[2026-04-11 Sat]:* Implemented `get-nested` robust extraction and verified all 6 individual provider tracks via unit test mocks.
