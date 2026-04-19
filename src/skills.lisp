@@ -198,7 +198,7 @@
     (let ((sorted-files (topological-sort-skills skills-dir)))
       (let* ((mandatory-env (uiop:getenv "MANDATORY_SKILLS"))
              (mandatory-skills (if mandatory-env 
-                                   (mapcar (lambda (s) (string-trim '(#\Space) s)) 
+                                   (mapcar (lambda (s) (string-trim '(#\Space #\" #\') s)) 
                                            (uiop:split-string mandatory-env :separator '( #\,)))
                                    '("org-skill-policy" "org-skill-bouncer"))))
         (dolist (req mandatory-skills)
