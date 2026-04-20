@@ -80,3 +80,71 @@ The ~communication.lisp~ module defines the low-level transport and framing logi
                        :VERSION version 
                        :CAPABILITIES '(:AUTH :SWANK :ORG-AST))))
 #+end_src
+
+** Structural Validation (communication-validator.lisp)
+The validator ensures that incoming messages adhere to the strict property list schema of the communication protocol.
+
+#+begin_src lisp :tangle ../src/communication-validator.lisp
+(in-package :opencortex)
+
+(defun validate-communication-protocol-schema (msg)
+  "Strict structural validation for incoming communication protocol messages."
+  (unless (listp msg)
+    (error "Communication Protocol Schema Error: Message must be a property list (got ~s)" (type-of msg)))
+  
+  (let ((type (let ((raw (proto-get msg :type))) (if (keywordp raw) (intern (string-upcase (string raw)) :keyword) raw))))
+    (unless (member type '(:REQUEST :EVENT :RESPONSE :LOG :STATUS))
+      (progn (harness-log "REJECTED MSG: ~s" msg) (error "Communication Protocol Schema Error: Invalid message type '~a'" type)))
+    
+    (case type
+      (:REQUEST 
+       (unless (proto-get msg :target)
+         (error "Communication Protocol Schema Error: REQUEST missing mandatory :target"))
+       (unless (proto-get msg :payload)
+         (error "Communication Protocol Schema Error: REQUEST missing mandatory :payload")))
+      
+      (:EVENT
+       (let ((payload (proto-get msg :payload)))
+         (unless (and payload (listp payload))
+           (error "Communication Protocol Schema Error: EVENT missing or invalid :payload"))
+         (unless (or (proto-get payload :action) (proto-get payload :sensor))
+           (error "Communication Protocol Schema Error: EVENT payload must contain :action or :sensor"))))
+      
+      (:RESPONSE
+       (unless (proto-get msg :payload)
+         (error "Communication Protocol Schema Error: RESPONSE missing mandatory :payload"))))
+    
+    t))
+
+(defskill :skill-communication-protocol-validator
+  :priority 95
+  :trigger (lambda (ctx) (member (getf (getf ctx :payload) :sensor) '(:protocol-received)))
+  :probabilistic nil
+  :deterministic (lambda (action ctx)
+              (declare (ignore ctx))
+              (validate-communication-protocol-schema action)
+              action))
+#+end_src
+
+** Message Framing (communication.lisp)
+Frames a message with a hex length prefix and ensures all data is serializable.
+
+#+begin_src lisp :tangle ../src/communication.lisp
+(defun sanitize-protocol-message (msg)
+  "Recursively strips non-serializable objects from a protocol plist."
+  (if (and msg (listp msg))
+      (let ((clean nil))
+        (loop for (k v) on msg by #'cddr
+              do (unless (member k '(:reply-stream :socket :stream))
+                   (push k clean)
+                   (push (if (listp v) (sanitize-protocol-message v) v) clean)))
+        (nreverse clean))
+      msg))
+
+(defun frame-message (msg)
+  "Serializes a message plist and prefixes it with a 6-character hex length."
+  (let* ((sanitized (sanitize-protocol-message msg))
+         (payload (let ((*print-pretty* nil) (*read-eval* nil)) (format nil "~s" sanitized)))
+         (len (length payload)))
+    (format nil "~6,'0x~a" len payload)))
+#+end_src

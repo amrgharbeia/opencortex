@@ -47,6 +47,27 @@ The OpenCortex TUI Client is a standalone Common Lisp application built on **Cro
         (nreverse clean))
       msg))
 
+(defun format-payload (payload)
+  "Extracts human-readable text from a protocol payload, handling nested tool calls."
+  (let* ((action (getf payload :ACTION))
+         (text (getf payload :TEXT))
+         (msg (getf payload :MESSAGE))
+         (tool (getf payload :TOOL))
+         (prompt (getf payload :PROMPT))
+         (args (getf payload :ARGS))
+         (result (getf payload :RESULT)))
+    (cond (text text)
+          (msg msg)
+          ((eq action :MESSAGE) (getf payload :TEXT))
+          ((and tool prompt) (format nil "THOUGHT [~a]: ~a" tool prompt))
+          ((and tool args) 
+           (let ((inner-prompt (or (getf args :PROMPT) (getf args :TEXT))))
+             (if inner-prompt
+                 (format nil "THOUGHT [~a]: ~a" tool inner-prompt)
+                 (format nil "CALL [~a] (ARGS: ~s)" tool args))))
+          (result (format nil "RESULT: ~a" result))
+          (t (format nil "~s" payload)))))
+
 (defun listen-thread ()
   (loop while *is-running* do
     (handler-case
@@ -65,8 +86,12 @@ The OpenCortex TUI Client is a standalone Common Lisp application built on **Cro
                        (setf *status-text* (format nil "[Scribe: ~a] [Gardener: ~a]" 
                                                    (or (getf msg :SCRIBE) (getf msg :scribe))
                                                    (or (getf msg :GARDENER) (getf msg :gardener)))))
-                      ((and (listp msg) (eq type :CHAT))
-                       (let ((text (or (getf msg :TEXT) (getf msg :text)))) (when text (enqueue-msg text))))
+                      ((and (listp msg) (member type '(:REQUEST :RESPONSE :LOG)))
+                       (let ((formatted (format-payload payload)))
+                         (when formatted (enqueue-msg formatted))))
+                      ((and (listp msg) (eq type :EVENT) (eq (getf payload :SENSOR) :TOOL-OUTPUT))
+                       (let ((formatted (format-payload payload)))
+                         (when formatted (enqueue-msg formatted))))
                       (t (harness-log "TUI: Ignored unknown type ~a" type)))))
             (when (eq raw-msg :eof) (setf *is-running* nil))
             (when (eq raw-msg :error) (setf *status-text* "Protocol Error"))))
@@ -126,7 +151,9 @@ The OpenCortex TUI Client is a standalone Common Lisp application built on **Cro
                        ;; Local Echo
                        (enqueue-msg (concatenate 'string "> " cmd))
                        ;; Send to Brain
-                       (let ((framed (opencortex:frame-message (format nil "~s" (list :TYPE :EVENT :PAYLOAD (list :SENSOR :chat-message :TEXT cmd))))))
+                       (let ((framed (opencortex:frame-message (list :TYPE :EVENT 
+                                                                    :META (list :SOURCE :tui :SESSION-ID "default")
+                                                                    :PAYLOAD (list :SENSOR :user-input :TEXT cmd)))))
                          (format *stream* "~a" framed)
                          (finish-output *stream*)))
                      (when (string= cmd "/exit") (setf *is-running* nil))))

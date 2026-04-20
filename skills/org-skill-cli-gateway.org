@@ -24,12 +24,11 @@ The *CLI Gateway* is the primary sensory and actuating interface for human inter
 (defun execute-cli-action (action context)
   "Sends a framed message back to the connected CLI client."
   (let* ((payload (proto-get action :PAYLOAD))
-         (text (or (proto-get payload :TEXT) (proto-get payload :MESSAGE) (proto-get action :TEXT)))
          (stream (proto-get context :REPLY-STREAM)))
     (handler-case
         (if (and stream (open-stream-p stream))
             (progn
-              (format stream "~a" (frame-message (list :TYPE :CHAT :TEXT text)))
+              (format stream "~a" (frame-message action))
               (finish-output stream)
               (format stream "~a" (frame-message '(:TYPE :STATUS :SCRIBE :IDLE :GARDENER :SLEEPING)))
               (finish-output stream))
@@ -39,7 +38,7 @@ The *CLI Gateway* is the primary sensory and actuating interface for human inter
 (defun handle-cli-slash-command (cmd stream)
   (cond
     ((string= cmd "/exit") (return-from handle-cli-slash-command :exit))
-    (t (format stream "~a" (frame-message (list :TYPE :CHAT :TEXT (format nil "Unknown command: ~a" cmd)))))))
+    (t (format stream "~a" (frame-message (list :TYPE :REQUEST :PAYLOAD (list :ACTION :MESSAGE :TEXT (format nil "Unknown command: ~a" cmd))))))))
 
 (defun handle-cli-client (stream)
   "Reads framed messages from a CLI client and injects them as stimuli."
@@ -57,10 +56,15 @@ The *CLI Gateway* is the primary sensory and actuating interface for human inter
           (let ((msg (read-framed-message stream)))
             (cond ((eq msg :eof) (return))
                   ((eq msg :error) (return))
-                  (t (let ((text (proto-get msg :TEXT)))
+                  (t (let* ((payload (proto-get msg :payload))
+                            (text (proto-get payload :text))
+                            (meta (proto-get msg :meta)))
                        (if (and text (stringp text) (char= (char text 0) #\/))
                            (when (eq (handle-cli-slash-command text stream) :exit) (return))
                            (progn
+                             ;; Default meta if missing
+                             (unless meta
+                               (setf (getf msg :meta) (list :SOURCE :CLI :SESSION-ID "default")))
                              (harness-log "CLI: Received input -> ~s" msg)
                              (inject-stimulus msg :stream stream)))))))))
     (error (c) (harness-log "CLI CLIENT DISCONNECT: ~a" c)))

@@ -60,20 +60,35 @@ The Reason stage is the cognitive engine of the OpenCortex. It bridges the gap b
                            (funcall prompt-generator context)
                            (let ((p (proto-get (proto-get context :payload) :text)))
                              (if (and p (stringp p)) p "Maintain metabolic stasis."))))
-           (system-prompt (format nil "IDENTITY: ~a. MANDATE: Respond with ONE Lisp plist. ~a ~a RECENT_LOGS: ~a" 
+           (system-prompt (format nil "IDENTITY: ~a. MANDATE: Respond with ONE Lisp plist. ~a ~a RECENT_LOGS: ~a
+IMPORTANT: To reply to the user, you MUST use:
+(:TYPE :REQUEST :PAYLOAD (:ACTION :MESSAGE :TEXT \"<Response Text>\"))
+
+To call a tool, you MUST use:
+(:TYPE :REQUEST :TARGET :TOOL :ACTION :CALL :TOOL \"<name>\" :ARGS (:arg1 \"val\"))
+
+PROVIDER RULE: Always use :provider :openrouter if calling LLM tools unless specified otherwise." 
                                   assistant-name global-context tool-belt system-logs)))
       (let* ((thought (probabilistic-call raw-prompt :system-prompt system-prompt :context context))
-             (cleaned (if (stringp thought) (string-trim '(#\Space #\Newline #\Tab) thought) thought)))
+             (cleaned (if (stringp thought) (string-trim '(#\Space #\Newline #\Tab) thought) thought))
+             (meta (proto-get context :meta))
+             (source (proto-get meta :source)))
         (if (and cleaned (stringp cleaned))
             (let ((*read-eval* nil))
               (if (and (> (length cleaned) 0) (char= (char cleaned 0) #\())
                   (handler-case 
                       (let ((parsed (read-from-string cleaned)))
-                        (if (and (listp parsed) (member (proto-get parsed :TYPE) '(:CHAT :REQUEST :EVENT :STATUS :RESPONSE)))
-                            parsed
-                            (list :TYPE :CHAT :TEXT cleaned)))
-                    (error (c) (list :TYPE :CHAT :TEXT cleaned)))
-                  (list :TYPE :CHAT :TEXT cleaned)))
+                        (let ((type (proto-get parsed :TYPE))
+                              (target (or (proto-get parsed :TARGET) (proto-get parsed :target))))
+                          (cond ((member type '(:REQUEST :EVENT :STATUS :RESPONSE))
+                                 (unless (proto-get parsed :target) (setf (getf parsed :target) (or source :CLI)))
+                                 parsed)
+                                ;; Handle raw plists that look like tool calls
+                                ((or (eq target :TOOL) (eq target :tool) (getf parsed :TOOL) (getf parsed :tool))
+                                 (list :TYPE :REQUEST :TARGET :TOOL :PAYLOAD parsed))
+                                (t (list :TYPE :REQUEST :TARGET (or source :CLI) :PAYLOAD (list :ACTION :MESSAGE :TEXT cleaned))))))
+                    (error (c) (list :TYPE :REQUEST :TARGET (or source :CLI) :PAYLOAD (list :ACTION :MESSAGE :TEXT cleaned))))
+                  (list :TYPE :REQUEST :TARGET (or source :CLI) :PAYLOAD (list :ACTION :MESSAGE :TEXT cleaned))))
             thought)))))
 #+end_src
 
@@ -108,7 +123,7 @@ The Reason stage is the cognitive engine of the OpenCortex. It bridges the gap b
   (let* ((type (proto-get signal :type))
          (payload (proto-get signal :payload))
          (sensor (proto-get payload :sensor)))
-    (unless (and (eq type :EVENT) (eq sensor :chat-message))
+    (unless (and (eq type :EVENT) (member sensor '(:user-input :chat-message)))
       (return-from reason-gate signal))
     (let ((candidate (think signal)))
       (if candidate

@@ -55,8 +55,9 @@ The initial stage of the metabolic loop. It logs the signal, performs selective 
   "Initial processing: Normalizes raw stimuli and updates memory."
   (let* ((payload (getf signal :payload))
          (type (getf signal :type))
+         (meta (getf signal :meta))
          (sensor (getf payload :sensor)))
-    (harness-log "GATE [Perceive]: ~a (~a)" type (or sensor "no-sensor"))
+    (harness-log "GATE [Perceive]: ~a (~a) [Source: ~s]" type (or sensor "no-sensor") (getf meta :source))
     
     (cond ((eq type :EVENT)
            (case sensor

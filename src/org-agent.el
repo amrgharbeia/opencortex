@@ -143,8 +143,9 @@ will assume you have started it manually (e.g., via SBCL)."
      ((member type '(:response :RESPONSE))
       (message "opencortex: Received response for ID %s" id))
      ((member type '(:log :LOG))
-      (let ((text (opencortex--plist-get payload :text)))
-        (opencortex--insert-to-history (concat "[reasoning] " text "\n") 'opencortex-system-face)))
+      (let ((text (opencortex--plist-get payload :text))
+            (meta (opencortex--plist-get plist :meta)))
+        (opencortex--insert-to-history (concat "[reasoning" (if meta (format " (%s)" (opencortex--plist-get meta :source)) "") "] " text "\n") 'opencortex-system-face)))
      (t (message "opencortex: Received unknown message type %s" type)))))
 
 (defun opencortex--execute-request (proc id payload)
@@ -359,7 +360,8 @@ Opens a history buffer and a dedicated input area."
       ;; Send to daemon
       (opencortex-send 
        `(:type :EVENT 
-         :payload (:sensor :chat-message 
+         :meta (:source :emacs)
+         :payload (:sensor :user-input 
                    :text ,clean-text)))
       (message "opencortex: Message sent."))))
 
