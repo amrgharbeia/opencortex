@@ -6,6 +6,9 @@
 #+STARTUP: content
 #+FILETAGS: :gateway:cli:io:autonomy:
 
+* Overview
+The *CLI Gateway* is the primary sensory and actuating interface for human interaction. It implements a TCP-based S-expression protocol that allows multiple clients (terminal, Emacs, web) to establish secure bidirectional channels with the Brain.
+
 * Implementation
 
 #+begin_src lisp
