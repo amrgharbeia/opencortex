@@ -1,23 +1,26 @@
 #+TITLE: Changelog
 #+STARTUP: content
 
-* v0.1.0 - The Autonomous Foundation (2026-04-13)
+* v0.1.0 - The Autonomous Foundation (2026-04-20)
 This is the initial MVP release of the ~opencortex~. It establishes a secure, auditable Lisp kernel for a personal operating system.
 
 ** Features
+- **Unified Envelope Architecture:** Actuator-agnostic protocol that decouples routing metadata from cognitive payloads, ensuring all clients (TUI, Emacs, CLI, Matrix) are treated as equal citizens.
 - **Metabolic Pipeline:** Robust Perceive-Reason-Act loop with selective memory rollbacks and graceful shutdown handling.
 - **Verification Lock:** Mandatory skill enforcement via environment configuration. System halts if security policies or bouncers fail to load.
 - **Foveal-Peripheral Context:** High-resolution focus on active tasks with low-resolution skeletal awareness of the rest of the Memex.
 - **The Bouncer:** Last-mile deterministic security gate with Deep Packet Inspection for secrets and network exfiltration.
-- **Autonomous Scribe:** Background distillation worker that turns daily journal entries into evergreen Zettelkasten notes.
-- **Unified Onboarding:** Single-command installation (~opencortex.sh~) with Docker-first deployment and OS detection.
-- **CLI Gateway:** Local TCP socket server and interactive chat client for frictionless first contact.
+- **Autonomous Scribe:** Background distillation worker that turns daily journal entries into evergreen Zettelkasten notes. Verified to distill atomic concepts autonomously.
+- **Autonomous Gardener:** Heartbeat-driven worker that repairs broken links and identifies orphaned nodes in the Memex graph.
+- **Unified Onboarding:** Single-command installation (~opencortex.sh~) with Docker support, OS detection, and automated dependency resolution.
+- **Channel-Aware TUI:** Interactive Croatoan-based terminal client with clean, human-readable formatting for tool results and system logs.
+- **CLI Gateway:** Local TCP socket server for pipe-friendly interaction and frictionless first contact.
 
 ** Licensing & Community
-- **AGPLv3 License:** OpenCortex is now officially licensed under the GNU Affero General Public License v3.0, ensuring the system remains free and open for self-hosters.
-- **Contributor License Agreement:** Implemented a broad CLA (~CLA.org~) to allow the core maintainer to enforce the AGPLv3 while retaining flexible commercial rights.
+- **AGPLv3 License:** OpenCortex is now officially licensed under the GNU Affero General Public License v3.0.
+- **Contributor License Agreement:** Implemented a broad CLA (~CLA.org~) for long-term project sustainability.
 
 ** Architectural Shift
-- Transitioned to **Literate Granularity**: Every function and invariant is now documented in its own Org block.
-- **Configuration Externalization:** All timing, thresholds, and identities are now driven by environment variables.
+- Transitioned to **Literate Granularity**: Every function and invariant is now formally documented in its own Org block.
+- **Provider Agnosticism:** Implemented a dynamic LLM cascade (OpenRouter, Ollama, etc.) removing all hardcoded backend dependencies.
 - **Thin Harness Philosophy:** Decoupled the kernel from specific editors or third-party gateways.
