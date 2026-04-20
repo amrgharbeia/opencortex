@@ -118,6 +118,24 @@
 
 (in-package :opencortex)
 
+(defun proto-get (plist key)
+  "Robustly retrieves a value from a plist, checking both uppercase and lowercase keyword versions."
+  (let* ((s (string key))
+         (up (intern (string-upcase s) :keyword))
+         (dn (intern (string-downcase s) :keyword)))
+    (or (getf plist up) (getf plist dn))))
+
+(in-package :opencortex)
+
+(defun proto-get (plist key)
+  "Robustly retrieves a value from a plist, checking both uppercase and lowercase keyword versions."
+  (let* ((s (string key))
+         (up (intern (string-upcase s) :keyword))
+         (dn (intern (string-downcase s) :keyword)))
+    (or (getf plist up) (getf plist dn))))
+
+(in-package :opencortex)
+
 (defvar *system-logs* nil)
 (defvar *logs-lock* (bt:make-lock "harness-logs-lock"))
 (defvar *max-log-history* 100)

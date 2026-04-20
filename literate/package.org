@@ -138,6 +138,32 @@ flowchart TD
    #:find-headline-missing-id))
 #+end_src
 
+#+begin_src lisp :tangle ../src/package.lisp
+(in-package :opencortex)
+
+(defun proto-get (plist key)
+  "Robustly retrieves a value from a plist, checking both uppercase and lowercase keyword versions."
+  (let* ((s (string key))
+         (up (intern (string-upcase s) :keyword))
+         (dn (intern (string-downcase s) :keyword)))
+    (or (getf plist up) (getf plist dn))))
+#+end_src
+
+#+end_src
+
+#+begin_src lisp :tangle ../src/package.lisp
+(in-package :opencortex)
+
+(defun proto-get (plist key)
+  "Robustly retrieves a value from a plist, checking both uppercase and lowercase keyword versions."
+  (let* ((s (string key))
+         (up (intern (string-upcase s) :keyword))
+         (dn (intern (string-downcase s) :keyword)))
+    (or (getf plist up) (getf plist dn))))
+#+end_src
+
+#+end_src
+
 ** Package Implementation
 #+begin_src lisp :tangle ../src/package.lisp
 (in-package :opencortex)
@@ -217,9 +243,4 @@ Centralized logging function. It simultaneously writes to standard output and th
     (finish-output)))
 #+end_src
 
-(defun proto-get (plist key)
-  "Robustly retrieves a value from a plist, checking both uppercase and lowercase keyword versions."
-  (let* ((s (string key))
-         (up (intern (string-upcase s) :keyword))
-         (dn (intern (string-downcase s) :keyword)))
-    (or (getf plist up) (getf plist dn))))
+
