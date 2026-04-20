@@ -6,45 +6,69 @@
 
 The current ecosystem of AI agents (typically built in Python or TypeScript) is overwhelmingly built on architectural choices that prioritize rapid prototyping over long-term reliability, security, and self-modification:
 
-1. *The Format Trap (Markdown & JSON):* Most agents force a painful translation layer. Humans write in Markdown, which lacks a strict Abstract Syntax Tree (AST). Machines output JSON, which is hostile for human note-taking. The result is a fractured workspace where the agent's memory and the human's memory are incompatible.
-2. *The Language Trap (Python & TypeScript):* Poorly suited for an agent that needs to safely read, write, and execute its own code at runtime.
-3. *The Probabilistic Trap:* Almost all modern agents rely entirely on /probabilistic/ reasoning without a rigorous, /deterministic/ layer to formally verify proposals before execution.
+1. *The Format Trap (Markdown & JSON):* Most agents force a painful translation layer. Humans write in Markdown, which lacks a strict Abstract Syntax Tree (AST)—a rigorous, nested representation of data that machines need to parse context reliably. Machines, in turn, output JSON, which is hostile for human thought and note-taking. The result is a fractured workspace where the agent's memory and the human's memory are fundamentally incompatible.
+2. *The Language Trap (Python & TypeScript):* Python and TypeScript are fantastic for gluing together APIs, but they are poorly suited for an agent that needs to safely read, write, and execute its own code at runtime. Their underlying structures are complex and opaque, making autonomous self-editing incredibly brittle and dangerous.
+3. *The Probabilistic Trap:* Almost all modern agents rely entirely on /probabilistic/ reasoning. We ask an AI model to guess a shell command or write a Python script, and then blindly pipe that output to a terminal. Without a rigorous, /deterministic/ layer to formally verify the model's proposals before execution, these systems are fundamentally unsafe. 
 
 * The Vision: A Modern, Homoiconic Memex
 
 opencortex abandons these fragile paradigms by returning to first principles and embracing two historically powerful technologies: *Org-mode* and *Common Lisp*. 
 
 ** 1. Org-mode: The Universal Language
-Instead of wrestling with Markdown parsers, opencortex mandates that *Org-mode is the native AST for both humans and machines.* 
+Instead of wrestling with Markdown parsers or hiding data in opaque databases, opencortex mandates that *Org-mode is the native AST for both humans and machines.* 
+
+Org-mode is unique because it seamlessly brings together human-readable prose, structured metadata (properties and tags), lifecycle states (TODO/DONE), and executable code blocks into a single plain-text file. The code is the data, and the data is the interface. When the agent "remembers" a fact or schedules a task, it writes an Org headline. You read exactly what the agent reads.
 
 ** 2. Common Lisp: The Engine of Self-Modification
-Lisp possesses a unique property called *Homoiconicity*: the primary representation of the program is also a data structure (nested lists). Because Lisp code /is/ Lisp data, it is trivially easy for an AI to manipulate and safely evaluate new tools at runtime.
+There is a beautiful irony to opencortex: Lisp was invented in 1958 specifically to achieve Artificial Intelligence, and it has been waiting nearly 70 years for /this exact moment/ in computing history. 
+
+Lisp possesses a unique property called *Homoiconicity*: the primary representation of the program is also a data structure (nested lists) within the language itself. Because Lisp code /is/ Lisp data, it is trivially easy for an AI to generate, manipulate, and safely evaluate new tools at runtime. This makes Lisp the ultimate, un-brittle language for a "self-writing" agent.
 
 ** 3. The Probabilistic-Deterministic Loop
 opencortex does not let AI models touch your system directly. Instead, it splits cognition into two distinct engines:
-- *The Probabilistic Engine (Neural/Dynamic):* Provides semantic understanding and dynamic reasoning. It utilizes a **Dynamic LLM Cascade** (OpenRouter, Ollama, Anthropic, etc.) to ensure the agent always has a brain.
-- *The Deterministic Engine (Logic/Safety):* Intercepts proposals and formally verifies them against your security rules (the "Bouncer" pattern) before execution.
+- *The Probabilistic Engine (Neural/Dynamic):* Provides semantic understanding and dynamic reasoning. It utilizes a **Dynamic LLM Cascade** (OpenRouter, Ollama, Anthropic) to ensure the agent always has a "brain," falling back to local models if cloud services are unavailable.
+- *The Deterministic Engine (Logic/Safety):* Intercepts LLM proposals and formally verifies them against your security rules (the "Bouncer" pattern) before execution.
 
 * Architecture: Thin Harness, Fat Skills
+
+To guarantee long-term stability, opencortex enforces a strict architectural boundary inspired by the "thin harness, fat skills" philosophy.
 
 ** The Minimalist Harness
 The Lisp microkernel is a thin, unbreakable harness strictly responsible for:
 1. *The Memory:* Maintaining the live graph of your Memex in RAM.
-2. *The Unified Envelope:* A protocol-agnostic communication layer (TUI, CLI, Signal, Telegram).
+2. *The Unified Envelope:* A protocol-agnostic communication layer that ensures TUI, CLI, and remote gateways (Signal, Telegram) are treated as equal citizens.
 3. *The Metabolic Cycle:* Moving signals through the Perceive -> Reason -> Act pipeline.
 
 ** Literate, Single-File Skills
-In opencortex, a Skill is simply a *single .org file* containing documentation, AI instructions, and deterministic Lisp code.
+In opencortex, a Skill is simply a *single .org file* containing everything: the documentation, the AI instructions, and the deterministic Lisp code. When the system boots, it compiles these skills directly into the live Lisp image.
+
+** The Anatomy: Three Data Stores
+1. *The Linguistic Substrate (Plaintext Files):* The human-readable Source of Truth on your hard drive.
+2. *The Lisp Memory (RAM):* The "Active Brain," a live, threaded graph of Lisp objects representing your Memex.
+3. *The Telemetry Store (External):* A high-volume database for sub-deterministic sensory data.
+
+** The Psychology: The 2x2 Cognitive Matrix
+| | Probabilistic (Neural/Intuitive) | Deterministic (Deterministic/Logical) |
+| :--- | :--- | :--- |
+| Foreground (Active) | *The Interface:* Fast AI models for conversation and multimodal ingestion. | *The Steward:* Lisp engine that safely retrieves data and enforces security rules. |
+| Background (Passive) | *The Editor:* Deep AI models finding patterns while you sleep. | *The Librarian:* Lisp engine maintaining data integrity and filing notes. |
+
+** The Physiology: Five Core Processes
+1. *Perception:* Automatically vectorizes your input and sets the "Foreground Focus."
+2. *Reasoning:* Uses Lisp-native logic to reconcile contradictions.
+3. *Distillation:* Background loop extracting concepts into permanent, evergreen notes (The Scribe).
+4. *Reflection:* Heartbeat-driven process maintaining structural health (The Gardener).
+5. *Sensation:* Monitors telemetry data and flags significant anomalies.
 
 * Quick Start (The Zero-to-One Experience)
 
-OpenCortex can be installed and booted with a single command. 
+OpenCortex can be installed and booted with a single command:
 
 #+begin_src bash
 curl -sSL https://raw.githubusercontent.com/gharbeia/opencortex/main/opencortex.sh | bash -s -- setup
 #+end_src
 
-After installation, the background daemon is automatically awakened. Start interacting immediately:
+After installation, start interacting immediately:
 
 #+begin_src bash
 # Start the rich Terminal UI
@@ -54,12 +78,20 @@ opencortex tui
 opencortex cli
 #+end_src
 
-* The Evolutionary Roadmap (v0.1.0 to v1.0.0+)
+* The Evolutionary Roadmap
 
 ** v0.1.0: The Autonomous Foundation (Current Release)
-Initial MVP establishing a secure, auditable Lisp kernel. Features a robust metabolic pipeline, mandatory skill enforcement, and background distillation (The Scribe).
+The initial MVP establishing a secure, auditable Lisp kernel. Features a robust metabolic pipeline, mandatory skill enforcement, and background distillation.
 
-** v1.0.0 (Phase 2.5): The Verified Wrapper (Current Target)
+** v1.0.0: The Verified Wrapper (Current Target)
 Achieving feature parity with SOTA autonomous agents but with Lisp-grade mathematical security. 
-- *The Tools are External:* bash shell, headless browser (Playwright), and standard file I/O.
+- *The Tools are External:* Standard bash shell, headless browser (Playwright), and standard file I/O.
 - *The Safety is Internal:* The Bouncer and Formal Verification gates mathematically prove actions are safe.
+
+** v2.0.0: The Cannibalization
+Replacing string-based tool wrappers with native Lisp data structures.
+- *Cannibalizing the Browser:* Ingesting the DOM as a native Lisp AST.
+- *Cannibalizing the Shell:* Moving from bash execution to native OS API bindings.
+
+** v3.0.0: True Symbolic Determinism
+The great inversion. The Lisp engine takes the wheel, and the LLM is relegated to a mere semantic translation layer for the messy outside world.
