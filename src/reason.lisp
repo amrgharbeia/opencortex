@@ -42,15 +42,17 @@
                                   assistant-name global-context tool-belt system-logs)))
       (let* ((thought (probabilistic-call raw-prompt :system-prompt system-prompt :context context))
              (cleaned (if (stringp thought) (string-trim '(#\Space #\Newline #\Tab) thought) thought)))
-        (if (stringp cleaned)
+        (if (and cleaned (stringp cleaned))
             (let ((*read-eval* nil))
-              (handler-case 
-                  (let ((parsed (read-from-string cleaned)))
-                    (if (and (listp parsed) (getf parsed :response))
-                        (list :TYPE :CHAT :TEXT (getf parsed :response))
-                        parsed))
-                (error (c) (list :type :EVENT :payload (list :sensor :syntax-error :code cleaned :error (format nil "~a" c))))))
-            cleaned)))))
+              (if (and (> (length cleaned) 0) (char= (char cleaned 0) #\())
+                  (handler-case 
+                      (let ((parsed (read-from-string cleaned)))
+                        (if (and (listp parsed) (member (proto-get parsed :TYPE) '(:CHAT :REQUEST :EVENT :STATUS :RESPONSE)))
+                            parsed
+                            (list :TYPE :CHAT :TEXT cleaned)))
+                    (error (c) (list :TYPE :CHAT :TEXT cleaned)))
+                  (list :TYPE :CHAT :TEXT cleaned)))
+            thought)))))
 
 (defun deterministic-verify (proposed-action context)
   "Iterates through all skill deterministic-gates sorted by priority."

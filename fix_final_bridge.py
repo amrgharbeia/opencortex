@@ -1,0 +1,136 @@
+import os
+
+def rewrite_comm():
+    path = 'src/communication.lisp'
+    content = """(in-package :opencortex)
+
+(defvar *actuator-registry* (make-hash-table :test 'equalp))
+
+(defun register-actuator (name fn)
+  (let ((key (if (keywordp name) name (intern (string-upcase (string name)) :keyword))))
+    (setf (gethash key *actuator-registry*) fn)))
+
+(defun frame-message (msg-plist)
+  (let* ((*print-pretty* nil)
+         (*print-circle* nil)
+         (msg-string (format nil "~s" msg-plist))
+         (len (length msg-string)))
+    (format nil "~6,'0x~a~%" len msg-string)))
+
+(defun read-framed-message (stream)
+  (let ((length-buffer (make-string 6)))
+    (handler-case
+        (progn
+          (loop for char = (peek-char nil stream nil :eof)
+                while (and (not (eq char :eof)) (member char '(#\\Space #\\Newline #\\Tab #\\Return)))
+                do (read-char stream))
+          (let ((count (read-sequence length-buffer stream)))
+            (if (< count 6) :eof
+                (let ((len (ignore-errors (parse-integer length-buffer :radix 16))))
+                  (if (not len) :error
+                      (let ((msg-buffer (make-string len)))
+                        (read-sequence msg-buffer stream)
+                        (let ((*read-eval* nil) (*print-pretty* nil))
+                          (handler-case 
+                              (let ((msg (read-from-string msg-buffer)))
+                                (validate-communication-protocol-schema msg)
+                                msg)
+                            (error (c) :error)))))))))
+      (error (c) :error))))
+
+(defun make-hello-message (version)
+  (list :TYPE :EVENT :PAYLOAD (list :ACTION :handshake :VERSION version :CAPABILITIES '(:AUTH :SWANK :ORG-AST))))
+"""
+    with open(path, 'w') as f: f.write(content)
+
+def rewrite_tui():
+    path = 'src/tui-client.lisp'
+    content = """(in-package :cl-user)
+(defpackage :opencortex.tui (:use :cl :croatoan) (:export :main))
+(in-package :opencortex.tui)
+
+(defvar *daemon-host* "127.0.0.1")
+(defvar *daemon-port* 9105)
+(defvar *socket* nil)
+(defvar *stream* nil)
+(defvar *chat-history* nil)
+(defvar *status-text* "Connecting...")
+(defvar *input-buffer* (make-array 0 :element-type 'char :fill-pointer 0 :adjustable t))
+(defvar *is-running* t)
+(defvar *queue-lock* (bt:make-lock))
+(defvar *incoming-msgs* nil)
+
+(defun enqueue-msg (msg) (bt:with-lock-held (*queue-lock*) (push msg *incoming-msgs*)))
+(defun dequeue-msgs () (bt:with-lock-held (*queue-lock*) (let ((msgs (nreverse *incoming-msgs*))) (setf *incoming-msgs* nil) msgs)))
+
+(defun clean-keywords (msg)
+  (if (listp msg)
+      (let ((clean nil))
+        (loop for (k v) on msg by #'cddr
+              do (push (intern (string-upcase (string k)) :keyword) clean)
+                 (push v clean))
+        (nreverse clean))
+      msg))
+
+(defun listen-thread ()
+  (loop while *is-running* do
+    (handler-case
+        (when (and *stream* (open-stream-p *stream*))
+          (let ((raw-msg (opencortex:read-framed-message *stream*)))
+            (unless (member raw-msg '(:eof :error))
+              (let* ((msg (clean-keywords raw-msg))
+                     (type (getf msg :TYPE))
+                     (payload (getf msg :PAYLOAD)))
+                (cond ((eq type :EVENT)
+                       (when (eq (getf payload :ACTION) :HANDSHAKE) (setf *status-text* "Ready")))
+                      ((eq type :STATUS)
+                       (setf *status-text* (format nil "[Scribe: ~a] [Gardener: ~a]" (getf msg :SCRIBE) (getf msg :GARDENER))))
+                      ((eq type :CHAT)
+                       (let ((text (getf msg :TEXT))) (when text (enqueue-msg text))))
+                      (t (enqueue-msg (format nil "MSG: ~s" msg))))))
+            (when (eq raw-msg :eof) (setf *is-running* nil))))
+      (error (c) (setf *is-running* nil)))
+    (sleep 0.05)))
+
+(defun main ()
+  (setf *socket* (usocket:socket-connect *daemon-host* *daemon-port*))
+  (setf *stream* (usocket:socket-stream *socket*))
+  (bt:make-thread #'listen-thread)
+  (unwind-protect
+    (with-screen (scr :input-echoing nil :input-blocking nil :cursor-visible t)
+      (let* ((h (height scr)) (w (width scr))
+             (chat-win (make-instance 'window :height (- h 2) :width w :position (list 0 0)))
+             (status-win (make-instance 'window :height 1 :width w :position (list (- h 2) 0)))
+             (input-win (make-instance 'window :height 1 :width w :position (list (- h 1) 0)))
+             (last-status nil))
+        (setf (function-keys-enabled-p input-win) t)
+        (setf (input-blocking input-win) nil)
+        (loop while *is-running* do
+          (let ((new (dequeue-msgs)))
+            (when new
+              (dolist (m new) (push m *chat-history*))
+              (clear chat-win)
+              (let ((line 0)) (dolist (m (reverse (subseq *chat-history* 0 (min (length *chat-history*) (- h 3))))) (add-string chat-win m :y line :x 0) (incf line)))
+              (refresh chat-win)))
+          (unless (equal *status-text* last-status)
+            (clear status-win) (add-string status-win *status-text* :attributes '(:reverse)) (refresh status-win) (setf last-status *status-text*))
+          (let* ((ev (get-wide-event input-win)) (ch (and ev (typep ev 'event) (event-key ev))))
+            (when ch
+              (cond ((or (eq ch #\\Newline) (eq ch #\\Return))
+                     (let ((cmd (coerce *input-buffer* 'string)))
+                       (setf (fill-pointer *input-buffer*) 0)
+                       (when (> (length cmd) 0)
+                         (enqueue-msg (concatenate 'string "> " cmd))
+                         (let ((framed (opencortex:frame-message (list :TYPE :EVENT :PAYLOAD (list :SENSOR :chat-message :TEXT cmd))))))
+                           (format *stream* "~a" framed) (finish-output *stream*)))))
+                    ((or (eq ch :backspace) (eq ch #\\Backspace) (eq ch #\\Rubout)) (when (> (length *input-buffer*) 0) (decf (fill-pointer *input-buffer*))))
+                    ((characterp ch) (vector-push-extend ch *input-buffer*))))
+            (clear input-win) (add-string input-win (concatenate 'string "> " (coerce *input-buffer* 'string))) (move input-win 0 (+ 2 (length *input-buffer*))) (refresh input-win))
+          (sleep 0.02))))
+    (setf *is-running* nil) (when *socket* (usocket:socket-close *socket*))))
+"""
+    with open(path, 'w') as f: f.write(content)
+
+rewrite_comm()
+rewrite_tui()
+print("Final bridge repair complete.")
