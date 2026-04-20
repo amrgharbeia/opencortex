@@ -59,17 +59,17 @@ The system maintains a decoupled registry of target actuators. This allows the s
 #+end_src
 
 ** Message Framing (frame-message)
-The ~frame-message~ function prepares an outgoing Lisp string for transmission. It calculates the byte length, converts it into a 6-character padded hex string, and prefixes it. If ~COMMUNICATION_PROTOCOL_ENFORCE_HMAC~ is enabled in the environment, it also prepends a cryptographic signature to ensure the message hasn't been tampered with.
+The ~frame-message~ function prepares an outgoing Lisp string for transmission. It calculates the byte length, converts it into a 6-character padded hex string, and prefixes it. If ~PROTOCOL_ENFORCE_HMAC~ is enabled in the environment, it also prepends a cryptographic signature to ensure the message hasn't been tampered with.
 
 #+begin_src lisp :tangle ../src/communication.lisp
 (defun frame-message (msg-string)
   "Prefixes MSG-STRING with a 6-character hex length.
    If security is enabled, prefixes a 64-char HMAC-SHA256 signature."
   (let ((len (length msg-string))
-        (enforce-hmac (uiop:getenv "COMMUNICATION_PROTOCOL_ENFORCE_HMAC")))
+        (enforce-hmac (uiop:getenv "PROTOCOL_ENFORCE_HMAC")))
     (if (and enforce-hmac (string-equal enforce-hmac "true"))
-        (let ((secret (uiop:getenv "COMMUNICATION_PROTOCOL_HMAC_SECRET")))
-          (unless secret (error "COMMUNICATION_PROTOCOL_HMAC_SECRET is required when security is enabled."))
+        (let ((secret (uiop:getenv "PROTOCOL_HMAC_SECRET")))
+          (unless secret (error "PROTOCOL_HMAC_SECRET is required when security is enabled."))
           (let* ((key (ironclad:ascii-string-to-byte-array secret))
                  (hmac (ironclad:make-mac :hmac key :sha256))
                  (payload-bytes (ironclad:ascii-string-to-byte-array msg-string)))
@@ -87,7 +87,7 @@ Parsing is the high-security inverse of framing. This function acts as the final
   "Extracts and parses the S-expression from a framed string securely."
   (when (< (length framed-string) 6)
     (error "Framed string too short"))
-  (let* ((enforce-hmac (uiop:getenv "COMMUNICATION_PROTOCOL_ENFORCE_HMAC"))
+  (let* ((enforce-hmac (uiop:getenv "PROTOCOL_ENFORCE_HMAC"))
          (use-hmac (and enforce-hmac (string-equal enforce-hmac "true")))
          (prefix-len (if use-hmac 70 6)))
     (when (< (length framed-string) prefix-len)
@@ -103,8 +103,8 @@ Parsing is the high-security inverse of framing. This function acts as the final
         (error "Message length mismatch. Expected ~a, got ~a" expected-len (length actual-msg)))
       
       (when use-hmac
-        (let ((secret (uiop:getenv "COMMUNICATION_PROTOCOL_HMAC_SECRET")))
-          (unless secret (error "COMMUNICATION_PROTOCOL_HMAC_SECRET is required when security is enabled."))
+        (let ((secret (uiop:getenv "PROTOCOL_HMAC_SECRET")))
+          (unless secret (error "PROTOCOL_HMAC_SECRET is required when security is enabled."))
           (let* ((key (ironclad:ascii-string-to-byte-array secret))
                  (hmac (ironclad:make-mac :hmac key :sha256))
                  (payload-bytes (ironclad:ascii-string-to-byte-array actual-msg)))

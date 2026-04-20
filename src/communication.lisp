@@ -1,21 +1,20 @@
 (in-package :opencortex)
 
-(defvar *actuator-registry* (make-hash-table :test 'equalp)
+(defvar *actuator-registry* (make-hash-table :test 'equal)
   "Global registry mapping target keywords to their physical actuator functions.")
 
 (defun register-actuator (name fn) 
   "Registers an actuator function. Actuators receive: (ACTION CONTEXT)."
-  (let ((key (if (keywordp name) name (intern (string-upcase (string name)) :keyword))))
-    (setf (gethash key *actuator-registry*) fn)))
+  (setf (gethash name *actuator-registry*) fn))
 
 (defun frame-message (msg-string)
   "Prefixes MSG-STRING with a 6-character hex length.
    If security is enabled, prefixes a 64-char HMAC-SHA256 signature."
   (let ((len (length msg-string))
-        (enforce-hmac (uiop:getenv "COMMUNICATION_PROTOCOL_ENFORCE_HMAC")))
+        (enforce-hmac (uiop:getenv "PROTOCOL_ENFORCE_HMAC")))
     (if (and enforce-hmac (string-equal enforce-hmac "true"))
-        (let ((secret (uiop:getenv "COMMUNICATION_PROTOCOL_HMAC_SECRET")))
-          (unless secret (error "COMMUNICATION_PROTOCOL_HMAC_SECRET is required when security is enabled."))
+        (let ((secret (uiop:getenv "PROTOCOL_HMAC_SECRET")))
+          (unless secret (error "PROTOCOL_HMAC_SECRET is required when security is enabled."))
           (let* ((key (ironclad:ascii-string-to-byte-array secret))
                  (hmac (ironclad:make-mac :hmac key :sha256))
                  (payload-bytes (ironclad:ascii-string-to-byte-array msg-string)))
@@ -28,7 +27,7 @@
   "Extracts and parses the S-expression from a framed string securely."
   (when (< (length framed-string) 6)
     (error "Framed string too short"))
-  (let* ((enforce-hmac (uiop:getenv "COMMUNICATION_PROTOCOL_ENFORCE_HMAC"))
+  (let* ((enforce-hmac (uiop:getenv "PROTOCOL_ENFORCE_HMAC"))
          (use-hmac (and enforce-hmac (string-equal enforce-hmac "true")))
          (prefix-len (if use-hmac 70 6)))
     (when (< (length framed-string) prefix-len)
@@ -44,8 +43,8 @@
         (error "Message length mismatch. Expected ~a, got ~a" expected-len (length actual-msg)))
       
       (when use-hmac
-        (let ((secret (uiop:getenv "COMMUNICATION_PROTOCOL_HMAC_SECRET")))
-          (unless secret (error "COMMUNICATION_PROTOCOL_HMAC_SECRET is required when security is enabled."))
+        (let ((secret (uiop:getenv "PROTOCOL_HMAC_SECRET")))
+          (unless secret (error "PROTOCOL_HMAC_SECRET is required when security is enabled."))
           (let* ((key (ironclad:ascii-string-to-byte-array secret))
                  (hmac (ironclad:make-mac :hmac key :sha256))
                  (payload-bytes (ironclad:ascii-string-to-byte-array actual-msg)))
@@ -93,10 +92,3 @@
       (error (c) 
         (harness-log "PROTOCOL READ ERROR: ~a" c)
         :error))))
-
-(defun proto-get (plist key)
-  "Robustly retrieves a value from a plist, checking both uppercase and lowercase keyword versions."
-  (let* ((s (string key))
-         (up (intern (string-upcase s) :keyword))
-         (dn (intern (string-downcase s) :keyword)))
-    (or (getf plist up) (getf plist dn))))
