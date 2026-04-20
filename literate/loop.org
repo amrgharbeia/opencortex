@@ -29,23 +29,25 @@ The `process-signal` function is the core metabolic processor. It iterates throu
   "The entry point to the Metabolic Pipeline: Perceive -> Reason -> Act."
   (let ((current-signal signal))
     (loop while current-signal do
-      (let ((depth (getf current-signal :depth 0)))
+      (let ((depth (getf current-signal :depth 0))
+            (meta (getf current-signal :meta)))
         (when (> depth 10) (harness-log "METABOLISM ERROR: Max depth reached.") (return nil))
         (when (bt:with-lock-held (*interrupt-lock*) *interrupt-flag*)
           (harness-log "METABOLISM: Interrupted.")
           (bt:with-lock-held (*interrupt-lock*) (setf *interrupt-flag* nil))
           (return nil))
         (handler-case
-            (let ((parent-metadata (list :reply-stream (getf current-signal :reply-stream)
-                                         :foveal-focus (getf current-signal :foveal-focus))))
+            (progn
               (setf current-signal (perceive-gate current-signal))
               (setf current-signal (reason-gate current-signal))
-              (setf current-signal (act-gate current-signal))
-              ;; Inherit metadata for the next metabolic cycle if feedback was generated.
-              (when (and current-signal (not (getf current-signal :reply-stream)))
-                (setf (getf current-signal :reply-stream) (getf parent-metadata :reply-stream)))
-              (when (and current-signal (not (getf current-signal :foveal-focus)))
-                (setf (getf current-signal :foveal-focus) (getf parent-metadata :foveal-focus))))
+              (let ((feedback (act-gate current-signal)))
+                ;; feedback generation
+                (if feedback
+                    (progn
+                      ;; Inherit meta from trigger signal
+                      (unless (getf feedback :meta) (setf (getf feedback :meta) meta))
+                      (setf current-signal feedback))
+                    (setf current-signal nil))))
           (error (c)
             (let ((sensor (ignore-errors (getf (getf current-signal :payload) :sensor))))
               (harness-log "METABOLISM CRASH [~a]: ~a" (or sensor :unknown) c)
@@ -55,7 +57,7 @@ The `process-signal` function is the core metabolic processor. It iterates throu
                 (rollback-memory 0))
               (if (or (> depth 2) (member sensor '(:loop-error :tool-error)))
                   (setf current-signal nil)
-                  (setf current-signal (list :type :EVENT :depth (1+ depth) :reply-stream (getf current-signal :reply-stream)
+                  (setf current-signal (list :type :EVENT :depth (1+ depth) :meta meta
                                              :payload (list :sensor :loop-error :message (format nil "~a" c) :depth depth)))))))))))
 #+end_src
 

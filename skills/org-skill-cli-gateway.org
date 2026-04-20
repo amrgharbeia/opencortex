@@ -24,7 +24,8 @@ The *CLI Gateway* is the primary sensory and actuating interface for human inter
 (defun execute-cli-action (action context)
   "Sends a framed message back to the connected CLI client."
   (let* ((payload (proto-get action :PAYLOAD))
-         (stream (proto-get context :REPLY-STREAM)))
+         (meta (getf context :meta))
+         (stream (getf meta :reply-stream)))
     (handler-case
         (if (and stream (open-stream-p stream))
             (progn

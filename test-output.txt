@@ -1,5 +1,0 @@
-To load "croatoan":
-  Load 1 ASDF system:
-    croatoan
-; Loading "croatoan"
-................

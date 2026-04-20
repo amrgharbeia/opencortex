@@ -1,0 +1,44 @@
+#+TITLE: Contributing to OpenCortex
+#+AUTHOR: OpenCortex Contributors
+#+STARTUP: content
+#+FILETAGS: :docs:contributing:
+
+* Philosophy
+OpenCortex is built on a "Zero-Bloat" mandate. The core kernel is mathematically pure, pushing all peripheral logic, API integrations, and routing to hot-reloadable "Skills".
+
+* Literate Granularity
+We strictly adhere to Literate Programming using Org-mode.
+- *Never* edit `.lisp` files in `src/` directly.
+- Modify the corresponding `.org` files in the `literate/` or `skills/` directories.
+- Run `org-babel-tangle` to generate the source code.
+- Every architectural decision, constraint, and implementation detail must be documented alongside the code in the `.org` file.
+
+* Skill Creation Standard
+Skills are the building blocks of OpenCortex. They reside in the `skills/` directory.
+
+A skill must define:
+1. *Trigger*: A lambda determining if the skill should activate based on the context.
+2. *Probabilistic Gate*: Optional. Generates a prompt for the LLM.
+3. *Deterministic Gate*: A hardcoded Lisp function that guarantees safety or executes side-effects (the "Bouncer" pattern).
+
+Example Registration:
+#+begin_src lisp
+(defskill :skill-example
+  :priority 100
+  :trigger (lambda (ctx) ...)
+  :probabilistic nil
+  :deterministic (lambda (action ctx) ...))
+#+end_src
+
+* The Unified Envelope (Communication Protocol)
+All inter-process communication occurs via the Unified Envelope. Do not use legacy specific types like `:CHAT`.
+- Always use semantic types: `:REQUEST`, `:EVENT`, `:RESPONSE`, `:STATUS`, `:LOG`.
+- Include routing metadata in the `:META` block (e.g., `(:SOURCE :TUI)`).
+- Ensure generated `:REQUEST` messages include a mandatory `:TARGET` field.
+
+* Pull Request Process
+1. Ensure your working tree is clean.
+2. Write tests for your skill in `tests/`.
+3. Tangle all files.
+4. Run the test suite: `sbcl --eval "(asdf:test-system :opencortex)"`.
+5. Submit a PR outlining the architectural intent and the specific Literate changes.

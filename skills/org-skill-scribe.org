@@ -144,13 +144,18 @@ The deterministic gate receives the list of proposed notes and writes them to th
 (defun verify-skill-scribe (action context)
   "Executes the note creation and marks source nodes as distilled."
   (declare (ignore context))
-  (when (and (listp action) (not (member (getf action :type) '(:LOG :EVENT))))
-    ;; Action is the list of note plists from the LLM
-    (scribe-commit-notes action)
-    (scribe-save-state)
-    (harness-log "SCRIBE: Distillation complete.")
-    ;; Return a log event to stop the loop
-    (list :type :LOG :payload (list :text "Distillation successful."))))
+  (let ((data (cond ((and (listp action) (eq (getf action :type) :REQUEST))
+                     (getf (getf action :payload) :payload))
+                    ((and (listp action) (not (member (getf action :type) '(:LOG :EVENT))))
+                     action)
+                    (t nil))))
+    (when data
+      (harness-log "SCRIBE: Committing ~a atomic notes..." (length data))
+      (scribe-commit-notes data)
+      (scribe-save-state)
+      (harness-log "SCRIBE: Distillation complete.")
+      ;; Return a log event to stop the loop
+      (list :type :LOG :payload (list :text "Distillation successful.")))))
 #+end_src
 
 ** Skill Registration

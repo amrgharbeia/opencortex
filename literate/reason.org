@@ -48,6 +48,16 @@ The Reason stage is the cognitive engine of the OpenCortex. It bridges the gap b
 
 ** Cognitive Proposal (Think)
 #+begin_src lisp :tangle ../src/reason.lisp
+(defun strip-markdown (text)
+  "Strips common markdown code block markers from text."
+  (if (and text (stringp text))
+      (let ((cleaned text))
+        (setf cleaned (cl-ppcre:regex-replace-all "^```[a-z]*\\n" cleaned ""))
+        (setf cleaned (cl-ppcre:regex-replace-all "\\n```$" cleaned ""))
+        (setf cleaned (cl-ppcre:regex-replace-all "```" cleaned ""))
+        (string-trim '(#\Space #\Newline #\Tab) cleaned))
+      text))
+
 (defun think (context)
   "Generates a Lisp action proposal based on current context."
   (let* ((active-skill (find-triggered-skill context))
@@ -67,10 +77,10 @@ IMPORTANT: To reply to the user, you MUST use:
 To call a tool, you MUST use:
 (:TYPE :REQUEST :TARGET :TOOL :ACTION :CALL :TOOL \"<name>\" :ARGS (:arg1 \"val\"))
 
-PROVIDER RULE: Always use :provider :openrouter if calling LLM tools unless specified otherwise." 
+PROVIDER RULE: Always use the default cascade provider unless a specific model or capability is required for the task." 
                                   assistant-name global-context tool-belt system-logs)))
       (let* ((thought (probabilistic-call raw-prompt :system-prompt system-prompt :context context))
-             (cleaned (if (stringp thought) (string-trim '(#\Space #\Newline #\Tab) thought) thought))
+             (cleaned (strip-markdown thought))
              (meta (proto-get context :meta))
              (source (proto-get meta :source)))
         (if (and cleaned (stringp cleaned))
@@ -83,8 +93,9 @@ PROVIDER RULE: Always use :provider :openrouter if calling LLM tools unless spec
                           (cond ((member type '(:REQUEST :EVENT :STATUS :RESPONSE))
                                  (unless (proto-get parsed :target) (setf (getf parsed :target) (or source :CLI)))
                                  parsed)
-                                ;; Handle raw plists that look like tool calls
-                                ((or (eq target :TOOL) (eq target :tool) (getf parsed :TOOL) (getf parsed :tool))
+                                ;; Handle raw plists or lists of plists that look like tool calls or data
+                                ((or (eq target :TOOL) (eq target :tool) (getf parsed :TOOL) (getf parsed :tool)
+                                     (and (listp parsed) (listp (car parsed)) (keywordp (caar parsed))))
                                  (list :TYPE :REQUEST :TARGET :TOOL :PAYLOAD parsed))
                                 (t (list :TYPE :REQUEST :TARGET (or source :CLI) :PAYLOAD (list :ACTION :MESSAGE :TEXT cleaned))))))
                     (error (c) (list :TYPE :REQUEST :TARGET (or source :CLI) :PAYLOAD (list :ACTION :MESSAGE :TEXT cleaned))))

@@ -1,0 +1,56 @@
+#+TITLE: OpenCortex User Manual
+#+AUTHOR: OpenCortex Contributors
+#+STARTUP: content
+#+FILETAGS: :docs:manual:
+
+* Introduction
+Welcome to OpenCortex v0.1.0 (The Autonomous Foundation). OpenCortex is a neurosymbolic AI agent and a Lisp Machine operating system designed to autonomously maintain your Memex (knowledge base) and interact with you via multiple, equal-citizen interfaces.
+
+* Installation
+OpenCortex is bootstrapped via a single shell script.
+
+#+begin_src bash
+git clone ssh://git@10.10.10.201:2222/amr/opencortex.git
+cd opencortex
+./opencortex.sh setup
+#+end_src
+
+This process will install SBCL, Quicklisp, and prompt you to create a `.env` file for your API keys.
+
+* Configuration
+The system is configured via a `.env` file in the project root. Essential variables include:
+
+- `OPENROUTER_API_KEY`: Your LLM provider key.
+- `PROVIDER_CASCADE`: The fallback order for LLM providers (e.g., `openrouter,ollama,anthropic`).
+- `MEMEX_DIR`: The absolute path to your knowledge base (defaults to `~/memex`).
+
+* Interacting with OpenCortex
+Because of the Unified Envelope Architecture, the kernel treats all clients as interchangeable. You must first boot the background daemon:
+
+#+begin_src bash
+./opencortex.sh --boot &
+#+end_src
+
+** Terminal User Interface (TUI)
+For a rich, split-pane terminal experience:
+#+begin_src bash
+./opencortex.sh tui
+#+end_src
+
+** Command Line Interface (CLI)
+For raw, pipe-friendly interaction:
+#+begin_src bash
+./opencortex.sh cli
+#+end_src
+
+** Emacs Integration
+OpenCortex functions as your "foveal vision" inside Emacs.
+1. Ensure `org-agent.el` is loaded.
+2. Run `M-x opencortex-connect`.
+3. Interact via the `*opencortex-chat*` buffer.
+
+* The Memex Structure
+OpenCortex assumes a local folder structure representing your "Memex".
+- Core memories and identities are mapped to Org-mode files.
+- The `Scribe` background worker distills chronological logs into structured Zettelkasten notes.
+- The `Gardener` continuously repairs broken links and flags orphaned nodes.

@@ -33,8 +33,14 @@ The entry point for raw messages. It determines if the signal should be processe
   "Enqueues a raw message into the reactive signal pipeline."
   (let* ((payload (getf raw-message :payload)) 
          (sensor (getf payload :sensor))
+         (meta (getf raw-message :meta))
          (async-p (or (getf payload :async-p) (member sensor *async-sensors*))))
-    (when stream (setf (getf raw-message :reply-stream) stream))
+    
+    ;; Ensure META exists and contains the stream if provided
+    (unless meta (setf meta (list :SOURCE :SYSTEM :SESSION-ID "internal")))
+    (when stream (setf (getf meta :reply-stream) stream))
+    (setf (getf raw-message :meta) meta)
+
     (if async-p 
         (bt:make-thread 
          (lambda () 

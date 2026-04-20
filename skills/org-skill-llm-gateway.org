@@ -122,12 +122,12 @@ The gateway utilizes a functional dispatch pattern. A single entry point, `execu
   "Queries an LLM provider via the unified gateway."
   ((:prompt :type :string :description "The user prompt.")
    (:system-prompt :type :string :description "The system instructions.")
-   (:provider :type :keyword :description "The provider. (Default: :openrouter)")
+   (:provider :type :keyword :description "Optional specific provider.")
    (:model :type :string :description "Optional specific model ID."))
   :body (lambda (args)
           (execute-llm-request (getf args :prompt) 
                                (or (getf args :system-prompt) "You are a helpful assistant.")
-                               :provider (or (getf args :provider) :openrouter)
+                               :provider (getf args :provider)
                                :model (getf args :model))))
 
 (defskill :skill-llm-gateway

@@ -18,8 +18,9 @@
   (register-actuator :system #'execute-system-action)
   (register-actuator :tool #'execute-tool-action)
   (register-actuator :tui (lambda (action context)
-                            (let ((stream (getf context :reply-stream)))
-                              (when stream
+                            (let* ((meta (getf context :meta))
+                                   (stream (getf meta :reply-stream)))
+                              (when (and stream (open-stream-p stream))
                                 (format stream "~a" (frame-message action))
                                 (finish-output stream))))))
 
