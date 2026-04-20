@@ -7,21 +7,12 @@
   "Registers an actuator function. Actuators receive: (ACTION CONTEXT)."
   (setf (gethash name *actuator-registry*) fn))
 
-(defun frame-message (msg-string)
-  "Prefixes MSG-STRING with a 6-character hex length.
-   If security is enabled, prefixes a 64-char HMAC-SHA256 signature."
-  (let ((*print-pretty* nil) (len (length msg-string))
-        (enforce-hmac (uiop:getenv "PROTOCOL_ENFORCE_HMAC")))
-    (if (and enforce-hmac (string-equal enforce-hmac "true"))
-        (let ((secret (uiop:getenv "PROTOCOL_HMAC_SECRET")))
-          (unless secret (error "PROTOCOL_HMAC_SECRET is required when security is enabled."))
-          (let* ((key (ironclad:ascii-string-to-byte-array secret))
-                 (hmac (ironclad:make-mac :hmac key :sha256))
-                 (payload-bytes (ironclad:ascii-string-to-byte-array msg-string)))
-            (ironclad:update-mac hmac payload-bytes)
-            (let ((signature (ironclad:byte-array-to-hex-string (ironclad:produce-mac hmac))))
-              (format nil "~(~6,'0x~)~a~a" len signature msg-string))))
-        (format nil "~(~6,'0x~)~a" len msg-string))))
+(defun frame-message (msg-plist)
+  "Frames a Lisp plist with a 6-char hex length and a newline sentinel for stream integrity."
+  (let* ((*print-pretty* nil)
+         (msg-string (format nil "~s" msg-plist))
+         (len (length msg-string)))
+    (format nil "~6,'0x~a~%" len msg-string)))
 
 (defun parse-message (framed-string)
   "Extracts and parses the S-expression from a framed string securely."
@@ -67,11 +58,11 @@
                        :capabilities '(:auth :swank :org-ast))))
 
 (defun read-framed-message (stream)
-  "Reads a hex-length prefixed JSON message from the stream."
+  "Robustly reads a hex-framed S-expression, skipping leading whitespace and handling desync."
   (let ((length-buffer (make-string 6)))
     (handler-case
         (progn
-          ;; Skip leading junk (newlines, etc.)
+          ;; 1. Skip leading junk until we find a hex digit (the start of a length prefix)
           (loop for char = (peek-char nil stream nil :eof)
                 while (and (not (eq char :eof)) (not (digit-char-p char 16)))
                 do (read-char stream))
@@ -82,13 +73,13 @@
                   (if (not len) :error
                       (let ((msg-buffer (make-string len)))
                         (read-sequence msg-buffer stream)
-                        (let ((msg (cl-json:decode-json-from-string msg-buffer)))
-                          ;; Convert JSON alist back to plist for kernel compatibility
-                          (let ((plist nil))
-                            (dolist (pair msg)
-                              (push (intern (string-upcase (string (car pair))) :keyword) plist)
-                              (push (cdr pair) plist))
-                            (let ((final (nreverse plist)))
-                              (validate-communication-protocol-schema final)
-                              final)))))))))
-      (error (c) (harness-log "PROTOCOL ERROR: ~a" c) :error))))
+                        (let ((*read-eval* nil)
+                              (*print-pretty* nil))
+                          (handler-case 
+                              (let ((msg (read-from-string msg-buffer)))
+                                (validate-communication-protocol-schema msg)
+                                msg)
+                            (error (c) 
+                               (harness-log "PROTOCOL PARSE ERROR: ~a in ~s" c msg-buffer)
+                               :error)))))))))
+      (error (c) (harness-log "PROTOCOL READ ERROR: ~a" c) :error))))
