@@ -216,3 +216,10 @@ Centralized logging function. It simultaneously writes to standard output and th
     (format t "~a~%" formatted-msg)
     (finish-output)))
 #+end_src
+
+(defun proto-get (plist key)
+  "Robustly retrieves a value from a plist, checking both uppercase and lowercase keyword versions."
+  (let* ((s (string key))
+         (up (intern (string-upcase s) :keyword))
+         (dn (intern (string-downcase s) :keyword)))
+    (or (getf plist up) (getf plist dn))))
