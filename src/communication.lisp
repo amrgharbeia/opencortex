@@ -10,7 +10,7 @@
 (defun frame-message (msg-string)
   "Prefixes MSG-STRING with a 6-character hex length.
    If security is enabled, prefixes a 64-char HMAC-SHA256 signature."
-  (let ((len (length msg-string))
+  (let ((*print-pretty* nil) (len (length msg-string))
         (enforce-hmac (uiop:getenv "PROTOCOL_ENFORCE_HMAC")))
     (if (and enforce-hmac (string-equal enforce-hmac "true"))
         (let ((secret (uiop:getenv "PROTOCOL_HMAC_SECRET")))
@@ -54,7 +54,7 @@
                 (error "communication protocol Integrity Failure: HMAC mismatch"))))))
       
       ;; SECURITY: Disable the reader's ability to execute code during parsing
-      (let ((*read-eval* nil))
+      (let ((*read-eval* nil) (*print-pretty* nil))
         (let ((msg (read-from-string actual-msg)))
           (validate-communication-protocol-schema msg)
           msg)))))
@@ -85,7 +85,7 @@
               ;; 2. Read exactly LEN bytes
               (let ((msg-buffer (make-string len)))
                 (read-sequence msg-buffer stream)
-                (let ((*read-eval* nil))
+                (let ((*read-eval* nil) (*print-pretty* nil))
                   (let ((msg (read-from-string msg-buffer)))
                     (validate-communication-protocol-schema msg)
                     msg))))))

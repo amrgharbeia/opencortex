@@ -53,7 +53,7 @@
                                                    (or (getf msg :SCRIBE) (getf msg :scribe))
                                                    (or (getf msg :GARDENER) (getf msg :gardener)))))
                       ((and (listp msg) (eq type :CHAT))
-                       (enqueue-msg (or (getf msg :TEXT) (getf msg :text))))
+                       (let ((text (or (getf msg :TEXT) (getf msg :text)))) (when text (enqueue-msg text))))
                       (t (harness-log "TUI: Ignored unknown type ~a" type)))))
             (when (eq raw-msg :eof) (setf *is-running* nil))
             (when (eq raw-msg :error) (setf *status-text* "Protocol Error"))))
