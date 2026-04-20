@@ -6,58 +6,23 @@
 #+STARTUP: content
 #+FILETAGS: :gateway:cli:io:autonomy:
 
-* Overview
-The *CLI Gateway* is the primary interaction point for the OpenCortex MVP. It provides a lightweight TCP socket server that allows local terminal clients to communicate with the daemon. It ensures a frictionless "First Contact" experience immediately following installation.
+* Implementation
 
-* Phase A: Demand (PRD)
-:PROPERTIES:
-:STATUS: SIGNED
-:END:
-
-** 1. Purpose
-Provide a secure, local, and low-latency terminal interface for the OpenCortex.
-
-** 2. Success Criteria
-- [X] *Ingress:* Accept plain-text messages over TCP port 9105.
-- [X] *Normalisation:* Inject messages into the harness as `:chat-message` signals.
-- [X] *Egress:* Implement the `:cli` actuator to route agent responses back to the correct client socket.
-- [X] *Client:* Provide a standalone client script for the user's host machine.
-
-* Phase B: Blueprint (PROTOCOL)
-:PROPERTIES:
-:STATUS: SIGNED
-:END:
-
-** 1. Architectural Intent
-The gateway runs a multi-threaded TCP server. Each connection is handled in its own thread. Inbound lines are wrapped in a Signal and processed. The `:cli` actuator retrieves the `:reply-stream` from the signal context to send the response back to the specific connected client.
-
-** 2. Semantic Interfaces
-- Inbound: `(:SENSOR :chat-message :channel :cli :TEXT "...")`
-- Outbound: `(:TYPE :REQUEST :target :cli :TEXT "...")`
-
-* Phase D: Build (Implementation)
-
-** Package Context
 #+begin_src lisp
-(in-package :opencortex)
-#+end_src
+(in-package :cl-user)
+(defpackage :opencortex.skills.org-skill-cli-gateway
+  (:use :cl :opencortex))
+(in-package :opencortex.skills.org-skill-cli-gateway)
 
-** State: Server Control
-#+begin_src lisp
-(defvar *cli-server-thread* nil)
-(defvar *cli-server-socket* nil)
 (defvar *cli-port* 9105)
-#+end_src
+(defvar *cli-server-socket* nil)
+(defvar *cli-server-thread* nil)
 
-** Actuator: CLI Response
-The CLI actuator writes the agent's response back to the client's network stream. It applies a simple "Agent: " prefix for clarity.
-
-#+begin_src lisp
 (defun execute-cli-action (action context)
   "Sends a framed message back to the connected CLI client."
-  (let* ((payload (getf action :PAYLOAD))
-         (text (or (getf payload :TEXT) (getf action :TEXT)))
-         (stream (getf context :reply-stream)))
+  (let* ((payload (proto-get action :PAYLOAD))
+         (text (or (proto-get payload :TEXT) (proto-get payload :MESSAGE) (proto-get action :TEXT)))
+         (stream (proto-get context :REPLY-STREAM)))
     (handler-case
         (if (and stream (open-stream-p stream))
             (progn
@@ -67,25 +32,11 @@ The CLI actuator writes the agent's response back to the client's network stream
               (finish-output stream))
             (harness-log "CLI ERROR: No active or open reply stream for signal."))
       (error (c) (harness-log "CLI ACTUATOR ERROR: ~a" c)))))
-#+end_src
 
-** Server: Client Handler
-Handles an individual TCP connection. It reads lines until the connection is closed.
-
-#+begin_src lisp
 (defun handle-cli-slash-command (cmd stream)
-  "Handles TUI slash commands by returning structured Lisp s-expressions."
   (cond
-    ((string= cmd "/status")
-     (format stream "~a" (frame-message '(:TYPE :STATUS :SCRIBE :IDLE :GARDENER :SLEEPING)))
-     (finish-output stream))
-    ((string= cmd "/exit")
-     (prin1 '(:TYPE :info :TEXT "Goodbye!") stream)
-     (terpri stream)
-     (finish-output stream))
-    (t (prin1 (list :TYPE :error :TEXT (format nil "Unknown command: ~a" cmd)) stream)
-       (terpri stream)
-       (finish-output stream))))
+    ((string= cmd "/exit") (return-from handle-cli-slash-command :exit))
+    (t (format stream "~a" (frame-message (list :TYPE :CHAT :TEXT (format nil "Unknown command: ~a" cmd)))))))
 
 (defun handle-cli-client (stream)
   "Reads framed messages from a CLI client and injects them as stimuli."
@@ -103,19 +54,15 @@ Handles an individual TCP connection. It reads lines until the connection is clo
           (let ((msg (read-framed-message stream)))
             (cond ((eq msg :eof) (return))
                   ((eq msg :error) (return))
-                  (t (if (and (listp msg) (stringp (getf msg :TEXT)) (char= (char (getf msg :TEXT) 0) #\/))
-                         (handle-cli-slash-command (getf msg :TEXT) stream)
-                         (progn
-                           (harness-log "CLI: Received input -> ~s" msg)
-                           (inject-stimulus msg :stream stream))))))))
+                  (t (let ((text (proto-get msg :TEXT)))
+                       (if (and text (stringp text) (char= (char text 0) #\/))
+                           (when (eq (handle-cli-slash-command text stream) :exit) (return))
+                           (progn
+                             (harness-log "CLI: Received input -> ~s" msg)
+                             (inject-stimulus msg :stream stream)))))))))
     (error (c) (harness-log "CLI CLIENT DISCONNECT: ~a" c)))
   (harness-log "CLI: Client disconnected."))
-#+end_src
 
-** Server: Main Loop
-Listens for new TCP connections on the configured port.
-
-#+begin_src lisp
 (defun start-cli-gateway (&optional (port *cli-port*))
   "Starts the TCP listener for local CLI clients."
   (setf *cli-server-socket* (usocket:socket-listen "0.0.0.0" port :reuse-address t))
@@ -133,10 +80,7 @@ Listens for new TCP connections on the configured port.
              (usocket:socket-close *cli-server-socket*)))
          :name "opencortex-cli-gateway"))
   (harness-log "CLI: Gateway listening on port ~a" port))
-#+end_src
 
-** Registration
-#+begin_src lisp
 (register-actuator :CLI #'execute-cli-action)
 
 (defskill :skill-gateway-cli
@@ -144,35 +88,6 @@ Listens for new TCP connections on the configured port.
   :trigger (lambda (ctx) (declare (ignore ctx)) nil)
   :probabilistic nil
   :deterministic (lambda (action ctx) (declare (ignore ctx)) action))
-#+end_src
 
-** Initialization
-#+begin_src lisp
 (start-cli-gateway)
-#+end_src
-
-* Phase E: The Client (Scripts)
-We tangle a lightweight client script that the user can run on their host machine.
-
-** The Bash Client
-#+begin_src bash :tangle ../scripts/opencortex-chat.sh :shebang "#!/bin/bash"
-# opencortex-chat: The terminal mouthpiece for the Autonomous Brain.
-PORT=9105
-HOST=${1:-localhost}
-
-# Check for socat (preferred)
-if command -v socat >/dev/null 2>&1; then
-    # Use socat with READLINE for history and arrow-key support.
-    # It establishes a persistent bidirectional connection.
-    socat READLINE,history=$HOME/.org_agent_history TCP:$HOST:$PORT
-else
-    # Fallback to nc (netcat) for a single-shot connection if socat is missing.
-    # Note: This is less robust for agents with long-thinking times.
-    echo "WARNING: socat not found. Falling back to nc (no line-editing support)."
-    while true; do
-        read -p "User: " MESSAGE
-        if [ -z "$MESSAGE" ]; then continue; fi
-        echo "$MESSAGE" | nc -N $HOST $PORT
-    done
-fi
 #+end_src

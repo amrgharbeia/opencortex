@@ -6,152 +6,77 @@
 * Communication Protocol (communication.lisp)
 ** Architectural Intent: Secure Inter-Process Communication & Deterministic Framing
 
-The **communication protocol** defines the exact physical and semantic boundaries for how the isolated Lisp environment talks to the outside world.
+The ~communication.lisp~ module defines the low-level transport and framing logic for OpenCortex stimuli. 
 
-The system operates as a perfectly deterministic, highly secure computational engine. When communicating with external processes or actuators—such as an Emacs client, a web dashboard, or a remote Shell script—it cannot rely on unpredictable, "loose" data streams. 
+* Implementation (communication.lisp)
 
-Streaming raw Lisp or JSON over a TCP socket is inherently fragile. If a multi-megabyte Org Abstract Syntax Tree (AST) is fragmented by the operating system's network stack during transmission, a standard stream parser might attempt to evaluate an incomplete string, leading to immediate crashes or desynchronization.
+#+begin_src lisp :tangle ../src/package.lisp
+(in-package :opencortex)
 
-To solve this, we implement the **communication protocol**, which enforces absolute deterministic boundaries around every message.
-
-*** 1. Physical Boundary: Hex-Length Prefixing
-Every message crossing the wire is prefixed with a strict 6-character hexadecimal length string (zero-padded). This creates an unbreakable physical boundary. The system reads exactly the number of bytes specified by the hex length. It will never under-read (crashing on a partial form) and never over-read (consuming bytes meant for the next message). 
-
-*** 2. Actuator-Agnosticism ("Dumb Terminal" Architecture)
-The protocol keeps the Lisp environment completely agnostic of its clients. The system does not care if the client is written in Emacs Lisp, Python, or Rust. Any environment capable of calculating a byte length and opening a TCP socket can interface with the Lisp Machine.
-
-*** 3. Preventing Reader Macro Injection
-Common Lisp's ~read-from-string~ is extremely powerful but dangerous; it allows "reader macros" (like ~#.~) which execute code during the parsing phase. The communication protocol mandates that ~*read-eval*~ is explicitly bound to ~nil~ before any network data is parsed, physically preventing arbitrary code execution.
-
-** Message Framing Logic
-#+begin_src mermaid
-flowchart LR
-    subgraph Client
-        A[Lisp Property List] --> B[Calculate Length]
-        B --> C[Hex Prefix: 6 Chars]
-        C --> D[Concatenate: Length + List]
-    end
-    D -- TCP Socket --> System
-    subgraph System
-        System --> E[Read 6 Hex Chars]
-        E --> F[Read Exact Byte Count]
-        F --> G[Parse S-Expression]
-    end
+(defun proto-get (plist key)
+  "Robustly retrieves a value from a plist, checking both uppercase and lowercase keyword versions."
+  (let* ((s (string key))
+         (up (intern (string-upcase s) :keyword))
+         (dn (intern (string-downcase s) :keyword)))
+    (or (getf plist up) (getf plist dn))))
 #+end_src
-
-** Package Context
-We ensure all protocol logic resides within the isolated system namespace.
 
 #+begin_src lisp :tangle ../src/communication.lisp
 (in-package :opencortex)
-#+end_src
 
-** Actuator Registry
-The system maintains a decoupled registry of target actuators. This allows the system to route messages to Emacs, the Shell, or Web Gateways without hardcoding the routing logic into the protocol itself.
-
-#+begin_src lisp :tangle ../src/communication.lisp
-(defvar *actuator-registry* (make-hash-table :test 'equal)
+(defvar *actuator-registry* (make-hash-table :test 'equalp)
   "Global registry mapping target keywords to their physical actuator functions.")
 
 (defun register-actuator (name fn) 
   "Registers an actuator function. Actuators receive: (ACTION CONTEXT)."
-  (setf (gethash name *actuator-registry*) fn))
-#+end_src
+  (let ((key (if (keywordp name) name (intern (string-upcase (string name)) :keyword))))
+    (setf (gethash key *actuator-registry*) fn)))
 
-** Message Framing (frame-message)
-The ~frame-message~ function prepares an outgoing Lisp string for transmission. It calculates the byte length, converts it into a 6-character padded hex string, and prefixes it. If ~PROTOCOL_ENFORCE_HMAC~ is enabled in the environment, it also prepends a cryptographic signature to ensure the message hasn't been tampered with.
-
-#+begin_src lisp :tangle ../src/communication.lisp
 (defun frame-message (msg-plist)
-  "Frames a Lisp plist with a 6-char hex length and a newline sentinel for stream integrity."
+  "Frames a Lisp plist with a 6-character hex length and a newline for stream integrity."
   (let* ((*print-pretty* nil)
+         (*print-circle* nil)
          (msg-string (format nil "~s" msg-plist))
          (len (length msg-string)))
     (format nil "~6,'0x~a~%" len msg-string)))
-#+end_src
 
-** Message Parsing (parse-message)
-Parsing is the high-security inverse of framing. This function acts as the final perimeter defense. It validates the length, verifies the HMAC integrity, and—most importantly—jails the Lisp reader by disabling ~*read-eval*~. 
-
-#+begin_src lisp :tangle ../src/communication.lisp
-(defun parse-message (framed-string)
-  "Extracts and parses the S-expression from a framed string securely."
-  (when (< (length framed-string) 6)
-    (error "Framed string too short"))
-  (let* ((enforce-hmac (uiop:getenv "PROTOCOL_ENFORCE_HMAC"))
-         (use-hmac (and enforce-hmac (string-equal enforce-hmac "true")))
-         (prefix-len (if use-hmac 70 6)))
-    (when (< (length framed-string) prefix-len)
-      (error "Framed string too short for communication protocol prefix"))
-    
-    (let* ((len-str (subseq framed-string 0 6))
-           (signature (when use-hmac (subseq framed-string 6 70)))
-           (actual-msg (subseq framed-string prefix-len))
-           (expected-len (ignore-errors (parse-integer len-str :radix 16))))
-      (unless expected-len
-        (error "Invalid hex length prefix: ~a" len-str))
-      (unless (= expected-len (length actual-msg))
-        (error "Message length mismatch. Expected ~a, got ~a" expected-len (length actual-msg)))
-      
-      (when use-hmac
-        (let ((secret (uiop:getenv "PROTOCOL_HMAC_SECRET")))
-          (unless secret (error "PROTOCOL_HMAC_SECRET is required when security is enabled."))
-          (let* ((key (ironclad:ascii-string-to-byte-array secret))
-                 (hmac (ironclad:make-mac :hmac key :sha256))
-                 (payload-bytes (ironclad:ascii-string-to-byte-array actual-msg)))
-            (ironclad:update-mac hmac payload-bytes)
-            (let ((expected-signature (ironclad:byte-array-to-hex-string (ironclad:produce-mac hmac))))
-              (unless (string-equal signature expected-signature)
-                (error "communication protocol Integrity Failure: HMAC mismatch"))))))
-      
-      ;; SECURITY: Disable the reader's ability to execute code during parsing
-      (let ((*read-eval* nil) (*print-pretty* nil))
-        (let ((msg (read-from-string actual-msg)))
-          (validate-communication-protocol-schema msg)
-          msg)))))
-#+end_src
-
-** Handshaking (make-hello-message)
-Every session begins with a standard ~HELLO~ handshake, allowing the system to announce its capabilities and protocol version to the connecting client.
-
-#+begin_src lisp :tangle ../src/communication.lisp
-(defun make-hello-message (version)
-  "Constructs the standard HELLO handshake message."
-  (list :type :EVENT 
-        :payload (list :action :handshake 
-                       :version version 
-                       :capabilities '(:auth :swank :org-ast))))
-#+end_src
-
-
-** Protocol Reading (read-framed-message)
-A robust utility to read a framed message from a stream. It enforces the deterministic hex-length boundary.
-
-#+begin_src lisp :tangle ../src/communication.lisp
 (defun read-framed-message (stream)
-  "Robustly reads a hex-framed S-expression, skipping leading whitespace and handling desync."
+  "Reads a hex-length prefixed S-expression from the stream securely. Skips leading whitespace."
   (let ((length-buffer (make-string 6)))
     (handler-case
         (progn
-          ;; 1. Skip leading junk until we find a hex digit (the start of a length prefix)
+          ;; 1. Skip leading whitespace (newlines, spaces, etc.)
           (loop for char = (peek-char nil stream nil :eof)
-                while (and (not (eq char :eof)) (not (digit-char-p char 16)))
+                while (and (not (eq char :eof)) (member char '(#\Space #\Newline #\Tab #\Return)))
                 do (read-char stream))
           
+          ;; 2. Read the 6-char hex length
           (let ((count (read-sequence length-buffer stream)))
-            (if (< count 6) :eof
-                (let ((len (ignore-errors (parse-integer length-buffer :radix 16))))
-                  (if (not len) :error
-                      (let ((msg-buffer (make-string len)))
-                        (read-sequence msg-buffer stream)
-                        (let ((*read-eval* nil)
-                              (*print-pretty* nil))
-                          (handler-case 
-                              (let ((msg (read-from-string msg-buffer)))
-                                (validate-communication-protocol-schema msg)
-                                msg)
-                            (error (c) 
-                               (harness-log "PROTOCOL PARSE ERROR: ~a in ~s" c msg-buffer)
-                               :error)))))))))
-      (error (c) (harness-log "PROTOCOL READ ERROR: ~a" c) :error))))
+            (cond ((< count 6) :eof)
+                  (t (let ((len (ignore-errors (parse-integer length-buffer :radix 16))))
+                       (if (not len)
+                           (progn
+                             (harness-log "PROTOCOL ERROR: Invalid header ~s. Attempting resync..." length-buffer)
+                             :error)
+                           (let ((msg-buffer (make-string len)))
+                             (read-sequence msg-buffer stream)
+                             (let ((*read-eval* nil)
+                                   (*print-pretty* nil))
+                               (handler-case 
+                                   (let ((msg (read-from-string msg-buffer)))
+                                     (validate-communication-protocol-schema msg)
+                                     msg)
+                                 (error (c)
+                                   (harness-log "PROTOCOL PARSE ERROR: ~a in ~s" c msg-buffer)
+                                   :error))))))))))
+      (error (c) 
+        (harness-log "PROTOCOL READ ERROR: ~a" c)
+        :error))))
+
+(defun make-hello-message (version)
+  "Constructs the standard HELLO handshake message."
+  (list :TYPE :EVENT 
+        :PAYLOAD (list :ACTION :handshake 
+                       :VERSION version 
+                       :CAPABILITIES '(:AUTH :SWANK :ORG-AST))))
 #+end_src
