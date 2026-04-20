@@ -138,29 +138,29 @@ A robust utility to read a framed message from a stream. It enforces the determi
 
 #+begin_src lisp :tangle ../src/communication.lisp
 (defun read-framed-message (stream)
-  "Reads a hex-length prefixed message from the stream securely. Skips leading whitespace."
+  "Reads a hex-length prefixed JSON message from the stream."
   (let ((length-buffer (make-string 6)))
     (handler-case
         (progn
-          ;; 0. Skip leading whitespace (newlines, spaces, etc.)
+          ;; Skip leading junk (newlines, etc.)
           (loop for char = (peek-char nil stream nil :eof)
-                while (and (not (eq char :eof)) (member char '(#\Space #\Newline #\Tab #\Return)))
+                while (and (not (eq char :eof)) (not (digit-char-p char 16)))
                 do (read-char stream))
-
-          ;; 1. Read the 6-char hex length
+          
           (let ((count (read-sequence length-buffer stream)))
-            (when (< count 6) (return-from read-framed-message :eof))
-            (let ((len (ignore-errors (parse-integer length-buffer :radix 16))))
-              (unless len (error "Invalid protocol header: ~a" length-buffer))
-              
-              ;; 2. Read exactly LEN bytes
-              (let ((msg-buffer (make-string len)))
-                (read-sequence msg-buffer stream)
-                (let ((*read-eval* nil) (*print-pretty* nil))
-                  (let ((msg (read-from-string msg-buffer)))
-                    (validate-communication-protocol-schema msg)
-                    msg))))))
-      (error (c) 
-        (harness-log "PROTOCOL READ ERROR: ~a" c)
-        :error))))
+            (if (< count 6) :eof
+                (let ((len (ignore-errors (parse-integer length-buffer :radix 16))))
+                  (if (not len) :error
+                      (let ((msg-buffer (make-string len)))
+                        (read-sequence msg-buffer stream)
+                        (let ((msg (cl-json:decode-json-from-string msg-buffer)))
+                          ;; Convert JSON alist back to plist for kernel compatibility
+                          (let ((plist nil))
+                            (dolist (pair msg)
+                              (push (intern (string-upcase (string (car pair))) :keyword) plist)
+                              (push (cdr pair) plist))
+                            (let ((final (nreverse plist)))
+                              (validate-communication-protocol-schema final)
+                              final)))))))))
+      (error (c) (harness-log "PROTOCOL ERROR: ~a" c) :error))))
 #+end_src
