@@ -110,16 +110,25 @@
 
 (defun validate-lisp-syntax (code-string)
   "Checks if a string contains valid, readable Common Lisp forms.
-Delegates to the Lisp Validator skill for structural + syntactic validation."
-  (let* ((result (lisp-validator-validate code-string :strict nil))
-         (status (getf result :status))
-         (reason (getf result :reason)))
-    (if (eq status :success)
+Delegates to the Lisp Validator skill when available; falls back to a basic
+reader check during early boot before the validator skill is loaded."
+  (let ((result
+          (if (fboundp 'lisp-validator-validate)
+              (lisp-validator-validate code-string :strict nil)
+              (handler-case
+                  (let ((*read-eval* nil))
+                    (with-input-from-string (stream (format nil "(progn ~a)" code-string))
+                      (loop for form = (read stream nil :eof) until (eq form :eof)))
+                    (list :status :success))
+                (error (c)
+                  (list :status :error :reason (format nil "~a" c)))))))
+    (if (eq (getf result :status) :success)
         (values t nil)
-        (values nil (or reason "Lisp Validator rejected code.")))))
+        (values nil (or (getf result :reason) "Lisp Validator rejected code.")))))
 
 (defun load-skill-from-org (filepath)
-  "Parses and evaluates Lisp blocks from an Org file into a jailed package."
+  "Parses and evaluates Lisp blocks with :tangle directives from an Org file.
+Only loads blocks that specify a .lisp tangle target, ignoring tests and examples."
   (let* ((skill-base-name (pathname-name filepath))
          (entry (or (gethash skill-base-name *skill-catalog*) (make-skill-entry :filename skill-base-name))))
     (setf (skill-entry-status entry) :loading)
@@ -129,16 +138,27 @@ Delegates to the Lisp Validator skill for structural + syntactic validation."
         (let* ((content (uiop:read-file-string filepath)) 
                (lines (uiop:split-string content :separator '(#\Newline)))
                (in-lisp-block nil) 
+               (collect-this-block nil)
                (lisp-code "") 
                (pkg-name (intern (string-upcase (format nil "OPENCORTEX.SKILLS.~a" skill-base-name)) :keyword)))
           
           (dolist (line lines)
             (let ((clean-line (string-trim '(#\Space #\Tab #\Return) line)))
               (cond ((uiop:string-prefix-p "#+begin_src lisp" (string-downcase clean-line))
-                     (setf in-lisp-block t))
+                     (setf in-lisp-block t)
+                     ;; Only collect blocks with a :tangle directive pointing to a
+                     ;; runtime .lisp file (exclude tests and :tangle no)
+                     (let ((tl (string-downcase clean-line)))
+                       (setf collect-this-block
+                             (and (search ":tangle" tl)
+                                  (not (search ":tangle no" tl))
+                                  (search ".lisp" tl)
+                                  (not (search "tests/" tl))
+                                  (not (search "test/" tl))))))
                     ((uiop:string-prefix-p "#+end_src" (string-downcase clean-line))
-                     (setf in-lisp-block nil))
-                    (in-lisp-block 
+                     (setf in-lisp-block nil)
+                     (setf collect-this-block nil))
+                    ((and in-lisp-block collect-this-block)
                      (unless (or (uiop:string-prefix-p ":PROPERTIES:" (string-upcase clean-line))
                                  (uiop:string-prefix-p ":END:" (string-upcase clean-line)))
                        (setf lisp-code (concatenate 'string lisp-code line (string #\Newline))))))))
