@@ -204,70 +204,173 @@ The Active Brain is built from the Source of Truth on boot and kept in sync via:
 
 * The Evolutionary Roadmap
 
-** v0.1.0: The Autonomous Foundation (Current Release)
+openCortex's roadmap is designed working backwards from SOTA parity (V 1.0.0), guided by a critical analysis of four reference systems: OpenCode, Claude Code (leaked source), GBrain, and OpenClaw/Hermes. Every borrowed concept is reimplemented in pure Lisp. Every rejected pattern is documented.
 
-The initial MVP establishing a secure, auditable Lisp kernel:
-- [x] Probabilistic-Deterministic pipeline
-- [x] Skill engine with package jailing
-- [x] Policy and Bouncer security gates
-- [x] Memory persistence and snapshots
-- [x] CLI and TUI interfaces
-- [x] Literate Granularity standard
+** Non-Negotiable Identity
+- Pure Common Lisp + Org-mode. No JSON. No YAML. No external databases.
+- Single-address-space memory (Lisp hash tables in RAM — we *are* the memory).
+- "Thin harness, fat skills" — complexity lives at the edges, not the kernel.
+- One agent composed of many skills. No sub-agent topologies.
+- Plists everywhere — homoiconic communication between all components.
 
-** v0.2.0: Interactive Refinement
+*** OpenCode: Borrowed / Rejected
 
-Elevating the user interface:
-- [ ] Croatoan TUI with syntax highlighting
-- [ ] Interactive Lisp CLI wizard
-- [ ] Slash commands (/help, /exit, /status)
-- [ ] Skill hot-reload mechanism
-- [ ] `/doctor` environment diagnostics
+| Feature | Decision | Rationale |
+|---------|----------|-----------|
+| Permission filtering before LLM sees tools | BORROW | Hook into =generate-tool-belt-prompt= to exclude denied tools. We have =:guard= but no pre-filter. |
+| Hook system (session start/end) | BORROW | Already designing event-orchestrator. Expose via =#+HOOK:= properties. |
+| Skills with YAML frontmatter | REJECT | Our Org-mode =:PROPERTIES:= + =#+FILETAGS= already do this. |
 
-** v1.0.0: The Verified Wrapper (Target)
+*** Claude Code: Borrowed / Rejected
 
-Achieving feature parity with SOTA autonomous agents but with Lisp-grade mathematical security:
-- [ ] Autonomous self-editing (file I/O cognitive tools)
-- [ ] Formal verification gates for external tools
-- [ ] End-to-end autonomous engineering workflows
-- [ ] Full skill catalog (Scribe, Gardener, etc.)
+| Feature | Decision | Rationale |
+|---------|----------|-----------|
+| ULTRAPLAN / structured task decomposition | BORROW (reimplement) | LLM already generates plist actions. Add task-tree skill that decomposes into Org-mode headline DAGs with terminal states. |
+| 43 integrated tools | BORROW (approach) | Start with ~3. Build more as skills. Keep =def-cognitive-tool= pattern. |
+| 4-tier permission chain (ask/allow/deny) | BORROW (concept) | Three-tier per-tool permission: ask/allow/deny stored in org-objects. |
+| Multi-agent hub-and-spoke topology | REJECT | We have one agent. Concurrency via bordeaux-threads (shared memory). Skills ARE the specialization — intra-process, not inter-process. |
+| Mailbox pattern for dangerous ops | REJECT | Jailed skill packages + Policy skill already provide isolation. Bouncer gate satisfies "worker can't self-approve". |
 
-** v2.0.0: The Cannibalization
+*** GBrain: Borrowed / Rejected
 
-Replacing string-based tool wrappers with native Lisp data structures:
-- [ ] DOM as native Lisp AST (Cannibalize Browser)
-- [ ] Native OS bindings (Cannibalize Shell)
-- [ ] Replace bash scripts with Lisp functions
+| Feature | Decision | Rationale |
+|---------|----------|-----------|
+| RESOLVER.md intent routing | BORROW (concept) | =find-triggered-skill= already does this. Enhance with multi-skill triggers for complex intents. |
+| Three search modes (keyword, hybrid, direct) | BORROW | Keep keyword + direct. Hybrid/vector via local Ollama embeddings — no external DBs. |
+| Memory segmentation (brain/agent/session) | BORROW (concept) | Extend org-object with =:scope= property: =:memex= (permanent), =:session= (ephemeral), =:project= (scoped). |
+| 20+ cron jobs for background work | BORROW (concept) | Heartbeat already does this. Enhance with Event Orchestrator's cron registry — pure Lisp. |
+| Sub-agent model routing for cost | BORROW (concept) | Our =*model-selector-fn*= already selects models. Extend to route by complexity tier. |
+| Postgres + pgvector | REJECT | Single-address-space hash tables. No external databases. |
 
-** v3.0.0: True Symbolic Determinism
+*** opencortex-contrib: Integrate / Reject
 
-The great inversion:
-- [ ] LLM relegated to semantic translation layer
-- [ ] Deterministic Planner (The Solver) takes the wheel
-- [ ] Self-correcting syntax gates
-- [ ] The Memex that outlives the cloud
+| Skill | Decision | Rationale |
+|-------|----------|-----------|
+| self-fix + lisp-repair | INTEGRATE | Merge into =org-skill-self-edit=. Our memory has snapshot/rollback. Add =repair-file= as cognitive tool. |
+| event-orchestrator | INTEGRATE | Merge hooks + cron + routing into ONE skill. Our loop has no unified orchestration. |
+| formal-verification | INTEGRATE | =def-invariant= macro + =verify-action-formally= belong in =org-skill-policy.org= as additional checks. |
+| engineering-standards | INTEGRATE | Git-clean-p gate + "Commit Before Modify" belong in Policy. |
+| sub-agent-manager | REJECT | Redundant with BT threads. Our =defskill= pattern (trigger + probabilistic + deterministic) is intra-process specialization — same goal, zero process overhead. |
+| embedding-generator | BORROW | Ollama embeddings for semantic search — no external vector DB. |
+| playwright + web-research | DEFER | V 0.5.0. Browser automation via Python bridge. |
 
-* Quick Start
+** Version Roadmap
 
-** Installation
+*** v0.1.0: The Autonomous Foundation — CURRENT RELEASE ✅
 
-#+begin_src bash
-curl -sSL https://raw.githubusercontent.com/gharbeia/opencortex/main/opencortex.sh | bash -s -- setup
-#+end_src
+The secure, auditable Lisp kernel. All core infrastructure in place.
 
-** Usage
+| Component | Status | Notes |
+|-----------|--------|-------|
+| Perceive-Reason-Act pipeline | ✅ | 3-stage metabolic loop |
+| Skills engine with jailed loading | ✅ | defskill, topological sort, hot-reload |
+| Policy skill (6 invariants) | ✅ | Transparency, Autonomy, Bloat, Modularity, Mentorship, Sustainability |
+| Bouncer skill | ✅ | Command whitelist guard functions |
+| Memory (org-object + Merkle) | ✅ | Hash tables, snapshots, rollback |
+| Lisp validator skill | ✅ | Syntax validation before eval |
+| Scribe + Gardener skills | ✅ | Heartbeat-driven distillation + audit |
+| LLM gateway (OpenRouter + Ollama) | ✅ | Provider cascade |
+| Shell actuator | ✅ | Safe command execution |
+| Emacs bridge via Swank | ✅ | Point/buffer updates |
+| FiveAM test suite | ✅ | Memory, boot, pipeline, act, communication |
+| Credentials vault | ✅ | Encrypted storage |
 
-#+begin_src bash
-# Start the rich Terminal UI
-opencortex tui
+*** v0.2.0: Self-Improvement + Local LLMs — NEXT
 
-# Or use the raw CLI
-opencortex cli
+Priority: Self-editing is the foundation of all growth. Full org-mode manipulation makes the agent a true Emacs citizen.
 
-# Boot without interactive session
-opencortex boot
-#+end_src
+| Feature | Source | Implementation |
+|---------|--------|----------------|
+| org-skill-self-edit (self-modification) | contrib self-fix + lisp-repair | Hook into =:syntax-error= events. Deterministic: auto-balance parens. Probabilistic: LLM surgical fix. Memory rollback on failure. |
+| org-skill-emacs-edit (full org manipulation) | Own need | Read org buffers, parse AST, create/update/delete headlines, set properties, manage TODO, handle links. Uses org-element. |
+| Local vector search (Ollama embeddings) | contrib embedding-generator | =generate-embeddings= via Ollama. Add =:vector= to org-object. Semantic search with cosine similarity. |
+| Tool permission tiers (ask/allow/deny) | Claude Code | Per-tool permission plist in org-object. =generate-tool-belt-prompt= filters denied tools. |
+| Skill hot-reload (=:reload-skill= tool) | Own need | Swap compiled skill files without breaking sockets. |
 
-* Design Principles
+*** v0.3.0: Event Orchestration + Context Awareness
+
+Priority: Unified control plane, deep project understanding before complex work.
+
+| Feature | Source | Implementation |
+|---------|--------|----------------|
+| org-skill-event-orchestrator (hooks+cron+routing) | contrib event-orchestrator | Merge *hook-registry* + *cron-registry* + complexity classifier. Hooks via =#+HOOK:=. Three tiers: =:REFLEX= (no LLM), =:COGNITION= (light LLM), =:REASONING= (full LLM). |
+| org-skill-context-manager (project scoping) | contrib context-manager | Stack-based context. =push-context= / =pop-context=. Path resolution relative to current context. |
+| Memory scope segmentation | GBrain | =:scope= on org-objects: memex/session/project. Scope-aware retrieval. |
+| Model-tier routing (cost optimization) | GBrain | Heartbeat → smallest model. User input → medium. Complex reasoning → large. |
+| Slash commands (TUI ergonomics) | Own need | =M-x= style command palette. =/-= prefix. Commands defined in org-mode. |
+
+*** v0.4.0: Long-Horizon Planning + Git Workflows
+
+Priority: Real engineering work spans dozens of steps. Structured tracking, failure handling, course correction.
+
+| Feature | Source | Implementation |
+|---------|--------|----------------|
+| org-skill-long-horizon (task tree DAG) | Claude Code ULTRAPLAN | Decompose tasks into Org-mode headline trees. Terminal states: =:done= / =:blocked= / =:stuck=. Parent summarises children. Branch pruning. |
+| org-skill-git-steward (version control) | contrib git-steward | Status, diff, commit, push, branch. Policy enforces commit-before-modify. |
+| TDD runner integration | contrib tdd-runner | FiveAM on file save. =:test-failure= events. Hook into self-fix for auto-repair. |
+| Deep Emacs integration | Own need | Full org-agenda awareness. Clock time, refile, archive. |
+
+*** v0.5.0: Creator + Architect + GTD
+
+Priority: Agent bootstraps itself. Creates skills autonomously, designs projects from PRDs, tracks work.
+
+| Feature | Source | Implementation |
+|---------|--------|----------------|
+| org-skill-creator (autonomous skill generation) | contrib creator | LLM drafts complete skill org-file. Mandatory: syntax validation → jail-load → test → register. |
+| org-skill-architect (PRD → PROTOCOL) | contrib architect | Scan =:STATUS: FROZEN= PRDs. Generate Phase B PROTOCOL. |
+| org-skill-gtd (project tracking) | contrib gtd | Full GTD cycle. org-gtd v4.0 DAG (=:TRIGGER:=, =:BLOCKER:=). |
+| Consensus loop (multi-model agreement) | contrib consensus | Run multiple providers, compare results, detect disagreements. |
+| Web research (Playwright browsing) | contrib playwright | Headless Chromium via Python bridge. Gemini Web UI automation. |
+
+*** v1.0.0: SOTA Parity
+
+Feature-complete agent, competitive with commercial agents. All borrowed concepts reimplemented in pure Lisp.
+
+| Area | Status | Notes |
+|------|--------|-------|
+| Self-improvement | ✅ v0.2.0 | Self-edit + lisp-repair = Claude Code self-debug parity |
+| Planning | ✅ v0.4.0 | Task tree DAGs = ULTRAPLAN equivalent |
+| Tool ecosystem | 🟡 v0.4.0 | 10+ tools (expand from 3) |
+| Context window | ✅ v0.3.0 | Semantic search + scope segmentation |
+| Safety | ✅ v0.1.0 | 6 Policy invariants + formal verification |
+| Multi-step tasks | ✅ v0.4.0 | Task trees with terminal states |
+| Code editing | ✅ v0.2.0 | Full file read/write via org manipulation |
+| Memory | 🟡 v0.2.0 | Add vector recall to org-object |
+| Emacs integration | ✅ v0.2.0 | Full org-mode control — exceeds Claude Code |
+| Autonomy | ✅ v0.1.0 | 100% local capable (Ollama) — exceeds Claude Code |
+
+*** v2.0.0: Lisp Machine Emergence
+
+The agent moves from "using Lisp" to "being Lisp."
+
+| Feature | Implementation |
+|---------|----------------|
+| Lisp editor (Lish) | Org-mode as IDE. Org-babel for interactive evaluation. Full REPL in TUI. |
+| Shell replacement (Lish) | Lisp-based shell that speaks plists. Org-mode buffers as file system. |
+
+*** v3.0.0: Neurosymbolic Maturity
+
+| Feature | Implementation |
+|---------|----------------|
+| Deterministic planner | Planner as pure Lisp function. No LLM for scheduling. |
+| Self-correcting gates | Gates learn from false positives (user override patterns). |
+
+*** v4.0.0: AI Stack Internalized
+
+| Feature | Implementation |
+|---------|----------------|
+| Llama.cpp in Lisp | FFI binding to llama.cpp. No Python. |
+| Weights as sexps | Neural weights as Lisp data structures. |
+
+*** v5.0.0: True Agency
+
+| Feature | Implementation |
+|---------|----------------|
+| World models | Agent builds predictive models of user behavior, project dynamics, system state. |
+| Temporal reasoning | The agent reasons about time: scheduling, deadlines, elapsed duration. |
+| Goal persistence | Goals survive restarts. Long-term projects tracked in org-objects. |
+
+** Design Principles
 
 ** 1. Radical Transparency
 
