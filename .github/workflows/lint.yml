@@ -1,0 +1,45 @@
+name: Lint
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    container:
+      image: ubuntu:latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          apt-get update && apt-get install -y --no-install-recommends \
+            git emacs-nox
+
+      - name: Check for forbidden patterns
+        run: |
+          grep -r "json\." --include="*.lisp" . && \
+            echo "ERROR: Found JSON usage in Lisp files" && exit 1 || \
+            echo "OK: No JSON in Lisp files"
+
+      - name: Check literate granularity
+        run: |
+          find . -name "*.org" -path "./skills/*" -exec grep -L "#+begin_src lisp" {} \; | \
+            grep -v "CLA\|CONTRIBUTING\|CHANGELOG" && \
+            echo "WARNING: Some skills lack lisp blocks" || \
+            echo "OK: All skills have lisp blocks"
+
+      - name: Verify .lisp files are generated
+        run: |
+          for f in library/gen/*.lisp; do
+            org="${f%.lisp}.org"
+            if [ -f "$org" ]; then
+              : # generated, OK
+            else
+              echo "WARNING: $f has no corresponding .org source"
+            fi
+          done

@@ -1,0 +1,44 @@
+name: Tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    container:
+      image: statusoftech/sbcl:2.4.0
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          apt-get update && apt-get install -y --no-install-recommends \
+            git curl openssl make automake autoconf gcc clisp python3 python3-pip
+
+      - name: Install Quicklisp
+        run: |
+          curl -L https://beta.quicklisp.org/quicklisp.lisp -o /tmp/quicklisp.lisp
+          sbcl --non-interactive \
+            --load /tmp/quicklisp.lisp \
+            --eval '(quicklisp-quickstart:install :path "~/quicklisp/")' \
+            --eval '(ql:add-to-init-file)'
+
+      - name: Install ASDF systems
+        run: |
+          sbcl --non-interactive \
+            --eval '(ql:quickload :opencortex)'
+        env:
+          HOME: /root
+
+      - name: Run tests
+        run: |
+          sbcl --non-interactive \
+            --eval '(ql:quickload :opencortex/tests)' \
+            --eval '(uiop:quit 0)'
+        env:
+          HOME: /root

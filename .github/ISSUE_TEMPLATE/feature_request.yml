@@ -1,0 +1,22 @@
+name: Feature Request
+
+about: Suggest a new feature or enhancement.
+
+---
+
+**Describe the problem**
+What problem does this feature solve?
+
+**Describe the ideal solution**
+A clear description of what you want to happen.
+
+**Describe alternatives considered**
+Any alternative solutions you've considered.
+
+**Additional context**
+Any other relevant context (mockups, related issues, etc.)
+
+**Implementation suggestion**
+(Optional) If you have thoughts on how to implement this in pure Common Lisp + Org-mode:
+- Which skill should own this?
+- Should it be a =def-cognitive-tool=, a new skill, or an enhancement to an existing one?

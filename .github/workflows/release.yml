@@ -1,0 +1,31 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Create tarball
+        run: |
+          git archive --format=tar.gz --prefix=opencortex-$(git describe --tags) HEAD -o opencortex.tar.gz
+
+      - name: Create zipball
+        run: |
+          git archive --format=zip --prefix=opencortex-$(git describe --tags) HEAD -o opencortex.zip
+
+      - name: Upload to GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            opencortex.tar.gz
+            opencortex.zip
+          generate_release_notes: true
