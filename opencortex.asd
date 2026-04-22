@@ -9,6 +9,7 @@
   :components ((:file "library/package")
                (:file "library/skills")
                (:file "library/communication")
+               (:file "library/communication-validator")
                (:file "library/memory")
                (:file "library/context")
                (:file "library/perceive")

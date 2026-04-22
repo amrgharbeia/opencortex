@@ -98,10 +98,15 @@ The validator ensures that incoming messages adhere to the strict property list 
     
     (case type
       (:REQUEST 
-       (unless (proto-get msg :target)
-         (error "Communication Protocol Schema Error: REQUEST missing mandatory :target"))
-       (unless (proto-get msg :payload)
-         (error "Communication Protocol Schema Error: REQUEST missing mandatory :payload")))
+       ;; Allow missing :target if :source is present in :meta, since reason-gate
+       ;; will infer :target from :source downstream. This preserves "equality of
+       ;; clients" — gateways need not duplicate routing logic.
+       (let ((target (proto-get msg :target))
+             (source (proto-get (proto-get msg :meta) :source)))
+         (unless (or target source)
+           (error "Communication Protocol Schema Error: REQUEST missing mandatory :target and no :source in :meta to infer it"))
+         (unless (proto-get msg :payload)
+           (error "Communication Protocol Schema Error: REQUEST missing mandatory :payload"))))
       
       (:EVENT
        (let ((payload (proto-get msg :payload)))
