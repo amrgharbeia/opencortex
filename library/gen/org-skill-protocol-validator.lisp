@@ -1,51 +1,3 @@
-:PROPERTIES:
-:ID:       org-skill-communication-protocol-validator
-:CREATED:  [2026-04-12 Sun 14:35]
-:END:
-#+TITLE: SKILL: Communication Protocol Schema Validator (Universal Literate Note)
-#+STARTUP: content
-#+FILETAGS: :protocol:communication-protocol:security:validation:autonomy:
-
-* Overview
-The *Communication Protocol Schema Validator* skill provides deep structural validation for all messages entering the opencortex kernel. It ensures that every property list adheres to a strict schema, preventing malformed data from causing harness-level errors.
-
-* Phase A: Demand (PRD)
-:PROPERTIES:
-:STATUS: SIGNED
-:END:
-
-** 1. Purpose
-Enforce a formal grammar for the OpenCortex Control Protocol (communication protocol).
-
-** 2. User Needs
-- *Type Safety:* Ensure mandatory keys (e.g., `:type`, `:payload`) are present.
-- *Range Validation:* Check that enum values (e.g., `:REQUEST`, `:EVENT`) are valid.
-- *Structural Integrity:* Validate nested payloads based on the message type.
-
-** 3. Success Criteria
-- [ ] Block any message that does not contain a valid `:type`.
-- [ ] Block `:REQUEST` messages that lack a `:target`.
-- [ ] Block `:EVENT` messages that lack a `:payload` with an `:action` or `:sensor`.
-
-* Phase B: Blueprint (PROTOCOL)
-:PROPERTIES:
-:STATUS: SIGNED
-:END:
-
-** 1. Architectural Intent
-Decouple protocol parsing (framing/unframing) from semantic validation.
-
-** 2. Semantic Interfaces
-
-#+begin_src lisp
-(defun validate-communication-protocol-schema (msg)
-  "Returns T if the message is valid, NIL (and signals error) otherwise.")
-#+end_src
-
-* Phase D: Build (Implementation)
-
-** Schema Enforcement
-#+begin_src lisp :tangle ../library/gen/org-skill-protocol-validator.lisp
 (in-package :opencortex)
 
 (defun validate-communication-protocol-schema (msg)
@@ -76,10 +28,7 @@ Decouple protocol parsing (framing/unframing) from semantic validation.
          (error "Communication Protocol Schema Error: RESPONSE missing mandatory :payload"))))
     
     t))
-#+end_src
 
-* Registration
-#+begin_src lisp :tangle ../library/gen/org-skill-protocol-validator.lisp
 (defskill :skill-communication-protocol-validator
   :priority 95
   :trigger (lambda (ctx) (member (getf (getf ctx :payload) :sensor) '(:protocol-received)))
@@ -88,4 +37,3 @@ Decouple protocol parsing (framing/unframing) from semantic validation.
               (declare (ignore ctx))
               (validate-communication-protocol-schema action)
               action))
-#+end_src

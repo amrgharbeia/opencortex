@@ -102,9 +102,9 @@ setup_system() {
         mkdir -p "$M_DIR" "$M_DIR/notes" "$M_DIR/areas" "$M_DIR/resources" "$M_DIR/archives" "$M_DIR/system" "$M_DIR/inbox" "$M_DIR/daily" "$M_DIR/projects"
     fi
 
-    mkdir -p src
-    for f in literate/*.org; do
-        emacs --batch --eval "(require 'org)" --eval "(org-babel-tangle-file \"$f\")" >/dev/null 2>&1 || true
+    mkdir -p library
+    for f in harness/*.org skills/*.org; do
+        emacs -Q --batch --eval "(require 'org)" --eval "(org-babel-tangle-file \"$f\")" >/dev/null 2>&1 || true
     done
 
     mkdir -p "$HOME/.local/bin"
@@ -162,7 +162,7 @@ TARGET_PORT=${PORT:-$DEFAULT_PORT}
 TARGET_HOST=${HOST:-$DEFAULT_HOST}
 
 # If uninitialized, force setup.
-if [ ! -f "$SCRIPT_DIR/src/package.lisp" ] || [ ! -f "$SCRIPT_DIR/.env" ]; then
+if [ ! -f "$SCRIPT_DIR/library/package.lisp" ] || [ ! -f "$SCRIPT_DIR/.env" ]; then
     COMMAND="setup"
 fi
 
@@ -209,9 +209,29 @@ case "$COMMAND" in
             echo ""
         fi
         if command_exists socat; then
-            exec socat - TCP:$TARGET_HOST:$TARGET_PORT
+            echo -e "Connected to OpenCortex on $TARGET_HOST:$TARGET_PORT (Channel: CLI)"
+            while true; do
+                read -p "User: " MESSAGE
+                if [ -z "$MESSAGE" ]; then continue; fi
+                if [ "$MESSAGE" = "/exit" ]; then break; fi
+                
+                # Frame the message
+                PAYLOAD="(:TYPE :EVENT :META (:SOURCE :CLI) :PAYLOAD (:SENSOR :USER-INPUT :TEXT \"$MESSAGE\"))"
+                LEN=$(printf "%s" "$PAYLOAD" | wc -c)
+                HEXLEN=$(printf "%06x" $LEN)
+                
+                # Send and read response
+                (printf "%s%s" "$HEXLEN" "$PAYLOAD" | nc -N $TARGET_HOST $TARGET_PORT) | while read -r LINE; do
+                    CLEAN=$(echo "$LINE" | sed 's/^......//')
+                    if [[ "$CLEAN" == *":TEXT"* ]]; then
+                         TEXT=$(echo "$CLEAN" | sed -n 's/.*:TEXT "\([^"]*\)".*/\1/p')
+                         echo -e "Agent: $TEXT"
+                    fi
+                done
+            done
         else
-            exec nc $TARGET_HOST $TARGET_PORT
+            echo "Error: socat required for CLI interaction."
+            exit 1
         fi
         ;;
 
@@ -224,7 +244,7 @@ esac
 #+end_src
 
 ** Metabolic Docker Infrastructure (Dockerfile)
-#+begin_src dockerfile :tangle ../Dockerfile
+#+begin_src dockerfile :tangle ../infrastructure/docker/Dockerfile
 FROM debian:bullseye-slim
 
 ENV DEBIAN_FRONTEND=noninteractive

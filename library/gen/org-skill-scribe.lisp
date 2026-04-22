@@ -1,54 +1,5 @@
-:PROPERTIES:
-:ID:       scribe-skill
-:CREATED:  [2026-04-13 Mon 18:40]
-:END:
-#+TITLE: SKILL: Autonomous Scribe (Knowledge Distillation)
-#+STARTUP: content
-#+FILETAGS: :scribe:distillation:memex:autonomy:
-
-* Overview
-The *Autonomous Scribe* is the background architect of the Memex. It is responsible for the "Nightly Distillation": a process that scans chronological daily logs, extracts evergreen concepts, and formalizes them into atomic Zettelkasten notes.
-
-* Phase A: Demand (PRD)
-:PROPERTIES:
-:STATUS: SIGNED
-:END:
-
-** 1. Purpose
-Automate the conversion of ephemeral, time-stamped thoughts into a permanent, structured knowledge graph.
-
-** 2. Success Criteria
-- [ ] *Capture:* Identify new headlines in the `daily/` directory that haven't been distilled yet.
-- [ ] *Privacy:* Strictly ignore any node tagged with `@personal`.
-- [ ] *Extraction:* Use neural reasoning to extract atomic concepts from raw logs.
-- [ ] *Formalization:* Create new `.org` files in the `notes/` directory with proper Org-ID and back-links to the source.
-
-* Phase B: Blueprint (PROTOCOL)
-:PROPERTIES:
-:STATUS: SIGNED
-:END:
-
-** 1. Architectural Intent
-The Scribe reacts to the `:heartbeat` sensor. It maintains a state file (`scribe-state.lisp`) to track the last processed timestamp. It performs a "Read-Reason-Write" loop:
-1. **Read:** Scan `daily/*.org` for nodes updated after the last checkpoint.
-2. **Reason:** Ask the LLM to "Extract atomic notes from this text".
-3. **Write:** Commit the resulting nodes to the `notes/` directory.
-
-** 2. Semantic Interfaces
-- Trigger: `(:sensor :heartbeat)`
-- Action: `(:type :REQUEST :target :system :action :create-note :title "..." :content "..." :source-id "...")`
-
-* Phase D: Build (Implementation)
-
-** Package Context
-#+begin_src lisp :tangle ../library/gen/org-skill-scribe.lisp
 (in-package :opencortex)
-#+end_src
 
-** State: Checkpoint Management
-We track the last processed universal time to avoid redundant distillation.
-
-#+begin_src lisp :tangle ../library/gen/org-skill-scribe.lisp
 (defvar *scribe-last-checkpoint* 0
   "The universal-time of the last successful distillation run.")
 
@@ -65,12 +16,7 @@ We track the last processed universal time to avoid redundant distillation.
     (ensure-directories-exist state-file)
     (with-open-file (out state-file :direction :output :if-exists :supersede)
       (format out "~a" (get-universal-time)))))
-#+end_src
 
-** Filtering: Privacy & Relevance
-The Scribe only cares about non-personal, non-distilled headlines.
-
-#+begin_src lisp :tangle ../library/gen/org-skill-scribe.lisp
 (defun scribe-get-distillable-nodes ()
   "Returns a list of org-objects from the daily/ folder that require distillation."
   (let ((results nil))
@@ -86,12 +32,7 @@ The Scribe only cares about non-personal, non-distilled headlines.
                    (push obj results))))
              *memory*)
     results))
-#+end_src
 
-** Probabilistic: Extraction Prompt
-The LLM is tasked with identifying atomic concepts within the raw text.
-
-#+begin_src lisp :tangle ../library/gen/org-skill-scribe.lisp
 (defun probabilistic-skill-scribe (context)
   "Generates the extraction prompt for the Scribe."
   (let* ((payload (getf context :payload))
@@ -117,12 +58,7 @@ RULES:
 TEXT:
 ~a" text-to-process))
         nil)))
-#+end_src
 
-** Deterministic: Note Committal
-The deterministic gate receives the list of proposed notes and writes them to the filesystem.
-
-#+begin_src lisp :tangle ../library/gen/org-skill-scribe.lisp
 (defun scribe-commit-notes (proposals)
   "Writes proposed atomic notes to the notes/ directory. Appends if the note exists."
   (let ((notes-dir (uiop:merge-pathnames* "notes/" (asdf:system-source-directory :opencortex))))
@@ -156,10 +92,7 @@ The deterministic gate receives the list of proposed notes and writes them to th
       (harness-log "SCRIBE: Distillation complete.")
       ;; Return a log event to stop the loop
       (list :type :LOG :payload (list :text "Distillation successful.")))))
-#+end_src
 
-** Skill Registration
-#+begin_src lisp :tangle ../library/gen/org-skill-scribe.lisp
 (defskill :skill-scribe
   :priority 50
   :trigger (lambda (ctx)
@@ -171,9 +104,5 @@ The deterministic gate receives the list of proposed notes and writes them to th
                     (scribe-get-distillable-nodes))))
   :probabilistic #'probabilistic-skill-scribe
   :deterministic #'verify-skill-scribe)
-#+end_src
 
-** Initialization
-#+begin_src lisp :tangle ../library/gen/org-skill-scribe.lisp
 (scribe-load-state)
-#+end_src

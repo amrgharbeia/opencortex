@@ -1,58 +1,8 @@
-:PROPERTIES:
-:ID:       gardener-skill
-:CREATED:  [2026-04-13 Mon 18:50]
-:END:
-#+TITLE: SKILL: Autonomous Gardener (Memex Maintenance)
-#+STARTUP: content
-#+FILETAGS: :gardener:maintenance:memex:autonomy:
-
-* Overview
-The *Autonomous Gardener* is the metabolic immune system of the Memex. It autonomously audits the knowledge graph for structural decay—broken links, orphaned nodes, and missing metadata—ensuring that the system remains coherent and navigatable over long horizons.
-
-* Phase A: Demand (PRD)
-:PROPERTIES:
-:STATUS: SIGNED
-:END:
-
-** 1. Purpose
-Maintain the structural integrity and "Vibe" of the Memex through autonomous auditing and self-repair proposals.
-
-** 2. Success Criteria
-- [ ] *Link Audit:* Detect `id:` links that point to non-existent objects.
-- [ ] *Orphan Detection:* Identify headlines that have zero inbound or outbound connections.
-- [ ] *Reporting:* Log structural issues or propose "Flight Plans" for manual repair.
-
-* Phase B: Blueprint (PROTOCOL)
-:PROPERTIES:
-:STATUS: SIGNED
-:END:
-
-** 1. Architectural Intent
-The Gardener runs on a low-priority heartbeat. It performs a "Deep Audit" of the entire `*memory*` graph. Unlike the Scribe, which creates new data, the Gardener focuses on the *relationships* between existing data.
-
-** 2. Semantic Interfaces
-- Trigger: `(:sensor :heartbeat)`
-- Action (Repair): `(:type :REQUEST :target :emacs :action :update-node :id "..." :attributes (...))`
-
-* Phase D: Build (Implementation)
-
-** Package Context
-#+begin_src lisp :tangle ../library/gen/org-skill-gardener.lisp
 (in-package :opencortex)
-#+end_src
 
-** State: Maintenance Cycle
-We track the last audit time to ensure the Gardener doesn't over-consume resources.
-
-#+begin_src lisp :tangle ../library/gen/org-skill-gardener.lisp
 (defvar *gardener-last-audit* 0
   "The universal-time of the last full Memex audit.")
-#+end_src
 
-** Audit: Broken Links
-Scans the content of all objects for `id:` links and verifies the targets exist.
-
-#+begin_src lisp :tangle ../library/gen/org-skill-gardener.lisp
 (defun gardener-find-broken-links ()
   "Returns a list of broken ID links found in the Memex."
   (let ((broken nil))
@@ -64,12 +14,7 @@ Scans the content of all objects for `id:` links and verifies the targets exist.
                        (push (list :source id :broken-target target-id) broken))))))
              *memory*)
     broken))
-#+end_src
 
-** Audit: Orphaned Nodes
-Identifies nodes that are not linked to and do not link to anything else.
-
-#+begin_src lisp :tangle ../library/gen/org-skill-gardener.lisp
 (defun gardener-find-orphans ()
   "Returns a list of IDs for headlines that are structurally isolated."
   (let ((inbound (make-hash-table :test 'equal))
@@ -90,12 +35,7 @@ Identifies nodes that are not linked to and do not link to anything else.
                  (push id orphans)))
              *memory*)
     orphans))
-#+end_src
 
-** Skill Logic: The Audit Pass
-The Gardener's deterministic gate performs the actual analysis and logs the results. In future versions, it will generate probabilistic repair proposals.
-
-#+begin_src lisp :tangle ../library/gen/org-skill-gardener.lisp
 (defun gardener-deterministic-gate (action context)
   "Main gate for the Gardener skill. Audits graph integrity."
   (declare (ignore action context))
@@ -115,10 +55,7 @@ The Gardener's deterministic gate performs the actual analysis and logs the resu
     (setf *gardener-last-audit* (get-universal-time))
     ;; Return a log to stop the loop
     (list :type :LOG :payload (list :text "Gardener audit complete."))))
-#+end_src
 
-** Skill Registration
-#+begin_src lisp :tangle ../library/gen/org-skill-gardener.lisp
 (defskill :skill-gardener
   :priority 40
   :trigger (lambda (ctx)
@@ -129,4 +66,3 @@ The Gardener's deterministic gate performs the actual analysis and logs the resu
                     (> (- (get-universal-time) *gardener-last-audit*) 86400))))
   :probabilistic nil
   :deterministic #'gardener-deterministic-gate)
-#+end_src

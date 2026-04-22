@@ -1,18 +1,3 @@
-:PROPERTIES:
-:ID:       cli-gateway-skill
-:CREATED:  [2026-04-13 Mon 17:00]
-:END:
-#+TITLE: SKILL: CLI Gateway (Universal Literate Note)
-#+STARTUP: content
-#+FILETAGS: :gateway:cli:io:autonomy:
-
-* Overview
-The *CLI Gateway* is the primary sensory and actuating interface for human interaction. It implements a TCP-based S-expression protocol that allows multiple clients (terminal, Emacs, web) to establish secure bidirectional channels with the Brain.
-
-* Implementation
-
-#+begin_src lisp :tangle ../library/gen/org-skill-cli-gateway.lisp
-
 (defvar *cli-port* 9105)
 (defvar *cli-server-socket* nil)
 (defvar *cli-server-thread* nil)
@@ -94,4 +79,3 @@ The *CLI Gateway* is the primary sensory and actuating interface for human inter
   :deterministic (lambda (action ctx) (declare (ignore ctx)) action))
 
 (start-cli-gateway)
-#+end_src

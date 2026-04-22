@@ -1,26 +1,3 @@
-:PROPERTIES:
-:ID:       llm-gateway-skill
-:CREATED:  [2026-04-09 Thu]
-:EDITED:   [2026-04-19 Sun]
-:END:
-#+TITLE: SKILL: Unified LLM Gateway (Universal Literate Note)
-#+STARTUP: content
-#+FILETAGS: :llm:gateway:infrastructure:autonomy:
-#+DEPENDS_ON: org-skill-credentials-vault
-
-* Overview
-The *Unified LLM Gateway* is the single sensory and reasoning interface for all neural backends. It consolidates the previously fragmented provider skills into a high-integrity dispatch layer, standardizing credential management, error handling, and payload formatting.
-
-* Phase B: Blueprint (PROTOCOL)
-
-** 1. Architectural Intent
-The gateway utilizes a functional dispatch pattern. A single entry point, `execute-llm-request`, resolves the provider-specific nuances (URLs, headers, JSON structures) while exposing a uniform interface to the harness.
-
-* Phase D: Build (Implementation)
-
-** Implementation
-#+begin_src lisp :tangle ../library/gen/org-skill-llm-gateway.lisp
-
 (defun get-nested (alist &rest keys)
   "Recursively extracts nested values from an alist, handling both objects and arrays."
   (let ((val alist))
@@ -131,4 +108,3 @@ The gateway utilizes a functional dispatch pattern. A single entry point, `execu
   :trigger (lambda (context) (declare (ignore context)) nil)
   :probabilistic (lambda (context) (declare (ignore context)) nil)
   :deterministic (lambda (action context) (declare (ignore context)) action))
-#+end_src

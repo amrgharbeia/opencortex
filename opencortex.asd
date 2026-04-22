@@ -6,18 +6,15 @@
   :description "The Probabilistic-Deterministic Lisp Machine Harness"
   :depends-on (:usocket :bordeaux-threads :dexador :uiop :cl-dotenv :cl-ppcre :hunchentoot :ironclad :str :cl-json :uuid)
   :serial t
-  :components ((:file "src/package")
-               (:file "src/skills")
-               (:file "src/policy")
-               (:file "src/communication-validator")
-               (:file "src/communication")
-               (:file "src/memory")
-               (:file "src/context")
-               (:file "src/probabilistic")
-               (:file "src/perceive")
-               (:file "src/reason")
-               (:file "src/act")
-               (:file "src/loop"))
+  :components ((:file "library/package")
+               (:file "library/skills")
+               (:file "library/communication")
+               (:file "library/memory")
+               (:file "library/context")
+               (:file "library/perceive")
+               (:file "library/reason")
+               (:file "library/act")
+               (:file "library/loop"))
   :build-operation "program-op"
   :build-pathname "opencortex-server"
   :entry-point "opencortex:main")
@@ -40,4 +37,4 @@
 
 (defsystem :opencortex/tui
   :depends-on (:opencortex :croatoan :usocket :bordeaux-threads)
-  :components ((:file "src/tui-client")))
+  :components ((:file "library/tui-client")))

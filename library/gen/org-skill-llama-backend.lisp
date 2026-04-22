@@ -1,32 +1,5 @@
-:PROPERTIES:
-:ID:       llama-backend-skill
-:CREATED:  [2026-04-17 Fri 20:00]
-:END:
-#+TITLE: SKILL: Llama.cpp Neuro-Backend (Sovereign Inference)
-#+STARTUP: content
-#+FILETAGS: :llm:backend:llama:sovereignty:
-
-* Overview
-The *Llama.cpp Backend* allows the OpenCortex to use local, air-gapped inference. It connects to a `llama.cpp` server (typically running on the local network) and registers itself as a provider in the kernel's probabilistic cascade.
-
-* Phase B: Blueprint (PROTOCOL)
-** 1. Architectural Intent
-This skill acts as a proxy between the OpenCortex kernel and the Lisp-agnostic `llama.cpp` REST API. It implements the standard backend signature required by `register-probabilistic-backend`.
-
-** 2. Semantic Interfaces
-- Endpoint: `(uiop:getenv "LLAMACPP_ENDPOINT")` (e.g., "http://10.10.10.x:8080")
-- Method: `POST /completion`
-- Response: JSON (parsed into Lisp)
-
-* Phase D: Build (Implementation)
-
-** Package Context
-#+begin_src lisp :tangle ../library/gen/org-skill-llama-backend.lisp
 (in-package :opencortex)
-#+end_src
 
-** The Inference Engine (llama-inference)
-#+begin_src lisp :tangle ../library/gen/org-skill-llama-backend.lisp
 (defun llama-inference (prompt system-prompt &key (model "local-model"))
   "Sends a completion request to the local llama.cpp server."
   (let ((endpoint (uiop:getenv "LLAMACPP_ENDPOINT")))
@@ -48,10 +21,7 @@ This skill acts as a proxy between the OpenCortex kernel and the Lisp-agnostic `
       (error (c)
         (harness-log "LLAMA ERROR: Connection failed -> ~a" c)
         (list :error (format nil "~a" c))))))
-#+end_src
 
-** Registration
-#+begin_src lisp :tangle ../library/gen/org-skill-llama-backend.lisp
 (progn
   (register-probabilistic-backend :llama #'llama-inference)
   (harness-log "LLAMA: Local backend registered and active."))
@@ -61,4 +31,3 @@ This skill acts as a proxy between the OpenCortex kernel and the Lisp-agnostic `
   :trigger (lambda (ctx) (declare (ignore ctx)) nil) ; Pure infrastructure skill
   :probabilistic nil
   :deterministic (lambda (action ctx) (declare (ignore ctx)) action))
-#+end_src

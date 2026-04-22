@@ -1,18 +1,3 @@
-:PROPERTIES:
-:ID:       homoiconic-memory-skill
-:CREATED:  [2026-04-10 Fri]
-:END:
-#+TITLE: SKILL: Homoiconic Memory (Merkle-Org Management)
-#+STARTUP: content
-#+FILETAGS: :memory:org:merkle:infrastructure:autonomy:
-
-* Overview
-The *Homoiconic Memory* skill provides the core persistence layer for OpenCortex, treating Org-mode files as a versioned, Merkle-structured AST.
-
-* Implementation
-
-#+begin_src lisp :tangle ../library/gen/org-skill-homoiconic-memory.lisp
-
 (defun memory-org-to-json (source)
   "Converts Org-mode source to JSON AST."
   (declare (ignore source))
@@ -41,4 +26,3 @@ The *Homoiconic Memory* skill provides the core persistence layer for OpenCortex
   :trigger (lambda (ctx) (declare (ignore ctx)) nil)
   :probabilistic nil
   :deterministic (lambda (action ctx) (declare (ignore ctx)) action))
-#+end_src

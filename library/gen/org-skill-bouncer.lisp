@@ -1,28 +1,5 @@
-:PROPERTIES:
-:ID:       bouncer-agent-skill
-:CREATED:  [2026-04-11 Sat 15:20]
-:EDITED:   [2026-04-13 Mon 18:35]
-:END:
-#+DEPENDS_ON: org-skill-credentials-vault
-#+TITLE: SKILL: Deterministic Engine Bouncer (Authorization Gate)
-#+STARTUP: content
-#+FILETAGS: :system:bouncer:authorization:autonomy:
-
-* Overview
-The *Deterministic Engine Bouncer* is the authorization gate for high-risk actions. It serializes intercepted actions into Org nodes ("Flight Plans") and re-injects them once manually approved by the Autonomous.
-
-* Package Context
-#+begin_src lisp :tangle ../library/gen/org-skill-bouncer.lisp
 (in-package :opencortex)
-#+end_src
 
-* Deep Packet Inspection (DPI)
-The Bouncer ensures the action is "safe" by inspecting the payload content via Deep Packet Inspection.
-
-** Secret Exposure Check
-Retrieves all active secrets from the vault and scans the payload for potential leaks.
-
-#+begin_src lisp :tangle ../library/gen/org-skill-bouncer.lisp
 (defun bouncer-scan-secrets (text)
   "Returns the name of the secret found in TEXT, or NIL if clean."
   (when (and text (stringp text))
@@ -33,12 +10,7 @@ Retrieves all active secrets from the vault and scans the payload for potential 
                      (setf found-secret key))))
                opencortex::*vault-memory*)
       found-secret)))
-#+end_src
 
-** Network Exfiltration Check
-Inspects shell commands for unwhitelisted domains or IP addresses.
-
-#+begin_src lisp :tangle ../library/gen/org-skill-bouncer.lisp
 (defun bouncer-check-network-exfil (cmd)
   "Returns T if the command appears to target an unwhitelisted external host."
   (when (and cmd (stringp cmd))
@@ -50,12 +22,7 @@ Inspects shell commands for unwhitelisted domains or IP addresses.
           (declare (ignore match))
           (let ((domain (aref regs 1)))
             (not (some (lambda (safe) (search safe domain)) network-whitelist))))))))
-#+end_src
 
-* Runtime Guard (bouncer-check)
-The primary entry point for all high-impact actions. It blocks or queues actions based on risk vectors.
-
-#+begin_src lisp :tangle ../library/gen/org-skill-bouncer.lisp
 (defun bouncer-check (action context)
   "The 5-Vector security gate. Blocks or queues actions based on risk."
   (let* ((target (getf action :target))
@@ -93,12 +60,7 @@ The primary entry point for all high-impact actions. It blocks or queues actions
 
       ;; 4. Default Pass
       (t action))))
-#+end_src
 
-* Approval Processing
-The Bouncer periodically scans the Memex for approved "Flight Plans" and re-injects them into the metabolic loop.
-
-#+begin_src lisp :tangle ../library/gen/org-skill-bouncer.lisp
 (defun bouncer-process-approvals ()
   "Scans the object store for APPROVED flight plans and re-injects their actions."
   (let ((approved-nodes (list-objects-with-attribute :TODO "APPROVED"))
@@ -117,13 +79,7 @@ The Bouncer periodically scans the Memex for approved "Flight Plans" and re-inje
               (setf (getf (org-object-attributes node) :TODO) "DONE")
               (setq found-any t))))))
     found-any))
-#+end_src
 
-* Skill Definition
-The Bouncer skill reacts to approval requirements by creating flight plan nodes, and periodically checks for manual approvals via heartbeats.
-
-** Skill Logic
-#+begin_src lisp :tangle ../library/gen/org-skill-bouncer.lisp
 (defun bouncer-deterministic-gate (action context)
   "Main gate for the bouncer skill."
   (let* ((payload (getf context :payload))
@@ -145,13 +101,9 @@ The Bouncer skill reacts to approval requirements by creating flight plan nodes,
        (if action (bouncer-check action context) action))
       (otherwise
        (if action (bouncer-check action context) action)))))
-#+end_src
 
-** Skill Registration
-#+begin_src lisp :tangle ../library/gen/org-skill-bouncer.lisp
 (defskill :skill-bouncer
   :priority 150
   :trigger (lambda (ctx) t) ;; Bouncer evaluates all actions deterministically
   :probabilistic nil
   :deterministic #'bouncer-deterministic-gate)
-#+end_src

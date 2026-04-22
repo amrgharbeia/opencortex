@@ -10,7 +10,7 @@ The ~communication.lisp~ module defines the low-level transport and framing logi
 
 * Implementation (communication.lisp)
 
-#+begin_src lisp :tangle ../src/package.lisp
+#+begin_src lisp :tangle ../library/package.lisp
 (in-package :opencortex)
 
 (defun proto-get (plist key)
@@ -21,7 +21,7 @@ The ~communication.lisp~ module defines the low-level transport and framing logi
     (or (getf plist up) (getf plist dn))))
 #+end_src
 
-#+begin_src lisp :tangle ../src/communication.lisp
+#+begin_src lisp :tangle ../library/communication.lisp
 (in-package :opencortex)
 
 (defvar *actuator-registry* (make-hash-table :test 'equalp)
@@ -84,7 +84,7 @@ The ~communication.lisp~ module defines the low-level transport and framing logi
 ** Structural Validation (communication-validator.lisp)
 The validator ensures that incoming messages adhere to the strict property list schema of the communication protocol.
 
-#+begin_src lisp :tangle ../src/communication-validator.lisp
+#+begin_src lisp :tangle ../library/communication-validator.lisp
 (in-package :opencortex)
 
 (defun validate-communication-protocol-schema (msg)
@@ -129,7 +129,7 @@ The validator ensures that incoming messages adhere to the strict property list 
 ** Message Framing (communication.lisp)
 Frames a message with a hex length prefix and ensures all data is serializable.
 
-#+begin_src lisp :tangle ../src/communication.lisp
+#+begin_src lisp :tangle ../library/communication.lisp
 (defun sanitize-protocol-message (msg)
   "Recursively strips non-serializable objects from a protocol plist."
   (if (and msg (listp msg))

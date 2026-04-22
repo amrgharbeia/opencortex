@@ -10,12 +10,12 @@ The Reason stage is the cognitive engine of the OpenCortex. It bridges the gap b
 * Cognition Engine (reason.lisp)
 
 ** Package Context
-#+begin_src lisp :tangle ../src/reason.lisp
+#+begin_src lisp :tangle ../library/reason.lisp
 (in-package :opencortex)
 #+end_src
 
 ** Neural Backend Registry
-#+begin_src lisp :tangle ../src/reason.lisp
+#+begin_src lisp :tangle ../library/reason.lisp
 (defvar *probabilistic-backends* (make-hash-table :test 'equal))
 (defvar *provider-cascade* nil)
 (defvar *model-selector-fn* nil)
@@ -27,7 +27,7 @@ The Reason stage is the cognitive engine of the OpenCortex. It bridges the gap b
 #+end_src
 
 ** Probabilistic Reasoning (probabilistic-call)
-#+begin_src lisp :tangle ../src/reason.lisp
+#+begin_src lisp :tangle ../library/reason.lisp
 (defun probabilistic-call (prompt &key (system-prompt "You are the Probabilistic engine.") (cascade nil) (context nil))
   "Dispatches a neural request through the provider cascade. Returns a Lisp plist or a failure log."
   (let ((backends (or cascade *provider-cascade*)))
@@ -47,7 +47,7 @@ The Reason stage is the cognitive engine of the OpenCortex. It bridges the gap b
 #+end_src
 
 ** Cognitive Proposal (Think)
-#+begin_src lisp :tangle ../src/reason.lisp
+#+begin_src lisp :tangle ../library/reason.lisp
 (defun strip-markdown (text)
   "Strips common markdown code block markers from text."
   (if (and text (stringp text))
@@ -104,7 +104,7 @@ PROVIDER RULE: Always use the default cascade provider unless a specific model o
 #+end_src
 
 ** Deterministic Verification
-#+begin_src lisp :tangle ../src/reason.lisp
+#+begin_src lisp :tangle ../library/reason.lisp
 (defun deterministic-verify (proposed-action context)
   "Iterates through all skill deterministic-gates sorted by priority."
   (let ((current-action proposed-action)
@@ -128,7 +128,7 @@ PROVIDER RULE: Always use the default cascade provider unless a specific model o
 #+end_src
 
 ** Reasoning Gate (The Pipeline Stage)
-#+begin_src lisp :tangle ../src/reason.lisp
+#+begin_src lisp :tangle ../library/reason.lisp
 (defun reason-gate (signal)
   "Unified Stage: Combines Probabilistic proposals and Deterministic verification."
   (let* ((type (proto-get signal :type))

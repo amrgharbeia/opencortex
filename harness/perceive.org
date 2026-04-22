@@ -10,7 +10,7 @@ The Perceive stage is the "sensory cortex" of the OpenCortex. It takes raw stimu
 ** Async Sensor Routing
 To prevent blocking the main pipeline, certain sensors (like user commands or chat messages) are processed asynchronously in their own threads.
 
-#+begin_src lisp :tangle ../src/perceive.lisp
+#+begin_src lisp :tangle ../library/perceive.lisp
 (in-package :opencortex)
 
 (defvar *async-sensors* '(:chat-message :delegation :user-command)
@@ -20,7 +20,7 @@ To prevent blocking the main pipeline, certain sensors (like user commands or ch
 ** Foveal Focus State
 The system tracks the user's current point of interaction to provide context to the reasoning engine.
 
-#+begin_src lisp :tangle ../src/perceive.lisp
+#+begin_src lisp :tangle ../library/perceive.lisp
 (defvar *foveal-focus-id* nil
   "The Org ID of the node the user is currently interacting with.")
 #+end_src
@@ -28,7 +28,7 @@ The system tracks the user's current point of interaction to provide context to 
 ** Stimulus Injection
 The entry point for raw messages. It determines if the signal should be processed synchronously or asynchronously.
 
-#+begin_src lisp :tangle ../src/perceive.lisp
+#+begin_src lisp :tangle ../library/perceive.lisp
 (defun inject-stimulus (raw-message &key stream (depth 0))
   "Enqueues a raw message into the reactive signal pipeline."
   (let* ((payload (getf raw-message :payload)) 
@@ -56,7 +56,7 @@ The entry point for raw messages. It determines if the signal should be processe
 ** The Perceive Gate
 The initial stage of the metabolic loop. It logs the signal, performs selective memory snapshots, and updates the Memory graph based on incoming AST updates.
 
-#+begin_src lisp :tangle ../src/perceive.lisp
+#+begin_src lisp :tangle ../library/perceive.lisp
 (defun perceive-gate (signal)
   "Initial processing: Normalizes raw stimuli and updates memory."
   (let* ((payload (getf signal :payload))

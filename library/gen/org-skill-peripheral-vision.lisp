@@ -1,54 +1,8 @@
-:PROPERTIES:
-:ID:       org-skill-peripheral-vision
-:CREATED:  [2026-04-12 Sun 14:15]
-:END:
-#+TITLE: SKILL: Peripheral Vision (Universal Literate Note)
-#+STARTUP: content
-#+FILETAGS: :context:foveal:peripheral:pruning:autonomy:
-
-* Overview
-The *Peripheral Vision* skill implements the Foveal-Peripheral Hybrid model for context pruning. It ensures that the LLM receives a semantically relevant and manageable view of the Memory, preventing context window overflow.
-
-* Phase A: Demand (PRD)
-:PROPERTIES:
-:STATUS: SIGNED
-:END:
-
-** 1. Purpose
-Refine the global awareness provided to the LLM by pruning irrelevant branches of the Org DAG while maintaining high-fidelity focus on the current task.
-
-** 2. User Needs
-- *Semantic Pruning:* Use vector similarity to include only related nodes.
-- *Structural Integrity:* Always include top-level projects and recent tasks.
-- *Foveal Focus:* Provide full-body content for the currently active node.
-
-** 3. Success Criteria
-- [ ] Correctly calculate semantic relevance using the Embedding skill.
-- [ ] Recursively render the Org DAG with depth-based and similarity-based pruning.
-- [ ] Successfully generate the `GLOBAL MEMEX AWARENESS` block for the probabilistic-gate.
-
-* Phase B: Blueprint (PROTOCOL)
-:PROPERTIES:
-:STATUS: SIGNED
-:END:
-
-** 1. Architectural Intent
-Move context pruning and rendering logic out of `context.lisp` to allow for more sophisticated, pluggable pruning strategies.
-
-** 2. Semantic Interfaces
-
-#+begin_src lisp :tangle ../library/gen/org-skill-peripheral-vision.lisp
 (defun context-render-to-org (obj &key depth foveal-id semantic-threshold foveal-vector)
   "Recursively renders an org-object with foveal-peripheral pruning.")
 
 (defun context-assemble-global-awareness (&optional signal)
   "Assembles the full context block for a neural request.")
-#+end_src
-
-* Phase D: Build (Implementation)
-
-** Foveal-Peripheral Pruning
-#+begin_src lisp :tangle ../library/gen/org-skill-peripheral-vision.lisp
 
 (defun context-render-to-org (obj &key (depth 1) (foveal-id nil) (semantic-threshold 0.75) (foveal-vector nil))
   "Recursively renders an org-object and its children to an Org string using a Foveal-Peripheral Hybrid model."
@@ -109,10 +63,7 @@ Move context pruning and rendering logic out of `context.lisp` to allow for more
                                                            :foveal-vector foveal-vector))))
         (setf output (concatenate 'string output "No active projects found.~%")))
     output))
-#+end_src
 
-* Registration
-#+begin_src lisp :tangle ../library/gen/org-skill-peripheral-vision.lisp
 (defskill :skill-peripheral-vision
   :priority 90
   :dependencies ("org-skill-embedding")
@@ -123,4 +74,3 @@ Move context pruning and rendering logic out of `context.lisp` to allow for more
               ;; This skill primarily provides the context-assemble-global-awareness function
               ;; used by the probabilistic-gate, rather than handling specific actions.
               nil))
-#+end_src

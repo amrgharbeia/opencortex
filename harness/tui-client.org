@@ -10,7 +10,7 @@
 The OpenCortex TUI Client is a standalone Common Lisp application built on **Croatoan**. It provides a real-time, multi-window interface for interacting with the OpenCortex daemon.
 
 * Implementation
-#+begin_src lisp :tangle ../src/tui-client.lisp
+#+begin_src lisp :tangle ../library/tui-client.lisp
 (in-package :cl-user)
 (defpackage :opencortex.tui
   (:use :cl :croatoan)

@@ -10,7 +10,7 @@ The Act stage performs the final side-effects of the reasoning engine. It routes
 ** Actuator Configuration
 The core harness can be configured via environment variables to operate silently or target different default outputs.
 
-#+begin_src lisp :tangle ../src/act.lisp
+#+begin_src lisp :tangle ../library/act.lisp
 (in-package :opencortex)
 
 (defvar *default-actuator* :cli)
@@ -41,7 +41,7 @@ The core harness can be configured via environment variables to operate silently
 ** Dispatching Actions
 The `dispatch-action` function is the primary router. It identifies the target actuator and executes the requested side-effects.
 
-#+begin_src lisp :tangle ../src/act.lisp
+#+begin_src lisp :tangle ../library/act.lisp
 (defun dispatch-action (action context)
   (let ((payload (proto-get action :payload)))
     (when (eq (proto-get payload :sensor) :heartbeat)
@@ -67,7 +67,7 @@ The `dispatch-action` function is the primary router. It identifies the target a
 ** Internal System Actions
 The `:system` actuator handles internal harness commands like code evaluation and dynamic skill loading.
 
-#+begin_src lisp :tangle ../src/act.lisp
+#+begin_src lisp :tangle ../library/act.lisp
 (defun execute-system-action (action context)
   "Processes internal harness commands. (ACTUATOR)"
   (declare (ignore context))
@@ -88,7 +88,7 @@ The `:system` actuator handles internal harness commands like code evaluation an
 ** Cognitive Tool Actuation
 The `:tool` actuator handles the execution of registered cognitive tools.
 
-#+begin_src lisp :tangle ../src/act.lisp
+#+begin_src lisp :tangle ../library/act.lisp
 (defun format-tool-result (tool-name result)
   "Intelligently formats a tool result for user display."
   (if (listp result)
@@ -131,7 +131,7 @@ The `:tool` actuator handles the execution of registered cognitive tools.
 ** The Act Gate
 The final stage of the metabolic loop. It performs a "last-mile" safety check before dispatching the action to the registered actuator.
 
-#+begin_src lisp :tangle ../src/act.lisp
+#+begin_src lisp :tangle ../library/act.lisp
 (defun act-gate (signal)
   "Final Stage: Actuation and feedback generation."
   (let* ((approved (getf signal :approved-action))

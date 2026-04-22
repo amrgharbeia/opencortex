@@ -10,7 +10,7 @@ A static, hardcoded architecture is inherently fragile. The ~opencortex~ Skill E
 
 ** Global Skill Registry
 
-#+begin_src lisp :tangle ../src/skills.lisp
+#+begin_src lisp :tangle ../library/skills.lisp
 (in-package :opencortex)
 
 (defun COSINE-SIMILARITY (v1 v2) 1.0) ; Stub
@@ -66,7 +66,7 @@ A static, hardcoded architecture is inherently fragile. The ~opencortex~ Skill E
 #+end_src
 
 ** Skill File Analysis (parse-skill-metadata)
-#+begin_src lisp :tangle ../src/skills.lisp
+#+begin_src lisp :tangle ../library/skills.lisp
 (defun parse-skill-metadata (filepath)
   "Extracts ID and DEPENDS_ON tags using robust regex scanning."
   (let ((dependencies nil)
@@ -85,7 +85,7 @@ A static, hardcoded architecture is inherently fragile. The ~opencortex~ Skill E
 #+end_src
 
 ** Dependency Resolution (topological-sort-skills)
-#+begin_src lisp :tangle ../src/skills.lisp
+#+begin_src lisp :tangle ../library/skills.lisp
 (defun topological-sort-skills (skills-dir)
   "Returns a list of skill filepaths sorted by dependency (dependencies first)."
   (let ((files (uiop:directory-files skills-dir "org-skill-*.org"))
@@ -129,7 +129,7 @@ A static, hardcoded architecture is inherently fragile. The ~opencortex~ Skill E
 #+end_src
 
 ** Jailed Loading (load-skill-from-org)
-#+begin_src lisp :tangle ../src/skills.lisp
+#+begin_src lisp :tangle ../library/skills.lisp
 (defun validate-lisp-syntax (code-string)
   "Checks if a string contains valid, readable Common Lisp forms."
   (handler-case 
@@ -156,9 +156,7 @@ A static, hardcoded architecture is inherently fragile. The ~opencortex~ Skill E
           (dolist (line lines)
             (let ((clean-line (string-trim '(#\Space #\Tab #\Return) line)))
               (cond ((uiop:string-prefix-p "#+begin_src lisp" (string-downcase clean-line))
-                     (if (search ":tangle" (string-downcase clean-line))
-                         (setf in-lisp-block nil)
-                         (setf in-lisp-block t)))
+                     (setf in-lisp-block t))
                     ((uiop:string-prefix-p "#+end_src" (string-downcase clean-line))
                      (setf in-lisp-block nil))
                     (in-lisp-block 
@@ -174,7 +172,7 @@ A static, hardcoded architecture is inherently fragile. The ~opencortex~ Skill E
                 (harness-log "HARNESS: Jailing skill '~a' in package ~a" skill-base-name pkg-name)
                 (unless (find-package pkg-name)
                   (let ((new-pkg (make-package pkg-name :use '(:cl))))
-                    (do-external-symbols (sym (find-package :opencortex)) (shadowing-import sym new-pkg))))
+                    (use-package :opencortex new-pkg)))
                 (let ((*read-eval* nil) (*package* (find-package pkg-name)))
                   (eval (read-from-string (format nil "(progn ~a)" lisp-code))))
                 (setf (skill-entry-status entry) :ready)
@@ -209,7 +207,7 @@ A static, hardcoded architecture is inherently fragile. The ~opencortex~ Skill E
 #+end_src
 
 ** Initializing All Skills (initialize-all-skills)
-#+begin_src lisp :tangle ../src/skills.lisp
+#+begin_src lisp :tangle ../library/skills.lisp
 (defun initialize-all-skills ()
   "Scans the directory defined by SKILLS_DIR and hot-loads skills using topological order."
   (let* ((env-path (uiop:getenv "SKILLS_DIR"))
@@ -255,7 +253,7 @@ A static, hardcoded architecture is inherently fragile. The ~opencortex~ Skill E
 #+end_src
 
 ** Toolbelt Prompt Generation (generate-tool-belt-prompt)
-#+begin_src lisp :tangle ../src/skills.lisp
+#+begin_src lisp :tangle ../library/skills.lisp
 (defun generate-tool-belt-prompt ()
   "Aggregates all registered cognitive tools into a descriptive prompt."
   (let ((output (format nil "AVAILABLE TOOLS:
@@ -280,7 +278,7 @@ EXAMPLES:
 
 ** The Default Tool Belt
 *** The Eval Tool (Internal Inspection)
-#+begin_src lisp :tangle ../src/skills.lisp
+#+begin_src lisp :tangle ../library/skills.lisp
 (def-cognitive-tool :eval "Evaluates raw Common Lisp code in the harness image. Use this for complex calculations or internal state inspection."
   ((:code :type :string :description "The Lisp code to evaluate"))
   :guard (lambda (args context)
@@ -298,7 +296,7 @@ EXAMPLES:
 #+end_src
 
 *** The Grep Tool (File Discovery)
-#+begin_src lisp :tangle ../src/skills.lisp
+#+begin_src lisp :tangle ../library/skills.lisp
 (def-cognitive-tool :grep-search "Searches for a pattern in the project files."
   ((:pattern :type :string :description "The regex pattern to search for")
    (:dir :type :string :description "Directory to search in (default is project root)"))
@@ -310,7 +308,7 @@ EXAMPLES:
 #+end_src
 
 *** The Shell Tool (Machine Actuation)
-#+begin_src lisp :tangle ../src/skills.lisp
+#+begin_src lisp :tangle ../library/skills.lisp
 (def-cognitive-tool :shell "Executes a shell command on the local machine. Use this for file operations, system checks, or running tests."
   ((:cmd :type :string :description "The full bash command to execute"))
   :guard (lambda (args context)

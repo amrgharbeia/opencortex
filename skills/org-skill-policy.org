@@ -13,7 +13,7 @@ The *opencortex* is a probabilistic-deterministic harness for a personal operati
 * Package Context
 Every skill executes within its own jailed package namespace, while inheriting core harness symbols.
 
-#+begin_src lisp :tangle ../src/policy.lisp
+#+begin_src lisp :tangle ../library/gen/org-skill-policy.lisp
 (in-package :opencortex)
 #+end_src
 
@@ -23,7 +23,7 @@ This document contains the *Core System Policy*. These are non-negotiable philos
 ** 1. Autonomy Above All
 Every action must increase the user's independence from centralized, proprietary platforms. If a tool or library introduces a dependency on a non-autonomous entity, it must be flagged for replacement.
 
-#+begin_src lisp :tangle ../src/policy.lisp
+#+begin_src lisp :tangle ../library/gen/org-skill-policy.lisp
 (defun policy-check-autonomy (action context)
   "Ensures the action does not violate the Autonomy invariant."
   (declare (ignore context))
@@ -47,7 +47,7 @@ Prioritize local, energy-efficient, and offline-first architectures. The "Memex"
 * The Policy Gate
 The main deterministic entry point for the policy skill. It orchestrates the various invariant checks and delegates to engineering standards.
 
-#+begin_src lisp :tangle ../src/policy.lisp
+#+begin_src lisp :tangle ../library/gen/org-skill-policy.lisp
 (defun policy-deterministic-gate (action context)
   "The main policy gate. Sub-calls engineering standards if available."
   (let ((current-action (policy-check-autonomy action context)))
@@ -64,7 +64,7 @@ The main deterministic entry point for the policy skill. It orchestrates the var
 Every action performed by an agent in this environment must also adhere to the [[file:org-skill-engineering-standards.org][Engineering Standards]].
 
 ** Skill Registration
-#+begin_src lisp :tangle ../src/policy.lisp
+#+begin_src lisp :tangle ../library/gen/org-skill-policy.lisp
 (defskill :skill-policy
   :priority 100
   :trigger (lambda (ctx) t)

@@ -18,7 +18,7 @@ flowchart TD
 #+end_src
 
 ** Public API Export
-#+begin_src lisp :tangle ../src/package.lisp
+#+begin_src lisp :tangle ../library/package.lisp
 (defpackage :opencortex
   (:use :cl)
   (:export 
@@ -138,7 +138,7 @@ flowchart TD
    #:find-headline-missing-id))
 #+end_src
 
-#+begin_src lisp :tangle ../src/package.lisp
+#+begin_src lisp :tangle ../library/package.lisp
 (in-package :opencortex)
 
 (defun proto-get (plist key)
@@ -151,7 +151,7 @@ flowchart TD
 
 #+end_src
 
-#+begin_src lisp :tangle ../src/package.lisp
+#+begin_src lisp :tangle ../library/package.lisp
 (in-package :opencortex)
 
 (defun proto-get (plist key)
@@ -165,27 +165,27 @@ flowchart TD
 #+end_src
 
 ** Package Implementation
-#+begin_src lisp :tangle ../src/package.lisp
+#+begin_src lisp :tangle ../library/package.lisp
 (in-package :opencortex)
 #+end_src
 
 ** Harness Logging State
 The harness maintains a thread-safe circular log buffer to provide context for debugging and neural reasoning.
 
-#+begin_src lisp :tangle ../src/package.lisp
+#+begin_src lisp :tangle ../library/package.lisp
 (defvar *system-logs* nil)
 (defvar *logs-lock* (bt:make-lock "harness-logs-lock"))
 (defvar *max-log-history* 100)
 #+end_src
 
 ** Skills Registry
-#+begin_src lisp :tangle ../src/package.lisp
+#+begin_src lisp :tangle ../library/package.lisp
 (defvar *skills-registry* (make-hash-table :test 'equal)
   "Global registry of all loaded skills.")
 #+end_src
 
 ** Skill Telemetry State
-#+begin_src lisp :tangle ../src/package.lisp
+#+begin_src lisp :tangle ../library/package.lisp
 (defvar *skill-telemetry* (make-hash-table :test 'equal))
 (defvar *telemetry-lock* (bt:make-lock "harness-telemetry-lock"))
 #+end_src
@@ -193,7 +193,7 @@ The harness maintains a thread-safe circular log buffer to provide context for d
 ** Telemetry Implementation
 The system tracks the performance and reliability of individual skills. This logic is currently preserved in the package layer for future expansion into a dedicated telemetry skill.
 
-#+begin_src lisp :tangle ../src/package.lisp
+#+begin_src lisp :tangle ../library/package.lisp
 (defun harness-track-telemetry (skill-name duration status)
   "Updates performance metrics for a specific skill. Status should be :success or :rejected."
   (when skill-name 
@@ -208,7 +208,7 @@ The system tracks the performance and reliability of individual skills. This log
 ** Cognitive Tool Registry
 The Tool Registry allows the agent to interact with the physical world. Every tool must define a guard (for security) and a body (for execution).
 
-#+begin_src lisp :tangle ../src/package.lisp
+#+begin_src lisp :tangle ../library/package.lisp
 (defvar *cognitive-tools* (make-hash-table :test 'equal))
 
 (defstruct cognitive-tool
@@ -231,7 +231,7 @@ The Tool Registry allows the agent to interact with the physical world. Every to
 ** Harness Logging Implementation
 Centralized logging function. It simultaneously writes to standard output and the in-memory circular buffer.
 
-#+begin_src lisp :tangle ../src/package.lisp
+#+begin_src lisp :tangle ../library/package.lisp
 (defun harness-log (msg &rest args)
   "Centralized logging for the harness."
   (let ((formatted-msg (apply #'format nil msg args)))

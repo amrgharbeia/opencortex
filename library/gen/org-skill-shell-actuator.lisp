@@ -1,18 +1,3 @@
-:PROPERTIES:
-:ID:       shell-actuator-skill
-:CREATED:  [2026-04-12 Sun]
-:END:
-#+TITLE: SKILL: Shell Actuator (Secure Host Interaction)
-#+STARTUP: content
-#+FILETAGS: :actuator:shell:system:autonomy:
-
-* Overview
-The *Shell Actuator* provides a controlled interface for the OpenCortex to execute commands on the host operating system.
-
-* Implementation
-
-#+begin_src lisp :tangle ../library/gen/org-skill-shell-actuator.lisp
-
 (defparameter *allowed-commands* '("ls" "git" "rg" "grep" "date" "echo" "cat" "node" "python3" "sbcl"))
 
 (defparameter *shell-metacharacters* '(#\; #\& #\| #\> #\< #\$ #\` #\\ #\!))
@@ -69,4 +54,3 @@ STDERR: ~a" cmd exit-code stdout stderr)))
   :trigger #'trigger-skill-shell-actuator
   :probabilistic #'probabilistic-skill-shell-actuator
   :deterministic (lambda (action context) (declare (ignore context)) action))
-#+end_src
