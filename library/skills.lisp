@@ -1,6 +1,24 @@
 (in-package :opencortex)
 
-(defun COSINE-SIMILARITY (v1 v2) 1.0) ; Stub
+(defun COSINE-SIMILARITY (v1 v2)
+  "Computes the cosine similarity between two vectors.
+Both arguments should be sequences of numbers. Returns a value between -1.0 and 1.0."
+  (let ((len1 (length v1)) (len2 (length v2)))
+    (if (or (zerop len1) (zerop len2))
+        0.0
+        (let ((dot-product 0.0d0)
+              (norm1 0.0d0)
+              (norm2 0.0d0))
+          (let ((len (min len1 len2)))
+            (dotimes (i len)
+              (let ((x (coerce (elt v1 i) 'double-float)))
+                (let ((y (coerce (elt v2 i) 'double-float)))
+                  (incf dot-product (* x y))
+                  (incf norm1 (* x x))
+                  (incf norm2 (* y y))))))
+          (if (or (zerop norm1) (zerop norm2))
+              0.0
+              (/ dot-product (sqrt (* norm1 norm2))))))))
 (defun VAULT-MASK-STRING (s) "[MASKED]") ; Stub
 (defvar *VAULT-MEMORY* (make-hash-table :test 'equal))
 

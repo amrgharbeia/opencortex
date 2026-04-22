@@ -91,29 +91,41 @@
                   (uiop:merge-pathnames* "memory.snap" (user-homedir-pathname)))))))
 
 (defun save-memory-to-disk ()
-  "Serializes *memory* and *history-store* to disk for crash recovery."
+  "Serializes *memory* and *history-store* to disk for crash recovery.
+Converts hash tables to alists for proper serialization."
   (let ((path (ensure-memory-snapshot-path)))
     (with-open-file (stream path :direction :output :if-exists :supersede :if-does-not-exist :create)
       (format stream ";; OpenCortex Memory Snapshot~%")
       (format stream ";; Created: ~a~%~%" (format nil "~a" (get-universal-time)))
-      (prin1 (list :memory *memory* :history-store *history-store*) stream))
+      (let ((memory-alist nil)
+            (history-alist nil))
+        (maphash (lambda (k v) (push (cons k v) memory-alist)) *memory*)
+        (maphash (lambda (k v) (push (cons k v) history-alist)) *history-store*)
+        (prin1 (list :memory memory-alist :history-store history-alist) stream)))
     (harness-log "MEMORY - Saved to ~a" path)
     path))
 
 (defun load-memory-from-disk ()
-  "Loads *memory* and *history-store* from disk if the snapshot exists."
+  "Loads *memory* and *history-store* from disk if the snapshot exists.
+Reconstitutes alists into hash tables."
   (let ((path (ensure-memory-snapshot-path)))
     (when (uiop:file-exists-p path)
       (handler-case
           (with-open-file (stream path :direction :input)
             (let ((data (read stream nil)))
               (when data
-                (setf *memory* (getf data :memory))
-                (setf *history-store* (getf data :history-store))
-                (harness-log "MEMORY - Loaded from ~a (~a objects)" path (hash-table-size *memory*)))))
-        (error (c)
-          (harness-log "MEMORY WARNING - Failed to load snapshot: ~a" c))))
-  t))
+                (let ((memory-alist (getf data :memory))
+                      (history-alist (getf data :history-store)))
+                  (setf *memory* (make-hash-table :test 'equal :size (length memory-alist)))
+                  (dolist (kv memory-alist)
+                    (setf (gethash (car kv) *memory*) (cdr kv)))
+                  (setf *history-store* (make-hash-table :test 'equal :size (length history-alist)))
+                  (dolist (kv history-alist)
+                    (setf (gethash (car kv) *history-store*) (cdr kv)))
+                  (harness-log "MEMORY - Loaded from ~a (~a objects)" path (hash-table-size *memory*))))))
+          (error (c)
+            (harness-log "MEMORY WARNING - Failed to load snapshot: ~a" c))))
+    t))
 
 (defun org-id-new ()
   "Generates a new UUID string for Org-mode identification."
