@@ -36,6 +36,15 @@
         (string-trim '(#\Space #\Newline #\Tab) cleaned))
       text))
 
+(defun normalize-plist-keywords (plist)
+  "Normalize all keys in a plist to keywords (e.g., TYPE -> :TYPE)."
+  (when (listp plist)
+    (loop for (k . rest) on plist by #'cddr
+          collect (if (and (symbolp k) (not (keywordp k)))
+                       (intern (string k) :keyword)
+                       k)
+          collect (car rest))))
+
 (defun think (context)
   "Generates a Lisp action proposal based on current context."
   (let* ((active-skill (find-triggered-skill context))
@@ -50,35 +59,37 @@
                              (if (and p (stringp p)) p "Maintain metabolic stasis."))))
            (system-prompt (format nil "IDENTITY: ~a. MANDATE: Respond with ONE Lisp plist. ~a ~a RECENT_LOGS: ~a
 IMPORTANT: To reply to the user, you MUST use:
-(:TYPE :REQUEST :PAYLOAD (:ACTION :MESSAGE :TEXT "<Response Text>"))
+(:TYPE :REQUEST :PAYLOAD (:ACTION :MESSAGE :TEXT \"<Response Text>\"))
 
 To call a tool, you MUST use:
-(:TYPE :REQUEST :TARGET :TOOL :ACTION :CALL :TOOL "<name>" :ARGS (:arg1 "val"))
+(:TYPE :REQUEST :TARGET :TOOL :ACTION :CALL :TOOL \"<name>\" :ARGS (:arg1 \"val\"))
 
 MANDATORY VALIDATION RULE: Before declaring any Lisp code edit complete, you MUST call the `:validate-lisp` tool with the proposed code. If the tool returns `:status :error`, read the `:reason` and `:failed` fields, fix the defect, and re-validate. You are strictly forbidden from relying on your own paren-balancing or syntax intuition.
 
 PROVIDER RULE: Always use the default cascade provider unless a specific model or capability is required for the task."
-                                  assistant-name global-context tool-belt system-logs)))
+                                     assistant-name global-context tool-belt system-logs)))
       (let* ((thought (probabilistic-call raw-prompt :system-prompt system-prompt :context context))
              (cleaned (strip-markdown thought))
              (meta (proto-get context :meta))
              (source (proto-get meta :source)))
+        (harness-log "THINK: raw cleaned = ~a" (subseq cleaned 0 (min 100 (length cleaned))))
         (if (and cleaned (stringp cleaned))
             (let ((*read-eval* nil))
               (if (and (> (length cleaned) 0) (char= (char cleaned 0) #\())
                   (handler-case 
                       (let ((parsed (read-from-string cleaned)))
-                        (let ((type (proto-get parsed :TYPE))
+                        (harness-log "THINK: parsed = ~a" parsed)
+                        (let ((parsed-normalized (normalize-plist-keywords parsed))
+                              (type (proto-get parsed :TYPE))
                               (target (or (proto-get parsed :TARGET) (proto-get parsed :target))))
                           (cond ((member type '(:REQUEST :EVENT :STATUS :RESPONSE))
                                  (unless (proto-get parsed :target) (setf (getf parsed :target) (or source :CLI)))
-                                 parsed)
-                                ;; Handle raw plists or lists of plists that look like tool calls or data
+                                 parsed-normalized)
                                 ((or (eq target :TOOL) (eq target :tool) (getf parsed :TOOL) (getf parsed :tool)
                                      (and (listp parsed) (listp (car parsed)) (keywordp (caar parsed))))
-                                 (list :TYPE :REQUEST :TARGET :TOOL :PAYLOAD parsed))
+                                 (list :TYPE :REQUEST :TARGET :TOOL :PAYLOAD (normalize-plist-keywords parsed)))
                                 (t (list :TYPE :REQUEST :TARGET (or source :CLI) :PAYLOAD (list :ACTION :MESSAGE :TEXT cleaned))))))
-                    (error (c) (list :TYPE :REQUEST :TARGET (or source :CLI) :PAYLOAD (list :ACTION :MESSAGE :TEXT cleaned))))
+                    (error (c) (harness-log "THINK ERROR: ~a" c) (list :TYPE :REQUEST :TARGET (or source :CLI) :PAYLOAD (list :ACTION :MESSAGE :TEXT cleaned))))
                   (list :TYPE :REQUEST :TARGET (or source :CLI) :PAYLOAD (list :ACTION :MESSAGE :TEXT cleaned))))
             thought)))))
 
@@ -111,8 +122,12 @@ PROVIDER RULE: Always use the default cascade provider unless a specific model o
     (unless (and (eq type :EVENT) (member sensor '(:user-input :chat-message)))
       (return-from reason-gate signal))
     (let ((candidate (think signal)))
-      (if candidate
+      (harness-log "REASON: candidate = ~a" (type-of candidate))
+      (if (and candidate (listp candidate) 
+               (or (keywordp (car candidate)) (eq (car candidate) 'TYPE) (eq (car candidate) 'type)))
           (setf (getf signal :approved-action) (deterministic-verify candidate signal))
-          (setf (getf signal :approved-action) nil))
+          (progn
+            (harness-log "REASON: Invalid candidate type ~a, dropping" (type-of candidate))
+            (setf (getf signal :approved-action) nil)))
       (setf (getf signal :status) :reasoned)
       signal)))
