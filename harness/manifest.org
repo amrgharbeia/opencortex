@@ -4,30 +4,80 @@
 #+STARTUP: content
 
 * Manifest (opencortex.asd)
-** Architectural Intent: The ASDF Skeleton
 
-The ~opencortex.asd~ file is the physical blueprint of the Lisp Machine. It uses **Another System Definition Facility (ASDF)** to orchestrate the compilation and loading of all harness modules. 
+** Architectural Intent: The Thin Harness Philosophy
 
-Traditional Lisp systems often use complex, non-linear dependency graphs. However, the ~opencortex~ harness mandates a strict, linear bootstrap sequence.
+The ~opencortex.asd~ file is the physical blueprint of the Lisp Machine. It uses **ASDF** (Another System Definition Facility) to orchestrate compilation and loading of all harness modules.
 
-*** 1. Strict Serial Loading (:serial t)
-The harness uses the ~:serial t~ flag. This is a critical design choice that ensures every file is compiled and loaded in the exact order it appears in the ~:components~ list. This eliminates "macro-not-found" errors by guaranteeing that the ~package.lisp~ and ~skills.lisp~ (where the core macros are defined) are always established before any behavioral logic or skills are loaded.
+The core design principle is *Thin Harness, Fat Skills*:
 
-*** 2. Isolation of the Verification Suite
-To maintain a "Zero-Overhead" production environment, the testing logic is isolated into a secondary system: ~:opencortex/tests~. This allows the harness to boot in production without loading the ~FiveAM~ framework or the voluminous test data, keeping the memory footprint minimal and the attack surface small.
+- **Harness** = The minimal, unbreakable core (protocol, signal processing, memory)
+- **Skills** = The intelligence layer (policy, validation, actuation, LLM integration)
 
-** The Build Pipeline
+This separation means:
+- The harness rarely changes (immune system)
+- Skills can be hot-loaded, modified, and swapped without touching the core
+- Bugs in skills don't crash the system
+
+** Why ASDF?**
+
+ASDF is the de facto standard for Common Lisp project management. It:
+1. Handles dependency resolution and loading order
+2. Compiles files in the right order (preventing "undefined function" errors)
+3. Supports system building for deployment
+4. Integrates with Quicklisp for dependency management
+
+* The Build Pipeline
+
 #+begin_src mermaid
 flowchart TD
-    Org[Literate Org Files] -- Tangle --> Lisp[Source .lisp Files]
-    Lisp --> ASDF[ASDF Manifest: .asd]
+    Org[Literate Org Files] -- Org-Babel Tangle --> Lisp[Source .lisp Files]
+    Lisp --> ASDF[ASDF Manifest: opencortex.asd]
     ASDF --> Loader[SBCL Compiler / Loader]
     Loader --> Image[Live Harness Image]
     Image -- Build --> Binary[Standalone Binary]
+
+    subgraph Skills["Skills Layer (Dynamic)"]
+        S1[Policy Skill]
+        S2[Bouncer Skill]
+        S3[LLM Gateway]
+        S4[...other skills]
+    end
+
+    Image --> Skills
 #+end_src
 
-** Harness System Definition
-This system defines the core "Thin Harness." It includes the protocol, the object store, and the functional loop.
+* Design Decisions
+
+** Strict Serial Loading
+
+The harness uses ~:serial t~ in the ASDF definition. This means:
+
+1. Files are loaded in order: package → skills → communication → memory → context → perceive → reason → act → loop
+2. ~package.lisp~ is always loaded before any code that uses its symbols
+3. ~skills.lisp~ (defining macros like ~defskill~, ~def-cognitive-tool~) loads before skills
+
+This eliminates "macro not found" errors that plague non-linear loading systems.
+
+** Why Not Module Dependencies?**
+
+Traditional ASDF uses ~:depends-on~ to declare dependencies. We use ~:serial t~ because:
+
+1. *Explicit is better than implicit* - the loading order is visible in one place
+2. *Prevents circular dependencies* - skills are loaded after the harness, never before
+3. *Simpler debugging* - when something fails, the loading order is always clear
+
+** Isolation of Tests
+
+The testing system (~:opencortex/tests~) is separate from the production system (~:opencortex~). This means:
+
+- Production deployments don't load FiveAM (saves memory, reduces attack surface)
+- Tests can be run independently: ~(ql:quickload :opencortex/tests)~
+- Test data doesn't pollute the production image
+
+* System Definitions
+
+** Main Harness System
 
 #+begin_src lisp :tangle ../opencortex.asd
 (defsystem :opencortex
@@ -36,61 +86,144 @@ This system defines the core "Thin Harness." It includes the protocol, the objec
   :version "0.1.0"
   :license "AGPLv3"
   :description "The Probabilistic-Deterministic Lisp Machine Harness"
-  :depends-on (:usocket :bordeaux-threads :dexador :uiop :cl-dotenv :cl-ppcre :hunchentoot :ironclad :str :cl-json :uuid)
-  :serial t
-  :components ((:file "library/package")
-               (:file "library/skills")
-               (:file "library/communication")
-               (:file "library/memory")
-               (:file "library/context")
-               (:file "library/perceive")
-               (:file "library/reason")
-               (:file "library/act")
-               (:file "library/loop"))
+
+  :depends-on (:usocket              ; TCP socket networking
+               :bordeaux-threads     ; Threading (heartbeat, async sensors)
+               :dexador              ; HTTP client (LLM APIs)
+               :uiop                 ; Portable I/O, file operations
+               :cl-dotenv            ; Environment variable loading
+               :cl-ppcre             ; Regular expressions (parsing)
+               :hunchentoot          ; HTTP server (optional web interface)
+               :ironclad             ; Cryptography (Merkle hashing)
+               :str                  ; String utilities
+               :cl-json              ; JSON parsing/serialization
+               :uuid)                ; UUID generation for org-mode IDs
+
+  :serial t                          ; Load files in order listed below
+
+  :components ((:file "library/package")      ; Package definitions, core vars
+               (:file "library/skills")       ; Skill engine, cognitive tools
+               (:file "library/communication") ; Protocol, framing, validation
+               (:file "library/memory")       ; Org-object store, snapshots
+               (:file "library/context")      ; Context assembly, query
+               (:file "library/perceive")    ; Stage 1: Sensory normalization
+               (:file "library/reason")      ; Stage 2: Neural + deterministic
+               (:file "library/act")          ; Stage 3: Actuation
+               (:file "library/loop"))        ; Main entry, heartbeat
+
   :build-operation "program-op"
   :build-pathname "opencortex-server"
   :entry-point "opencortex:main")
 #+end_src
 
-** Verification Suite Definition
-This system contains the empirical tests required by the Engineering Standards. It depends on ~:opencortex~ and the ~FiveAM~ testing framework.
+** Test System
 
 #+begin_src lisp :tangle ../opencortex.asd
 (defsystem :opencortex/tests
-  :depends-on (:opencortex :fiveam)
+  :depends-on (:opencortex           ; The harness we're testing
+               :fiveam)              ; Testing framework
+
   :components ((:file "tests/communication-tests")
                (:file "tests/pipeline-tests")
                (:file "tests/act-tests")
                (:file "tests/boot-sequence-tests")
                (:file "tests/memory-tests")
                (:file "tests/immune-system-tests"))
-  :perform (test-op (o s) 
-             (uiop:symbol-call :fiveam :run! (uiop:find-symbol* :communication-protocol-suite :opencortex-tests))
-             (uiop:symbol-call :fiveam :run! (uiop:find-symbol* :pipeline-suite :opencortex-pipeline-tests))
-             (uiop:symbol-call :fiveam :run! (uiop:find-symbol* :safety-suite :opencortex-safety-tests))
-             (uiop:symbol-call :fiveam :run! (uiop:find-symbol* :boot-suite :opencortex-boot-tests))
-             (uiop:symbol-call :fiveam :run! (uiop:find-symbol* :memory-suite :opencortex-memory-tests))
-             (uiop:symbol-call :fiveam :run! (uiop:find-symbol* :immune-suite :opencortex-immune-system-tests))))
+
+  :perform (test-op (o s)
+             (uiop:symbol-call :fiveam :run! :communication-protocol-suite)
+             (uiop:symbol-call :fiveam :run! :pipeline-suite)
+             (uiop:symbol-call :fiveam :run! :safety-suite)
+             (uiop:symbol-call :fiveam :run! :boot-suite)
+             (uiop:symbol-call :fiveam :run! :memory-suite)
+             (uiop:symbol-call :fiveam :run! :immune-suite)))
 #+end_src
 
-** TUI Client Definition
-This system defines the native Croatoan TUI client.
+** TUI Client System
 
 #+begin_src lisp :tangle ../opencortex.asd
 (defsystem :opencortex/tui
-  :depends-on (:opencortex :croatoan :usocket :bordeaux-threads)
+  :depends-on (:opencortex           ; The daemon we're connecting to
+               :croatoan            ; Terminal UI library
+               :usocket              ; Socket communication
+               :bordeaux-threads)    ; Background listening thread
+
   :components ((:file "library/tui-client")))
 #+end_src
 
 * The Harness Boundary Contract
-The harness is the minimal, unbreakable core of OpenCortex. It consists of the literate source files that define the kernel and the system manifest. Any proposed modification to these files must be justified, because the harness is the system's immune system and must never grow fat.
+
+** Why a Boundary Contract?
+
+The harness is the immune system of OpenCortex. If it grows fat (accumulating features, dependencies, complexity), it becomes harder to:
+- Verify for security
+- Debug when things go wrong
+- Maintain across versions
+
+The Boundary Contract defines what IS the harness vs. what belongs in skills.
 
 ** Primary Boundary Files
-- ~harness/*.org~ — The literate source of truth for all kernel modules.
-- ~opencortex.asd~ — The ASDF system manifest.
 
-** Generated Artifacts (NOT Primary Boundary)
-The files in ~library/*.lisp~ are derivative artifacts produced by tangling the harness Org files. They are NOT primary boundary files; modifying them directly violates the Engineering Standard of Literate-Only Modification. Any change to the harness must be made in the corresponding Org file and then tangled.
+| File | Purpose | Modification |
+|------|---------|--------------|
+| ~harness/*.org~ | Literate source of truth | Only via Org edits + tangle |
+| ~opencortex.asd~ | System manifest | Only via Org edits + tangle |
+| ~library/*.lisp~ | Tangled from .org | NEVER edit directly |
 
-** Enforcement
-The Policy skill's ~*modularity-protected-paths*~ variable guards the primary boundary locations by default. Any agent action that proposes to modify a file within these paths must include a ~:modularity-justification~ field explaining why the change cannot be implemented as a skill.
+** Generated Artifacts (NOT Primary)
+
+The ~library/*.lisp~ files are tangles from the ~harness/*.org~ files. They are derivative artifacts. Direct modification violates the Literate Granularity standard.
+
+** Protected Paths
+
+The Policy skill guards these paths by default:
+
+#+begin_src lisp
+(defvar *modularity-protected-paths*
+  '("harness/"
+    "opencortex.asd"
+    "library/package.lisp"
+    "library/communication.lisp"
+    "library/memory.lisp"
+    "library/context.lisp"
+    "library/perceive.lisp"
+    "library/reason.lisp"
+    "library/act.lisp"
+    "library/loop.lisp"))
+#+end_src
+
+Any agent action proposing to modify these files must include a ~:modularity-justification~ field explaining why the change cannot be implemented as a skill.
+
+** Enforcement Chain
+
+1. *Policy Skill* (priority 500) - Checks for missing justifications
+2. *Bouncer Skill* (priority 100) - Intercepts unauthorized modifications
+3. *Git Hooks* (optional) - Prevents direct .lisp commits
+
+* Quick Reference
+
+** Building the System
+
+#+begin_src bash
+# Development: Load source
+(ql:quickload :opencortex)
+
+# Build standalone binary
+(asdf:make :opencortex)
+
+# Run tests
+(ql:quickload :opencortex/tests)
+(asdf:test-system :opencortex/tests)
+#+end_src
+
+** Loading Order
+
+1. ~library/package.lisp~ - Creates ~:opencortex~ package
+2. ~library/skills.lisp~ - Defines ~defskill~, ~def-cognitive-tool~ macros
+3. ~library/communication.lisp~ - Protocol, framing, validation
+4. ~library/memory.lisp~ - Org-object, Merkle tree, snapshots
+5. ~library/context.lisp~ - Context assembly functions
+6. ~library/perceive.lisp~ - Stage 1: Perceive gate
+7. ~library/reason.lisp~ - Stage 2: Reason (think + verify)
+8. ~library/act.lisp~ - Stage 3: Act (dispatch + execute)
+9. ~library/loop.lisp~ - Main entry point, heartbeat
