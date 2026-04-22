@@ -51,6 +51,10 @@ Every element in the Memex (headlines, paragraphs, etc.) is represented by an `o
 #+begin_src lisp :tangle ../library/memory.lisp
 (defstruct org-object
   id type attributes content vector parent-id children version last-sync hash)
+
+;; Enable serialization via make-load-form (standard CL)
+(defmethod make-load-form ((obj org-object) &optional env)
+  (make-load-form-saving-slots obj :environment env))
 #+end_src
 
 ** Merkle Tree Integrity (compute-merkle-hash)
