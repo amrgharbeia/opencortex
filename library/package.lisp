@@ -40,6 +40,8 @@
    #:org-object-hash
    #:snapshot-memory
    #:rollback-memory
+   #:save-memory-to-disk
+   #:load-memory-from-disk
    
    ;; --- Context API (Peripheral Vision) ---
    #:context-query-store

@@ -79,6 +79,42 @@
                (harness-log "MEMORY - Memory rolled back to snapshot ~a" index))
         (harness-log "MEMORY ERROR - Snapshot ~a not found." index))))
 
+(defvar *memory-snapshot-path* nil
+  "Path to the memory snapshot file. Set from MEMORY_SNAPSHOT_PATH env or default.")
+
+(defun ensure-memory-snapshot-path ()
+  "Initializes the snapshot path from environment or default location."
+  (or *memory-snapshot-path*
+      (let ((env-path (uiop:getenv "MEMORY_SNAPSHOT_PATH")))
+        (setf *memory-snapshot-path*
+              (or env-path
+                  (uiop:merge-pathnames* "memory.snap" (user-homedir-pathname)))))))
+
+(defun save-memory-to-disk ()
+  "Serializes *memory* and *history-store* to disk for crash recovery."
+  (let ((path (ensure-memory-snapshot-path)))
+    (with-open-file (stream path :direction :output :if-exists :supersede :if-does-not-exist :create)
+      (format stream ";; OpenCortex Memory Snapshot~%")
+      (format stream ";; Created: ~a~%~%" (format nil "~a" (get-universal-time)))
+      (prin1 (list :memory *memory* :history-store *history-store*) stream))
+    (harness-log "MEMORY - Saved to ~a" path)
+    path))
+
+(defun load-memory-from-disk ()
+  "Loads *memory* and *history-store* from disk if the snapshot exists."
+  (let ((path (ensure-memory-snapshot-path)))
+    (when (uiop:file-exists-p path)
+      (handler-case
+          (with-open-file (stream path :direction :input)
+            (let ((data (read stream nil)))
+              (when data
+                (setf *memory* (getf data :memory))
+                (setf *history-store* (getf data :history-store))
+                (harness-log "MEMORY - Loaded from ~a (~a objects)" path (hash-table-size *memory*)))))
+        (error (c)
+          (harness-log "MEMORY WARNING - Failed to load snapshot: ~a" c))))
+  t))
+
 (defun org-id-new ()
   "Generates a new UUID string for Org-mode identification."
   (string-downcase (format nil "~a" (uuid:make-v4-uuid))))

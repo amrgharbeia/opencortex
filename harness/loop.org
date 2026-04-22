@@ -65,14 +65,27 @@ The `process-signal` function is the core metabolic processor. It iterates throu
 The heartbeat ensures the agent remains "alive" even in the absence of external stimuli, allowing for latent reflection and periodic maintenance. The interval is externalized to the `HEARTBEAT_INTERVAL` environment variable.
 
 #+begin_src lisp :tangle ../library/loop.lisp
+(defvar *auto-save-interval* 300
+  "Save memory to disk every N seconds. Set from MEMORY_AUTO_SAVE_INTERVAL env.")
+
+(defvar *heartbeat-save-counter* 0
+  "Counter for auto-save triggers.")
+
 (defun start-heartbeat ()
   "Starts the background heartbeat thread. Interval is loaded from HEARTBEAT_INTERVAL."
-  (let ((interval (or (ignore-errors (parse-integer (uiop:getenv "HEARTBEAT_INTERVAL"))) 60)))
+  (let ((interval (or (ignore-errors (parse-integer (uiop:getenv "HEARTBEAT_INTERVAL"))) 60))
+        (auto-save (or (ignore-errors (parse-integer (uiop:getenv "MEMORY_AUTO_SAVE_INTERVAL"))) *auto-save-interval*)))
+    (setf *auto-save-interval* auto-save)
+    (setf *heartbeat-save-counter* 0)
     (setf *heartbeat-thread* 
           (bt:make-thread 
            (lambda () 
              (loop 
                (sleep interval) 
+               (incf *heartbeat-save-counter*)
+               (when (>= *heartbeat-save-counter* (/ *auto-save-interval* interval))
+                 (setf *heartbeat-save-counter* 0)
+                 (save-memory-to-disk))
                ;; inject-stimulus is synchronous for heartbeats, preventing accumulation.
                (inject-stimulus (list :type :EVENT :payload (list :sensor :heartbeat :unix-time (get-universal-time)))))) 
            :name "opencortex-heartbeat"))))
@@ -82,12 +95,18 @@ The heartbeat ensures the agent remains "alive" even in the absence of external 
 The `main` function initializes the environment, loads skills, and starts the heartbeat. It now includes a graceful shutdown handler for `SIGINT` (Ctrl+C) and uses `DAEMON_SLEEP_INTERVAL` to control its idle rhythm.
 
 #+begin_src lisp :tangle ../library/loop.lisp
+(defvar *shutdown-save-enabled* t
+  "If non-nil, save memory to disk on graceful shutdown.")
+
 (defun main ()
   "Entry point for the Skeleton MVP. Handles initialization and graceful shutdown."
   (let* ((home (uiop:getenv "HOME"))
          (env-file (uiop:merge-pathnames* ".local/share/opencortex/.env" (uiop:ensure-directory-pathname home))))
     (when (uiop:file-exists-p env-file) (cl-dotenv:load-env env-file)))
-  
+
+  ;; Load memory from disk if a snapshot exists
+  (load-memory-from-disk)
+
   (initialize-actuators)
   (initialize-all-skills)
 
@@ -98,11 +117,15 @@ The `main` function initializes the environment, loads skills, and starts the he
   (sb-sys:enable-interrupt sb-unix:sigint 
                            (lambda (sig code scp) 
                              (declare (ignore sig code scp)) 
-                             (harness-log "SHUTDOWN: SIGINT received. Exiting...")
+                             (harness-log "SHUTDOWN: SIGINT received. Saving memory...")
+                             (when *shutdown-save-enabled* (save-memory-to-disk))
                              (uiop:quit 0)))
 
   (let ((sleep-interval (or (ignore-errors (parse-integer (uiop:getenv "DAEMON_SLEEP_INTERVAL"))) 3600)))
     (loop 
-      (when (bt:with-lock-held (*interrupt-lock*) *interrupt-flag*) (return))
+      (when (bt:with-lock-held (*interrupt-lock*) *interrupt-flag*)
+        (harness-log "SHUTDOWN: Interrupt flag set. Saving memory...")
+        (when *shutdown-save-enabled* (save-memory-to-disk))
+        (return))
       (sleep sleep-interval))))
 #+end_src
