@@ -204,55 +204,14 @@ The Active Brain is built from the Source of Truth on boot and kept in sync via:
 
 * The Evolutionary Roadmap
 
-openCortex's roadmap is designed working backwards from SOTA parity (V 1.0.0), guided by a critical analysis of four reference systems: OpenCode, Claude Code (leaked source), GBrain, and OpenClaw/Hermes. Every borrowed concept is reimplemented in pure Lisp. Every rejected pattern is documented.
+The roadmap is designed working backwards from SOTA parity (V 1.0.0), guiding each version toward a fully autonomous, self-editing agent. Each version builds on the previous, with features designed to be implemented in pure Common Lisp + Org-mode.
 
 ** Non-Negotiable Identity
 - Pure Common Lisp + Org-mode. No JSON. No YAML. No external databases.
-- Single-address-space memory (Lisp hash tables in RAM — we *are* the memory).
+- Single-address-space memory (Lisp hash tables in RAM — the agent IS the memory).
 - "Thin harness, fat skills" — complexity lives at the edges, not the kernel.
-- One agent composed of many skills. No sub-agent topologies.
+- One agent composed of many skills. Concurrency via bordeaux-threads (shared memory).
 - Plists everywhere — homoiconic communication between all components.
-
-*** OpenCode: Borrowed / Rejected
-
-| Feature | Decision | Rationale |
-|---------|----------|-----------|
-| Permission filtering before LLM sees tools | BORROW | Hook into =generate-tool-belt-prompt= to exclude denied tools. We have =:guard= but no pre-filter. |
-| Hook system (session start/end) | BORROW | Already designing event-orchestrator. Expose via =#+HOOK:= properties. |
-| Skills with YAML frontmatter | REJECT | Our Org-mode =:PROPERTIES:= + =#+FILETAGS= already do this. |
-
-*** Claude Code: Borrowed / Rejected
-
-| Feature | Decision | Rationale |
-|---------|----------|-----------|
-| ULTRAPLAN / structured task decomposition | BORROW (reimplement) | LLM already generates plist actions. Add task-tree skill that decomposes into Org-mode headline DAGs with terminal states. |
-| 43 integrated tools | BORROW (approach) | Start with ~3. Build more as skills. Keep =def-cognitive-tool= pattern. |
-| 4-tier permission chain (ask/allow/deny) | BORROW (concept) | Three-tier per-tool permission: ask/allow/deny stored in org-objects. |
-| Multi-agent hub-and-spoke topology | REJECT | We have one agent. Concurrency via bordeaux-threads (shared memory). Skills ARE the specialization — intra-process, not inter-process. |
-| Mailbox pattern for dangerous ops | REJECT | Jailed skill packages + Policy skill already provide isolation. Bouncer gate satisfies "worker can't self-approve". |
-
-*** GBrain: Borrowed / Rejected
-
-| Feature | Decision | Rationale |
-|---------|----------|-----------|
-| RESOLVER.md intent routing | BORROW (concept) | =find-triggered-skill= already does this. Enhance with multi-skill triggers for complex intents. |
-| Three search modes (keyword, hybrid, direct) | BORROW | Keep keyword + direct. Hybrid/vector via local Ollama embeddings — no external DBs. |
-| Memory segmentation (brain/agent/session) | BORROW (concept) | Extend org-object with =:scope= property: =:memex= (permanent), =:session= (ephemeral), =:project= (scoped). |
-| 20+ cron jobs for background work | BORROW (concept) | Heartbeat already does this. Enhance with Event Orchestrator's cron registry — pure Lisp. |
-| Sub-agent model routing for cost | BORROW (concept) | Our =*model-selector-fn*= already selects models. Extend to route by complexity tier. |
-| Postgres + pgvector | REJECT | Single-address-space hash tables. No external databases. |
-
-*** opencortex-contrib: Integrate / Reject
-
-| Skill | Decision | Rationale |
-|-------|----------|-----------|
-| self-fix + lisp-repair | INTEGRATE | Merge into =org-skill-self-edit=. Our memory has snapshot/rollback. Add =repair-file= as cognitive tool. |
-| event-orchestrator | INTEGRATE | Merge hooks + cron + routing into ONE skill. Our loop has no unified orchestration. |
-| formal-verification | INTEGRATE | =def-invariant= macro + =verify-action-formally= belong in =org-skill-policy.org= as additional checks. |
-| engineering-standards | INTEGRATE | Git-clean-p gate + "Commit Before Modify" belong in Policy. |
-| sub-agent-manager | REJECT | Redundant with BT threads. Our =defskill= pattern (trigger + probabilistic + deterministic) is intra-process specialization — same goal, zero process overhead. |
-| embedding-generator | BORROW | Ollama embeddings for semantic search — no external vector DB. |
-| playwright + web-research | DEFER | V 0.5.0. Browser automation via Python bridge. |
 
 ** Version Roadmap
 
@@ -277,98 +236,104 @@ The secure, auditable Lisp kernel. All core infrastructure in place.
 
 *** v0.2.0: Self-Improvement + Local LLMs — NEXT
 
-Priority: Self-editing is the foundation of all growth. Full org-mode manipulation makes the agent a true Emacs citizen.
+Self-editing is the foundation of all future growth. Full org-mode manipulation makes the agent a true Emacs citizen.
 
-| Feature | Source | Implementation |
-|---------|--------|----------------|
-| org-skill-self-edit (self-modification) | contrib self-fix + lisp-repair | Hook into =:syntax-error= events. Deterministic: auto-balance parens. Probabilistic: LLM surgical fix. Memory rollback on failure. |
-| org-skill-emacs-edit (full org manipulation) | Own need | Read org buffers, parse AST, create/update/delete headlines, set properties, manage TODO, handle links. Uses org-element. |
-| Local vector search (Ollama embeddings) | contrib embedding-generator | =generate-embeddings= via Ollama. Add =:vector= to org-object. Semantic search with cosine similarity. |
-| Tool permission tiers (ask/allow/deny) | Claude Code | Per-tool permission plist in org-object. =generate-tool-belt-prompt= filters denied tools. |
-| Skill hot-reload (=:reload-skill= tool) | Own need | Swap compiled skill files without breaking sockets. |
+| Feature | Description |
+|---------|-------------|
+| org-skill-self-edit | Hook into =:syntax-error= events. Deterministic: auto-balance parens. Probabilistic: LLM surgical fix with memory rollback on failure. |
+| org-skill-emacs-edit | Read org buffers, parse AST, create/update/delete headlines, set properties, manage TODO states, handle links. |
+| Local vector search | =generate-embeddings= via Ollama. Add =:vector= to org-object. Semantic search with cosine similarity. |
+| Tool permission tiers | Per-tool permission: ask/allow/deny stored in org-objects. Filter tools before LLM sees them. |
+| Skill hot-reload | Swap compiled skill files without breaking active sockets. |
 
 *** v0.3.0: Event Orchestration + Context Awareness
 
-Priority: Unified control plane, deep project understanding before complex work.
+Unified control plane for deep project understanding before complex work.
 
-| Feature | Source | Implementation |
-|---------|--------|----------------|
-| org-skill-event-orchestrator (hooks+cron+routing) | contrib event-orchestrator | Merge *hook-registry* + *cron-registry* + complexity classifier. Hooks via =#+HOOK:=. Three tiers: =:REFLEX= (no LLM), =:COGNITION= (light LLM), =:REASONING= (full LLM). |
-| org-skill-context-manager (project scoping) | contrib context-manager | Stack-based context. =push-context= / =pop-context=. Path resolution relative to current context. |
-| Memory scope segmentation | GBrain | =:scope= on org-objects: memex/session/project. Scope-aware retrieval. |
-| Model-tier routing (cost optimization) | GBrain | Heartbeat → smallest model. User input → medium. Complex reasoning → large. |
-| Slash commands (TUI ergonomics) | Own need | =M-x= style command palette. =/-= prefix. Commands defined in org-mode. |
+| Feature | Description |
+|---------|-------------|
+| org-skill-event-orchestrator | Unified hooks + cron + routing. Three tiers: =:REFLEX= (no LLM), =:COGNITION= (light LLM), =:REASONING= (full LLM). |
+| org-skill-context-manager | Stack-based project scoping. =push-context= / =pop-context=. Path resolution relative to context. |
+| Memory scope segmentation | =:scope= property on org-objects: memex/session/project. Scope-aware retrieval. |
+| Model-tier routing | Complexity-based model selection: heartbeat → tiny, user → medium, reasoning → large. |
+| Slash commands | =M-x= style command palette in TUI. Commands defined in Org-mode. |
 
 *** v0.4.0: Long-Horizon Planning + Git Workflows
 
-Priority: Real engineering work spans dozens of steps. Structured tracking, failure handling, course correction.
+Structured tracking, failure handling, and course correction for multi-step engineering work.
 
-| Feature | Source | Implementation |
-|---------|--------|----------------|
-| org-skill-long-horizon (task tree DAG) | Claude Code ULTRAPLAN | Decompose tasks into Org-mode headline trees. Terminal states: =:done= / =:blocked= / =:stuck=. Parent summarises children. Branch pruning. |
-| org-skill-git-steward (version control) | contrib git-steward | Status, diff, commit, push, branch. Policy enforces commit-before-modify. |
-| TDD runner integration | contrib tdd-runner | FiveAM on file save. =:test-failure= events. Hook into self-fix for auto-repair. |
-| Deep Emacs integration | Own need | Full org-agenda awareness. Clock time, refile, archive. |
+| Feature | Description |
+|---------|-------------|
+| org-skill-long-horizon | Decompose tasks into Org-mode headline trees. Terminal states: =:done= / =:blocked= / =:stuck=. Parent summarises children. Branch pruning. |
+| org-skill-git-steward | Status, diff, commit, push, branch. Policy enforces commit-before-modify. |
+| TDD runner | FiveAM on file save. =:test-failure= events. Hook into self-fix for auto-repair. |
+| Deep Emacs integration | Full org-agenda awareness. Navigate, clock time, refile, archive. |
 
 *** v0.5.0: Creator + Architect + GTD
 
-Priority: Agent bootstraps itself. Creates skills autonomously, designs projects from PRDs, tracks work.
+The agent bootstraps itself: creates skills autonomously, designs projects from PRDs, manages work.
 
-| Feature | Source | Implementation |
-|---------|--------|----------------|
-| org-skill-creator (autonomous skill generation) | contrib creator | LLM drafts complete skill org-file. Mandatory: syntax validation → jail-load → test → register. |
-| org-skill-architect (PRD → PROTOCOL) | contrib architect | Scan =:STATUS: FROZEN= PRDs. Generate Phase B PROTOCOL. |
-| org-skill-gtd (project tracking) | contrib gtd | Full GTD cycle. org-gtd v4.0 DAG (=:TRIGGER:=, =:BLOCKER:=). |
-| Consensus loop (multi-model agreement) | contrib consensus | Run multiple providers, compare results, detect disagreements. |
-| Web research (Playwright browsing) | contrib playwright | Headless Chromium via Python bridge. Gemini Web UI automation. |
+| Feature | Description |
+|---------|-------------|
+| org-skill-creator | LLM drafts complete skill org-file from natural language. Mandatory: syntax validation → jail-load → test → register. |
+| org-skill-architect | Scan =:STATUS: FROZEN= PRDs. Generate Phase B PROTOCOL. |
+| org-skill-gtd | Full GTD cycle: capture, clarify, organize, reflect, engage. org-gtd v4.0 DAG (=:TRIGGER:=, =:BLOCKER:=). |
+| Consensus loop | Run multiple providers for critical decisions. Compare results, detect disagreements. |
+| Web research | Headless Chromium via Python bridge. Text extraction, screenshots, Gemini Web UI automation. |
 
 *** v1.0.0: SOTA Parity
 
-Feature-complete agent, competitive with commercial agents. All borrowed concepts reimplemented in pure Lisp.
+Feature-complete agent competitive with commercial agents. All features reimplemented in pure Lisp.
 
 | Area | Status | Notes |
 |------|--------|-------|
-| Self-improvement | ✅ v0.2.0 | Self-edit + lisp-repair = Claude Code self-debug parity |
-| Planning | ✅ v0.4.0 | Task tree DAGs = ULTRAPLAN equivalent |
-| Tool ecosystem | 🟡 v0.4.0 | 10+ tools (expand from 3) |
+| Self-improvement | ✅ v0.2.0 | Self-edit + lisp-repair |
+| Planning | ✅ v0.4.0 | Task tree DAGs with terminal states |
+| Tool ecosystem | 🟡 v0.4.0 | 10+ cognitive tools |
 | Context window | ✅ v0.3.0 | Semantic search + scope segmentation |
 | Safety | ✅ v0.1.0 | 6 Policy invariants + formal verification |
-| Multi-step tasks | ✅ v0.4.0 | Task trees with terminal states |
-| Code editing | ✅ v0.2.0 | Full file read/write via org manipulation |
-| Memory | 🟡 v0.2.0 | Add vector recall to org-object |
-| Emacs integration | ✅ v0.2.0 | Full org-mode control — exceeds Claude Code |
-| Autonomy | ✅ v0.1.0 | 100% local capable (Ollama) — exceeds Claude Code |
+| Multi-step tasks | ✅ v0.4.0 | Task trees with failure handling |
+| Code editing | ✅ v0.2.0 | Full org-mode file read/write |
+| Memory | ✅ v0.2.0 | Vector recall in org-object |
+| Emacs integration | ✅ v0.2.0 | Full org-mode control |
+| Autonomy | ✅ v0.1.0 | 100% local capable (Ollama) |
 
 *** v2.0.0: Lisp Machine Emergence
 
-The agent moves from "using Lisp" to "being Lisp."
+From Lisp-using agent to true Lisp machine. Agent IS the Emacs process.
 
-| Feature | Implementation |
-|---------|----------------|
-| Lisp editor (Lish) | Org-mode as IDE. Org-babel for interactive evaluation. Full REPL in TUI. |
-| Shell replacement (Lish) | Lisp-based shell that speaks plists. Org-mode buffers as file system. |
+| Feature | Description |
+|---------|-------------|
+| Lish: Lisp editor | Org-mode as IDE. Org-babel for interactive evaluation. Full REPL in TUI. No bridge needed. |
+| Lish: Shell replacement | Lisp-based shell that speaks plists. Org-mode buffers as file system. |
 
 *** v3.0.0: Neurosymbolic Maturity
 
-| Feature | Implementation |
-|---------|----------------|
-| Deterministic planner | Planner as pure Lisp function. No LLM for scheduling. |
+Deterministic planner takes the wheel. LLM relegated to semantic translation.
+
+| Feature | Description |
+|---------|-------------|
+| Deterministic planner | Pure Lisp task scheduler. No LLM needed for planning. |
 | Self-correcting gates | Gates learn from false positives (user override patterns). |
 
 *** v4.0.0: AI Stack Internalized
 
-| Feature | Implementation |
-|---------|----------------|
-| Llama.cpp in Lisp | FFI binding to llama.cpp. No Python. |
-| Weights as sexps | Neural weights as Lisp data structures. |
+The agent understands its own weights. No external inference.
+
+| Feature | Description |
+|---------|-------------|
+| Llama.cpp in Lisp | FFI binding. No Python subprocess. Pure Common Lisp inference. |
+| Weights as sexps | Neural weights as Lisp data structures. Homoiconic model introspection. |
 
 *** v5.0.0: True Agency
 
-| Feature | Implementation |
-|---------|----------------|
-| World models | Agent builds predictive models of user behavior, project dynamics, system state. |
-| Temporal reasoning | The agent reasons about time: scheduling, deadlines, elapsed duration. |
-| Goal persistence | Goals survive restarts. Long-term projects tracked in org-objects. |
+World models, temporal reasoning, goal persistence across restarts.
+
+| Feature | Description |
+|---------|-------------|
+| World models | Predictive models of user behavior, project dynamics, system state. |
+| Temporal reasoning | Scheduling, deadlines, elapsed duration awareness. |
+| Goal persistence | Goals survive restarts. Long-term projects in org-objects. |
 
 ** Design Principles
 
