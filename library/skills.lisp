@@ -109,13 +109,14 @@
       (nreverse result))))
 
 (defun validate-lisp-syntax (code-string)
-  "Checks if a string contains valid, readable Common Lisp forms."
-  (handler-case 
-      (let ((*read-eval* nil)) 
-        (with-input-from-string (stream (format nil "(progn ~a)" code-string))
-          (loop for form = (read stream nil :eof) until (eq form :eof)) 
-          (values t nil)))
-    (error (c) (values nil (format nil "~a" c)))))
+  "Checks if a string contains valid, readable Common Lisp forms.
+Delegates to the Lisp Validator skill for structural + syntactic validation."
+  (let* ((result (lisp-validator-validate code-string :strict nil))
+         (status (getf result :status))
+         (reason (getf result :reason)))
+    (if (eq status :success)
+        (values t nil)
+        (values nil (or reason "Lisp Validator rejected code.")))))
 
 (defun load-skill-from-org (filepath)
   "Parses and evaluates Lisp blocks from an Org file into a jailed package."

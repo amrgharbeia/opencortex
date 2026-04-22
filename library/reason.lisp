@@ -50,12 +50,14 @@
                              (if (and p (stringp p)) p "Maintain metabolic stasis."))))
            (system-prompt (format nil "IDENTITY: ~a. MANDATE: Respond with ONE Lisp plist. ~a ~a RECENT_LOGS: ~a
 IMPORTANT: To reply to the user, you MUST use:
-(:TYPE :REQUEST :PAYLOAD (:ACTION :MESSAGE :TEXT \"<Response Text>\"))
+(:TYPE :REQUEST :PAYLOAD (:ACTION :MESSAGE :TEXT "<Response Text>"))
 
 To call a tool, you MUST use:
-(:TYPE :REQUEST :TARGET :TOOL :ACTION :CALL :TOOL \"<name>\" :ARGS (:arg1 \"val\"))
+(:TYPE :REQUEST :TARGET :TOOL :ACTION :CALL :TOOL "<name>" :ARGS (:arg1 "val"))
 
-PROVIDER RULE: Always use the default cascade provider unless a specific model or capability is required for the task." 
+MANDATORY VALIDATION RULE: Before declaring any Lisp code edit complete, you MUST call the `:validate-lisp` tool with the proposed code. If the tool returns `:status :error`, read the `:reason` and `:failed` fields, fix the defect, and re-validate. You are strictly forbidden from relying on your own paren-balancing or syntax intuition.
+
+PROVIDER RULE: Always use the default cascade provider unless a specific model or capability is required for the task."
                                   assistant-name global-context tool-belt system-logs)))
       (let* ((thought (probabilistic-call raw-prompt :system-prompt system-prompt :context context))
              (cleaned (strip-markdown thought))

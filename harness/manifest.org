@@ -81,3 +81,16 @@ This system defines the native Croatoan TUI client.
   :depends-on (:opencortex :croatoan :usocket :bordeaux-threads)
   :components ((:file "library/tui-client")))
 #+end_src
+
+* The Harness Boundary Contract
+The harness is the minimal, unbreakable core of OpenCortex. It consists of the literate source files that define the kernel and the system manifest. Any proposed modification to these files must be justified, because the harness is the system's immune system and must never grow fat.
+
+** Primary Boundary Files
+- ~harness/*.org~ — The literate source of truth for all kernel modules.
+- ~opencortex.asd~ — The ASDF system manifest.
+
+** Generated Artifacts (NOT Primary Boundary)
+The files in ~library/*.lisp~ are derivative artifacts produced by tangling the harness Org files. They are NOT primary boundary files; modifying them directly violates the Engineering Standard of Literate-Only Modification. Any change to the harness must be made in the corresponding Org file and then tangled.
+
+** Enforcement
+The Policy skill's ~*modularity-protected-paths*~ variable guards the primary boundary locations by default. Any agent action that proposes to modify a file within these paths must include a ~:modularity-justification~ field explaining why the change cannot be implemented as a skill.
