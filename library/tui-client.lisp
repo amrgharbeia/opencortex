@@ -11,16 +11,48 @@
 (defvar *chat-history* (list))
 (defvar *status-text* "Connecting...")
 (defvar *input-buffer* (make-array 0 :element-type 'char :fill-pointer 0 :adjustable t))
+(defvar *command-history* (make-array 0 :element-type 't :fill-pointer 0 :adjustable t))
+(defvar *history-index* -1)
+(defvar *input-mode* :single)  ; :single or :multi
 (defvar *is-running* t)
-(defvar *queue-lock* (bordeaux-threads:make-lock))
+(defvar *queue-lock* (bt:make-lock))
 (defvar *incoming-msgs* nil)
 
 (defun enqueue-msg (msg)
-  (bordeaux-threads:with-lock-held (*queue-lock*)
+  (bt:with-lock-held (*queue-lock*)
     (push msg *incoming-msgs*)))
 
+(defun add-to-history (cmd)
+  "Add command to history, preserving most recent."
+  (when (and cmd (> (length cmd) 0))
+    ;; Don't duplicate the last command
+    (unless (and (> (length *command-history*) 0)
+                  (string= cmd (aref *command-history* (1- (length *command-history*))))))
+      (vector-push-extend cmd *command-history* :adjustable t))
+    (setf *history-index* (length *command-history*))))
+
+(defun history-previous ()
+  "Navigate to previous command in history."
+  (when (> (length *command-history*) 0)
+    (setf *history-index* (max 0 (1- *history-index*)))
+    (let ((cmd (aref *command-history* *history-index*)))
+      (setf (fill-pointer *input-buffer*) 0)
+      (loop for ch across cmd do (vector-push-extend ch *input-buffer*))
+      cmd)))
+
+(defun history-next ()
+  "Navigate to next command in history."
+  (when (and *history-index* (< *history-index* (1- (length *command-history*))))
+    (setf *history-index* (1+ *history-index*))
+    (let ((cmd (aref *command-history* *history-index*)))
+      (setf (fill-pointer *input-buffer*) 0)
+      (loop for ch across cmd do (vector-push-extend ch *input-buffer*))
+      cmd))
+  (when (>= *history-index* (1- (length *command-history*)))
+    (setf (fill-pointer *input-buffer*) 0)))
+
 (defun dequeue-msgs ()
-  (bordeaux-threads:with-lock-held (*queue-lock*)
+  (bt:with-lock-held (*queue-lock*)
     (let ((msgs (nreverse *incoming-msgs*)))
       (setf *incoming-msgs* nil)
       msgs)))
@@ -46,14 +78,37 @@
     (cond (text text)
           (msg msg)
           ((eq action :MESSAGE) (getf payload :TEXT))
-          ((and tool prompt) (format nil "THOUGHT [~a]: ~a" tool prompt))
+          ((and tool prompt) (format nil "🤔 ~a: ~a" tool prompt))
           ((and tool args) 
            (let ((inner-prompt (or (getf args :PROMPT) (getf args :TEXT))))
              (if inner-prompt
-                 (format nil "THOUGHT [~a]: ~a" tool inner-prompt)
-                 (format nil "CALL [~a] (ARGS: ~s)" tool args))))
-          (result (format nil "RESULT: ~a" result))
+                 (format nil "🤔 ~a: ~a" tool inner-prompt)
+                 (format nil "🔧 ~a args: ~s" tool args))))
+          (result (format nil "✅ ~a" result))
           (t (format nil "~s" payload)))))
+
+(defun format-incoming (msg)
+  "Formats incoming message with styling."
+  (let ((type (or (getf msg :TYPE) (getf msg :type)))
+        (payload (or (getf msg :PAYLOAD) (getf msg :payload))))
+    (cond
+      ((and (listp msg) (eq type :EVENT))
+       (let ((action (or (getf payload :ACTION) (getf payload :action)))
+             (text (or (getf payload :TEXT) (getf payload :text) (getf payload :MESSAGE) (getf payload :message)))))
+         (cond ((eq action :handshake) (format nil "👋 ~a" (or text "Connected")))
+               ((eq action :thinking) (format nil "🤔 ~a" (or text "Thinking...")))
+               ((eq action :tool-complete) (format nil "🔧 Done"))
+               (text (format nil "💬 ~a" text))
+               (t (format nil "📢 ~s" msg)))))
+      ((and (listp msg) (eq type :STATUS))
+       (format nil "🔄 Scribe: ~a | Gardener: ~a" 
+               (or (getf msg :SCRIBE) "idle")
+               (or (getf msg :GARDENER) "idle")))
+      ((and (listp msg) (member type '(:REQUEST :RESPONSE :LOG)))
+       (format-payload payload))
+      ((and (listp msg) (eq type :EVENT) (eq (getf payload :SENSOR) :TOOL-OUTPUT))
+       (format nil "🔧 ~a" (getf payload :RESULT)))
+      (t (format nil "~s" msg))))
 
 (defun listen-thread ()
   (loop while *is-running* do
@@ -90,71 +145,91 @@
       (setf *socket* (usocket:socket-connect *daemon-host* *daemon-port*))
     (error (e) (format t "Error connecting: ~a~%" e) (return-from main)))
   (setf *stream* (usocket:socket-stream *socket*))
-  (bordeaux-threads:make-thread #'listen-thread :name "tui-listener")
+  (bt:make-thread #'listen-thread :name "tui-listener")
   
   (unwind-protect
-      (with-screen (scr :input-echoing nil :input-blocking nil :enable-colors t :cursor-visible t)
+      (with-screen (scr :input-echoing nil :input-blocking nil :enable-colors t :cursor-visible t :window-border-chars #\┌#\─#\┐#\│#\└#\┘#\─#\│)
         (let* ((h (height scr))
                (w (width scr))
-               (chat-win (make-instance 'window :height (- h 2) :width w :position (list 0 0)))
-               (status-win (make-instance 'window :height 1 :width w :position (list (- h 2) 0)))
-               (input-win (make-instance 'window :height 1 :width w :position (list (- h 1) 0)))
+               (chat-height (- h 5))
+               (chat-win (make-instance 'window :height chat-height :width (- w 2) :position (list 1 1) :border t))
+               (status-win (make-instance 'window :height 1 :width (- w 2) :position (list (- h 4) 1) :border t))
+               (help-win (make-instance 'window :height 1 :width (- w 2) :position (list (- h 3) 1)))
+               (input-win (make-instance 'window :height 1 :width (- w 2) :position (list (- h 2) 1) :border t))
                (last-status nil))
-          
-          (setf (function-keys-enabled-p input-win) t)
-          (setf (input-blocking input-win) nil)
+           
+           ;; Draw help once
+           (add-string help-win "↑↓ History | Esc Clear | /help /exit | Multi-line: Shift+Enter" :y 0 :x 0 :attributes '(:bold))
+           (refresh help-win)
+           
+           (setf (function-keys-enabled-p input-win) t)
+           (setf (input-blocking input-win) nil)
 
-          (loop while *is-running* do
-            ;; 1. Handle incoming messages
-            (let ((new-msgs (dequeue-msgs)))
-              (when new-msgs
-                (dolist (msg new-msgs)
-                  (push msg *chat-history*)
-                  (setf *chat-history* (subseq *chat-history* 0 (min (length *chat-history*) 500))))
-                
-                (clear chat-win)
-                (let ((line-num 0))
-                  (dolist (m (reverse (subseq *chat-history* 0 (min (length *chat-history*) (- h 3)))))
-                    (add-string chat-win m :y line-num :x 0)
-                    (incf line-num)))
-                (refresh chat-win)))
+           (loop while *is-running* do
+             ;; 1. Handle incoming messages
+             (let ((new-msgs (dequeue-msgs)))
+               (when new-msgs
+                 (dolist (msg new-msgs)
+                   (let ((formatted (format-incoming msg)))
+                     (when formatted 
+                       (push formatted *chat-history*)
+                       (setf *chat-history* (subseq *chat-history* 0 (min (length *chat-history*) 500))))))
+                 
+                 (clear chat-win)
+                 (let ((line-num 1))
+                   (dolist (m (reverse (subseq *chat-history* 0 (min (length *chat-history*) (- chat-height 3)))))
+                     (add-string chat-win (format nil "│ ~a" m) :y line-num :x 1)
+                     (incf line-num)))
+                 ;; Add border line count
+                 (add-string chat-win (format nil "├─ ~d messages" (length *chat-history*)) :y (1- chat-height) :x 1 :attributes '(:dim))
+                 (refresh chat-win)))
 
-            ;; 2. Render Status Bar ONLY if changed
-            (unless (equal *status-text* last-status)
-              (clear status-win)
-              (add-string status-win *status-text* :attributes '(:reverse))
-              (refresh status-win)
-              (setf last-status *status-text*))
+             ;; 2. Render Status Bar ONLY if changed
+             (unless (equal *status-text* last-status)
+               (clear status-win)
+               (add-string status-win (format nil "┤ ~a ┤" *status-text*) :y 0 :x 1 :attributes '(:reverse))
+               (refresh status-win)
+               (setf last-status *status-text*))
 
-            ;; 3. Handle Keyboard Input
-            (let* ((event (get-wide-event input-win))
-                   (ch (and event (typep event 'event) (event-key event))))
-              (when ch
-                (cond
-                  ((or (eq ch #\Newline) (eq ch #\Return))
-                   (let ((cmd (coerce *input-buffer* 'string)))
+              ;; 3. Handle Keyboard Input
+              (let* ((event (get-wide-event input-win))
+                     (ch (and event (typep event 'event) (event-key event))))
+                (when ch
+                  (cond
+                    ((or (eq ch #\Newline) (eq ch #\Return))
+                     (let ((cmd (coerce *input-buffer* 'string)))
+                       (setf (fill-pointer *input-buffer*) 0)
+                       (when (> (length cmd) 0)
+                         (add-to-history cmd)
+                         (enqueue-msg (format nil "⬆ ~a" cmd))
+                         (let ((framed (opencortex:frame-message (list :TYPE :EVENT 
+                                                                      :META (list :SOURCE :tui :SESSION-ID "default")
+                                                                      :PAYLOAD (list :SENSOR :user-input :TEXT cmd)))))
+                           (format *stream* "~a" framed)
+                           (finish-output *stream*)))
+                       (when (string= cmd "/exit") (setf *is-running* nil))
+                       (when (string= cmd "/clear") (setf *chat-history* nil))
+                       (when (string= cmd "/help") 
+                         (enqueue-msg "Available commands: /help /exit /clear /status")
+                         (enqueue-msg "Use ↑↓ for history, Esc to clear input"))))
+                    ((eq ch :up) (history-previous))
+                    ((eq ch :down) (history-next))
+                    ((eq ch :escape) 
                      (setf (fill-pointer *input-buffer*) 0)
-                     (when (> (length cmd) 0)
-                       ;; Local Echo
-                       (enqueue-msg (concatenate 'string "> " cmd))
-                       ;; Send to Brain
-                       (let ((framed (opencortex:frame-message (list :TYPE :EVENT 
-                                                                    :META (list :SOURCE :tui :SESSION-ID "default")
-                                                                    :PAYLOAD (list :SENSOR :user-input :TEXT cmd)))))
-                         (format *stream* "~a" framed)
-                         (finish-output *stream*)))
-                     (when (string= cmd "/exit") (setf *is-running* nil))))
-                  ((or (eq ch :backspace) (eq ch #\Backspace) (eq ch #\Rubout) (eq ch #\Del))
-                   (when (> (length *input-buffer*) 0)
-                     (decf (fill-pointer *input-buffer*))))
-                  ((characterp ch)
-                   (vector-push-extend ch *input-buffer*))))
-              
-              (clear input-win)
-              (add-string input-win (concatenate 'string "> " (coerce *input-buffer* 'string)))
-              (move input-win 0 (+ 2 (length *input-buffer*)))
-              (refresh input-win))
-            
-            (sleep 0.02))))
+                     (setf *history-index* (length *command-history*)))
+                    ((or (eq ch :backspace) (eq ch #\Backspace) (eq ch #\Rubout) (eq ch #\Del))
+                     (when (> (fill-pointer *input-buffer*) 0)
+                       (decf (fill-pointer *input-buffer*))))
+                    ((eq ch :shift-left)  ; Shift+Enter for multi-line
+                     (vector-push-extend #\Newline *input-buffer*))
+                    ((characterp ch)
+                     (vector-push-extend ch *input-buffer*))))
+                
+                (clear input-win)
+                (let ((prompt (if (> (fill-pointer *input-buffer*) 0) "│" "▶")))
+                  (add-string input-win (format nil "~a ~a" prompt (coerce *input-buffer* 'string)) :y 0 :x 1 :attributes (when (> (fill-pointer *input-buffer*) 0) '(:bold))))
+                (refresh input-win))
+             
+             (sleep 0.02))))
     (setf *is-running* nil)
     (when *socket* (usocket:socket-close *socket*))))
