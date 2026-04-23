@@ -31,14 +31,18 @@
                (:file "tests/emacs-edit-tests")
                (:file "tests/lisp-utils-tests"))
   :perform (test-op (o s)
-              (uiop:symbol-call :fiveam :run! (uiop:find-symbol* :communication-protocol-suite :opencortex-tests))
-              (uiop:symbol-call :fiveam :run! (uiop:find-symbol* :pipeline-suite :opencortex-pipeline-tests))
-              (uiop:symbol-call :fiveam :run! (uiop:find-symbol* :safety-suite :opencortex-safety-tests))
-              (uiop:symbol-call :fiveam :run! (uiop:find-symbol* :boot-suite :opencortex-boot-tests))
-              (uiop:symbol-call :fiveam :run! (uiop:find-symbol* :memory-suite :opencortex-memory-tests))
-              (uiop:symbol-call :fiveam :run! (uiop:find-symbol* :immune-suite :opencortex-immune-system-tests))
-              (uiop:symbol-call :fiveam :run! (uiop:find-symbol* :emacs-edit-suite :opencortex-emacs-edit-tests))
-              (uiop:symbol-call :fiveam :run! (uiop:find-symbol* :lisp-utils-suite :opencortex-lisp-utils-tests))))
+              (uiop:symbol-call :fiveam :run! :communication-protocol-suite)
+              (uiop:symbol-call :fiveam :run! :pipeline-suite)
+              (uiop:symbol-call :fiveam :run! :safety-suite)
+              (uiop:symbol-call :fiveam :run! :boot-suite)
+              (uiop:symbol-call :fiveam :run! :memory-suite)
+              (uiop:symbol-call :fiveam :run! :immune-suite)
+              (uiop:symbol-call :fiveam :run! :emacs-edit-suite)
+              (uiop:symbol-call :fiveam :run! :lisp-utils-suite)))
+
+(defsystem opencortex-test
+  :depends-on (:opencortex/tests)
+  :perform (test-op (o s) (asdf:test-system :opencortex/tests)))
 
 (defsystem :opencortex/tui
   :depends-on (:opencortex :croatoan :usocket :bordeaux-threads)
