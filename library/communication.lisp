@@ -16,6 +16,13 @@
          (len (length msg-string)))
     (format nil "~6,'0x~a~%" len msg-string)))
 
+(defun parse-message (framed-string)
+  "Parses a hex-length prefixed framed string into a Lisp plist."
+  (let* ((len (parse-integer (subseq framed-string 0 6) :radix 16))
+         (payload (subseq framed-string 6 (+ 6 len))))
+    (let ((*read-eval* nil))
+      (read-from-string payload))))
+
 (defun read-framed-message (stream)
   "Reads a hex-length prefixed S-expression from the stream securely. Skips leading whitespace."
   (let ((length-buffer (make-string 6)))

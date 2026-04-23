@@ -161,7 +161,7 @@ Returns (VALUES t nil) if clean, or (VALUES nil reason-string line col)."
                         (values nil (format nil "Mismatched ')' expected at line ~a, col ~a" line col) line col)))
                      (t (pop stack))))
               ((char= ch #\Newline)
-               (incf line) (setf col 0))))
+               (incf line) (setf col 0)))
         (unless (char= ch #\Newline) (incf col))))
     (if (null stack)
         (values t nil nil nil)
@@ -231,7 +231,7 @@ Recursively walks the parsed AST and verifies whitelisted symbols.
     ;; Time
     get-universal-time get-internal-real-time sleep
     ;; Equality
-    equalp = equal eq eql))
+    equalp = equal eq eql)
   "Static whitelist of symbols permitted in the Lisp Utils sandbox.")
 
 (defun lisp-utils-ast-walk (form)
@@ -373,7 +373,7 @@ Intercepts :syntax-error events and repairs the code.
                                     repaired)
                                 (error ()
                                   (harness-log "LISP REPAIR: Neural repair failed.")
-                                  (list :type :LOG :payload (list :text "Lisp Repair Failed."))))))))))))
+                                  (list :type :LOG :payload (list :text "Lisp Repair Failed.")))))))))))
 #+end_src
 
 ** Skill Definition: Lisp Validator
@@ -419,24 +419,37 @@ Validates all Lisp code before execution.
 
 (in-suite lisp-utils-suite)
 
+;; Character utilities
+;; Character utilities
 (test count-char-balanced
-  (is (= (count-char #\( "(+ 1 2)") 1))
-  (is (= (count-char #\) "(+ 1 2)") 1))
+  (is (= (opencortex::count-char #\( "(+ 1 2)") 1))
+  (is (= (opencortex::count-char #\) "(+ 1 2)") 1)))
 
 (test count-char-unbalanced
-  (is (= (count-char #\( "(+ 1 2") 1))
-  (is (= (count-char #\) "(+ 1 2") 0))
+  (is (= (opencortex::count-char #\( "(+ 1 2") 1))
+  (is (= (opencortex::count-char #\) "(+ 1 2") 0)))
 
+(test count-char-empty
+  (is (= (opencortex::count-char #\( "") 0)))
+
+;; Deterministic repair
 (test deterministic-repair-balanced
-  (is (string= (deterministic-repair "(+ 1 2)") "(+ 1 2)")))
+  (is (string= (opencortex::deterministic-repair "(+ 1 2)") "(+ 1 2)")))
 
-(test deterministic-repair-unbalanced
-  (is (string= (deterministic-repair "(+ 1 2") "(+ 1 2)")))
+(test deterministic-repair-unbalanced-open
+  (is (string= (opencortex::deterministic-repair "(+ 1 2") "(+ 1 2)")))
 
+(test deterministic-repair-unbalanced-close
+  (is (string= (opencortex::deterministic-repair "(+ 1 2))") "(+ 1 2))")))
+
+(test deterministic-repair-empty
+  (is (string= (opencortex::deterministic-repair "") "")))
+
+;; Structural check
 (test structural-valid
   (multiple-value-bind (ok reason line col)
       (opencortex::lisp-utils-check-structural "(+ 1 2)")
-    (is ok)))
+    (is (eq ok t))))
 
 (test structural-unbalanced
   (multiple-value-bind (ok reason line col)
@@ -444,21 +457,40 @@ Validates all Lisp code before execution.
     (is (not ok))
     (is (search "Unbalanced" reason))))
 
+(test structural-mismatched
+  (multiple-value-bind (ok reason line col)
+      (opencortex::lisp-utils-check-structural "[)")
+    (is (not ok))
+    (is (search "Mismatched" reason))))
+
+;; Syntactic check
 (test syntactic-valid
   (multiple-value-bind (ok reason line col)
       (opencortex::lisp-utils-check-syntactic "(+ 1 2)")
-    (is ok)))
+    (is (eq ok t))))
 
-(test semantic-whitelist
+(test syntactic-invalid
+  (multiple-value-bind (ok reason line col)
+      (opencortex::lisp-utils-check-syntactic "(1+ 2 #\")")
+    (is (not ok))))
+
+;; Semantic check
+(test semantic-whitelist-safe
   (multiple-value-bind (ok reason line col)
       (opencortex::lisp-utils-check-semantic "(+ 1 2)")
-    (is ok)))
+    (is (eq ok t))))
 
-(test semantic-blocked
+(test semantic-blocked-eval
+  (multiple-value-bind (ok reason line col)
+      (opencortex::lisp-utils-check-semantic "(eval '(+ 1 2))")
+    (is (not ok))))
+
+(test semantic-blocked-delete
   (multiple-value-bind (ok reason line col)
       (opencortex::lisp-utils-check-semantic "(delete-file \"x.txt\")")
     (is (not ok))))
 
+;; Unified validation
 (test unified-success
   (let ((result (opencortex::lisp-utils-validate "(+ 1 2)" :strict t)))
     (is (eq (getf result :status) :success))))
@@ -467,6 +499,16 @@ Validates all Lisp code before execution.
   (let ((result (opencortex::lisp-utils-validate "(+ 1 2" :strict nil)))
     (is (eq (getf result :status) :error))
     (is (eq (getf result :failed) :structural))))
+
+(test unified-semantic-fail
+  (let ((result (opencortex::lisp-utils-validate "(delete-file \"x.txt\")" :strict t)))
+    (is (eq (getf result :status) :error))
+    (is (eq (getf result :failed) :semantic))))
+
+(test unified-semantic-fail
+  (let ((result (opencortex::lisp-utils-validate "(delete-file \"x.txt\")" :strict t)))
+    (is (eq (getf result :status) :error))
+    (is (eq (getf result :failed) :semantic))))
 #+end_src
 
 * See Also

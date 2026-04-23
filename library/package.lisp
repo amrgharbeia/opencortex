@@ -167,3 +167,16 @@
         (setq *system-logs* (subseq *system-logs* 0 *max-log-history*))))
     (format t "~a~%" formatted-msg)
     (finish-output)))
+
+(defun proto-get (plist key)
+  "Robustly retrieves a value from a plist, checking both uppercase and lowercase keyword versions."
+  (let* ((s (string key))
+         (up (intern (string-upcase s) :keyword))
+         (dn (intern (string-downcase s) :keyword)))
+    (or (getf plist up) (getf plist dn))))
+
+(defun get-cognitive-tool-body (tool-name)
+  "Retrieves the body function of a cognitive tool, or nil if not found."
+  (let ((tool (gethash (string-downcase (string tool-name)) *cognitive-tools*)))
+    (when tool
+      (cognitive-tool-body tool))))

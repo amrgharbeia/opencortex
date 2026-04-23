@@ -69,11 +69,9 @@ Generate unique IDs for headlines.
 (defun emacs-edit-generate-id ()
   "Generates a unique ID for org-mode headlines.
 Format: 8-char hex + timestamp for uniqueness."
-  (let ((uuid (ironclad:byte-array-to-hex-string
-               (ironclad:produce-digest :sha256
-                                     (format nil "~a-~a"
-                                            (get-universal-time)
-                                            (random 999999))))))
+  (let* ((data (format nil "~a-~a" (get-universal-time) (random 999999)))
+         (digest (ironclad:digest-sequence :sha256 (ironclad:ascii-string-to-byte-array data)))
+         (uuid (ironclad:byte-array-to-hex-string digest)))
     (subseq uuid 0 8)))
 
 (defun emacs-edit-id-format (id)
@@ -106,7 +104,7 @@ INDENT-LEVEL is number of leading asterisks."
                       unless (member k '(:title :todo :created :id))
                       collect (format nil ":~a:~a" k v))))
       (when lines
-        (format nil ":PROPERTIES:~%~{~a~^~%~}~:END:~%"
+        (format nil ":PROPERTIES:~%~{~a~^~%~}~%:END:~%"
                 lines)))))
 
 (defun emacs-edit-print-section (ast)
@@ -146,7 +144,7 @@ Preserves structure including #+begin_src blocks."
       ((eq type :src-block)
        (let ((lang (or (getf ast :language) ""))
              (code (or (getf ast :value) "")))
-         (format nil "#+begin_src ~a~%~a~#+end_src~%"
+          (format nil "#+begin_src ~a~%~a~%#+end_src~%"
                  lang code)))
       
       ;; Unknown - return as-is
@@ -208,7 +206,7 @@ Returns modified AST."
                                        (multiple-value-bind (s mi h d mo y)
                                            (decode-universal-time (get-universal-time))
                                          (format nil "~a-~a-~a ~a:~a"
-                                                 y mo d h mi))))))
+                                                  y mo d h mi)))))
         (merged-props (loop for (k v) on properties by #'cddr
                            collect k collect v)))
     

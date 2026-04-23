@@ -81,8 +81,18 @@
          (meta (getf context :meta))
          (source (getf meta :source))
          (tool (gethash (string-downcase (string tool-name)) *cognitive-tools*)))
-    (if tool
-        (handler-case
+    (when tool
+      ;; Tool Permission Gate: Check permission before execution
+      (let ((permission (check-tool-permission-gate tool-name context)))
+        (when (eq permission :deny)
+          (return-from execute-tool-action
+            (list :TYPE :EVENT :DEPTH (1+ depth) :META meta
+                  :PAYLOAD (list :SENSOR :tool-error :tool tool-name :message (format nil "Tool PERMISSION DENIED: ~a" tool-name))))))
+        (when (listp permission)
+          (return-from execute-tool-action
+            (list :TYPE :EVENT :DEPTH (1+ depth) :META meta
+                  :PAYLOAD (list :SENSOR :permission-pending :tool tool-name :args tool-args)))))
+      (handler-case
             (let* ((clean-args (if (and (listp tool-args) (listp (car tool-args))) (car tool-args) tool-args))
                    (result (funcall (cognitive-tool-body tool) clean-args)))
               (let ((feedback (list :TYPE :EVENT :DEPTH (1+ depth) :META meta
@@ -94,10 +104,10 @@
                                     context))
                 feedback))
           (error (c)
-            (list :TYPE :EVENT :DEPTH (1+ depth) :META meta
-                  :PAYLOAD (list :SENSOR :tool-error :tool tool-name :message (format nil "~a" c)))))
         (list :TYPE :EVENT :DEPTH (1+ depth) :META meta
-              :PAYLOAD (list :SENSOR :tool-error :message "Tool not found")))))
+              :PAYLOAD (list :SENSOR :tool-error :tool tool-name :message (format nil "~a" c)))))
+    (list :TYPE :EVENT :DEPTH (1+ depth) :META meta
+          :PAYLOAD (list :SENSOR :tool-error :message "Tool not found"))))
 
 (defun act-gate (signal)
   "Final Stage: Actuation and feedback generation."
