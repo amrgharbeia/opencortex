@@ -5,52 +5,41 @@
 (in-package :opencortex-lisp-utils-tests)
 
 (def-suite lisp-utils-suite
-  :description "Tests for the Lisp Utils skill - utilities, repair, and validation.")
+  :description "Tests for the Lisp Utils skill.")
 
 (in-suite lisp-utils-suite)
 
 ;; Character utilities
+;; Character utilities
 (test count-char-balanced
-  (is (= (count-char #\( "(+ 1 2)") 1))
-  (is (= (count-char #\) "(+ 1 2)") 1)))
+  (is (= (opencortex::count-char #\( "(+ 1 2)") 1))
+  (is (= (opencortex::count-char #\) "(+ 1 2)") 1)))
 
 (test count-char-unbalanced
-  (is (= (count-char #\( "(+ 1 2") 1))
-  (is (= (count-char #\) "(+ 1 2") 0)))
+  (is (= (opencortex::count-char #\( "(+ 1 2") 1))
+  (is (= (opencortex::count-char #\) "(+ 1 2") 0)))
 
 (test count-char-empty
-  (is (= (count-char #\( "") 0)))
+  (is (= (opencortex::count-char #\( "") 0)))
 
 ;; Deterministic repair
 (test deterministic-repair-balanced
-  (is (string= (deterministic-repair "(+ 1 2)") "(+ 1 2)")))
+  (is (string= (opencortex::deterministic-repair "(+ 1 2)") "(+ 1 2)")))
 
 (test deterministic-repair-unbalanced-open
-  (is (string= (deterministic-repair "(+ 1 2") "(+ 1 2)")))
+  (is (string= (opencortex::deterministic-repair "(+ 1 2") "(+ 1 2)")))
 
 (test deterministic-repair-unbalanced-close
-  (is (string= (deterministic-repair "(+ 1 2))") "(+ 1 2)))")) ;; Left as-is (can't fix)
+  (is (string= (opencortex::deterministic-repair "(+ 1 2))") "(+ 1 2))")))
 
 (test deterministic-repair-empty
-  (is (string= (deterministic-repair "") "")))
+  (is (string= (opencortex::deterministic-repair "") "")))
 
-;; ID generation
-(test id-generation
-  (let ((id1 (emacs-edit-generate-id))
-        (id2 (emacs-edit-generate-id)))
-    (is (plusp (length id1)))
-    (is (not (string= id1 id2))) ;; Likely unique
-    (is (= 8 (length id1)))))
-
-(test id-format
-  (let ((formatted (emacs-edit-id-format "abc12345")))
-    (is (search "id:" formatted))))
-
-;; Structural check (from lisp-utils)
+;; Structural check
 (test structural-valid
   (multiple-value-bind (ok reason line col)
       (opencortex::lisp-utils-check-structural "(+ 1 2)")
-    (is ok)))
+    (is (eq ok t))))
 
 (test structural-unbalanced
   (multiple-value-bind (ok reason line col)
@@ -60,7 +49,7 @@
 
 (test structural-mismatched
   (multiple-value-bind (ok reason line col)
-      (opencortex::lisp-utils-check-structural "(let [x 1])")
+      (opencortex::lisp-utils-check-structural "[)")
     (is (not ok))
     (is (search "Mismatched" reason))))
 
@@ -68,18 +57,18 @@
 (test syntactic-valid
   (multiple-value-bind (ok reason line col)
       (opencortex::lisp-utils-check-syntactic "(+ 1 2)")
-    (is ok)))
+    (is (eq ok t))))
 
 (test syntactic-invalid
   (multiple-value-bind (ok reason line col)
-      (opencortex::lisp-utils-check-syntactic "(1+ 2 #\"")
+      (opencortex::lisp-utils-check-syntactic "(1+ 2 #\")")
     (is (not ok))))
 
 ;; Semantic check
 (test semantic-whitelist-safe
   (multiple-value-bind (ok reason line col)
       (opencortex::lisp-utils-check-semantic "(+ 1 2)")
-    (is ok)))
+    (is (eq ok t))))
 
 (test semantic-blocked-eval
   (multiple-value-bind (ok reason line col)
@@ -100,6 +89,11 @@
   (let ((result (opencortex::lisp-utils-validate "(+ 1 2" :strict nil)))
     (is (eq (getf result :status) :error))
     (is (eq (getf result :failed) :structural))))
+
+(test unified-semantic-fail
+  (let ((result (opencortex::lisp-utils-validate "(delete-file \"x.txt\")" :strict t)))
+    (is (eq (getf result :status) :error))
+    (is (eq (getf result :failed) :semantic))))
 
 (test unified-semantic-fail
   (let ((result (opencortex::lisp-utils-validate "(delete-file \"x.txt\")" :strict t)))

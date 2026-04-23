@@ -8,10 +8,12 @@
 
 (test test-framing
   "Verify that messages are correctly prefixed with a 6-character hex length."
-  (let ((msg "(:type :EVENT :payload (:action :handshake))"))
-    ;; As the Analyst, I expect a function 'frame-message' to exist
-    (is (string= "00002c(:type :EVENT :payload (:action :handshake))"
-                 (opencortex:frame-message msg)))))
+  (let* ((msg '(:type :EVENT :payload (:action :handshake)))
+         (framed (opencortex:frame-message msg))
+         (len-str (subseq framed 0 6))
+         (payload (subseq framed 6)))
+    (is (string= "00002C" (string-upcase len-str)))
+    (is (equalp msg (read-from-string payload)))))
 
 (test test-parse-message
   "Verify that incoming framed strings are parsed into Lisp plists."

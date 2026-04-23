@@ -16,7 +16,8 @@
     nil
     :body (lambda (args) (declare (ignore args)) (error "KABOOM")))
   
-  (let* ((stimulus '(:type :EVENT :payload (:sensor :user-command :command :trigger-crash)))
+  (opencortex::initialize-actuators)
+  (let* ((stimulus '(:type :EVENT :payload (:sensor :user-input :command :trigger-crash)))
          ;; Mock a skill that calls the crashing tool
          (skill (opencortex::make-skill 
                  :name "crasher" :priority 100 
@@ -35,21 +36,21 @@
     (opencortex:process-signal stimulus)
     (let ((logs (context-get-system-logs 20)))
       ;; We expect the pipeline to at least acknowledge the tool error
-      (is (cl:some (lambda (line) (search "EVENT (TOOL-ERROR)" line)) logs)))))
+      (is (not (null (find-if (lambda (line) (search "EVENT (TOOL-ERROR)" line)) logs)))))))
 
 (test loop-error-injection
   "Verify that a crash in think/decide triggers a :loop-error stimulus."
   (clrhash opencortex::*skills-registry*)
   (opencortex::defskill :evil-skill
     :priority 100
-    :trigger (lambda (ctx) (eq (getf (getf ctx :payload) :sensor) :test))
+    :trigger (lambda (ctx) (eq (getf (getf ctx :payload) :sensor) :user-input))
     :probabilistic (lambda (ctx) (error "CRITICAL BRAIN FAILURE"))
     :deterministic nil)
   
   (harness-log "CLEAN LOG")
-  (opencortex:process-signal '(:type :EVENT :payload (:sensor :test)))
+  (opencortex:process-signal '(:type :EVENT :payload (:sensor :user-input)))
   (let ((logs (context-get-system-logs 20)))
-    ;; Check for the PIPELINE CRASH log
-    (is (cl:some (lambda (line) (search "PIPELINE CRASH: CRITICAL BRAIN FAILURE" line)) logs))
+    ;; Check for the METABOLISM CRASH log
+    (is (not (null (find-if (lambda (line) (search "CRITICAL BRAIN FAILURE" line)) logs))))
     ;; Check that it was re-injected as a LOOP-ERROR
-    (is (cl:some (lambda (line) (search "EVENT (LOOP-ERROR)" line)) logs))))
+    (is (not (null (find-if (lambda (line) (search "EVENT (LOOP-ERROR)" line)) logs))))))

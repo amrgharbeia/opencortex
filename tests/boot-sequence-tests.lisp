@@ -59,7 +59,7 @@
   "Verify that skills are loaded into their own packages."
   (let ((tmp-skill "/tmp/org-skill-jail-test.org"))
     (with-open-file (out tmp-skill :direction :output :if-exists :supersede)
-      (format out "#+begin_src lisp~%(defvar *jailed-var* 42)~%#+end_src"))
+      (format out "#+begin_src lisp :tangle lib.lisp~%(defvar *jailed-var* 42)~%#+end_src"))
     (unwind-protect
          (progn
            (opencortex::load-skill-from-org tmp-skill)
