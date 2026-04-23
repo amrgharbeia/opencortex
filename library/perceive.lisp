@@ -19,7 +19,7 @@
     (setf (getf raw-message :meta) meta)
 
     (if async-p 
-        (bt:make-thread 
+        (bordeaux-threads:make-thread 
          (lambda () 
            (restart-case (handler-bind ((error (lambda (c) (harness-log "ASYNC ERROR: ~a" c) (invoke-restart 'skip-event))))
                            (process-signal raw-message)) 
@@ -51,7 +51,7 @@
                   (setf *foveal-focus-id* (ignore-errors (getf element :id)))
                   (ingest-ast element))))
              (:interrupt 
-              (bt:with-lock-held (*interrupt-lock*) (setf *interrupt-flag* t)))))
+              (bordeaux-threads:with-lock-held (*interrupt-lock*) (setf *interrupt-flag* t)))))
           ((eq type :RESPONSE)
            (harness-log "GATE [Perceive]: Act Result -> ~a" (getf payload :status))))
            

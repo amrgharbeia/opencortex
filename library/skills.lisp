@@ -321,3 +321,44 @@ EXAMPLES:
             (multiple-value-bind (out err code)
                 (uiop:run-program (list "bash" "-c" cmd) :output :string :error-output :string :ignore-error-status t)
               (format nil "EXIT-CODE: ~a~%~%STDOUT:~%~a~%~%STDERR:~%~a" code out err)))))
+
+(eval-when (:compile-toplevel :load-toplevel :execute)
+  (def-cognitive-tool :reload-skill "Reloads a skill from its Org-mode source file."
+    ((:skill :type :string :description "The skill name"))
+    :guard (lambda (args context)
+             (declare (ignore context))
+             (let ((skill (getf args :skill)))
+               (or (uiop:file-exists-p skill)
+                   (let ((dir (or (ignore-errors (uiop:getenv "SKILLS_DIR"))
+                                 (namestring (user-homedir-pathname)))))
+                     (uiop:file-exists-p (merge-pathnames (format nil "~a.org" skill) dir))))))
+    :body (lambda (args)
+            (let ((skill (getf args :skill))
+                  (dir (or (ignore-errors (uiop:getenv "SKILLS_DIR"))
+                          (namestring (user-homedir-pathname)))))
+              (let ((file (merge-pathnames (format nil "~a.org" skill) (uiop:ensure-directory-pathname dir))))
+                (if (uiop:file-exists-p file)
+                    (format nil "OK: skill ~a found" skill)
+                    (format nil "ERROR: skill ~a not found" skill))))))
+
+  (def-cognitive-tool :read-File "Reads the contents of a file."
+    ((:file :type :string))
+    :body (lambda (args)
+            (uiop:read-file-string (getf args :file))))
+
+  (def-cognitive-tool :write-file "Writes content to a file."
+    ((:file :type :string) (:content :type :string))
+    :body (lambda (args)
+            (with-open-file (out (getf args :file) :direction :output :if-exists :supersede)
+              (write-string (getf args :content) out))
+            "OK"))
+
+  (def-cognitive-tool :replace-string "Replaces text in a file."
+    ((:file :type :string) (:old :type :string) (:new :type :string))
+    :body (lambda (args)
+            (let ((content (uiop:read-file-string (getf args :file))))
+              (setf content (cl-ppcre:regex-replace-all (cl-ppcre:quote-meta-chars (getf args :old)) content (getf args :new)))
+              (with-open-file (out (getf args :file) :direction :output :if-exists :supersede)
+                (write-string content out))
+              "OK")))
+)

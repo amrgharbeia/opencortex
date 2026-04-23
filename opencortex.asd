@@ -5,7 +5,6 @@
   :license "AGPLv3"
   :description "The Probabilistic-Deterministic Lisp Machine Harness"
   :depends-on (:usocket :bordeaux-threads :dexador :uiop :cl-dotenv :cl-ppcre :hunchentoot :ironclad :str :cl-json :uuid)
-  :serial t
   :components ((:file "library/package")
                (:file "library/skills")
                (:file "library/communication")

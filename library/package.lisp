@@ -120,38 +120,20 @@
 
 (in-package :opencortex)
 
-(defun proto-get (plist key)
-  "Robustly retrieves a value from a plist, checking both uppercase and lowercase keyword versions."
-  (let* ((s (string key))
-         (up (intern (string-upcase s) :keyword))
-         (dn (intern (string-downcase s) :keyword)))
-    (or (getf plist up) (getf plist dn))))
-
-(in-package :opencortex)
-
-(defun proto-get (plist key)
-  "Robustly retrieves a value from a plist, checking both uppercase and lowercase keyword versions."
-  (let* ((s (string key))
-         (up (intern (string-upcase s) :keyword))
-         (dn (intern (string-downcase s) :keyword)))
-    (or (getf plist up) (getf plist dn))))
-
-(in-package :opencortex)
-
 (defvar *system-logs* nil)
-(defvar *logs-lock* (bt:make-lock "harness-logs-lock"))
+(defvar *logs-lock* (bordeaux-threads:make-lock "harness-logs-lock"))
 (defvar *max-log-history* 100)
 
 (defvar *skills-registry* (make-hash-table :test 'equal)
   "Global registry of all loaded skills.")
 
 (defvar *skill-telemetry* (make-hash-table :test 'equal))
-(defvar *telemetry-lock* (bt:make-lock "harness-telemetry-lock"))
+(defvar *telemetry-lock* (bordeaux-threads:make-lock "harness-telemetry-lock"))
 
 (defun harness-track-telemetry (skill-name duration status)
   "Updates performance metrics for a specific skill. Status should be :success or :rejected."
   (when skill-name 
-    (bt:with-lock-held (*telemetry-lock*)
+    (bordeaux-threads:with-lock-held (*telemetry-lock*)
       (let ((entry (or (gethash skill-name *skill-telemetry*) (list :executions 0 :total-time 0 :failures 0))))
         (incf (getf entry :executions)) 
         (incf (getf entry :total-time) duration)
@@ -179,7 +161,7 @@
 (defun harness-log (msg &rest args)
   "Centralized logging for the harness."
   (let ((formatted-msg (apply #'format nil msg args)))
-    (bt:with-lock-held (*logs-lock*)
+    (bordeaux-threads:with-lock-held (*logs-lock*)
       (push formatted-msg *system-logs*)
       (when (> (length *system-logs*) *max-log-history*)
         (setq *system-logs* (subseq *system-logs* 0 *max-log-history*))))

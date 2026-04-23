@@ -1,7 +1,7 @@
 (in-package :opencortex)
 
 (defvar *interrupt-flag* nil)
-(defvar *interrupt-lock* (bt:make-lock "harness-interrupt-lock"))
+(defvar *interrupt-lock* (bordeaux-threads:make-lock "harness-interrupt-lock"))
 (defvar *heartbeat-thread* nil)
 
 (defun process-signal (signal)
@@ -11,9 +11,9 @@
       (let ((depth (getf current-signal :depth 0))
             (meta (getf current-signal :meta)))
         (when (> depth 10) (harness-log "METABOLISM ERROR: Max depth reached.") (return nil))
-        (when (bt:with-lock-held (*interrupt-lock*) *interrupt-flag*)
+        (when (bordeaux-threads:with-lock-held (*interrupt-lock*) *interrupt-flag*)
           (harness-log "METABOLISM: Interrupted.")
-          (bt:with-lock-held (*interrupt-lock*) (setf *interrupt-flag* nil))
+          (bordeaux-threads:with-lock-held (*interrupt-lock*) (setf *interrupt-flag* nil))
           (return nil))
         (handler-case
             (progn
@@ -52,7 +52,7 @@
     (setf *auto-save-interval* auto-save)
     (setf *heartbeat-save-counter* 0)
     (setf *heartbeat-thread* 
-          (bt:make-thread 
+          (bordeaux-threads:make-thread 
            (lambda () 
              (loop 
                (sleep interval) 
@@ -92,7 +92,7 @@
 
   (let ((sleep-interval (or (ignore-errors (parse-integer (uiop:getenv "DAEMON_SLEEP_INTERVAL"))) 3600)))
     (loop 
-      (when (bt:with-lock-held (*interrupt-lock*) *interrupt-flag*)
+      (when (bordeaux-threads:with-lock-held (*interrupt-lock*) *interrupt-flag*)
         (harness-log "SHUTDOWN: Interrupt flag set. Saving memory...")
         (when *shutdown-save-enabled* (save-memory-to-disk))
         (return))

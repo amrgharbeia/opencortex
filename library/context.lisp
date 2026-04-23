@@ -42,7 +42,7 @@
 (defun context-get-system-logs (&optional limit)
   "Retrieves the most recent lines from the harness's internal log."
   (let ((log-limit (or limit (ignore-errors (parse-integer (uiop:getenv "CONTEXT_LOG_LIMIT"))) 20)))
-    (bt:with-lock-held (*logs-lock*)
+    (bordeaux-threads:with-lock-held (*logs-lock*)
       (let ((count (min log-limit (length *system-logs*)))) 
         (subseq *system-logs* 0 count)))))
 
