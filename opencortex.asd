@@ -28,8 +28,9 @@
                (:file "tests/boot-sequence-tests")
                (:file "tests/memory-tests")
                (:file "tests/immune-system-tests")
+               (:file "tests/emacs-edit-tests")
                (:file "tests/lisp-utils-tests"))
-  :perform (test-op (o s) 
+  :perform (test-op (o s)
               (uiop:symbol-call :fiveam :run! (uiop:find-symbol* :communication-protocol-suite :opencortex-tests))
               (uiop:symbol-call :fiveam :run! (uiop:find-symbol* :pipeline-suite :opencortex-pipeline-tests))
               (uiop:symbol-call :fiveam :run! (uiop:find-symbol* :safety-suite :opencortex-safety-tests))
@@ -37,7 +38,7 @@
               (uiop:symbol-call :fiveam :run! (uiop:find-symbol* :memory-suite :opencortex-memory-tests))
               (uiop:symbol-call :fiveam :run! (uiop:find-symbol* :immune-suite :opencortex-immune-system-tests))
               (uiop:symbol-call :fiveam :run! (uiop:find-symbol* :emacs-edit-suite :opencortex-emacs-edit-tests))
-              (uiop:symbol-call :fiveam :run! (uiop:find-symbol* :lisp-utils-suite :opencortex-lisp-utils-tests)))))
+              (uiop:symbol-call :fiveam :run! (uiop:find-symbol* :lisp-utils-suite :opencortex-lisp-utils-tests))))
 
 (defsystem :opencortex/tui
   :depends-on (:opencortex :croatoan :usocket :bordeaux-threads)
