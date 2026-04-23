@@ -5,16 +5,17 @@
   :license "AGPLv3"
   :description "The Probabilistic-Deterministic Lisp Machine Harness"
   :depends-on (:usocket :bordeaux-threads :dexador :uiop :cl-dotenv :cl-ppcre :hunchentoot :ironclad :str :cl-json :uuid)
+  :serial t
   :components ((:file "library/package")
-               (:file "library/skills")
-               (:file "library/communication")
-               (:file "library/communication-validator")
-               (:file "library/memory")
-               (:file "library/context")
-               (:file "library/perceive")
-               (:file "library/reason")
-               (:file "library/act")
-               (:file "library/loop"))
+               (:file "library/skills" :depends-on ("library/package"))
+               (:file "library/memory" :depends-on ("library/package"))
+               (:file "library/context" :depends-on ("library/package" "library/memory"))
+               (:file "library/communication" :depends-on ("library/package"))
+               (:file "library/communication-validator" :depends-on ("library/package" "library/communication"))
+               (:file "library/perceive" :depends-on ("library/package"))
+               (:file "library/reason" :depends-on ("library/package" "library/perceive"))
+               (:file "library/act" :depends-on ("library/package" "library/reason"))
+               (:file "library/loop" :depends-on ("library/package" "library/act")))
   :build-operation "program-op"
   :build-pathname "opencortex-server"
   :entry-point "opencortex:main")
