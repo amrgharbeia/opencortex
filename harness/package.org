@@ -4,24 +4,15 @@
 #+STARTUP: content
 
 * System Interface (package.lisp)
+
 The ~package.lisp~ file defines the public API of the ~opencortex~ harness. It serves as the primary membrane between the deterministic core modules and the dynamic world of skills and actuators.
 
-** Architectural Intent: The Package Membrane
-By strictly defining the public interface, we ensure that skills remain decoupled from the harness implementation details. This allows for autonomous replacement of any component (e.g., swapping the Memory or the Probabilistic Engine) without breaking existing skills.
-
-#+begin_src mermaid
-flowchart TD
-    External[Actuators / Clients] -- communication protocol --> Package[Package Membrane: API]
-    Skills[Dynamic Skills] -- API Calls --> Package
-    Package --> Internal[Harness Internal Modules]
-    style Package fill:#f9f,stroke:#333,stroke-width:4px
-#+end_src
-
 ** Public API Export
+
 #+begin_src lisp :tangle ../library/package.lisp
 (defpackage :opencortex
   (:use :cl)
-  (:export 
+  (:export
    ;; --- communication protocol ---
    #:frame-message
    #:read-framed-message
@@ -33,13 +24,13 @@ flowchart TD
    #:parse-message
    #:make-hello-message
    #:validate-communication-protocol-schema
-   
+
    ;; --- Daemon Lifecycle ---
    #:start-daemon
    #:stop-daemon
    #:harness-log
    #:main
-   
+
    ;; --- Memory (CLOSOS) ---
    #:ingest-ast
    #:lookup-object
@@ -61,7 +52,7 @@ flowchart TD
    #:org-object-hash
    #:snapshot-memory
    #:rollback-memory
-   
+
    ;; --- Context API (Peripheral Vision) ---
    #:context-query-store
    #:context-get-active-projects
@@ -73,7 +64,7 @@ flowchart TD
    #:context-get-skill-telemetry
    #:harness-track-telemetry
    #:context-assemble-global-awareness
-   
+
    ;; --- Reactive Signal Pipeline ---
    #:process-signal
    #:perceive-gate
@@ -87,7 +78,7 @@ flowchart TD
    #:initialize-actuators
    #:dispatch-action
    #:register-actuator
-   
+
    ;; --- Skill Engine ---
    #:load-skill-from-org
    #:initialize-all-skills
@@ -125,51 +116,38 @@ flowchart TD
    #:register-probabilistic-backend
    #:distill-prompt
    #:*provider-cascade*
-   
+
    ;; --- Security Vault ---
    #:vault-get-secret
    #:vault-set-secret
-   
+
    ;; --- Deterministic Logic ---
    #:list-objects-with-attribute
    #:deterministic-verify
-   
+
    ;; --- AST Helpers ---
    #:find-headline-missing-id))
 #+end_src
 
+* Package Implementation
+
 #+begin_src lisp :tangle ../library/package.lisp
 (in-package :opencortex)
+#+end_src
 
+** Robust Plist Accessor
+
+#+begin_src lisp :tangle ../library/package.lisp
 (defun proto-get (plist key)
   "Robustly retrieves a value from a plist, checking both uppercase and lowercase keyword versions."
   (let* ((s (string key))
          (up (intern (string-upcase s) :keyword))
          (dn (intern (string-downcase s) :keyword)))
     (or (getf plist up) (getf plist dn))))
-#+end_src
-
-#+end_src
-
-#+begin_src lisp :tangle ../library/package.lisp
-(in-package :opencortex)
-
-(defun proto-get (plist key)
-  "Robustly retrieves a value from a plist, checking both uppercase and lowercase keyword versions."
-  (let* ((s (string key))
-         (up (intern (string-upcase s) :keyword))
-         (dn (intern (string-downcase s) :keyword)))
-    (or (getf plist up) (getf plist dn))))
-#+end_src
-
-#+end_src
-
-** Package Implementation
-#+begin_src lisp :tangle ../library/package.lisp
-(in-package :opencortex)
 #+end_src
 
 ** Harness Logging State
+
 The harness maintains a thread-safe circular log buffer to provide context for debugging and neural reasoning.
 
 #+begin_src lisp :tangle ../library/package.lisp
@@ -179,33 +157,37 @@ The harness maintains a thread-safe circular log buffer to provide context for d
 #+end_src
 
 ** Skills Registry
+
 #+begin_src lisp :tangle ../library/package.lisp
 (defvar *skills-registry* (make-hash-table :test 'equal)
   "Global registry of all loaded skills.")
 #+end_src
 
 ** Skill Telemetry State
+
 #+begin_src lisp :tangle ../library/package.lisp
 (defvar *skill-telemetry* (make-hash-table :test 'equal))
 (defvar *telemetry-lock* (bt:make-lock "harness-telemetry-lock"))
 #+end_src
 
 ** Telemetry Implementation
-The system tracks the performance and reliability of individual skills. This logic is currently preserved in the package layer for future expansion into a dedicated telemetry skill.
+
+The system tracks the performance and reliability of individual skills.
 
 #+begin_src lisp :tangle ../library/package.lisp
 (defun harness-track-telemetry (skill-name duration status)
   "Updates performance metrics for a specific skill. Status should be :success or :rejected."
-  (when skill-name 
+  (when skill-name
     (bt:with-lock-held (*telemetry-lock*)
       (let ((entry (or (gethash skill-name *skill-telemetry*) (list :executions 0 :total-time 0 :failures 0))))
-        (incf (getf entry :executions)) 
+        (incf (getf entry :executions))
         (incf (getf entry :total-time) duration)
-        (when (eq status :rejected) (incf (getf entry :failures))) 
+        (when (eq status :rejected) (incf (getf entry :failures)))
         (setf (gethash skill-name *skill-telemetry*) entry)))))
 #+end_src
 
 ** Cognitive Tool Registry
+
 The Tool Registry allows the agent to interact with the physical world. Every tool must define a guard (for security) and a body (for execution).
 
 #+begin_src lisp :tangle ../library/package.lisp
@@ -229,6 +211,7 @@ The Tool Registry allows the agent to interact with the physical world. Every to
 #+end_src
 
 ** Harness Logging Implementation
+
 Centralized logging function. It simultaneously writes to standard output and the in-memory circular buffer.
 
 #+begin_src lisp :tangle ../library/package.lisp
@@ -242,5 +225,3 @@ Centralized logging function. It simultaneously writes to standard output and th
     (format t "~a~%" formatted-msg)
     (finish-output)))
 #+end_src
-
-

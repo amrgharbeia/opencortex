@@ -12,15 +12,15 @@
 (defvar *status-text* "Connecting...")
 (defvar *input-buffer* (make-array 0 :element-type 'char :fill-pointer 0 :adjustable t))
 (defvar *is-running* t)
-(defvar *queue-lock* (bt:make-lock))
+(defvar *queue-lock* (bordeaux-threads:make-lock))
 (defvar *incoming-msgs* nil)
 
 (defun enqueue-msg (msg)
-  (bt:with-lock-held (*queue-lock*)
+  (bordeaux-threads:with-lock-held (*queue-lock*)
     (push msg *incoming-msgs*)))
 
 (defun dequeue-msgs ()
-  (bt:with-lock-held (*queue-lock*)
+  (bordeaux-threads:with-lock-held (*queue-lock*)
     (let ((msgs (nreverse *incoming-msgs*)))
       (setf *incoming-msgs* nil)
       msgs)))
@@ -90,7 +90,7 @@
       (setf *socket* (usocket:socket-connect *daemon-host* *daemon-port*))
     (error (e) (format t "Error connecting: ~a~%" e) (return-from main)))
   (setf *stream* (usocket:socket-stream *socket*))
-  (bt:make-thread #'listen-thread :name "tui-listener")
+  (bordeaux-threads:make-thread #'listen-thread :name "tui-listener")
   
   (unwind-protect
       (with-screen (scr :input-echoing nil :input-blocking nil :enable-colors t :cursor-visible t)
