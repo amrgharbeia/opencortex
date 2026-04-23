@@ -1,0 +1,96 @@
+:PROPERTIES:
+:ID:       37f2b59f-4537-4cca-ac7f-5c24b9e2e773
+:CREATED:  [2026-03-30 Mon 21:16]
+:EDITED:   [2026-04-12 Sun 18:45]
+:END:
+#+TITLE: SKILL: Engineering Standards
+#+STARTUP: content
+#+FILETAGS: :engineering:standards:workflow:lisp:git:tdd:
+
+* Overview
+These are the strict **Engineering Standards** for all development within this system. They ensure that every line of code is provably correct, auditable, and maintainable.
+
+This skill acts as a policy advisor - it observes the context and provides warnings to the agent when engineering standards are violated. The agent (LLM) is responsible for self-regulating per AGENTS.md.
+
+* The Mandates (Operational Standards)
+
+** 1. Commit Before Modify
+You MUST commit and push the current state of the workspace BEFORE initiating any new file modifications. This ensures a clean recovery point.
+
+** 2. Literate Programming (The Single Source of Truth)
+All system logic and skills MUST be implemented as Literate Org files. Weaving documentation and code together ensures that the "Why" (Architectural Intent) is never separated from the "How" (Implementation).
+
+** 3. Literate Granularity (The Function-Block Rule)
+Every Lisp function, macro, or variable MUST reside in its own dedicated `#+begin_src lisp` block, immediately preceded by its literate explanatory text.
+
+** 4. Test-Driven Development (Continuous QA)
+No change is complete without verification. Every new function or macro must be accompanied by a FiveAM test case. Run the test suite and verify success before considering a task complete.
+
+** 5. The Consensus Loop (Plan Mode)
+Major architectural shifts or complex refactors require a formal implementation plan. Enter Plan Mode, draft a Blueprint (PROTOCOL), and seek formal approval before execution.
+
+** 6. Stop-and-Wait (Turn-Yielding)
+You are forbidden from drafting a plan or requesting approval in the same turn that you propose a strategy. You MUST propose your strategy in plain text, explicitly state "Waiting for user feedback," and yield the turn.
+
+** 7. GTD Synchronization (Roadmap Integrity)
+You are forbidden from considering a task complete without updating `gtd.org`. Record all major architectural shifts, feature implementations, or refactors in the project roadmap. When updating `gtd.org`, use hierarchical sub-TODO headlines, NOT checkboxes.
+
+** 8. Configuration Externalization (Environment-Driven)
+Source code MUST be free of hardcoded configuration values. All such values must be extracted to the environment and documented in `.env.example`.
+
+** 9. Literate-Only Modification (The Tangle Mandate)
+You are forbidden from modifying generated source code files directly. All changes MUST be made in the Literate Org file and then tangled.
+
+** 10. Test-First Methodology (Design Before Code)
+Before implementing any fix or feature:
+1. Design the test/success criteria first - define what "works" means
+2. Run chaos/edge-case testing - try to break the design
+3. Only then implement the solution
+
+** 11. Org as Thinking Medium (Investigation in Prose)
+When debugging or analyzing issues:
+1. Document your investigation in the relevant org file BEFORE implementing a fix
+2. Record: root cause hypothesis, evidence found, tradeoffs considered
+The org file IS the design document - code is just the implementation.
+
+** 12. Engineering Decision Audit Trail
+Every significant fix or architectural decision MUST be documented with:
+- Root cause analysis
+- Options considered and tradeoffs
+- Why this solution was chosen
+
+* Phase D: Build (Implementation)
+
+** Git Status Check
+#+begin_src lisp :tangle ../library/gen/org-skill-engineering-standards.lisp
+(in-package :opencortex)
+#+end_src
+
+#+begin_src lisp :tangle ../library/gen/org-skill-engineering-standards.lisp
+(defun verify-git-clean-p (&optional (dir *project-root*))
+  "Returns T if the git repository at DIR has no uncommitted changes."
+  (let ((status (uiop:run-program (list "git" "-C" (namestring dir) "status" "--porcelain")
+                                  :output :string
+                                  :ignore-error-status t)))
+    (string= "" (string-trim '(#\Space #\Newline #\Tab) status))))
+#+end_src
+
+** Skill Definition
+This skill observes context and provides warnings when engineering standards are violated.
+
+#+begin_src lisp :tangle ../library/gen/org-skill-engineering-standards.lisp
+(defskill :skill-engineering-standards
+  :priority 1000
+  :trigger (lambda (ctx) t)
+  :probabilistic nil
+  :deterministic (lambda (action context)
+                    (declare (ignore action))
+                    (let ((dirty (verify-git-clean-p)))
+                      (unless dirty
+                        (harness-log "ENGINEERING STANDARDS: Warning - Working tree is dirty. Commit before modifying files.")))
+                    nil))
+#+end_src
+
+* See Also
+- [[file:../README.org][opencortex README]]
+- [[~/.opencode/AGENTS.md][Agent Mandate]]
