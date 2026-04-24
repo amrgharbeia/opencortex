@@ -116,7 +116,12 @@
     #:get-tool-permission
     #:set-tool-permission
     #:check-tool-permission-gate
-    
+
+    ;; --- Emacs Edit Skill ---
+    #:emacs-edit-generate-id
+    #:emacs-edit-id-format
+    #:emacs-edit-set-property
+    #:emacs-edit-set-todo
     
     ;; --- Security Vault ---
    #:vault-get-secret
