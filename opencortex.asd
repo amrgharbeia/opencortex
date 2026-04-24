@@ -48,7 +48,8 @@
                 (:file "tests/memory-tests")
                 (:file "tests/immune-system-tests")
                 (:file "tests/emacs-edit-tests")
-                (:file "tests/lisp-utils-tests"))
+                (:file "tests/lisp-utils-tests")
+                (:file "tests/tool-permissions-tests"))
 
    :perform (test-op (o s)
               (uiop:symbol-call :fiveam :run!

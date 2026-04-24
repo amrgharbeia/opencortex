@@ -101,13 +101,24 @@
    #:register-emacs-client
    #:unregister-emacs-client
 
-   ;; --- Probabilistic Engine ---
-   #:ask-probabilistic
-   #:register-probabilistic-backend
-   #:distill-prompt
-   #:*provider-cascade*
-   
-   ;; --- Security Vault ---
+    ;; --- Probabilistic Engine ---
+    #:ask-probabilistic
+    #:register-probabilistic-backend
+    #:distill-prompt
+    #:*provider-cascade*
+
+    ;; --- Vector Search ---
+    #:get-embedding
+    #:cosine-similarity
+    #:semantic-search
+
+    ;; --- Tool Permissions ---
+    #:get-tool-permission
+    #:set-tool-permission
+    #:check-tool-permission-gate
+    
+    
+    ;; --- Security Vault ---
    #:vault-get-secret
    #:vault-set-secret
    
