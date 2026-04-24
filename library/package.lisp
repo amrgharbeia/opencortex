@@ -122,6 +122,10 @@
     #:emacs-edit-id-format
     #:emacs-edit-set-property
     #:emacs-edit-set-todo
+
+    ;; --- Self-Edit Skill ---
+    #:self-edit-balance-parens
+    #:self-edit-apply
     
     ;; --- Security Vault ---
    #:vault-get-secret
