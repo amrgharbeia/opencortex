@@ -19,16 +19,17 @@
 
   :serial t                          ; Load files in order listed below
 
-   :components ((:file "library/package")           ; Package definitions, core vars
-                (:file "library/skills")            ; Skill engine, cognitive tools
-                (:file "library/communication")     ; Protocol, framing
-                (:file "library/communication-validator") ; Schema validation
-                (:file "library/memory")            ; Org-object store, snapshots
-                (:file "library/context")           ; Context assembly, query
-                (:file "library/perceive")         ; Stage 1: Sensory normalization
-                (:file "library/reason")           ; Stage 2: Neural + deterministic
-                (:file "library/act")               ; Stage 3: Actuation
-                (:file "library/loop"))             ; Main entry, heartbeat
+:components ((:file "library/package")           ; Package definitions, core vars
+                 (:file "library/skills")            ; Skill engine, cognitive tools
+                 (:file "library/communication")     ; Protocol, framing
+                 (:file "library/communication-validator") ; Schema validation
+                 (:file "library/memory")            ; Org-object store, snapshots
+                 (:file "library/gen/org-skill-engineering-standards") ; Enforcement
+                 (:file "library/context")           ; Context assembly, query
+                 (:file "library/perceive")         ; Stage 1: Sensory normalization
+                 (:file "library/reason")           ; Stage 2: Neural + deterministic
+                 (:file "library/act")               ; Stage 3: Actuation
+                 (:file "library/loop"))             ; Main entry, heartbeat
 
   :build-operation "program-op"
   :build-pathname "opencortex-server"
@@ -38,18 +39,19 @@
   :depends-on (:opencortex           ; The harness we're testing
                :fiveam)              ; Testing framework
 
-   :components ((:file "library/gen/org-skill-emacs-edit")
-                (:file "library/gen/org-skill-lisp-utils")
-                (:file "library/gen/org-skill-tool-permissions")
-                (:file "tests/communication-tests")
-                (:file "tests/pipeline-tests")
-                (:file "tests/act-tests")
-                (:file "tests/boot-sequence-tests")
-                (:file "tests/memory-tests")
-                (:file "tests/immune-system-tests")
-                (:file "tests/emacs-edit-tests")
-                (:file "tests/lisp-utils-tests")
-                (:file "tests/tool-permissions-tests"))
+:components ((:file "library/gen/org-skill-emacs-edit")
+                 (:file "library/gen/org-skill-lisp-utils")
+                 (:file "library/gen/org-skill-tool-permissions")
+                 (:file "tests/communication-tests")
+                 (:file "tests/pipeline-tests")
+                 (:file "tests/act-tests")
+                 (:file "tests/boot-sequence-tests")
+                 (:file "tests/memory-tests")
+                 (:file "tests/immune-system-tests")
+                 (:file "tests/emacs-edit-tests")
+                 (:file "tests/lisp-utils-tests")
+                 (:file "tests/tool-permissions-tests")
+                 (:file "tests/engineering-standards-tests"))
 
    :perform (test-op (o s)
               (uiop:symbol-call :fiveam :run!
@@ -64,8 +66,10 @@
                 (uiop:find-symbol* :immune-suite :opencortex-immune-system-tests))
               (uiop:symbol-call :fiveam :run!
                 (uiop:find-symbol* :emacs-edit-suite :opencortex-emacs-edit-tests))
-              (uiop:symbol-call :fiveam :run!
-                (uiop:find-symbol* :lisp-utils-suite :opencortex-lisp-utils-tests))))
+(uiop:symbol-call :fiveam :run!
+                 (uiop:find-symbol* :lisp-utils-suite :opencortex-lisp-utils-tests))
+               (uiop:symbol-call :fiveam :run!
+                 (uiop:find-symbol* :engineering-standards-suite :opencortex-engineering-standards-tests))))
 
 (defsystem :opencortex/tui
   :depends-on (:opencortex           ; The daemon we're connecting to
