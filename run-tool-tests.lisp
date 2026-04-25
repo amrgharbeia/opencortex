@@ -1,0 +1,10 @@
+(load "/home/user/quicklisp/setup.lisp")
+(push #p"./" asdf:*central-registry*)
+(ql:quickload :fiveam :verbose nil)
+(asdf:load-system :opencortex :verbose nil)
+(load "library/gen/org-skill-tool-permissions.lisp")
+(load "tests/tool-permissions-tests.lisp")
+
+(format t "~%=== Tool Permissions Tests ===~%")
+(fiveam:run! 'opencortex-tool-permissions-tests::tool-permissions-suite)
+(format t "~%=== DONE ===~%")

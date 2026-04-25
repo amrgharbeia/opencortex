@@ -56,13 +56,13 @@
   "Starts the TCP listener for local CLI clients."
   (setf *cli-server-socket* (usocket:socket-listen "0.0.0.0" port :reuse-address t))
   (setf *cli-server-thread*
-        (bordeaux-threads:make-thread
+        (bt:make-thread
          (lambda ()
            (unwind-protect
                 (loop
                   (let* ((socket (usocket:socket-accept *cli-server-socket*))
                          (stream (usocket:socket-stream socket)))
-                    (bordeaux-threads:make-thread (lambda () 
+                    (bt:make-thread (lambda () 
                                       (unwind-protect (handle-cli-client stream)
                                         (usocket:socket-close socket)))
                                     :name "opencortex-cli-client-handler")))

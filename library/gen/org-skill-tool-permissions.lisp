@@ -22,15 +22,11 @@
 
 (def-cognitive-tool :get-embedding
   "Generates vector embeddings via Ollama or llama.cpp API."
-  ((text :type :string :description "Text to embed."))
+  ((:text :type :string :description "Text to embed."))
   :body (lambda (args)
           (let* ((text (getf args :text))
                  (provider (or (uiop:getenv "EMBEDDING_PROVIDER") "ollama"))
-                 (model (or (uiop:getenv "EMBEDDING_MODEL") 
-                            (case (intern (string-upcase provider) :keyword)
-                              (:NOMIC-EMBED-TEXT "nomic-embed-text")
-                              (:LLAMA-CPP "llama.cpp")
-                              (t "nomic-embed-text"))))
+                 (model (or (uiop:getenv "EMBEDDING_MODEL") "nomic-embed-text"))
                  (embedding nil))
             (cond
               ((string= provider "ollama")

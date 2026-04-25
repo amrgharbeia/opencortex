@@ -92,28 +92,22 @@
                                         (execute-llm-request prompt system-prompt :provider p :model model))))
 
 (def-cognitive-tool :get-ollama-embedding
-   "Generates vector embeddings via Ollama API."
-   ((text :type :string :description "Text to embed."))
-   :body (lambda (args)
-           (let* ((text (getf args :text))
-                  (host (or (uiop:getenv "OLLAMA_HOST") "localhost:11434"))
-                  (url (format nil "http://~a/api/embeddings" host))
-                  (model (or (uiop:getenv "OLLAMA_EMBEDDING_MODEL") "nomic-embed-text"))
-                  (body (cl-json:encode-json-to-string `((model . ,model) (prompt . ,text)))))
-             (handler-case
-                 (let* ((response (dex:post url :headers '(("Content-Type" . "application/json")) :content body :connect-timeout 5 :read-timeout 30))
-                        (json (cl-json:decode-json-from-string response)))
-                   (let ((embedding (cdr (assoc :embedding json))))
-                     (if embedding
-                         (list :status :success :vector embedding)
-                         (list :status :error :message "No embedding in response"))))
-               (error (c) (list :status :error :message (format nil "Ollama Embedding Failure: ~a" c)))))))
-
-(defun get-embedding (text)
-  "Generates a vector embedding for the given text via Ollama. Returns nil on failure."
-  (let ((result (funcall (get-cognitive-tool-body :get-ollama-embedding) (list :text text))))
-    (when (eq (getf result :status) :success)
-      (getf result :vector))))
+  "Generates vector embeddings via Ollama API for semantic search."
+  ((text :type :string :description "Text to embed."))
+  :body (lambda (args)
+          (let* ((text (getf args :text))
+                 (host (or (uiop:getenv "OLLAMA_HOST") "localhost:11434"))
+                 (url (format nil "http://~a/api/embeddings" host))
+                 (model (or (uiop:getenv "OLLAMA_EMBEDDING_MODEL") "nomic-embed-text"))
+                 (body (cl-json:encode-json-to-string `((model . ,model) (prompt . ,text)))))
+            (handler-case
+                (let* ((response (dex:post url :headers '(("Content-Type" . "application/json")) :content body :connect-timeout 5 :read-timeout 30))
+                       (json (cl-json:decode-json-from-string response)))
+                  (let ((embedding (cdr (assoc :embedding json))))
+                    (if embedding
+                        (list :status :success :vector embedding)
+                        (list :status :error :message "No embedding in response"))))
+              (error (c) (list :status :error :message (format nil "Ollama Embedding Failure: ~a" c)))))))
 
 (def-cognitive-tool :ask-llm 
   "Queries an LLM provider via the unified gateway."

@@ -128,7 +128,7 @@ At the gate:
               :payload (list :level :error
                              :text "POLICY [Transparency]: User-facing action missing :explanation. Blocked.")))))
 
-  action)
+  action))
 #+end_src
 
 ** 2. Autonomy Above All
@@ -195,7 +195,7 @@ Every action should increase the user's independence from centralized, proprieta
                                :text (format nil "Autonomy Debt: Action references proprietary domain '~a'. Consider a local alternative." domain)
                                :original-action action)))
 
-        action))
+        action)))
 #+end_src
 
 ** 3. Zero-Bloat Mandate
@@ -241,7 +241,7 @@ The system harness must remain minimalist. "Just-in-case" code is a security vul
                                           (length content) *policy-max-skill-size-chars*)
                              :original-action action))))
 
-  action)
+  action))
 #+end_src
 
 ** 4. Modularity
@@ -313,7 +313,7 @@ This is the most important invariant for system stability. If the harness grows 
                              :text "POLICY [Modularity]: Modification to protected core path blocked. Provide :modularity-justification explaining why this cannot be a skill."
                              :blocked-path target-file))))
 
-  action)
+  action))
 #+end_src
 
 ** 5. Technical Mastery & Mentorship
@@ -365,7 +365,7 @@ The agent's goal is not to "do it for the user," but to "empower the user." Ever
                 :payload (list :level :error
                                :text "POLICY [Mentorship]: High-impact action missing :mentorship-note. Explain what you are doing and why. Blocked.")))))
 
-  action)
+  action))
 #+end_src
 
 ** 6. Long-Term Sustainability
@@ -395,7 +395,7 @@ This means preferring local, energy-efficient architectures over cloud-dependent
 
   (let* ((payload (getf context :payload))
          (backend (getf payload :backend))
-         (provider (getf payload :provider))
+         (provider (getf payload :provider)))
 
     (when (or (member backend *cloud-only-backends*)
               (member provider *cloud-only-backends*))
@@ -409,7 +409,7 @@ This means preferring local, energy-efficient architectures over cloud-dependent
                              :text (format nil "Sustainability Debt: Reliance on cloud provider '~a'. Consider Ollama or local inference."
                                           (or backend provider))))))
 
-  action)
+  action)))
 #+end_src
 
 * Policy Explanation Engine
@@ -487,7 +487,7 @@ When the policy gate blocks or modifies an action, it must tell the user *why*. 
               (t
                (harness-log "~a" (getf (getf result :payload) :text)))))))))
 
-  action)
+  action))
 #+end_src
 
 ** Finding Engineering Standards
