@@ -1,70 +1,109 @@
 :PROPERTIES:
 :ID:       37f2b59f-4537-4cca-ac7f-5c24b9e2e773
 :CREATED:  [2026-03-30 Mon 21:16]
-:EDITED:   [2026-04-12 Sun 18:45]
+:EDITED:   [2026-04-25 Sat]
 :END:
 #+TITLE: SKILL: Engineering Standards
 #+STARTUP: content
-#+FILETAGS: :engineering:standards:workflow:lisp:git:tdd:
+#+FILETAGS: :engineering:standards:workflow:lisp:git:tdd:chaos:
 
 * Overview
-These are the strict **Engineering Standards** for all development within this system. They ensure that every line of code is provably correct, auditable, and maintainable.
 
-This skill acts as a policy advisor - it observes the context and provides warnings to the agent when engineering standards are violated. The agent (LLM) is responsible for self-regulating per AGENTS.md.
+This skill enforces the Engineering Standards for all development within OpenCortex. It observes agent context and gates actions that violate protocol.
 
-* The Mandates (Operational Standards)
+The standards are ordered by lifecycle phase, not priority. An agent must execute them in sequence, not selectively.
 
-** 1. Commit Before Modify
-You MUST commit and push the current state of the workspace BEFORE initiating any new file modifications. This ensures a clean recovery point.
+* Phase 0: Before You Think
 
-** 2. Literate Programming (The Single Source of Truth)
-All system logic and skills MUST be implemented as Literate Org files. Weaving documentation and code together ensures that the "Why" (Architectural Intent) is never separated from the "How" (Implementation).
+** Skill-First Query Rule
 
-** 3. Literate Granularity (The Function-Block Rule)
-Every Lisp function, macro, or variable MUST reside in its own dedicated `#+begin_src lisp` block, immediately preceded by its literate explanatory text.
+Before any analysis, debugging, or implementation: check if a skill already covers the problem domain.
 
-** 4. Test-Driven Development (Continuous QA)
-No change is complete without verification. Every new function or macro must be accompanied by a FiveAM test case. Run the test suite and verify success before considering a task complete.
+Query the skill catalog via ~(list-skills)~ or ~(find-skill :keyword)~. If a relevant skill exists:
+1. Read the skill's org file
+2. Follow its mandates
+3. Do not duplicate logic
 
-** 5. The Consensus Loop (Plan Mode)
-Major architectural shifts or complex refactors require a formal implementation plan. Enter Plan Mode, draft a Blueprint (PROTOCOL), and seek formal approval before execution.
+Rationale: The skill layer is the primary intelligence. Raw LLM reasoning is a fallback, not a starting point. Violating this creates drift, where your solution diverges from the system's encoded wisdom.
 
-** 6. Stop-and-Wait (Turn-Yielding)
-You are forbidden from drafting a plan or requesting approval in the same turn that you propose a strategy. You MUST propose your strategy in plain text, explicitly state "Waiting for user feedback," and yield the turn.
+* Phase A: Design (Test-First)
 
-** 7. GTD Synchronization (Roadmap Integrity)
-You are forbidden from considering a task complete without updating `gtd.org`. Record all major architectural shifts, feature implementations, or refactors in the project roadmap. When updating `gtd.org`, use hierarchical sub-TODO headlines, NOT checkboxes.
+** 1. Define Success Criteria First
 
-** 8. Configuration Externalization (Environment-Driven)
-Source code MUST be free of hardcoded configuration values. All such values must be extracted to the environment and documented in `.env.example`.
+Before writing code, write the test that proves the feature works. The test defines the contract.
 
-** 9. Literate-Only Modification (The Tangle Mandate)
-You are forbidden from modifying generated source code files directly. All changes MUST be made in the Literate Org file and then tangled.
+If the change is architectural, write the test as a PROTOCOL document (Plan Mode) and seek approval.
 
-** 10. Test-First Methodology (Design Before Code)
-Before implementing any fix or feature:
-1. Design the test/success criteria first - define what "works" means
-2. Run chaos/edge-case testing - try to break the design
-3. Only then implement the solution
+** 2. Break the Design with Chaos
 
-** 11. Org as Thinking Medium (Investigation in Prose)
-When debugging or analyzing issues:
-1. Document your investigation in the relevant org file BEFORE implementing a fix
-2. Record: root cause hypothesis, evidence found, tradeoffs considered
-The org file IS the design document - code is just the implementation.
+After defining success criteria, run adversarial analysis:
 
-** 12. Engineering Decision Audit Trail
-Every significant fix or architectural decision MUST be documented with:
+- *Deterministic chaos:* Scripted regression tests that feed the system known-good inputs and verify known-good outputs. Run on every change.
+- *Probabilistic chaos:* Randomized fuzzing, property-based testing, and noise injection to discover unknown failure modes. Run on every major release.
+- *Stress chaos:* Sustained load, resource starvation, and concurrent access to find edge-case instabilities. Run during hardening sprints.
+
+Rationale: If you cannot break your own design, you have not understood it.
+
+* Phase B: Commit (Recovery Point)
+
+** 3. Commit Before Modify
+
+You MUST commit (and push, if network is available) the current workspace state before initiating new file modifications.
+
+This is not a suggestion. If ~verify-git-clean-p~ returns NIL, the engineering standards gate MAY block high-impact actions.
+
+* Phase C: Build (Implementation)
+
+** 4. Literate Programming (Single Source of Truth)
+
+All system logic and skills MUST be implemented as Literate Org files. Weave documentation and code together. The "Why" (Architectural Intent) is never separated from the "How" (Implementation).
+
+** 5. Function-Block Granularity
+
+Every Lisp function, macro, or variable resides in its own dedicated ~#+begin_src lisp~ block, immediately preceded by its explanatory text.
+
+** 6. Tangle Mandate
+
+You are forbidden from modifying generated ~.lisp~ files directly. All changes MUST be made in the Org file and then tangled.
+
+** 7. Configuration Externalization
+
+Source code MUST be free of hardcoded configuration values. Extract to environment variables and document in ~.env.example~.
+
+** 8. Org as Thinking Medium
+
+When debugging or analyzing issues, document your investigation in the relevant org file BEFORE implementing a fix.
+
+Record: root cause hypothesis, evidence found, options considered, tradeoffs, decision rationale.
+
+* Phase D: Validate (Proof)
+
+** 9. Test Verification
+
+No change is complete without running the test suite. A change that breaks existing tests is not a fix — it is damage.
+
+Run chaotic tests alongside the main suite.
+
+* Phase E: Document (Audit Trail)
+
+** 10. Decision Audit Trail
+
+Every significant fix or architectural decision MUST be documented in an org file with:
 - Root cause analysis
 - Options considered and tradeoffs
 - Why this solution was chosen
 
-* Phase D: Build (Implementation)
+** 11. Stop-and-Wait (Turn-Yielding)
+
+For major changes, propose your strategy in plain text, state "Waiting for user feedback," and yield the turn. Do not draft implementation in the same message.
+
+** 12. GTD Synchronization
+
+You are forbidden from considering a task complete without updating ~gtd.org~. Record all major shifts using hierarchical TODO headlines, NOT checkboxes.
+
+* Implementation
 
 ** Git Status Check
-#+begin_src lisp :tangle ../library/gen/org-skill-engineering-standards.lisp
-(in-package :opencortex)
-#+end_src
 
 #+begin_src lisp :tangle ../library/gen/org-skill-engineering-standards.lisp
 (defun verify-git-clean-p (&optional (dir *project-root*))
@@ -75,22 +114,38 @@ Every significant fix or architectural decision MUST be documented with:
     (string= "" (string-trim '(#\Space #\Newline #\Tab) status))))
 #+end_src
 
-** Skill Definition
-This skill observes context and provides warnings when engineering standards are violated.
+** Engineering Standards Gate
+
+#+begin_src lisp :tangle ../library/gen/org-skill-engineering-standards.lisp
+(defun engineering-standards-gate (action context)
+  "The deterministic gate for the Engineering Standards skill.
+
+  Checks:
+  1. Git tree is clean (warn if dirty)
+  2. Action has :engineering-standards-compliance note if high-impact
+
+  Returns ACTION unmodified. This is a warning gate, not a blocking gate."
+  (declare (ignore context))
+
+  ;; Check 1: Git cleanliness
+  (let ((dirty (not (verify-git-clean-p))))
+    (when dirty
+      (harness-log "ENGINEERING STANDARDS: Warning - Working tree is dirty. Commit before modifying files.")))
+
+  action)
+#+end_src
+
+** Skill Registration
 
 #+begin_src lisp :tangle ../library/gen/org-skill-engineering-standards.lisp
 (defskill :skill-engineering-standards
   :priority 1000
-  :trigger (lambda (ctx) t)
+  :trigger (lambda (ctx) (declare (ignore ctx)) t)
   :probabilistic nil
-  :deterministic (lambda (action context)
-                    (declare (ignore action))
-                    (let ((dirty (verify-git-clean-p)))
-                      (unless dirty
-                        (harness-log "ENGINEERING STANDARDS: Warning - Working tree is dirty. Commit before modifying files.")))
-                    nil))
+  :deterministic #'engineering-standards-gate)
 #+end_src
 
 * See Also
+- [[file:org-skill-literate-programming.org][Literate Programming Skill]] - Structural validation and tangle rules
+- [[file:org-skill-policy.org][Policy Skill]] - Constitutional constraints
 - [[file:../README.org][opencortex README]]
-- [[~/.opencode/AGENTS.md][Agent Mandate]]
