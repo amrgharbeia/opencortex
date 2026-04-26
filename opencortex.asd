@@ -25,7 +25,6 @@
                (:file "library/communication-validator") ; Schema validation
                (:file "library/memory")            ; Org-object store, snapshots
                (:file "library/gen/org-skill-engineering-standards") ; Enforcement
-               (:file "library/gen/org-skill-literate-programming") ; LP enforcement
                (:file "library/context")           ; Context assembly, query
                (:file "library/perceive")         ; Stage 1: Sensory normalization
                (:file "library/reason")           ; Stage 2: Neural + deterministic

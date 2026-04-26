@@ -15,7 +15,8 @@
 (defvar *enforcement-rules*
   '((:pre-task
      (:git-clean "Working tree must be clean before modifications")
-     (:skill-queried "Skill catalog should be queried before analysis"))
+     (:skill-queried "Skill catalog should be queried before analysis")
+     (:tangle-synced "Tangled .lisp files must match Org source"))
     (:during-task
      (:org-only "Only .org files may be edited; .lisp is generated")
      (:one-per-block "One definition per src block")
@@ -41,6 +42,37 @@
      :message "ENGINEERING STANDARDS VIOLATION: Working tree is dirty. Commit changes before modifying files."
      :severity :blocker)))
 
+(defvar *tangle-targets*
+  '(("skills/org-skill-engineering-standards.org" . "library/gen/org-skill-engineering-standards.lisp")
+    ("skills/org-skill-literate-programming.org" . "library/gen/org-skill-literate-programming.lisp")
+    ("harness/memory.org" . "library/memory.lisp")
+    ("harness/loop.org" . "library/loop.lisp")
+    ("harness/perceive.org" . "library/perceive.lisp")
+    ("harness/reason.org" . "library/reason.lisp")
+    ("harness/act.org" . "library/act.lisp")
+    ("harness/skills.org" . "library/skills.lisp")
+    ("harness/communication.org" . "library/communication.lisp")))
+
+(defun check-tangle-sync (&optional (root *engineering-std-*project-root*))
+  "Returns violation if any tangled .lisp file is newer than its Org source.
+  
+This detects direct .lisp edits (which violate the LP workflow)."
+  (when root
+    (dolist (pair *tangle-targets*)
+      (let* ((org-file (merge-pathnames (car pair) root))
+             (lisp-file (merge-pathnames (cdr pair) root))
+             (org-time (ignore-errors (file-write-date org-file)))
+             (lisp-time (ignore-errors (file-write-date lisp-file))))
+        (when (and org-time lisp-time (> lisp-time org-time))
+          (return-from check-tangle-sync
+            (make-engineering-violation
+             :phase :pre-task
+             :rule :tangle-synced
+             :message (format nil "ENGINEERING STANDARDS VIOLATION: ~a is newer than ~a. Edit Org source, not .lisp directly."
+                                    (file-namestring lisp-file) (file-namestring org-file))
+             :severity :blocker))))))
+  nil)
+
 (defun engineering-standards-gate (action context)
   "The deterministic HARD BLOCK gate for Engineering Standards.
 
@@ -64,7 +96,15 @@
           (harness-log "~a" (engineering-violation-message git-check))
           (return-from engineering-standards-gate
             (list :type :log
-                  :payload (list :text (engineering-violation-message git-check)))))))
+                  :payload (list :text (engineering-violation-message git-check))))))
+
+    ;; BLOCKING: Tangle sync check - .lisp must not be newer than .org
+    (let ((tangle-check (check-tangle-sync *engineering-std-*project-root*)))
+      (when tangle-check
+        (harness-log "~a" (engineering-violation-message tangle-check))
+        (return-from engineering-standards-gate
+          (list :type :log
+                :payload (list :text (engineering-violation-message tangle-check))))))))
 
     action)
 
