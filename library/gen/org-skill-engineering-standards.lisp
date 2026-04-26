@@ -1,5 +1,6 @@
 (in-package :opencortex)
 
+
 (defvar *engineering-std-*project-root* nil
   "Path to the project root for enforcement checks.")
 
@@ -130,3 +131,4 @@ This detects direct .lisp edits (which violate the LP workflow)."
 
 ;; Auto-initialize on load
 (engineering-std-init)
+
