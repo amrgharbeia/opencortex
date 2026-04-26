@@ -1,3 +1,5 @@
+(in-package :opencortex)
+
 (defvar *engineering-std-*project-root* nil
   "Path to the project root for enforcement checks.")
 

@@ -10,7 +10,7 @@ The ~communication.lisp~ module defines the low-level transport and framing logi
 
 * Implementation (communication.lisp)
 
-#+begin_src lisp :tangle ../library/package.lisp
+#+begin_src lisp :tangle ../library/communication.lisp
 (in-package :opencortex)
 
 (defun proto-get (plist key)
@@ -32,13 +32,7 @@ The ~communication.lisp~ module defines the low-level transport and framing logi
   (let ((key (if (keywordp name) name (intern (string-upcase (string name)) :keyword))))
     (setf (gethash key *actuator-registry*) fn)))
 
-(defun frame-message (msg-plist)
-  "Frames a Lisp plist with a 6-character hex length and a newline for stream integrity."
-  (let* ((*print-pretty* nil)
-         (*print-circle* nil)
-         (msg-string (format nil "~s" msg-plist))
-         (len (length msg-string)))
-    (format nil "~6,'0x~a~%" len msg-string)))
+;; Removed duplicate frame-message - kept the sanitized version below
 
 (defun read-framed-message (stream)
   "Reads a hex-length prefixed S-expression from the stream securely. Skips leading whitespace."

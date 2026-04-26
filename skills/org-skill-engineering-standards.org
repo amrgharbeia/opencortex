@@ -108,6 +108,8 @@ The engineering standards skill is a HARD BLOCK gate. Violations are rejected, n
 ** Pre-Task Enforcement (Blocking)
 
 #+begin_src lisp :tangle ../library/gen/org-skill-engineering-standards.lisp
+(in-package :opencortex)
+
 (defvar *engineering-std-*project-root* nil
   "Path to the project root for enforcement checks.")
 

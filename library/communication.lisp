@@ -1,5 +1,14 @@
 (in-package :opencortex)
 
+(defun proto-get (plist key)
+  "Robustly retrieves a value from a plist, checking both uppercase and lowercase keyword versions."
+  (let* ((s (string key))
+         (up (intern (string-upcase s) :keyword))
+         (dn (intern (string-downcase s) :keyword)))
+    (or (getf plist up) (getf plist dn))))
+
+(in-package :opencortex)
+
 (defvar *actuator-registry* (make-hash-table :test 'equalp)
   "Global registry mapping target keywords to their physical actuator functions.")
 
@@ -8,20 +17,7 @@
   (let ((key (if (keywordp name) name (intern (string-upcase (string name)) :keyword))))
     (setf (gethash key *actuator-registry*) fn)))
 
-(defun frame-message (msg-plist)
-  "Frames a Lisp plist with a 6-character hex length and a newline for stream integrity."
-  (let* ((*print-pretty* nil)
-         (*print-circle* nil)
-         (msg-string (format nil "~s" msg-plist))
-         (len (length msg-string)))
-    (format nil "~6,'0x~a~%" len msg-string)))
-
-(defun parse-message (framed-string)
-  "Parses a hex-length prefixed framed string into a Lisp plist."
-  (let* ((len (parse-integer (subseq framed-string 0 6) :radix 16))
-         (payload (subseq framed-string 6 (+ 6 len))))
-    (let ((*read-eval* nil))
-      (read-from-string payload))))
+;; Removed duplicate frame-message - kept the sanitized version below
 
 (defun read-framed-message (stream)
   "Reads a hex-length prefixed S-expression from the stream securely. Skips leading whitespace."

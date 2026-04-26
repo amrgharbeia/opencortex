@@ -1,6 +1,6 @@
 (defpackage :opencortex
   (:use :cl)
-  (:export 
+  (:export
    ;; --- communication protocol ---
    #:frame-message
    #:read-framed-message
@@ -12,13 +12,13 @@
    #:parse-message
    #:make-hello-message
    #:validate-communication-protocol-schema
-   
+
    ;; --- Daemon Lifecycle ---
    #:start-daemon
    #:stop-daemon
    #:harness-log
    #:main
-   
+
    ;; --- Memory (CLOSOS) ---
    #:ingest-ast
    #:lookup-object
@@ -40,9 +40,7 @@
    #:org-object-hash
    #:snapshot-memory
    #:rollback-memory
-   #:save-memory-to-disk
-   #:load-memory-from-disk
-   
+
    ;; --- Context API (Peripheral Vision) ---
    #:context-query-store
    #:context-get-active-projects
@@ -54,7 +52,7 @@
    #:context-get-skill-telemetry
    #:harness-track-telemetry
    #:context-assemble-global-awareness
-   
+
    ;; --- Reactive Signal Pipeline ---
    #:process-signal
    #:perceive-gate
@@ -68,7 +66,7 @@
    #:initialize-actuators
    #:dispatch-action
    #:register-actuator
-   
+
    ;; --- Skill Engine ---
    #:load-skill-from-org
    #:initialize-all-skills
@@ -101,63 +99,50 @@
    #:register-emacs-client
    #:unregister-emacs-client
 
-    ;; --- Probabilistic Engine ---
-    #:ask-probabilistic
-    #:register-probabilistic-backend
-    #:distill-prompt
-    #:*provider-cascade*
+   ;; --- Probabilistic Engine ---
+   #:ask-probabilistic
+   #:register-probabilistic-backend
+   #:distill-prompt
+   #:*provider-cascade*
 
-    ;; --- Vector Search ---
-    #:get-embedding
-    #:cosine-similarity
-    #:semantic-search
-
-    ;; --- Tool Permissions ---
-    #:get-tool-permission
-    #:set-tool-permission
-    #:check-tool-permission-gate
-
-    ;; --- Emacs Edit Skill ---
-    #:emacs-edit-generate-id
-    #:emacs-edit-id-format
-    #:emacs-edit-set-property
-    #:emacs-edit-set-todo
-
-    ;; --- Self-Edit Skill ---
-    #:self-edit-balance-parens
-    #:self-edit-apply
-    
-    ;; --- Security Vault ---
+   ;; --- Security Vault ---
    #:vault-get-secret
    #:vault-set-secret
-   
+
    ;; --- Deterministic Logic ---
    #:list-objects-with-attribute
    #:deterministic-verify
-   
+
    ;; --- AST Helpers ---
    #:find-headline-missing-id))
 
 (in-package :opencortex)
 
+(defun proto-get (plist key)
+  "Robustly retrieves a value from a plist, checking both uppercase and lowercase keyword versions."
+  (let* ((s (string key))
+         (up (intern (string-upcase s) :keyword))
+         (dn (intern (string-downcase s) :keyword)))
+    (or (getf plist up) (getf plist dn))))
+
 (defvar *system-logs* nil)
-(defvar *logs-lock* (bordeaux-threads:make-lock "harness-logs-lock"))
+(defvar *logs-lock* (bt:make-lock "harness-logs-lock"))
 (defvar *max-log-history* 100)
 
 (defvar *skills-registry* (make-hash-table :test 'equal)
   "Global registry of all loaded skills.")
 
 (defvar *skill-telemetry* (make-hash-table :test 'equal))
-(defvar *telemetry-lock* (bordeaux-threads:make-lock "harness-telemetry-lock"))
+(defvar *telemetry-lock* (bt:make-lock "harness-telemetry-lock"))
 
 (defun harness-track-telemetry (skill-name duration status)
   "Updates performance metrics for a specific skill. Status should be :success or :rejected."
-  (when skill-name 
-    (bordeaux-threads:with-lock-held (*telemetry-lock*)
+  (when skill-name
+    (bt:with-lock-held (*telemetry-lock*)
       (let ((entry (or (gethash skill-name *skill-telemetry*) (list :executions 0 :total-time 0 :failures 0))))
-        (incf (getf entry :executions)) 
+        (incf (getf entry :executions))
         (incf (getf entry :total-time) duration)
-        (when (eq status :rejected) (incf (getf entry :failures))) 
+        (when (eq status :rejected) (incf (getf entry :failures)))
         (setf (gethash skill-name *skill-telemetry*) entry)))))
 
 (defvar *cognitive-tools* (make-hash-table :test 'equal))
@@ -181,22 +166,9 @@
 (defun harness-log (msg &rest args)
   "Centralized logging for the harness."
   (let ((formatted-msg (apply #'format nil msg args)))
-    (bordeaux-threads:with-lock-held (*logs-lock*)
+    (bt:with-lock-held (*logs-lock*)
       (push formatted-msg *system-logs*)
       (when (> (length *system-logs*) *max-log-history*)
         (setq *system-logs* (subseq *system-logs* 0 *max-log-history*))))
     (format t "~a~%" formatted-msg)
     (finish-output)))
-
-(defun proto-get (plist key)
-  "Robustly retrieves a value from a plist, checking both uppercase and lowercase keyword versions."
-  (let* ((s (string key))
-         (up (intern (string-upcase s) :keyword))
-         (dn (intern (string-downcase s) :keyword)))
-    (or (getf plist up) (getf plist dn))))
-
-(defun get-cognitive-tool-body (tool-name)
-  "Retrieves the body function of a cognitive tool, or nil if not found."
-  (let ((tool (gethash (string-downcase (string tool-name)) *cognitive-tools*)))
-    (when tool
-      (cognitive-tool-body tool))))
