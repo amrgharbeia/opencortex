@@ -71,16 +71,57 @@
                                   reports))))
                       (setf idx (+ end-pos 9))))))))))
 
+(defvar *tangle-targets*
+  '(("skills/org-skill-engineering-standards.org" . "library/gen/org-skill-engineering-standards.lisp")
+    ("skills/org-skill-literate-programming.org" . "library/gen/org-skill-literate-programming.lisp")
+    ("harness/memory.org" . "library/memory.lisp")
+    ("harness/loop.org" . "library/loop.lisp")
+    ("harness/perceive.org" . "library/perceive.lisp")
+    ("harness/reason.org" . "library/reason.lisp")
+    ("harness/act.org" . "library/act.lisp")
+    ("harness/skills.org" . "library/skills.lisp")
+    ("harness/communication.org" . "library/communication.lisp")))
+
+(defvar *lp-project-root* nil)
+
+(defun lp-set-project-root (path)
+  (setf *lp-project-root* (uiop:ensure-directory-pathname path)))
+
+(defun check-tangle-sync (&optional (root *lp-project-root*))
+  "Returns violation if any tangled .lisp file is newer than its Org source.
+
+This detects direct .lisp edits (which violate the LP workflow)."
+  (when root
+    (dolist (pair *tangle-targets*)
+      (let* ((org-file (merge-pathnames (car pair) root))
+             (lisp-file (merge-pathnames (cdr pair) root))
+             (org-time (ignore-errors (file-write-date org-file)))
+             (lisp-time (ignore-errors (file-write-date lisp-file))))
+        (when (and org-time lisp-time (> lisp-time org-time))
+          (return-from check-tangle-sync
+            (list :type :log
+                  :payload (list :text (format nil "LITERATE PROGRAMMING VIOLATION: ~a is newer than ~a. Edit Org source, not .lisp directly."
+                                               (file-namestring lisp-file) (file-namestring org-file)))))))))
+  nil)
+
 (defskill :skill-literate-programming
   :priority 1100
   :trigger (lambda (ctx)
              (declare (ignore ctx))
-             ;; Trigger on any skill-related action
              t)
   :probabilistic nil
   :deterministic (lambda (action context)
                    (declare (ignore context))
-                   ;; Audit the action's target file if it's an org skill
+                   ;; Check tangle sync before any file modification
+                   (let ((file (and (listp action) (getf action :payload) (getf (getf action :payload) :file))))
+                     (when file
+                       (let ((tangle-check (check-tangle-sync *lp-project-root*)))
+                         (when tangle-check
+                           (return-from skill-literate-programming deterministic
+                             (progn
+                               (harness-log "~a" (getf (getf tangle-check :payload) :text))
+                               tangle-check))))))
+                   ;; Audit org files for structural balance
                    (when (and (listp action)
                               (stringp (getf action :file)))
                      (let ((file (getf action :file)))
@@ -91,3 +132,18 @@
                              (harness-log "LITERATE PROGRAMMING: Structural issues found in ~a: ~a"
                                           file issues))))))
                    action))
+
+(defvar *lp-initialized* nil)
+
+(defun lp-init ()
+  "Initialize the LP system with project root."
+  (unless *lp-initialized*
+    (let ((env-root (or (uiop:getenv "OPENCORTEX_ROOT")
+                        (uiop:getenv "MEMEX_DIR")
+                        "/home/user/memex/projects/opencortex")))
+      (lp-set-project-root env-root)
+      (setf *lp-initialized* t)
+      (harness-log "LITERATE PROGRAMMING: Initialized with root ~a" *lp-project-root*))))
+
+;; Auto-initialize on load
+(lp-init)

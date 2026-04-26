@@ -125,8 +125,7 @@ The engineering standards skill is a HARD BLOCK gate. Violations are rejected, n
 (defvar *enforcement-rules*
   '((:pre-task
      (:git-clean "Working tree must be clean before modifications")
-     (:skill-queried "Skill catalog should be queried before analysis")
-     (:tangle-synced "Tangled .lisp files must match Org source"))
+     (:skill-queried "Skill catalog should be queried before analysis"))
     (:during-task
      (:org-only "Only .org files may be edited; .lisp is generated")
      (:one-per-block "One definition per src block")
@@ -155,43 +154,6 @@ The engineering standards skill is a HARD BLOCK gate. Violations are rejected, n
      :rule :git-clean
      :message "ENGINEERING STANDARDS VIOLATION: Working tree is dirty. Commit changes before modifying files."
      :severity :blocker)))
-#+end_src
-
-** Tangle Sync Check (Blocking)
-
-This check verifies that tangled .lisp files are in sync with their Org source. Violation: edited .lisp directly instead of through Org.
-
-#+begin_src lisp :tangle ../library/gen/org-skill-engineering-standards.lisp
-(defvar *tangle-targets*
-  '(("skills/org-skill-engineering-standards.org" . "library/gen/org-skill-engineering-standards.lisp")
-    ("skills/org-skill-literate-programming.org" . "library/gen/org-skill-literate-programming.lisp")
-    ("harness/memory.org" . "library/memory.lisp")
-    ("harness/loop.org" . "library/loop.lisp")
-    ("harness/perceive.org" . "library/perceive.lisp")
-    ("harness/reason.org" . "library/reason.lisp")
-    ("harness/act.org" . "library/act.lisp")
-    ("harness/skills.org" . "library/skills.lisp")
-    ("harness/communication.org" . "library/communication.lisp")))
-
-(defun check-tangle-sync (&optional (root *engineering-std-*project-root*))
-  "Returns violation if any tangled .lisp file is newer than its Org source.
-  
-This detects direct .lisp edits (which violate the LP workflow)."
-  (when root
-    (dolist (pair *tangle-targets*)
-      (let* ((org-file (merge-pathnames (car pair) root))
-             (lisp-file (merge-pathnames (cdr pair) root))
-             (org-time (ignore-errors (file-write-date org-file)))
-             (lisp-time (ignore-errors (file-write-date lisp-file))))
-        (when (and org-time lisp-time (> lisp-time org-time))
-          (return-from check-tangle-sync
-            (make-engineering-violation
-             :phase :pre-task
-             :rule :tangle-synced
-             :message (format nil "ENGINEERING STANDARDS VIOLATION: ~a is newer than ~a. Edit Org source, not .lisp directly."
-                                    (file-namestring lisp-file) (file-namestring org-file))
-             :severity :blocker))))))
-  nil)
 #+end_src
 
 ** Test Suite
@@ -262,33 +224,6 @@ These tests verify the enforcement logic. Run with:
     (let ((result (opencortex::engineering-standards-gate action nil)))
       (is (listp result))
       (is (eq :request (getf result :type))))))
-
-(test tangle-sync-detects-stale-lisp
-  "check-tangle-sync returns violation when .lisp is newer than .org"
-  (let ((tmp-org "/tmp/test-skill.org")
-        (tmp-lisp "/tmp/test-skill.lisp"))
-    (with-open-file (f tmp-org :direction :output) (write-line "* Test" f))
-    (sleep 1)
-    (with-open-file (f tmp-lisp :direction :output) (write-line "(defun test () t)" f))
-    (let* ((root (uiop:ensure-directory-pathname "/tmp/"))
-           (result (opencortex::check-tangle-sync root)))
-      (when result
-        (is (eq :tangle-synced (opencortex::engineering-violation-rule result))))
-    (uiop:delete-file-if-exists tmp-org)
-    (uiop:delete-file-if-exists tmp-lisp)))
-
-(test tangle-sync-passes-when-synced
-  "check-tangle-sync returns nil when .org is newer than .lisp"
-  (let ((tmp-org "/tmp/test-skill2.org")
-        (tmp-lisp "/tmp/test-skill2.lisp"))
-    (with-open-file (f tmp-lisp :direction :output) (write-line "(defun test () t)" f))
-    (sleep 1)
-    (with-open-file (f tmp-org :direction :output) (write-line "* Test" f))
-    (let* ((root (uiop:ensure-directory-pathname "/tmp/"))
-           (result (opencortex::check-tangle-sync root)))
-      (is (null result)))
-    (uiop:delete-file-if-exists tmp-org)
-    (uiop:delete-file-if-exists tmp-lisp)))
 #+end_src
 
 ** Blocking Gate (Hard Enforcement)
@@ -317,15 +252,7 @@ These tests verify the enforcement logic. Run with:
           (harness-log "~a" (engineering-violation-message git-check))
           (return-from engineering-standards-gate
             (list :type :log
-                  :payload (list :text (engineering-violation-message git-check))))))
-
-    ;; BLOCKING: Tangle sync check - .lisp must not be newer than .org
-    (let ((tangle-check (check-tangle-sync *engineering-std-*project-root*)))
-      (when tangle-check
-        (harness-log "~a" (engineering-violation-message tangle-check))
-        (return-from engineering-standards-gate
-          (list :type :log
-                :payload (list :text (engineering-violation-message tangle-check))))))))
+                  :payload (list :text (engineering-violation-message git-check)))))))
 
     action)
 #+end_src

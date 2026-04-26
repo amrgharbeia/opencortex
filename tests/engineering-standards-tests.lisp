@@ -60,30 +60,3 @@
     (let ((result (opencortex::engineering-standards-gate action nil)))
       (is (listp result))
       (is (eq :request (getf result :type))))))
-
-(test tangle-sync-detects-stale-lisp
-  "check-tangle-sync returns violation when .lisp is newer than .org"
-  (let ((tmp-org "/tmp/test-skill.org")
-        (tmp-lisp "/tmp/test-skill.lisp"))
-    (with-open-file (f tmp-org :direction :output) (write-line "* Test" f))
-    (sleep 1)
-    (with-open-file (f tmp-lisp :direction :output) (write-line "(defun test () t)" f))
-    (let* ((root (uiop:ensure-directory-pathname "/tmp/"))
-           (result (opencortex::check-tangle-sync root)))
-      (when result
-        (is (eq :tangle-synced (opencortex::engineering-violation-rule result))))
-    (uiop:delete-file-if-exists tmp-org)
-    (uiop:delete-file-if-exists tmp-lisp)))
-
-(test tangle-sync-passes-when-synced
-  "check-tangle-sync returns nil when .org is newer than .lisp"
-  (let ((tmp-org "/tmp/test-skill2.org")
-        (tmp-lisp "/tmp/test-skill2.lisp"))
-    (with-open-file (f tmp-lisp :direction :output) (write-line "(defun test () t)" f))
-    (sleep 1)
-    (with-open-file (f tmp-org :direction :output) (write-line "* Test" f))
-    (let* ((root (uiop:ensure-directory-pathname "/tmp/"))
-           (result (opencortex::check-tangle-sync root)))
-      (is (null result)))
-    (uiop:delete-file-if-exists tmp-org)
-    (uiop:delete-file-if-exists tmp-lisp)))

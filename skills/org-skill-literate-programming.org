@@ -136,19 +136,68 @@ Code without surrounding prose is a bug report waiting to happen.
                       (setf idx (+ end-pos 9))))))))))
 #+end_src
 
+** Tangle Sync Check
+
+Verifies that tangled `.lisp` files are in sync with their Org source. Violation: edited .lisp directly instead of through Org.
+
+#+begin_src lisp :tangle ../library/gen/org-skill-literate-programming.lisp
+(defvar *tangle-targets*
+  '(("skills/org-skill-engineering-standards.org" . "library/gen/org-skill-engineering-standards.lisp")
+    ("skills/org-skill-literate-programming.org" . "library/gen/org-skill-literate-programming.lisp")
+    ("harness/memory.org" . "library/memory.lisp")
+    ("harness/loop.org" . "library/loop.lisp")
+    ("harness/perceive.org" . "library/perceive.lisp")
+    ("harness/reason.org" . "library/reason.lisp")
+    ("harness/act.org" . "library/act.lisp")
+    ("harness/skills.org" . "library/skills.lisp")
+    ("harness/communication.org" . "library/communication.lisp")))
+
+(defvar *lp-project-root* nil)
+
+(defun lp-set-project-root (path)
+  (setf *lp-project-root* (uiop:ensure-directory-pathname path)))
+
+(defun check-tangle-sync (&optional (root *lp-project-root*))
+  "Returns violation if any tangled .lisp file is newer than its Org source.
+
+This detects direct .lisp edits (which violate the LP workflow)."
+  (when root
+    (dolist (pair *tangle-targets*)
+      (let* ((org-file (merge-pathnames (car pair) root))
+             (lisp-file (merge-pathnames (cdr pair) root))
+             (org-time (ignore-errors (file-write-date org-file)))
+             (lisp-time (ignore-errors (file-write-date lisp-file))))
+        (when (and org-time lisp-time (> lisp-time org-time))
+          (return-from check-tangle-sync
+            (list :type :log
+                  :payload (list :text (format nil "LITERATE PROGRAMMING VIOLATION: ~a is newer than ~a. Edit Org source, not .lisp directly."
+                                               (file-namestring lisp-file) (file-namestring org-file)))))))))
+  nil)
+#+end_src
+
 ** Skill Registration
+
+The LP skill runs at priority 1100 (just below engineering-standards at 1000).
 
 #+begin_src lisp :tangle ../library/gen/org-skill-literate-programming.lisp
 (defskill :skill-literate-programming
   :priority 1100
   :trigger (lambda (ctx)
              (declare (ignore ctx))
-             ;; Trigger on any skill-related action
              t)
   :probabilistic nil
   :deterministic (lambda (action context)
                    (declare (ignore context))
-                   ;; Audit the action's target file if it's an org skill
+                   ;; Check tangle sync before any file modification
+                   (let ((file (and (listp action) (getf action :payload) (getf (getf action :payload) :file))))
+                     (when file
+                       (let ((tangle-check (check-tangle-sync *lp-project-root*)))
+                         (when tangle-check
+                           (return-from skill-literate-programming deterministic
+                             (progn
+                               (harness-log "~a" (getf (getf tangle-check :payload) :text))
+                               tangle-check))))))
+                   ;; Audit org files for structural balance
                    (when (and (listp action)
                               (stringp (getf action :file)))
                      (let ((file (getf action :file)))
@@ -159,6 +208,81 @@ Code without surrounding prose is a bug report waiting to happen.
                              (harness-log "LITERATE PROGRAMMING: Structural issues found in ~a: ~a"
                                           file issues))))))
                    action))
+#+end_src
+
+** Initialize Project Root
+
+#+begin_src lisp :tangle ../library/gen/org-skill-literate-programming.lisp
+(defvar *lp-initialized* nil)
+
+(defun lp-init ()
+  "Initialize the LP system with project root."
+  (unless *lp-initialized*
+    (let ((env-root (or (uiop:getenv "OPENCORTEX_ROOT")
+                        (uiop:getenv "MEMEX_DIR")
+                        "/home/user/memex/projects/opencortex")))
+      (lp-set-project-root env-root)
+      (setf *lp-initialized* t)
+      (harness-log "LITERATE PROGRAMMING: Initialized with root ~a" *lp-project-root*))))
+
+;; Auto-initialize on load
+(lp-init)
+#+end_src
+
+** Test Suite
+
+These tests verify the LP enforcement logic. Run with:
+~(fiveam:run! 'literate-programming-suite)~
+
+#+begin_src lisp :tangle ../tests/literate-programming-tests.lisp
+(defpackage :opencortex-literate-programming-tests
+  (:use :cl :fiveam :opencortex)
+  (:export #:literate-programming-suite))
+
+(in-package :opencortex-literate-programming-tests)
+
+(def-suite literate-programming-suite
+  :description "Tests for Literate Programming enforcement")
+
+(in-suite literate-programming-suite)
+
+(test tangle-sync-detects-stale-lisp
+  "check-tangle-sync returns violation when .lisp is newer than .org"
+  (let ((tmp-org "/tmp/test-skill.org")
+        (tmp-lisp "/tmp/test-skill.lisp"))
+    (with-open-file (f tmp-org :direction :output) (write-line "* Test" f))
+    (sleep 1)
+    (with-open-file (f tmp-lisp :direction :output) (write-line "(defun test () t)" f))
+    (let* ((root (uiop:ensure-directory-pathname "/tmp/"))
+           (result (opencortex::check-tangle-sync root)))
+      (is (listp result))
+      (is (eq :log (getf result :type)))
+      (is (search "LITERATE PROGRAMMING VIOLATION" (getf (getf result :payload) :text)))
+      (uiop:delete-file-if-exists tmp-org)
+      (uiop:delete-file-if-exists tmp-lisp))))
+
+(test tangle-sync-passes-when-synced
+  "check-tangle-sync returns nil when .org is newer than .lisp"
+  (let ((tmp-org "/tmp/test-skill2.org")
+        (tmp-lisp "/tmp/test-skill2.lisp"))
+    (with-open-file (f tmp-lisp :direction :output) (write-line "(defun test () t)" f))
+    (sleep 1)
+    (with-open-file (f tmp-org :direction :output) (write-line "* Test" f))
+    (let* ((root (uiop:ensure-directory-pathname "/tmp/"))
+           (result (opencortex::check-tangle-sync root)))
+      (is (null result)))
+    (uiop:delete-file-if-exists tmp-org)
+    (uiop:delete-file-if-exists tmp-lisp)))
+
+(test block-balance-valid
+  "literate-check-block-balance returns T for balanced code"
+  (is (eq t (opencortex::literate-check-block-balance "(defun test () t)"))))
+
+(test block-balance-invalid
+  "literate-check-block-balance returns NIL for unbalanced code"
+  (multiple-value-bind (ok reason) (opencortex::literate-check-block-balance "(defun test ()")
+    (is (null ok))
+    (is (stringp reason))))
 #+end_src
 
 * See Also
