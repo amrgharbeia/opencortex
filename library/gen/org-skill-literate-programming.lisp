@@ -1,10 +1,12 @@
+(in-package :opencortex)
+
 (defun literate-check-block-balance (code-string)
   "Returns T if CODE-STRING has balanced parentheses, brackets, and strings.
 
    Ignores comments (after ;) and tracks string contents to avoid
    counting parens inside string literals."
   (let ((depth 0) (in-string nil) (escaped nil))
-    (dotimes (i (length code-string) (zerop depth))
+    (dotimes (i (length code-string))
       (let ((ch (char code-string i)))
         (cond
           ;; Escape handling (affects next char only)
@@ -24,7 +26,10 @@
            (if (<= depth 0)
                (return-from literate-check-block-balance
                  (values nil (format nil "Unexpected close paren at position ~a" i)))
-               (decf depth))))))))
+               (decf depth))))))
+    (if (zerop depth)
+        t
+        (values nil (format nil "Unbalanced parens: depth ~a at end of string" depth)))))
 
 (defun literate-audit-org-file (filepath)
   "Audits all tangled lisp blocks in an Org file for structural balance.
@@ -69,7 +74,7 @@
                                        :reason reason
                                        :code code)
                                   reports))))
-                      (setf idx (+ end-pos 9))))))))))
+                      (setf idx (+ end-pos 9)))))))))))
 
 (defvar *tangle-targets*
   '(("skills/org-skill-engineering-standards.org" . "library/gen/org-skill-engineering-standards.lisp")
@@ -112,26 +117,27 @@ This detects direct .lisp edits (which violate the LP workflow)."
   :probabilistic nil
   :deterministic (lambda (action context)
                    (declare (ignore context))
-                   ;; Check tangle sync before any file modification
-                   (let ((file (and (listp action) (getf action :payload) (getf (getf action :payload) :file))))
-                     (when file
-                       (let ((tangle-check (check-tangle-sync *lp-project-root*)))
-                         (when tangle-check
-                           (return-from skill-literate-programming deterministic
-                             (progn
-                               (harness-log "~a" (getf (getf tangle-check :payload) :text))
-                               tangle-check))))))
-                   ;; Audit org files for structural balance
-                   (when (and (listp action)
-                              (stringp (getf action :file)))
-                     (let ((file (getf action :file)))
-                       (when (and (search ".org" file)
-                                  (search "skill" file :test #'string-equal))
-                         (let ((issues (literate-audit-org-file file)))
-                           (when issues
-                             (harness-log "LITERATE PROGRAMMING: Structural issues found in ~a: ~a"
-                                          file issues))))))
-                   action))
+                   (block skill-literate-programming
+                     ;; Check tangle sync before any file modification
+                     (let ((file (and (listp action) (getf action :payload) (getf (getf action :payload) :file))))
+                       (when file
+                         (let ((tangle-check (check-tangle-sync *lp-project-root*)))
+                           (when tangle-check
+                             (return-from skill-literate-programming
+                               (progn
+                                 (harness-log "~a" (getf (getf tangle-check :payload) :text))
+                                 tangle-check))))))
+                     ;; Audit org files for structural balance
+                     (when (and (listp action)
+                                (stringp (getf action :file)))
+                       (let ((file (getf action :file)))
+                         (when (and (search ".org" file)
+                                    (search "skill" file :test #'string-equal))
+                           (let ((issues (literate-audit-org-file file)))
+                             (when issues
+                               (harness-log "LITERATE PROGRAMMING: Structural issues found in ~a: ~a"
+                                            file issues))))))
+                     action)))
 
 (defvar *lp-initialized* nil)
 
