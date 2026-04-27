@@ -202,12 +202,7 @@ These tests verify the Memory system. Run with:
     (let* ((ast-v2 '(:type :HEADLINE :properties (:ID "cow-node" :TITLE "State B") :contents nil))
            (id-v2 (ingest-ast ast-v2))
            (hash-v2 (org-object-hash (lookup-object id-v2))))
-      (is (equal (org-object-hash (lookup-object "cow-node")) hash-v2))
-      (rollback-memory 0)
-      (is (equal (org-object-hash (lookup-object "cow-node")) hash-v1))
-      (is (not (null (gethash hash-v2 *history-store*))))))
-#+end_src
-
+       
 ** Disk Persistence (save-memory / load-memory)
 Essential for surviving crashes. Saves the in-memory hash tables to disk and loads them back on restart. The path is controlled by the `MEMORY_SNAPSHOT_PATH` environment variable.
 
@@ -445,7 +440,7 @@ Following the Engineering Standards, the Memory must be empirically verified thr
   (let* ((ast-v1 '(:type :HEADLINE :properties (:ID "cow-node" :TITLE "State A") :contents nil))
          (id-v1 (ingest-ast ast-v1))
          (hash-v1 (org-object-hash (lookup-object id-v1))))
-    
+     
     ;; Take a snapshot at State A
     (snapshot-memory)
     
@@ -463,7 +458,7 @@ Following the Engineering Standards, the Memory must be empirically verified thr
       (is (equal (org-object-hash (lookup-object "cow-node")) hash-v1))
       
 ;; Verify State B is still safely in the history store (no data loss)
-      (is (not (null (gethash hash-v2 *history-store*))))))
+      (is (not (null (gethash hash-v2 *history-store*)))))))
 
 (test merkle-hash-consistency
   "Verify that identical ASTs produce identical Merkle hashes."
@@ -486,6 +481,6 @@ Following the Engineering Standards, the Memory must be empirically verified thr
     (let* ((ast-mod '(:type :HEADLINE :properties (:ID "root" :TITLE "Root")
                     :contents ((:type :HEADLINE :properties (:ID "leaf" :TITLE "Changed") :contents nil))))
            (id-mod (progn (clrhash *memory*) (ingest-ast ast-mod)))
-           (mod-hash (org-object-hash (lookup-object id-mod))))
+            (mod-hash (org-object-hash (lookup-object id-mod))))
       (is (not (equal root-hash mod-hash))))))
 #+end_src

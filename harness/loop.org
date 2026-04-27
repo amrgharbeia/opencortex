@@ -202,7 +202,7 @@ The heartbeat thread ensures the agent remains alive even without external input
                        :payload (list :sensor :heartbeat
                                     :unix-time (get-universal-time)))))
 
-           :name "opencortex-heartbeat"))))
+            :name "opencortex-heartbeat")))))
 #+end_src
 
 * Main Entry Point

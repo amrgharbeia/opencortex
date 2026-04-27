@@ -116,3 +116,62 @@ Provide a fixed version of the code as a lisp form.")
                   (list :status :success :repaired balanced))
               (error (c)
                 (list :status :error :message (format nil "Could not repair: ~a" c)))))))
+
+(defvar *self-edit-skills-backup* nil
+  "Backup of skill registry before hot-reload.")
+
+(defun self-edit-hot-reload-skill (skill-name gen-path)
+  "Reloads a skill from its compiled .lisp source.
+
+   Steps:
+   1. Backup current *skills-registry*
+   2. Compile the new skill file
+   3. Merge new skill into registry
+   4. Verify the skill loads without error
+   5. If error, rollback to backup
+
+   Returns (values :success t) or (values :error message)."
+  (unless *skills-registry*
+    (return-from self-edit-hot-reload-skill
+      (values :error "Skills engine not initialized")))
+  (unless (uiop:file-exists-p gen-path)
+    (return-from self-edit-hot-reload-skill
+      (values :error (format nil "Skill file not found: ~a" gen-path))))
+
+  ;; Step 1: Backup registry
+  (setf *self-edit-skills-backup* (copy-hash-table *skills-registry*))
+
+  (handler-case
+      (progn
+        ;; Step 2: Compile new skill
+        (let ((compiled (compile-file gen-path)))
+          (unless compiled
+            (error "Compilation returned nil")))
+        ;; Step 3: Load the compiled skill
+        (load gen-path)
+        ;; Step 4: Verify skill is in registry
+        (let ((skill (gethash (string skill-name) *skills-registry*)))
+          (if skill
+              (progn
+                (harness-log "SELF-EDIT: Hot-reloaded skill ~a from ~a"
+                             skill-name gen-path)
+                (values :success t))
+              (error "Skill not registered after reload"))))
+    (error (e)
+      ;; Step 5: Rollback
+      (when *self-edit-skills-backup*
+        (clrhash *skills-registry*)
+        (maphash (lambda (k v) (setf (gethash k *skills-registry*) v))
+                 *self-edit-skills-backup*))
+      (harness-log "SELF-EDIT: Hot-reload FAILED for ~a: ~a" skill-name e)
+      (values :error (format nil "Hot-reload failed: ~a" e)))))
+
+(def-cognitive-tool :reload-skill
+  "Hot-reloads a skill from its compiled source file without restarting the system."
+  ((:skill-name :type :string :description "Name of the skill to reload (e.g. :skill-engineering-standards)")
+   (:gen-path :type :string :description "Absolute path to the compiled .lisp file"))
+  :body (lambda (args)
+          (let ((name (getf args :skill-name))
+                (path (getf args :gen-path)))
+            (multiple-value-bind (status message) (self-edit-hot-reload-skill name path)
+              (list :status status :message message)))))

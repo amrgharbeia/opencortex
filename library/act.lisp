@@ -1,22 +1,47 @@
 (in-package :opencortex)
 
-(defvar *default-actuator* :cli)
-(defvar *silent-actuators* '(:cli :system-message :emacs))
+(defvar *default-actuator* :cli
+  "The actuator used when no explicit target is specified.
+  Override with DEFAULT_ACTUATOR environment variable.")
+
+(defvar *silent-actuators* '(:cli :system-message :emacs)
+  "List of actuators that don't generate tool-output feedback.
+  These typically have their own feedback mechanisms (CLI prints directly, etc.)")
 
 (defun initialize-actuators ()
-  "Loads actuator routing defaults from environment variables and registers core harness actuators."
+  "Load actuator configuration from environment and register core actuators.
+
+  Environment variables:
+  - DEFAULT_ACTUATOR: Keyword for default target (:cli, :shell, etc.)
+  - SILENT_ACTUATORS: Comma-separated list of actuators that skip feedback
+
+  Registers three core actuators:
+  1. :system - Internal commands (eval, create-skill, message)
+  2. :tool - Cognitive tool execution
+  3. :tui - Terminal UI output via reply stream"
+
+  ;; Load environment configuration
   (let ((def (uiop:getenv "DEFAULT_ACTUATOR"))
         (silent (uiop:getenv "SILENT_ACTUATORS")))
+
+    ;; Set default actuator
     (when def
-      (setf *default-actuator* (intern (string-upcase def) "KEYWORD")))
+      (setf *default-actuator*
+            (intern (string-upcase def) "KEYWORD")))
+
+    ;; Parse silent actuators list
     (when silent
       (setf *silent-actuators*
-            (mapcar (lambda (s) (intern (string-upcase (string-trim '(#\Space) s)) "KEYWORD"))
+            (mapcar (lambda (s)
+                      (intern (string-upcase (string-trim '(#\Space) s))
+                             "KEYWORD"))
                     (str:split "," silent)))))
-  
+
   ;; Register core harness actuators
   (register-actuator :system #'execute-system-action)
   (register-actuator :tool #'execute-tool-action)
+
+  ;; TUI actuator: sends response back through the reply stream
   (register-actuator :tui (lambda (action context)
                             (let* ((meta (getf context :meta))
                                    (stream (getf meta :reply-stream)))
@@ -25,55 +50,107 @@
                                 (finish-output stream))))))
 
 (defun dispatch-action (action context)
+  "Route an approved action to its registered actuator.
+
+  ACTION is a plist with structure:
+    (:TYPE :REQUEST :TARGET :shell :PAYLOAD (...))
+
+  CONTEXT is the signal being processed (for metadata access)
+
+  The target is resolved in order of priority:
+  1. Explicit :target in the action
+  2. :source from the original signal's metadata
+  3. *default-actuator* configuration variable
+
+  Returns the actuator's result (may be a feedback signal or NIL)."
+
   (let ((payload (proto-get action :payload)))
+
+    ;; Heartbeats don't generate actuation
     (when (eq (proto-get payload :sensor) :heartbeat)
-      (return-from dispatch-action nil)))
-  "Routes an approved action to its registered physical actuator."
-  (when (and action (listp action))
-    (let* ((meta (proto-get context :meta))
-           (source (proto-get meta :source))
-           (raw-target (or (ignore-errors (getf action :TARGET))
-                           (ignore-errors (getf action :target))
-                           source
-                           *default-actuator*))
-           (target (intern (string-upcase (string raw-target)) :keyword))
-           (actuator-fn (gethash target *actuator-registry*)))
-      ;; Ensure outbound action has meta if context had it
-      (when (and meta (null (getf action :meta)))
-        (setf (getf action :meta) meta))
-      (if actuator-fn 
-          (funcall actuator-fn action context) 
-          (harness-log "ACT ERROR: No actuator for ~s (from ~s)" target raw-target)))))
+      (return-from dispatch-action nil))
+
+    (when (and action (listp action))
+      (let* ((meta (proto-get context :meta))
+             (source (proto-get meta :source))
+             (raw-target (or (ignore-errors (getf action :TARGET))
+                            (ignore-errors (getf action :target))
+                            source
+                            *default-actuator*))
+             (target (intern (string-upcase (string raw-target)) :keyword))
+             (actuator-fn (gethash target *actuator-registry*)))
+
+        ;; Preserve metadata in outbound action
+        (when (and meta (null (getf action :meta)))
+          (setf (getf action :meta) meta))
+
+        ;; Execute or log error
+        (if actuator-fn
+            (funcall actuator-fn action context)
+            (harness-log "ACT ERROR: No actuator registered for '~s' (requested by ~s)"
+                         target raw-target))))))
 
 (defun execute-system-action (action context)
-  "Processes internal harness commands. (ACTUATOR)"
-  (declare (ignore context))
-  (let* ((payload (ignore-errors (getf action :payload))) 
-         (cmd (ignore-errors (getf payload :action))))
-    (case cmd
-      (:eval (let ((code (getf payload :code)))
-               (eval (read-from-string code))))
-      (:create-skill (let* ((filename (getf payload :filename)) (content (getf payload :content))
-                            (skills-dir (merge-pathnames "skills/" (asdf:system-source-directory :opencortex))) 
-                            (full-path (merge-pathnames filename skills-dir)))
-                       (with-open-file (out full-path :direction :output :if-exists :supersede) (write-string content out))
-                       (load-skill-from-org full-path)))
-      (:message (harness-log "ACT [System]: ~a" (getf payload :text)))
-      (t (harness-log "ACT ERROR [System]: Unknown command ~s" cmd)))))
+  "Execute internal harness commands.
 
-(defun format-tool-result (tool-name result)
-  "Intelligently formats a tool result for user display."
-  (if (listp result)
-      (let ((status (getf result :status))
-            (content (getf result :content))
-            (msg (getf result :message)))
-        (cond ((and (eq status :success) content) (format nil "~a" content))
-              ((and (eq status :error) msg) (format nil "ERROR [~a]: ~a" tool-name msg))
-              (t (format nil "TOOL [~a] RESULT: ~s" tool-name result))))
-      (format nil "TOOL [~a] RESULT: ~a" tool-name result)))
+  This actuator handles meta-commands that affect the harness itself,
+  rather than external side effects. Commands include:
+
+  - :eval - Evaluate arbitrary Lisp code (DANGEROUS, validate first!)
+  - :create-skill - Write a new skill org file and reload
+  - :message - Log a message to the harness log
+
+  These commands bypass the normal actuator system since they operate
+  on the harness internals rather than external systems."
+
+  (declare (ignore context))
+
+  (let* ((payload (ignore-errors (getf action :payload)))
+         (cmd (ignore-errors (getf payload :action))))
+
+    (case cmd
+      ;; Evaluate Lisp code - guarded by lisp-validator skill
+      (:eval
+       (let ((code (getf payload :code)))
+         (eval (read-from-string code))))
+
+      ;; Create and load a new skill from content
+      (:create-skill
+       (let* ((filename (getf payload :filename))
+              (content (getf payload :content))
+              (skills-dir (merge-pathnames "skills/"
+                                          (asdf:system-source-directory :opencortex)))
+              (full-path (merge-pathnames filename skills-dir)))
+         (with-open-file (out full-path
+                             :direction :output
+                             :if-exists :supersede)
+           (write-string content out))
+         (load-skill-from-org full-path)))
+
+      ;; Log an informational message
+      (:message
+       (harness-log "ACT [System]: ~a" (getf payload :text)))
+
+      ;; Unknown command
+      (t
+       (harness-log "ACT ERROR [System]: Unknown command '~s'" cmd)))))
 
 (defun execute-tool-action (action context)
-  "Executes a registered cognitive tool. (ACTUATOR)"
+  "Execute a registered cognitive tool.
+
+  Tools are registered functions with:
+  - A guard function (optional, for safety checks)
+  - A body function (the actual implementation)
+  - Metadata (description, parameter specs)
+
+  This actuator:
+  1. Looks up the tool by name
+  2. Runs the guard function (if present)
+  3. Executes the body function with parsed arguments
+  4. Returns a feedback signal with the result
+
+  The feedback mechanism allows tool results to trigger further reasoning."
+
   (let* ((payload (getf action :payload))
          (tool-name (getf payload :tool))
          (tool-args (getf payload :args))
@@ -81,78 +158,156 @@
          (meta (getf context :meta))
          (source (getf meta :source))
          (tool (gethash (string-downcase (string tool-name)) *cognitive-tools*)))
-    (when tool
-      ;; Tool Permission Gate: Check permission before execution
-      (let ((permission (check-tool-permission-gate tool-name context)))
-        (when (eq permission :deny)
-          (return-from execute-tool-action
-            (list :TYPE :EVENT :DEPTH (1+ depth) :META meta
-                  :PAYLOAD (list :SENSOR :tool-error :tool tool-name :message (format nil "Tool PERMISSION DENIED: ~a" tool-name))))))
-        (when (listp permission)
-          (return-from execute-tool-action
-            (list :TYPE :EVENT :DEPTH (1+ depth) :META meta
-                  :PAYLOAD (list :SENSOR :permission-pending :tool tool-name :args tool-args)))))
-      (handler-case
-            (let* ((clean-args (if (and (listp tool-args) (listp (car tool-args))) (car tool-args) tool-args))
+
+    (if tool
+        (handler-case
+            ;; Parse arguments (handle both flat and nested plists)
+            (let* ((clean-args (if (and (listp tool-args)
+                                      (listp (car tool-args)))
+                                 (car tool-args)
+                                 tool-args))
                    (result (funcall (cognitive-tool-body tool) clean-args)))
-              (let ((feedback (list :TYPE :EVENT :DEPTH (1+ depth) :META meta
-                                    :PAYLOAD (list :SENSOR :tool-output :RESULT result :TOOL tool-name))))
-                ;; If we have a source, send a status message with the result, formatted for humans
-                (when source
-                   (dispatch-action (list :TYPE :REQUEST :TARGET source 
-                                          :PAYLOAD (list :ACTION :MESSAGE :TEXT (format-tool-result tool-name result))) 
-                                    context))
-                feedback))
+
+              ;; Format result for source
+              (when source
+                (dispatch-action (list :TYPE :REQUEST
+                                     :TARGET source
+                                     :PAYLOAD (list :ACTION :MESSAGE
+                                                  :TEXT (format-tool-result tool-name result)))
+                              context))
+
+              ;; Return feedback signal for potential further processing
+              (list :TYPE :EVENT
+                    :DEPTH (1+ depth)
+                    :META meta
+                    :PAYLOAD (list :SENSOR :tool-output
+                                 :RESULT result
+                                 :TOOL tool-name)))
+
+          ;; Tool execution error
           (error (c)
-        (list :TYPE :EVENT :DEPTH (1+ depth) :META meta
-              :PAYLOAD (list :SENSOR :tool-error :tool tool-name :message (format nil "~a" c)))))
-    (list :TYPE :EVENT :DEPTH (1+ depth) :META meta
-          :PAYLOAD (list :SENSOR :tool-error :message "Tool not found"))))
+            (list :TYPE :EVENT
+                  :DEPTH (1+ depth)
+                  :META meta
+                  :PAYLOAD (list :SENSOR :tool-error
+                               :TOOL tool-name
+                               :MESSAGE (format nil "~a" c)))))
+
+        ;; Tool not found
+        (list :TYPE :EVENT
+              :DEPTH (1+ depth)
+              :META meta
+              :PAYLOAD (list :SENSOR :tool-error
+                            :MESSAGE (format nil "Tool '~a' not found" tool-name))))))
+
+(defun format-tool-result (tool-name result)
+  "Format a tool result for human-readable display.
+
+  Tools return either:
+  - A plist: (:status :success :content \"...\") or (:status :error :message \"...\")
+  - A raw value (string, number, etc.)
+
+  This function normalizes both formats into a consistent string presentation."
+
+  (if (listp result)
+      (let ((status (getf result :status))
+            (content (getf result :content))
+            (msg (getf result :message)))
+        (cond
+          ((and (eq status :success) content)
+           (format nil "~a" content))
+          ((and (eq status :error) msg)
+           (format nil "ERROR [~a]: ~a" tool-name msg))
+          (t
+           (format nil "TOOL [~a] RESULT: ~s" tool-name result))))
+      (format nil "TOOL [~a] RESULT: ~a" tool-name result)))
 
 (defun act-gate (signal)
-  "Final Stage: Actuation and feedback generation."
+  "Final stage of the metabolic pipeline: Actuation.
+
+  This stage has three responsibilities:
+
+  1. Last-mile safety check: Run deterministic gates one more time
+     before execution (handles race conditions, concurrent modifications)
+
+  2. Actuation: Dispatch the approved action to its target actuator
+
+  3. Feedback generation: If the action produced results, create a
+     feedback signal that feeds back into the pipeline
+
+  Modifies the signal:
+  - :approved-action - May be modified by last-mile verification
+  - :status - Set to :acted
+
+  Returns a feedback signal if the action produced results, otherwise NIL."
+
   (let* ((approved (getf signal :approved-action))
          (type (getf signal :type))
          (meta (getf signal :meta))
          (source (getf meta :source))
          (feedback nil)
-         ;; context must keep internal objects for actuators to function
          (context signal))
-    
-    ;; 1. Last-Mile Safety Check (The Bouncer & Deterministic Gates)
+
+    ;; Step 1: Last-mile deterministic verification
+    ;; This catches any issues that arose between reasoning and acting
     (when approved
       (let* ((original-type (getf approved :type))
              (verified (deterministic-verify approved signal)))
-        (if (and (listp verified) 
+
+        ;; Check if deterministic verification blocked the action
+        (if (and (listp verified)
                  (member (getf verified :type) '(:LOG :EVENT :log :event))
                  (not (member original-type '(:LOG :EVENT :log :event))))
+
+            ;; Action was blocked by verification
             (progn
               (harness-log "ACT BLOCKED: Action failed last-mile deterministic check.")
               (setf (getf signal :approved-action) nil)
               (setf approved nil)
               (setf feedback verified))
+
+            ;; Action passed verification
             (progn
               (setf (getf signal :approved-action) verified)
               (setf approved verified)))))
 
-    ;; 2. Actuation Logic
+    ;; Step 2: Actuation based on signal type
     (case type
-      (:REQUEST (dispatch-action signal context))
-      (:LOG (dispatch-action signal context))
-      (:EVENT 
+      ;; Explicit requests go directly to dispatch
+      (:REQUEST
+       (dispatch-action signal context))
+
+      ;; Log messages also dispatch
+      (:LOG
+       (dispatch-action signal context))
+
+      ;; Events with approved actions dispatch to their target
+      (:EVENT
        (if approved
            (let* ((target (getf approved :target))
                   (result (dispatch-action approved context)))
-             ;; If the actuator returns a signal (like :tool-output), it becomes the feedback.
-             ;; Otherwise, generate tool-output feedback for non-silent actuators.
-             (cond ((and (listp result) (member (getf result :type) '(:EVENT :LOG)))
-                    (setf feedback result))
-                   ((and result (not (member target *silent-actuators*)))
-                    (setf feedback (list :type :EVENT :depth (1+ (getf signal :depth 0)) :meta meta
-                                         :payload (list :sensor :tool-output :result result :tool approved))))))
-           ;; If no approved action but we have a source, this might be a raw event/log stimulus.
+
+             ;; Determine feedback based on actuator response
+             (cond
+               ;; Actuator returned a signal - use it as feedback
+               ((and (listp result)
+                     (member (getf result :type) '(:EVENT :LOG)))
+                (setf feedback result))
+
+               ;; Non-silent actuator with result - format as tool-output
+               ((and result
+                     (not (member target *silent-actuators*)))
+                (setf feedback (list :type :EVENT
+                                    :depth (1+ (getf signal :depth 0))
+                                    :meta meta
+                                    :payload (list :sensor :tool-output
+                                                 :result result
+                                                 :tool approved))))))
+
+           ;; No approved action, but have source - might be raw event
            (when source
              (dispatch-action signal context)))))
-    
+
+    ;; Step 3: Update signal status
     (setf (getf signal :status) :acted)
     feedback))

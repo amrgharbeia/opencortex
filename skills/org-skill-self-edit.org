@@ -161,6 +161,74 @@ Provide a fixed version of the code as a lisp form.")
                 (list :status :error :message (format nil "Could not repair: ~a" c)))))))
 #+end_src
 
+** Skill Hot-Reload
+Swap compiled skill files without breaking active sockets.
+
+#+begin_src lisp :tangle ../library/gen/org-skill-self-edit.lisp
+(defvar *self-edit-skills-backup* nil
+  "Backup of skill registry before hot-reload.")
+
+(defun self-edit-hot-reload-skill (skill-name gen-path)
+  "Reloads a skill from its compiled .lisp source.
+
+   Steps:
+   1. Backup current *skills-registry*
+   2. Compile the new skill file
+   3. Merge new skill into registry
+   4. Verify the skill loads without error
+   5. If error, rollback to backup
+
+   Returns (values :success t) or (values :error message)."
+  (unless *skills-registry*
+    (return-from self-edit-hot-reload-skill
+      (values :error "Skills engine not initialized")))
+  (unless (uiop:file-exists-p gen-path)
+    (return-from self-edit-hot-reload-skill
+      (values :error (format nil "Skill file not found: ~a" gen-path))))
+
+  ;; Step 1: Backup registry
+  (setf *self-edit-skills-backup* (copy-hash-table *skills-registry*))
+
+  (handler-case
+      (progn
+        ;; Step 2: Compile new skill
+        (let ((compiled (compile-file gen-path)))
+          (unless compiled
+            (error "Compilation returned nil")))
+        ;; Step 3: Load the compiled skill
+        (load gen-path)
+        ;; Step 4: Verify skill is in registry
+        (let ((skill (gethash (string skill-name) *skills-registry*)))
+          (if skill
+              (progn
+                (harness-log "SELF-EDIT: Hot-reloaded skill ~a from ~a"
+                             skill-name gen-path)
+                (values :success t))
+              (error "Skill not registered after reload"))))
+    (error (e)
+      ;; Step 5: Rollback
+      (when *self-edit-skills-backup*
+        (clrhash *skills-registry*)
+        (maphash (lambda (k v) (setf (gethash k *skills-registry*) v))
+                 *self-edit-skills-backup*))
+      (harness-log "SELF-EDIT: Hot-reload FAILED for ~a: ~a" skill-name e)
+      (values :error (format nil "Hot-reload failed: ~a" e)))))
+#+end_src
+
+** Cognitive Tool: Reload Skill
+
+#+begin_src lisp :tangle ../library/gen/org-skill-self-edit.lisp
+(def-cognitive-tool :reload-skill
+  "Hot-reloads a skill from its compiled source file without restarting the system."
+  ((:skill-name :type :string :description "Name of the skill to reload (e.g. :skill-engineering-standards)")
+   (:gen-path :type :string :description "Absolute path to the compiled .lisp file"))
+  :body (lambda (args)
+          (let ((name (getf args :skill-name))
+                (path (getf args :gen-path)))
+            (multiple-value-bind (status message) (self-edit-hot-reload-skill name path)
+              (list :status status :message message)))))
+#+end_src
+
 * Phase E: Verification
 
 #+begin_src lisp :tangle ../tests/self-edit-tests.lisp
@@ -176,27 +244,27 @@ Provide a fixed version of the code as a lisp form.")
 (in-suite self-edit-suite)
 
 (test balance-parens-balanced
-  (let ((result (opencortex:self-edit-balance-parens "(+ 1 2)")))
+  (let ((result (opencortex::self-edit-balance-parens "(+ 1 2)")))
     (is (string= result "(+ 1 2)"))
     (is (not (null (read-from-string result))))))
 
 (test balance-parens-missing-open
-  (let ((result (opencortex:self-edit-balance-parens "+ 1 2)")))
+  (let ((result (opencortex::self-edit-balance-parens "+ 1 2)")))
     (is (string= result "(+ 1 2)"))
     (is (not (null (read-from-string result))))))
 
 (test balance-parens-missing-close
-  (let ((result (opencortex:self-edit-balance-parens "(+ 1 2")))
+  (let ((result (opencortex::self-edit-balance-parens "(+ 1 2")))
     (is (string= result "(+ 1 2)"))
     (is (not (null (read-from-string result))))))
 
 (test balance-parens-deep
-  (let ((result (opencortex:self-edit-balance-parens "((lambda (x) (if x (+ 1 2) 3))")))
+  (let ((result (opencortex::self-edit-balance-parens "((lambda (x) (if x (+ 1 2) 3))")))
     (is (string= result "((lambda (x) (if x (+ 1 2) 3)))"))
     (is (not (null (read-from-string result))))))
 
 (test balance-parens-empty
-  (let ((result (opencortex:self-edit-balance-parens "")))
+  (let ((result (opencortex::self-edit-balance-parens "")))
     (is (string= result ""))))
 #+end_src
 

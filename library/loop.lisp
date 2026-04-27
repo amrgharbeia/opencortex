@@ -1,99 +1,193 @@
 (in-package :opencortex)
 
-(defvar *interrupt-flag* nil)
-(defvar *interrupt-lock* (bordeaux-threads:make-lock "harness-interrupt-lock"))
-(defvar *heartbeat-thread* nil)
+(defvar *interrupt-flag* nil
+  "Atomic flag set by signal handlers to trigger graceful shutdown.
+  Using a dedicated variable avoids race conditions in interrupt handling.")
+
+(defvar *interrupt-lock* (bt:make-lock "harness-interrupt-lock")
+  "Mutex protecting *interrupt-flag* access.
+  Locking is required because SBCL's interrupt handlers run in uncertain contexts.")
+
+(defvar *heartbeat-thread* nil
+  "Handle to the heartbeat thread, allowing explicit termination on shutdown.")
 
 (defun process-signal (signal)
-  "The entry point to the Metabolic Pipeline: Perceive -> Reason -> Act."
+  "The entry point to the Metabolic Pipeline: Perceive -> Reason -> Act.
+
+  SIGNAL is a property list with the following structure:
+  - :type - :EVENT, :REQUEST, :RESPONSE, etc.
+  - :payload - The actual content (sensor data, approved actions, etc.)
+  - :meta - Metadata including source, session, reply stream
+  - :depth - Recursion depth counter (starts at 0)
+  - :status - Processing status (:perceived, :reasoned, :acted)
+
+  Returns NIL when processing is complete, or a new signal for feedback loop."
+
   (let ((current-signal signal))
     (loop while current-signal do
+
+      ;; Depth limiting prevents infinite recursion from feedback loops
       (let ((depth (getf current-signal :depth 0))
             (meta (getf current-signal :meta)))
-        (when (> depth 10) (harness-log "METABOLISM ERROR: Max depth reached.") (return nil))
-        (when (bordeaux-threads:with-lock-held (*interrupt-lock*) *interrupt-flag*)
-          (harness-log "METABOLISM: Interrupted.")
-          (bordeaux-threads:with-lock-held (*interrupt-lock*) (setf *interrupt-flag* nil))
+        (when (> depth 10)
+          (harness-log "METABOLISM ERROR: Max recursion depth reached.")
           (return nil))
+
+        ;; Check for graceful shutdown interrupt
+        (when (bt:with-lock-held (*interrupt-lock*) *interrupt-flag*)
+          (harness-log "METABOLISM: Interrupted by shutdown signal.")
+          (bt:with-lock-held (*interrupt-lock*) (setf *interrupt-flag* nil))
+          (return nil))
+
+        ;; The three-stage pipeline wrapped in error handling
         (handler-case
             (progn
+              ;; Stage 1: Perceive - normalize sensory input
               (setf current-signal (perceive-gate current-signal))
+
+              ;; Stage 2: Reason - generate and verify action proposals
               (setf current-signal (reason-gate current-signal))
+
+              ;; Stage 3: Act - execute approved actions
               (let ((feedback (act-gate current-signal)))
-                ;; feedback generation
                 (if feedback
+                    ;; Action generated a feedback signal - continue processing
                     (progn
-                      ;; Inherit meta from trigger signal
-                      (unless (getf feedback :meta) (setf (getf feedback :meta) meta))
+                      ;; Preserve metadata from original signal
+                      (unless (getf feedback :meta)
+                        (setf (getf feedback :meta) meta))
                       (setf current-signal feedback))
+                    ;; No feedback - pipeline complete
                     (setf current-signal nil))))
+
+          ;; Error recovery with differentiated response
           (error (c)
             (let ((sensor (ignore-errors (getf (getf current-signal :payload) :sensor))))
               (harness-log "METABOLISM CRASH [~a]: ~a" (or sensor :unknown) c)
-              ;; Only rollback on critical errors, not standard tool or loop errors
+
+              ;; Only rollback memory on critical errors, not transient tool failures
+              ;; This prevents losing recent context due to a single bad API call
               (unless (member sensor '(:loop-error :tool-error :syntax-error))
                 (harness-log "CRITICAL ERROR: Initiating Micro-Rollback.")
                 (rollback-memory 0))
+
+              ;; At deep recursion or known error types, terminate gracefully
               (if (or (> depth 2) (member sensor '(:loop-error :tool-error)))
                   (setf current-signal nil)
-                  (setf current-signal (list :type :EVENT :depth (1+ depth) :meta meta
-                                             :payload (list :sensor :loop-error :message (format nil "~a" c) :depth depth)))))))))))
+                  ;; Otherwise, convert error to a loop-error signal for retry
+                  (setf current-signal
+                        (list :type :EVENT
+                              :depth (1+ depth)
+                              :meta meta
+                              :payload (list :sensor :loop-error
+                                           :message (format nil "~a" c)
+                                           :depth depth)))))))))))
 
 (defvar *auto-save-interval* 300
-  "Save memory to disk every N seconds. Set from MEMORY_AUTO_SAVE_INTERVAL env.")
+  "Interval in seconds between automatic memory saves.
+  Defaults to 300 seconds (5 minutes). Set via MEMORY_AUTO_SAVE_INTERVAL env var.")
 
 (defvar *heartbeat-save-counter* 0
-  "Counter for auto-save triggers.")
+  "Tracks heartbeats since last save, used to calculate auto-save timing.")
 
 (defun start-heartbeat ()
-  "Starts the background heartbeat thread. Interval is loaded from HEARTBEAT_INTERVAL."
+  "Starts the background heartbeat thread.
+
+  The heartbeat runs in a dedicated thread to avoid blocking the main
+  signal processing loop. Each heartbeat:
+
+  1. Injects a :HEARTBEAT signal into the metabolic pipeline
+  2. Checks if memory should be auto-saved (based on interval ratio)
+
+  Configuration via environment:
+  - HEARTBEAT_INTERVAL: Seconds between heartbeats (default: 60)
+  - MEMORY_AUTO_SAVE_INTERVAL: Seconds between auto-saves (default: 300)"
+
   (let ((interval (or (ignore-errors (parse-integer (uiop:getenv "HEARTBEAT_INTERVAL"))) 60))
         (auto-save (or (ignore-errors (parse-integer (uiop:getenv "MEMORY_AUTO_SAVE_INTERVAL"))) *auto-save-interval*)))
     (setf *auto-save-interval* auto-save)
     (setf *heartbeat-save-counter* 0)
-    (setf *heartbeat-thread* 
-          (bordeaux-threads:make-thread 
-           (lambda () 
-             (loop 
-               (sleep interval) 
+
+    (setf *heartbeat-thread*
+          (bt:make-thread
+           (lambda ()
+             (loop
+               ;; Wait for interval
+               (sleep interval)
+
+               ;; Update counter and check if it's time to save
                (incf *heartbeat-save-counter*)
                (when (>= *heartbeat-save-counter* (/ *auto-save-interval* interval))
                  (setf *heartbeat-save-counter* 0)
                  (save-memory-to-disk))
-               ;; inject-stimulus is synchronous for heartbeats, preventing accumulation.
-               (inject-stimulus (list :type :EVENT :payload (list :sensor :heartbeat :unix-time (get-universal-time)))))) 
-           :name "opencortex-heartbeat"))))
+
+               ;; Inject heartbeat signal - this runs through the full pipeline
+               ;; allowing the agent to do latent reflection even with no input
+               (inject-stimulus
+                 (list :type :EVENT
+                       :payload (list :sensor :heartbeat
+                                    :unix-time (get-universal-time)))))
+
+            :name "opencortex-heartbeat")))))
 
 (defvar *shutdown-save-enabled* t
-  "If non-nil, save memory to disk on graceful shutdown.")
+  "When T, save memory to disk on graceful shutdown.
+  Disable for testing or when memory persistence is handled externally.")
 
 (defun main ()
-  "Entry point for the Skeleton MVP. Handles initialization and graceful shutdown."
-  (let* ((home (uiop:getenv "HOME"))
-         (env-file (uiop:merge-pathnames* ".local/share/opencortex/.env" (uiop:ensure-directory-pathname home))))
-    (when (uiop:file-exists-p env-file) (cl-dotenv:load-env env-file)))
+  "Entry point for OpenCortex. Initializes the system and enters idle loop.
 
-  ;; Load memory from disk if a snapshot exists
+  Startup sequence:
+  1. Load environment from ~/.local/share/opencortex/.env
+  2. Restore memory from disk (if snapshot exists)
+  3. Initialize actuators (shell, cli, system)
+  4. Load all skills from SKILLS_DIR
+  5. Start heartbeat thread
+  6. Register SIGINT handler for graceful shutdown
+  7. Enter idle loop (sleeps in DAEMON_SLEEP_INTERVAL chunks)
+
+  The idle loop checks for interrupts and saves memory before exit."
+
+  ;; Step 1: Load environment variables from standard location
+  (let* ((home (uiop:getenv "HOME"))
+         (env-file (uiop:merge-pathnames*
+                     ".local/share/opencortex/.env"
+                     (uiop:ensure-directory-pathname home))))
+    (when (uiop:file-exists-p env-file)
+      (cl-dotenv:load-env env-file)))
+
+  ;; Step 2: Crash recovery - load memory from previous snapshot
   (load-memory-from-disk)
 
+  ;; Step 3-4: Initialize actuators and load skills
   (initialize-actuators)
   (initialize-all-skills)
 
+  ;; Step 5: Start the heartbeat
   (start-heartbeat)
-  
-  ;; Graceful shutdown handler for SBCL
+
+  ;; Step 6: Register graceful shutdown handler
+  ;; SBCL-specific: catches Ctrl+C (SIGINT) and saves before exit
   #+sbcl
-  (sb-sys:enable-interrupt sb-unix:sigint 
-                           (lambda (sig code scp) 
-                             (declare (ignore sig code scp)) 
+  (sb-sys:enable-interrupt sb-unix:sigint
+                           (lambda (sig code scp)
+                             (declare (ignore sig code scp))
                              (harness-log "SHUTDOWN: SIGINT received. Saving memory...")
-                             (when *shutdown-save-enabled* (save-memory-to-disk))
+                             (when *shutdown-save-enabled*
+                               (save-memory-to-disk))
                              (uiop:quit 0)))
 
-  (let ((sleep-interval (or (ignore-errors (parse-integer (uiop:getenv "DAEMON_SLEEP_INTERVAL"))) 3600)))
-    (loop 
-      (when (bordeaux-threads:with-lock-held (*interrupt-lock*) *interrupt-flag*)
+  ;; Step 7: Idle loop - sleep in chunks, checking for interrupts
+  (let ((sleep-interval (or (ignore-errors
+                              (parse-integer (uiop:getenv "DAEMON_SLEEP_INTERVAL")))
+                            3600)))
+    (loop
+      ;; Check for interrupt before each sleep cycle
+      (when (bt:with-lock-held (*interrupt-lock*) *interrupt-flag*)
         (harness-log "SHUTDOWN: Interrupt flag set. Saving memory...")
-        (when *shutdown-save-enabled* (save-memory-to-disk))
+        (when *shutdown-save-enabled*
+          (save-memory-to-disk))
         (return))
+
+      ;; Sleep in configured intervals (default: 1 hour)
       (sleep sleep-interval))))

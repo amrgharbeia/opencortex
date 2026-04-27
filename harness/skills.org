@@ -195,9 +195,9 @@ Only loads blocks that specify a .lisp tangle target, ignoring tests and example
                                   (search ".lisp" tl)
                                   (not (search "tests/" tl))
                                   (not (search "test/" tl))))))
-                    ((uiop:string-prefix-p "#+end_src" (string-downcase clean-line))
-                     (setf in-lisp-block nil)
-                     (setf collect-this-block nil))
+                     ((uiop:string-prefix-p "#+end" (string-downcase clean-line))
+                      (setf in-lisp-block nil)
+                      (setf collect-this-block nil))
                     ((and in-lisp-block collect-this-block)
                      (unless (or (uiop:string-prefix-p ":PROPERTIES:" (string-upcase clean-line))
                                  (uiop:string-prefix-p ":END:" (string-upcase clean-line)))
@@ -394,7 +394,7 @@ EXAMPLES:
                          (let ((base-name (pathname-name file)))
                            (setf (skill-entry-status (gethash base-name *skill-catalog*)) :ready)
                            (format nil "OK: Skill '~a' reloaded successfully." base-name))
-                         (format nil "ERROR: Reload failed with status ~a" status)))))))))
+                         (format nil "ERROR: Reload failed with status ~a" status))))))))))
 #+end_src
 
 *** The File Read Tool (V 0.2.0 File I/O)
@@ -413,7 +413,7 @@ EXAMPLES:
             (handler-case
                 (uiop:read-file-string file)
               (error (c)
-                (format nil "ERROR reading ~a: ~a" file c)))))
+                (format nil "ERROR reading ~a: ~a" file c))))))
 #+end_src
 
 *** The File Write Tool (V 0.2.0 File I/O)
@@ -445,7 +445,7 @@ EXAMPLES:
                           (if append-p "content appended" "file written")
                           file))
               (error (c)
-                (format nil "ERROR writing ~a: ~a" file c)))))
+                (format nil "ERROR writing ~a: ~a" file c))))))
 #+end_src
 
 *** The String Replace Tool (V 0.2.0 File I/O)
@@ -476,7 +476,7 @@ EXAMPLES:
                           (format nil "OK: Replaced first occurrence in ~a" file))
                         (format nil "ERROR: Pattern not found in ~a" file))))
               (error (c)
-                (format nil "ERROR replacing in ~a: ~a" file c)))))
+                (format nil "ERROR replacing in ~a: ~a" file c))))))
 #+end_src
 
 * Test Suite

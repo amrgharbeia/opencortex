@@ -13,7 +13,7 @@
   (let ((id1 (emacs-edit-generate-id))
         (id2 (emacs-edit-generate-id)))
     (is (plusp (length id1)))
-    (is (not (string= id1 id2)))))
+    (is (not (string= id1 id2))))) ;; Likely unique
 
 (test id-format
   (let ((formatted (emacs-edit-id-format "abc12345")))

@@ -262,7 +262,7 @@ Example feedback chain:
               :DEPTH (1+ depth)
               :META meta
               :PAYLOAD (list :SENSOR :tool-error
-                           :MESSAGE (format nil "Tool '~a' not found" tool-name)))))
+                            :MESSAGE (format nil "Tool '~a' not found" tool-name))))))
 #+end_src
 
 ** format-tool-result: Human-Readable Output

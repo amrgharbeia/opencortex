@@ -94,8 +94,3 @@
   (let ((result (opencortex::lisp-utils-validate "(delete-file \"x.txt\")" :strict t)))
     (is (eq (getf result :status) :error))
     (is (eq (getf result :failed) :semantic))))
-
-(test unified-semantic-fail
-  (let ((result (opencortex::lisp-utils-validate "(delete-file \"x.txt\")" :strict t)))
-    (is (eq (getf result :status) :error))
-    (is (eq (getf result :failed) :semantic))))
