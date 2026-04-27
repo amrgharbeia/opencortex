@@ -97,17 +97,26 @@ setup_system() {
     I_DIR=$(grep INSTALL_DIR .env | cut -d'"' -f2 | sed "s|\$HOME|$HOME|")
     if [ -z "$I_DIR" ]; then I_DIR="$HOME/opencortex"; fi
 
-    echo -e "${YELLOW}--- Deploying to Instance Directory ($I_DIR) ---${NC}"
-    mkdir -p "$I_DIR/harness" "$I_DIR/skills" "$I_DIR/tests"
-    cp "$SCRIPT_DIR/opencortex.asd" "$I_DIR/"
-    cp "$SCRIPT_DIR/opencortex.sh" "$I_DIR/"
-    cp "$SCRIPT_DIR/.env" "$I_DIR/"
+    if [ "$SCRIPT_DIR" != "$I_DIR" ]; then
+        echo -e "${YELLOW}--- Deploying to Instance Directory ($I_DIR) ---${NC}"
+        mkdir -p "$I_DIR/harness" "$I_DIR/skills" "$I_DIR/tests"
+        cp "$SCRIPT_DIR/opencortex.asd" "$I_DIR/"
+        cp "$SCRIPT_DIR/opencortex.sh" "$I_DIR/"
+        cp "$SCRIPT_DIR/.env" "$I_DIR/"
 
-    echo -e "${BLUE}Tangling Lisp files to instance directory...${NC}"
-    export INSTALL_DIR="$I_DIR"
-    for f in harness/*.org skills/*.org; do
-        emacs -Q --batch --eval "(require 'org)" --eval "(org-babel-tangle-file \"$f\")" >/dev/null 2>&1 || true
-    done
+        echo -e "${BLUE}Tangling Lisp files to instance directory...${NC}"
+        export INSTALL_DIR="$I_DIR"
+        for f in harness/*.org skills/*.org; do
+            emacs -Q --batch --eval "(require 'org)" --eval "(org-babel-tangle-file \"$f\")" >/dev/null 2>&1 || true
+        done
+    else
+        echo -e "${BLUE}--- Running in Local Mode (Source == Instance) ---${NC}"
+        echo -e "${BLUE}Tangling Lisp files...${NC}"
+        export INSTALL_DIR="$I_DIR"
+        for f in harness/*.org skills/*.org; do
+            emacs -Q --batch --eval "(require 'org)" --eval "(org-babel-tangle-file \"$f\")" >/dev/null 2>&1 || true
+        done
+    fi
 
     mkdir -p "$HOME/.local/bin"
     ln -sf "$I_DIR/opencortex.sh" "$HOME/.local/bin/opencortex"
@@ -179,7 +188,7 @@ case "$COMMAND" in
         if [ -f "$SCRIPT_DIR/.env" ]; then
            export OPENROUTER_API_KEY=$(grep OPENROUTER_API_KEY "$SCRIPT_DIR/.env" | cut -d'"' -f2)
         fi
-        exec sbcl --non-interactive --eval '(load (merge-pathnames "quicklisp/setup.lisp" (user-homedir-pathname)))' --eval '(setf *debugger-hook* (lambda (c h) (declare (ignore h)) (format *error-output* "FATAL LISP ERROR: ~a~%" c) (uiop:print-backtrace :stream *error-output*) (uiop:quit 1)))' --eval '(push (truename (uiop:getenv "SCRIPT_DIR")) asdf:*central-registry*)' --eval '(format t "--- Quickloading OpenCortex ---~%")' --eval "(ql:quickload '(:opencortex :croatoan))" --eval '(opencortex:main)'
+        exec sbcl --non-interactive --eval '(load (merge-pathnames "quicklisp/setup.lisp" (user-homedir-pathname)))' --eval '(setf *debugger-hook* (lambda (c h) (declare (ignore h)) (format *error-output* "FATAL LISP ERROR: ~a~%" c) (uiop:print-backtrace :stream *error-output*) (uiop:quit 1)))' --eval '(push (truename (uiop:getenv "I_DIR")) asdf:*central-registry*)' --eval '(format t "--- Quickloading OpenCortex ---~%")' --eval "(ql:quickload '(:opencortex :croatoan))" --eval '(opencortex:main)'
         ;;
 
     tui)
@@ -196,7 +205,7 @@ case "$COMMAND" in
         echo -e "Launching Croatoan TUI..."
         export SKILLS_DIR="${SCRIPT_DIR}/skills"
         [ -z "$MEMEX_DIR" ] && export MEMEX_DIR="$HOME/memex"
-        exec sbcl --eval '(load (merge-pathnames "quicklisp/setup.lisp" (user-homedir-pathname)))' --eval '(push (truename (uiop:getenv "SCRIPT_DIR")) asdf:*central-registry*)' --eval '(ql:quickload :opencortex/tui)' --eval '(opencortex.tui:main)'
+        exec sbcl --eval '(load (merge-pathnames "quicklisp/setup.lisp" (user-homedir-pathname)))' --eval '(push (truename (uiop:getenv "I_DIR")) asdf:*central-registry*)' --eval '(ql:quickload :opencortex/tui)' --eval '(opencortex.tui:main)'
         ;;
 
     cli)
