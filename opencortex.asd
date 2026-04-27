@@ -1,6 +1,6 @@
 (defsystem :opencortex
   :name "opencortex"
-  :author "Amr"
+  :author "Amr Gharbeia"
   :version "0.2.0"
   :license "AGPLv3"
   :description "The Probabilistic-Deterministic Lisp Machine"
