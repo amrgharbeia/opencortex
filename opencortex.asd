@@ -1,16 +1,16 @@
 (defsystem :opencortex
   :name "opencortex"
-  :author "Amr"  
+  :author "Amr"
   :version "0.2.0"
   :license "AGPLv3"
   :description "The Probabilistic-Deterministic Lisp Machine"
 
-  :depends-on (:bordeaux-threads :cl-ppcre :usocket :ironclad :dexador :uuid :cl-json :str :uiop :cl-dotenv :hunchentoot)
+  :depends-on (:usocket :bordeaux-threads :dexador :uiop :cl-dotenv :cl-ppcre :hunchentoot :ironclad :str :cl-json :uuid)
 
   :serial t
 
-   :components ((:static-file "harness/package.lisp")
-                (:static-file "harness/skills.lisp")
+   :components ((:file "harness/package")
+                (:file "harness/skills")
                 (:file "harness/communication")
                 (:file "harness/communication-validator")
                 (:file "harness/memory")
@@ -37,3 +37,25 @@
   :build-operation "program-op"
   :build-pathname "opencortex-server"
   :entry-point "opencortex:main")
+
+(defsystem :opencortex/tests
+  :depends-on (:opencortex :fiveam)
+  :components ((:file "harness/act-tests")
+               (:file "harness/boot-sequence-tests")
+               (:file "harness/immune-system-tests")
+               (:file "harness/memory-tests")
+               (:file "harness/pipeline-act-tests")
+               (:file "harness/pipeline-perceive-tests")
+               (:file "harness/pipeline-reason-tests")
+               (:file "harness/peripheral-vision-tests")
+               (:file "harness/emacs-edit-tests")
+               (:file "harness/engineering-standards-tests")
+               (:file "harness/lisp-utils-tests")
+               (:file "harness/lisp-validator-tests")
+               (:file "harness/literate-programming-tests")
+               (:file "harness/self-edit-tests")
+               (:file "harness/tool-permissions-tests")))
+
+(defsystem :opencortex/tui
+  :depends-on (:opencortex :croatoan :usocket :bordeaux-threads)
+  :components ((:file "harness/tui-client")))

@@ -1,23 +1,23 @@
 (in-package :opencortex)
 
 (defun COSINE-SIMILARITY (v1 v2)
-  "Computes the cosine similarity between two vectors."
+  "Computes cosine similarity between two vectors."
   (let* ((len1 (length v1))
          (len2 (length v2)))
     (if (or (zerop len1) (zerop len2))
         0.0
-        (let* ((dot-product 0.0d0)
-               (norm1 0.0d0)
-               (norm2 0.0d0))
+        (let* ((dot 0.0d0)
+               (n1 0.0d0)
+               (n2 0.0d0))
           (dotimes (i (min len1 len2))
             (let* ((x (coerce (elt v1 i) 'double-float))
-                  (y (coerce (elt v2 i) 'double-float)))
-              (incf dot-product (* x y))
-              (incf norm1 (* x x))
-              (incf norm2 (* y y))))
-          (if (or (zerop norm1) (zerop norm2))
+                   (y (coerce (elt v2 i) 'double-float)))
+              (incf dot (* x y))
+              (incf n1 (* x x))
+              (incf n2 (* y y))))
+          (if (or (zerop n1) (zerop n2))
               0.0
-              (/ dot-product (sqrt (* norm1 norm2))))))))
+              (/ dot (sqrt (* n1 n2))))))))
 
 ;; TODO: Stub for vault - implement later
 (defun VAULT-MASK-STRING (s) "[MASKED]")
@@ -81,7 +81,7 @@
       (when id-start
         (let ((id-end (position #\Newline content :start id-start)))
           (when id-end
-            (setf id (subseq content (+ id-start 4) id-end)))))
+            (setf id (subseq content (+ id-start 4) id-end)))))))
     ;; Simple DEPENDS_ON extraction
     (let ((pos 0))
       (loop while (setf pos (search "#+DEPENDS_ON:" content :start2 pos))
@@ -205,7 +205,7 @@ Only loads blocks that specify a .lisp tangle target, ignoring tests and example
           (harness-log "LOADER ERROR in skill '~a': ~a" skill-base-name msg)
           (setf (skill-entry-status entry) :failed)
           (setf (skill-entry-error-log entry) msg)
-          nil)))
+          nil))))
 
 (defun load-skill-with-timeout (filepath timeout-seconds)
   "Loads a skill Org file with a hard execution timeout."
@@ -226,7 +226,7 @@ Only loads blocks that specify a .lisp tangle target, ignoring tests and example
         #+sbcl (sb-thread:terminate-thread thread)
         #-sbcl (bt:destroy-thread thread)
         (return :timeout))
-      (sleep 0.05))))
+      (sleep 0.05))))))
 
 (defun initialize-all-skills ()
   "Scans the directory defined by SKILLS_DIR and hot-loads skills using topological order."
