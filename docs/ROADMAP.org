@@ -41,7 +41,6 @@ Self-editing is the foundation of all future growth. Full org-mode manipulation 
 |---------|-------------|
 | org-skill-self-edit | Hook into =:syntax-error= events. Deterministic: auto-balance parens. Probabilistic: LLM surgical fix with memory rollback on failure. |
 | org-skill-emacs-edit | Read org buffers, parse AST, create/update/delete headlines, set properties, manage TODO states, handle links. |
-| Local vector search | =generate-embeddings= via Ollama. Add =:vector= to org-object. Semantic search with cosine similarity. |
 | Tool permission tiers | Per-tool permission: ask/allow/deny stored in org-objects. Filter tools before LLM sees them. |
 | Skill hot-reload | Swap compiled skill files without breaking active sockets. |
 
@@ -55,6 +54,7 @@ Unified control plane and Human-in-the-Loop (HITL) state management.
 | Human-in-the-Loop (HITL) | Continuation-based interaction. The agent can "suspend" its cognitive loop to ask for permission or clarification and resume precisely where it left off. |
 | org-skill-context-manager | Stack-based project scoping. =push-context= / =pop-context=. Path resolution relative to context. |
 | Memory scope segmentation | =:scope= property on org-objects: memex/session/project. Scope-aware retrieval. |
+| Asynchronous Embedding Gateway | Provider-agnostic vector generation (Ollama, local llama.cpp, OpenAI) via background worker. Prevents Merkle GC churn during edits. |
 | Model-tier routing | Complexity-based model selection: heartbeat → tiny, user → medium, reasoning → large. |
 | Slash commands | =M-x= style command palette in TUI. Commands defined in Org-mode. |
 
