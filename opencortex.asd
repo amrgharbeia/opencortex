@@ -5,10 +5,12 @@
   :license "AGPLv3"
   :description "The Probabilistic-Deterministic Lisp Machine"
 
-  :depends-on (:usocket :bordeaux-threads :dexador :uiop :cl-dotenv :cl-ppcre :hunchentoot :ironclad :str :cl-json :uuid)
+  :depends-on (:bordeaux-threads :cl-ppcre :usocket :ironclad :dexador :uuid :cl-json :str :uiop :cl-dotenv :hunchentoot)
 
-   :components ((:file "harness/package")
-                (:file "harness/skills")
+  :serial t
+
+   :components ((:static-file "harness/package.lisp")
+                (:static-file "harness/skills.lisp")
                 (:file "harness/communication")
                 (:file "harness/communication-validator")
                 (:file "harness/memory")
@@ -32,7 +34,6 @@
                 (:file "skills/org-skill-lisp-validator")
                 (:file "skills/org-skill-peripheral-vision"))
 
-  :serial t
   :build-operation "program-op"
   :build-pathname "opencortex-server"
   :entry-point "opencortex:main")
