@@ -1,3 +1,4 @@
+#+PROPERTY: header-args:lisp :tangle (expand-file-name "tui-client.lisp" (concat (or (getenv "INSTALL_DIR") ".") "/harness"))
 :PROPERTIES:
 :ID:       tui-client-spec
 :CREATED:  [2026-04-17 Fri 11:00]
@@ -10,7 +11,7 @@
 The OpenCortex TUI Client is a standalone Common Lisp application built on **Croatoan**. It provides a real-time, multi-window interface for interacting with the OpenCortex daemon.
 
 * Implementation
-#+begin_src lisp :tangle (expand-file-name "tui-client.lisp" (concat (or (getenv "INSTALL_DIR") ".") "/harness"))
+#+begin_src lisp
 (in-package :cl-user)
 (defpackage :opencortex.tui
   (:use :cl :croatoan)

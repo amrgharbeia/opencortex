@@ -1,3 +1,4 @@
+#+PROPERTY: header-args:lisp :tangle (expand-file-name "package.lisp" (concat (or (getenv "INSTALL_DIR") ".") "/harness"))
 #+TITLE: System Interface (package.lisp)
 #+AUTHOR: Amr
 #+FILETAGS: :harness:interface:
@@ -9,7 +10,7 @@ The ~package.lisp~ file defines the public API of the ~opencortex~ harness. It s
 
 ** Public API Export
 
-#+begin_src lisp :tangle (expand-file-name "package.lisp" (concat (or (getenv "INSTALL_DIR") ".") "/harness"))
+#+begin_src lisp
 (defpackage :opencortex
   (:use :cl)
   (:export
@@ -154,13 +155,13 @@ The ~package.lisp~ file defines the public API of the ~opencortex~ harness. It s
 
 * Package Implementation
 
-#+begin_src lisp :tangle (expand-file-name "package.lisp" (concat (or (getenv "INSTALL_DIR") ".") "/harness"))
+#+begin_src lisp
 (in-package :opencortex)
 #+end_src
 
 ** Robust Plist Accessor
 
-#+begin_src lisp :tangle (expand-file-name "package.lisp" (concat (or (getenv "INSTALL_DIR") ".") "/harness"))
+#+begin_src lisp
 (defun proto-get (plist key)
   "Robustly retrieves a value from a plist, checking both uppercase and lowercase keyword versions."
   (let* ((s (string key))
@@ -173,7 +174,7 @@ The ~package.lisp~ file defines the public API of the ~opencortex~ harness. It s
 
 The harness maintains a thread-safe circular log buffer to provide context for debugging and neural reasoning.
 
-#+begin_src lisp :tangle (expand-file-name "package.lisp" (concat (or (getenv "INSTALL_DIR") ".") "/harness"))
+#+begin_src lisp
 (defvar *system-logs* nil)
 (defvar *logs-lock* (bordeaux-threads:make-lock "harness-logs-lock"))
 (defvar *max-log-history* 100)
@@ -181,14 +182,14 @@ The harness maintains a thread-safe circular log buffer to provide context for d
 
 ** Skills Registry
 
-#+begin_src lisp :tangle (expand-file-name "package.lisp" (concat (or (getenv "INSTALL_DIR") ".") "/harness"))
+#+begin_src lisp
 (defvar *skills-registry* (make-hash-table :test 'equal)
   "Global registry of all loaded skills.")
 #+end_src
 
 ** Skill Telemetry State
 
-#+begin_src lisp :tangle (expand-file-name "package.lisp" (concat (or (getenv "INSTALL_DIR") ".") "/harness"))
+#+begin_src lisp
 (defvar *skill-telemetry* (make-hash-table :test 'equal))
 (defvar *telemetry-lock* (bordeaux-threads:make-lock "harness-telemetry-lock"))
 #+end_src
@@ -197,7 +198,7 @@ The harness maintains a thread-safe circular log buffer to provide context for d
 
 The system tracks the performance and reliability of individual skills.
 
-#+begin_src lisp :tangle (expand-file-name "package.lisp" (concat (or (getenv "INSTALL_DIR") ".") "/harness"))
+#+begin_src lisp
 (defun harness-track-telemetry (skill-name duration status)
   "Updates performance metrics for a specific skill. Status should be :success or :rejected."
   (when skill-name
@@ -213,7 +214,7 @@ The system tracks the performance and reliability of individual skills.
 
 The Tool Registry allows the agent to interact with the physical world. Every tool must define a guard (for security) and a body (for execution).
 
-#+begin_src lisp :tangle (expand-file-name "package.lisp" (concat (or (getenv "INSTALL_DIR") ".") "/harness"))
+#+begin_src lisp
 (defvar *cognitive-tools* (make-hash-table :test 'equal))
 
 (defstruct cognitive-tool
@@ -237,7 +238,7 @@ The Tool Registry allows the agent to interact with the physical world. Every to
 
 Centralized logging function. It simultaneously writes to standard output and the in-memory circular buffer.
 
-#+begin_src lisp :tangle (expand-file-name "package.lisp" (concat (or (getenv "INSTALL_DIR") ".") "/harness"))
+#+begin_src lisp
 (defun harness-log (msg &rest args)
   "Centralized logging for the harness."
   (let ((formatted-msg (apply #'format nil msg args)))

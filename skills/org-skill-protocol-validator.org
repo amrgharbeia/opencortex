@@ -1,3 +1,4 @@
+#+PROPERTY: header-args:lisp :tangle (expand-file-name "org-skill-protocol-validator.lisp" (concat (or (getenv "INSTALL_DIR") ".") "/skills"))
 :PROPERTIES:
 :ID:       org-skill-communication-protocol-validator
 :CREATED:  [2026-04-12 Sun 14:35]
@@ -45,7 +46,7 @@ Decouple protocol parsing (framing/unframing) from semantic validation.
 * Phase D: Build (Implementation)
 
 ** Schema Enforcement
-#+begin_src lisp :tangle (expand-file-name "org-skill-protocol-validator.lisp" (concat (or (getenv "INSTALL_DIR") ".") "/skills"))
+#+begin_src lisp
 (in-package :opencortex)
 
 (defun validate-communication-protocol-schema (msg)
@@ -84,7 +85,7 @@ Decouple protocol parsing (framing/unframing) from semantic validation.
 #+end_src
 
 * Registration
-#+begin_src lisp :tangle (expand-file-name "org-skill-protocol-validator.lisp" (concat (or (getenv "INSTALL_DIR") ".") "/skills"))
+#+begin_src lisp
 (defskill :skill-communication-protocol-validator
   :priority 95
   :trigger (lambda (ctx) (member (getf (getf ctx :payload) :sensor) '(:protocol-received)))

@@ -1,3 +1,4 @@
+#+PROPERTY: header-args:lisp :tangle (expand-file-name "org-skill-tool-permissions.lisp" (concat (or (getenv "INSTALL_DIR") ".") "/skills"))
 :PROPERTIES:
 :ID:       tool-permissions-skill-001
 :CREATED:   [2026-04-23 Thu]
@@ -27,7 +28,7 @@ Also provides vector embeddings via Ollama or llama.cpp.
 * Implementation
 Tool permissions and embedding generation via multiple providers.
 
-#+begin_src lisp :tangle (expand-file-name "org-skill-tool-permissions.lisp" (concat (or (getenv "INSTALL_DIR") ".") "/skills"))
+#+begin_src lisp
 (in-package :opencortex)
 
 (defvar *tool-permissions* (make-hash-table :test 'equal)

@@ -1,3 +1,4 @@
+#+PROPERTY: header-args:lisp :tangle (expand-file-name "org-skill-scribe.lisp" (concat (or (getenv "INSTALL_DIR") ".") "/skills"))
 :PROPERTIES:
 :ID:       scribe-skill
 :CREATED:  [2026-04-13 Mon 18:40]
@@ -41,14 +42,14 @@ The Scribe reacts to the `:heartbeat` sensor. It maintains a state file (`scribe
 * Phase D: Build (Implementation)
 
 ** Package Context
-#+begin_src lisp :tangle (expand-file-name "org-skill-scribe.lisp" (concat (or (getenv "INSTALL_DIR") ".") "/skills"))
+#+begin_src lisp
 (in-package :opencortex)
 #+end_src
 
 ** State: Checkpoint Management
 We track the last processed universal time to avoid redundant distillation.
 
-#+begin_src lisp :tangle (expand-file-name "org-skill-scribe.lisp" (concat (or (getenv "INSTALL_DIR") ".") "/skills"))
+#+begin_src lisp
 (defvar *scribe-last-checkpoint* 0
   "The universal-time of the last successful distillation run.")
 
@@ -70,7 +71,7 @@ We track the last processed universal time to avoid redundant distillation.
 ** Filtering: Privacy & Relevance
 The Scribe only cares about non-personal, non-distilled headlines.
 
-#+begin_src lisp :tangle (expand-file-name "org-skill-scribe.lisp" (concat (or (getenv "INSTALL_DIR") ".") "/skills"))
+#+begin_src lisp
 (defun scribe-get-distillable-nodes ()
   "Returns a list of org-objects from the daily/ folder that require distillation."
   (let ((results nil))
@@ -91,7 +92,7 @@ The Scribe only cares about non-personal, non-distilled headlines.
 ** Probabilistic: Extraction Prompt
 The LLM is tasked with identifying atomic concepts within the raw text.
 
-#+begin_src lisp :tangle (expand-file-name "org-skill-scribe.lisp" (concat (or (getenv "INSTALL_DIR") ".") "/skills"))
+#+begin_src lisp
 (defun probabilistic-skill-scribe (context)
   "Generates the extraction prompt for the Scribe."
   (let* ((payload (getf context :payload))
@@ -122,7 +123,7 @@ TEXT:
 ** Deterministic: Note Committal
 The deterministic gate receives the list of proposed notes and writes them to the filesystem.
 
-#+begin_src lisp :tangle (expand-file-name "org-skill-scribe.lisp" (concat (or (getenv "INSTALL_DIR") ".") "/skills"))
+#+begin_src lisp
 (defun scribe-commit-notes (proposals)
   "Writes proposed atomic notes to the notes/ directory. Appends if the note exists."
   (let ((notes-dir (uiop:merge-pathnames* "notes/" (asdf:system-source-directory :opencortex))))
@@ -159,7 +160,7 @@ The deterministic gate receives the list of proposed notes and writes them to th
 #+end_src
 
 ** Skill Registration
-#+begin_src lisp :tangle (expand-file-name "org-skill-scribe.lisp" (concat (or (getenv "INSTALL_DIR") ".") "/skills"))
+#+begin_src lisp
 (defskill :skill-scribe
   :priority 50
   :trigger (lambda (ctx)
@@ -174,6 +175,6 @@ The deterministic gate receives the list of proposed notes and writes them to th
 #+end_src
 
 ** Initialization
-#+begin_src lisp :tangle (expand-file-name "org-skill-scribe.lisp" (concat (or (getenv "INSTALL_DIR") ".") "/skills"))
+#+begin_src lisp
 (scribe-load-state)
 #+end_src

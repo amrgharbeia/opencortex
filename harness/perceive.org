@@ -1,3 +1,4 @@
+#+PROPERTY: header-args:lisp :tangle (expand-file-name "perceive.lisp" (concat (or (getenv "INSTALL_DIR") ".") "/harness"))
 #+TITLE: Stage 1: Perceive (perceive.lisp)
 #+AUTHOR: Amr
 #+FILETAGS: :harness:perceive:
@@ -53,7 +54,7 @@ Other sensors (heartbeats, interrupts) are processed synchronously to maintain o
 
 * Package Context
 
-#+begin_src lisp :tangle (expand-file-name "perceive.lisp" (concat (or (getenv "INSTALL_DIR") ".") "/harness"))
+#+begin_src lisp
 (in-package :opencortex)
 #+end_src
 
@@ -61,7 +62,7 @@ Other sensors (heartbeats, interrupts) are processed synchronously to maintain o
 
 ** Async Sensor Registry
 
-#+begin_src lisp :tangle (expand-file-name "perceive.lisp" (concat (or (getenv "INSTALL_DIR") ".") "/harness"))
+#+begin_src lisp
 (defvar *async-sensors* '(:chat-message :delegation :user-command)
   "Sensors that are processed in dedicated threads.
 
@@ -74,7 +75,7 @@ Other sensors (heartbeats, interrupts) are processed synchronously to maintain o
 
 ** Foveal Focus State
 
-#+begin_src lisp :tangle (expand-file-name "perceive.lisp" (concat (or (getenv "INSTALL_DIR") ".") "/harness"))
+#+begin_src lisp
 (defvar *foveal-focus-id* nil
   "The Org ID of the node the user is currently interacting with.
 
@@ -89,7 +90,7 @@ Other sensors (heartbeats, interrupts) are processed synchronously to maintain o
 
 ** inject-stimulus: Entry Point
 
-#+begin_src lisp :tangle (expand-file-name "perceive.lisp" (concat (or (getenv "INSTALL_DIR") ".") "/harness"))
+#+begin_src lisp
 (defun inject-stimulus (raw-message &key stream (depth 0))
   "Inject a raw message into the signal processing pipeline.
 
@@ -146,7 +147,7 @@ Other sensors (heartbeats, interrupts) are processed synchronously to maintain o
 
 ** perceive-gate: Signal Normalization
 
-#+begin_src lisp :tangle (expand-file-name "perceive.lisp" (concat (or (getenv "INSTALL_DIR") ".") "/harness"))
+#+begin_src lisp
 (defun perceive-gate (signal)
   "Stage 1 of the metabolic pipeline: Normalize sensory input.
 

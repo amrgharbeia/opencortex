@@ -1,3 +1,4 @@
+#+PROPERTY: header-args:lisp :tangle (expand-file-name "org-skill-llama-backend.lisp" (concat (or (getenv "INSTALL_DIR") ".") "/skills"))
 :PROPERTIES:
 :ID:       llama-backend-skill
 :CREATED:  [2026-04-17 Fri 20:00]
@@ -21,12 +22,12 @@ This skill acts as a proxy between the OpenCortex kernel and the Lisp-agnostic `
 * Phase D: Build (Implementation)
 
 ** Package Context
-#+begin_src lisp :tangle (expand-file-name "org-skill-llama-backend.lisp" (concat (or (getenv "INSTALL_DIR") ".") "/skills"))
+#+begin_src lisp
 (in-package :opencortex)
 #+end_src
 
 ** The Inference Engine (llama-inference)
-#+begin_src lisp :tangle (expand-file-name "org-skill-llama-backend.lisp" (concat (or (getenv "INSTALL_DIR") ".") "/skills"))
+#+begin_src lisp
 (defun llama-inference (prompt system-prompt &key (model "local-model"))
   "Sends a completion request to the local llama.cpp server."
   (let ((endpoint (uiop:getenv "LLAMACPP_ENDPOINT")))
@@ -51,7 +52,7 @@ This skill acts as a proxy between the OpenCortex kernel and the Lisp-agnostic `
 #+end_src
 
 ** Registration
-#+begin_src lisp :tangle (expand-file-name "org-skill-llama-backend.lisp" (concat (or (getenv "INSTALL_DIR") ".") "/skills"))
+#+begin_src lisp
 (progn
   (register-probabilistic-backend :llama #'llama-inference)
   (harness-log "LLAMA: Local backend registered and active."))

@@ -1,3 +1,4 @@
+#+PROPERTY: header-args:lisp :tangle (expand-file-name "org-skill-emacs-edit.lisp" (concat (or (getenv "INSTALL_DIR") ".") "/skills"))
 :PROPERTIES:
 :ID:       emacs-edit-skill
 :CREATED:  [2026-04-23 Thu]
@@ -58,14 +59,14 @@ Single entry point `emacs-edit-modify` takes a file path, operation, and paramet
 * Phase D: Build (Implementation)
 
 ** Package Context
-#+begin_src lisp :tangle (expand-file-name "org-skill-emacs-edit.lisp" (concat (or (getenv "INSTALL_DIR") ".") "/skills"))
+#+begin_src lisp
 (in-package :opencortex)
 #+end_src
 
 ** ID Generation
 Generate unique IDs for headlines.
 
-#+begin_src lisp :tangle (expand-file-name "org-skill-emacs-edit.lisp" (concat (or (getenv "INSTALL_DIR") ".") "/skills"))
+#+begin_src lisp
 (defun emacs-edit-generate-id ()
   "Generates a unique ID for org-mode headlines.
 Format: 8-char hex + timestamp for uniqueness."
@@ -84,7 +85,7 @@ Format: 8-char hex + timestamp for uniqueness."
 ** Org Printer (AST → Org Format)
 Converts AST back to org format, preserving structure.
 
-#+begin_src lisp :tangle (expand-file-name "org-skill-emacs-edit.lisp" (concat (or (getenv "INSTALL_DIR") ".") "/skills"))
+#+begin_src lisp
 (defun emacs-edit-print-headline (ast &key indent-level)
   "Converts a HEADLINE AST node to org text.
 INDENT-LEVEL is number of leading asterisks."
@@ -154,7 +155,7 @@ Preserves structure including #+begin_src blocks."
 ** Read Operation
 Parse org file to AST.
 
-#+begin_src lisp :tangle (expand-file-name "org-skill-emacs-edit.lisp" (concat (or (getenv "INSTALL_DIR") ".") "/skills"))
+#+begin_src lisp
 (defvar *org-parser-cache* (make-hash-table :test 'equal)
   "Cache for parsed org files.")
 
@@ -180,7 +181,7 @@ Returns the parsed AST. Uses cache for performance."
 ** Write Operation
 Write AST back to file preserving structure.
 
-#+begin_src lisp :tangle (expand-file-name "org-skill-emacs-edit.lisp" (concat (or (getenv "INSTALL_DIR") ".") "/skills"))
+#+begin_src lisp
 (defun emacs-edit-write-file (file-path ast)
   "Writes AST back to FILE-PATH, preserving org structure.
 Clears cache after write."
@@ -195,7 +196,7 @@ Clears cache after write."
 ** Add Headline Operation
 Add a new headline to an existing AST.
 
-#+begin_src lisp :tangle (expand-file-name "org-skill-emacs-edit.lisp" (concat (or (getenv "INSTALL_DIR") ".") "/skills"))
+#+begin_src lisp
 (defun emacs-edit-add-headline (ast title &key todo properties)
   "Adds a new headline to AST.
 Returns modified AST."
@@ -224,7 +225,7 @@ Returns modified AST."
 ** Set Property Operation
 Set a property on an existing headline (by ID or TITLE).
 
-#+begin_src lisp :tangle (expand-file-name "org-skill-emacs-edit.lisp" (concat (or (getenv "INSTALL_DIR") ".") "/skills"))
+#+begin_src lisp
 (defun emacs-edit-find-headline-by-id (ast target-id)
   "Recursively finds headline with matching :ID: property."
   (when (eq (getf ast :type) :headline)
@@ -268,7 +269,7 @@ Returns modified AST."
 ** Set TODO State Operation
 Change TODO state (TODO → DONE → etc).
 
-#+begin_src lisp :tangle (expand-file-name "org-skill-emacs-edit.lisp" (concat (or (getenv "INSTALL_DIR") ".") "/skills"))
+#+begin_src lisp
 (defun emacs-edit-set-todo (ast target new-state)
   "Sets TODO state on headline matching TARGET.
 NEW-STATE should be 'TODO', 'DONE', 'IN-PROGRESS', etc."
@@ -279,7 +280,7 @@ NEW-STATE should be 'TODO', 'DONE', 'IN-PROGRESS', etc."
 ** Unified Entry Point
 Main operation dispatcher.
 
-#+begin_src lisp :tangle (expand-file-name "org-skill-emacs-edit.lisp" (concat (or (getenv "INSTALL_DIR") ".") "/skills"))
+#+begin_src lisp
 (defun emacs-edit-modify (file-path operation &key params)
   "Main entry point for org-mode file manipulation.
 OPERATIONS:
@@ -322,7 +323,7 @@ OPERATIONS:
 ** Cognitive Tools
 Exposes operations to the Probabilistic Engine.
 
-#+begin_src lisp :tangle (expand-file-name "org-skill-emacs-edit.lisp" (concat (or (getenv "INSTALL_DIR") ".") "/skills"))
+#+begin_src lisp
 (def-cognitive-tool :org-read
   "Reads an org-mode file and parses it to structured AST.
 Use this BEFORE modifying org files to understand their structure."

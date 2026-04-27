@@ -1,3 +1,4 @@
+#+PROPERTY: header-args:lisp :tangle (expand-file-name "org-skill-cli-gateway.lisp" (concat (or (getenv "INSTALL_DIR") ".") "/skills"))
 :PROPERTIES:
 :ID:       cli-gateway-skill
 :CREATED:  [2026-04-13 Mon 17:00]
@@ -11,7 +12,7 @@ The *CLI Gateway* is the primary sensory and actuating interface for human inter
 
 * Implementation
 
-#+begin_src lisp :tangle (expand-file-name "org-skill-cli-gateway.lisp" (concat (or (getenv "INSTALL_DIR") ".") "/skills"))
+#+begin_src lisp
 
 (defvar *cli-port* 9105)
 (defvar *cli-server-socket* nil)

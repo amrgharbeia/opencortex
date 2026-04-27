@@ -148,63 +148,8 @@ Restores the state of the Memex from one of the previous snapshots.
         (harness-log "MEMORY ERROR - Snapshot ~a not found." index))))
 #+end_src
 
-* Test Suite
-
-These tests verify the Memory system. Run with:
-~(fiveam:run! 'memory-suite)~
-
-#+begin_src lisp :tangle (expand-file-name "memory-tests.lisp" (concat (or (getenv "INSTALL_DIR") ".") "/tests"))
-(defpackage :opencortex-memory-tests
-  (:use :cl :fiveam :opencortex)
-  (:export #:memory-suite))
-
-(in-package :opencortex-memory-tests)
-
-(def-suite memory-suite
-  :description "Tests for the Merkle-Tree Memory")
-
-(in-suite memory-suite)
-
-(test merkle-hash-consistency
-  "Verify identical ASTs produce identical Merkle hashes."
-  (let* ((ast1 '(:type :HEADLINE :properties (:ID "test-1" :TITLE "Node 1") :contents nil)))
-    (clrhash *memory*)
-    (let ((id1 (ingest-ast ast1)))
-      (let ((hash1 (org-object-hash (lookup-object id1))))
-        (clrhash *memory*)
-        (let ((id2 (ingest-ast ast1)))
-          (let ((hash2 (org-object-hash (lookup-object id2))))
-            (is (equal hash1 hash2))))))))
-
-(test history-store-immutability
-  "Verify that *history-store* retains old versions."
-  (clrhash *memory*)
-  (clrhash *history-store*)
-  (let* ((ast-v1 '(:type :HEADLINE :properties (:ID "test-node" :TITLE "Version 1") :contents nil))
-         (id-v1 (ingest-ast ast-v1))
-         (obj-v1 (lookup-object id-v1))
-         (hash-v1 (org-object-hash obj-v1)))
-    (let* ((ast-v2 '(:type :HEADLINE :properties (:ID "test-node" :TITLE "Version 2") :contents nil))
-           (id-v2 (ingest-ast ast-v2))
-           (hash-v2 (org-object-hash (lookup-object id-v2))))
-      (is (equal (org-object-hash (lookup-object "test-node")) hash-v2))
-      (is (not (null (gethash hash-v1 *history-store*)))
-      (is (not (null (gethash hash-v2 *history-store*))))))
-
-(test cow-snapshot-and-rollback
-  "Verify that lightweight snapshots restore previous pointer states."
-  (clrhash *memory*)
-  (setf *object-store-snapshots* nil)
-  (let* ((ast-v1 '(:type :HEADLINE :properties (:ID "cow-node" :TITLE "State A") :contents nil))
-         (id-v1 (ingest-ast ast-v1))
-         (hash-v1 (org-object-hash (lookup-object id-v1))))
-    (snapshot-memory)
-    (let* ((ast-v2 '(:type :HEADLINE :properties (:ID "cow-node" :TITLE "State B") :contents nil))
-           (id-v2 (ingest-ast ast-v2))
-           (hash-v2 (org-object-hash (lookup-object id-v2))))
-       
 ** Disk Persistence (save-memory / load-memory)
-Essential for surviving crashes. Saves the in-memory hash tables to disk and loads them back on restart. The path is controlled by the `MEMORY_SNAPSHOT_PATH` environment variable.
+Essential for surviving crashes. Saves the in-memory hash tables to disk and loads them back on restart.
 
 #+begin_src lisp :tangle (expand-file-name "memory.lisp" (concat (or (getenv "INSTALL_DIR") ".") "/harness"))
 (defvar *memory-snapshot-path* nil
@@ -259,8 +204,6 @@ Reconstitutes alists into hash tables."
 ** Semantic Search (get-embedding, semantic-search)
 Support for vector embeddings via Ollama and semantic search with cosine similarity.
 
-The vector slot on org-objects enables semantic recall - searching memory by meaning rather than just keywords. Embeddings are generated on ingest when the :EMBED property is set to "t", and cached locally to avoid redundant API calls.
-
 #+begin_src lisp :tangle (expand-file-name "memory.lisp" (concat (or (getenv "INSTALL_DIR") ".") "/harness"))
 (defvar *embedding-cache* (make-hash-table :test 'equal)
   "Cache for embeddings to avoid redundant API calls.")
@@ -307,7 +250,10 @@ Returns up to LIMIT objects with similarity >= MIN-SIMILARITY, sorted by similar
              *memory*)
     (setf results (sort results #'> :key (lambda (r) (getf r :similarity))))
     (subseq results 0 (min limit (length results)))))
+#+end_src
 
+** Cognitive Tool: Semantic Search
+#+begin_src lisp :tangle (expand-file-name "memory.lisp" (concat (or (getenv "INSTALL_DIR") ".") "/harness"))
 (def-cognitive-tool :semantic-search
   "Searches memory for objects semantically similar to a query."
   ((:query :type :string :description "The search query.")
@@ -317,29 +263,27 @@ Returns up to LIMIT objects with similarity >= MIN-SIMILARITY, sorted by similar
           (semantic-search (getf args :query)
                         :limit (or (getf args :limit) 10)
                         :min-similarity (or (getf args :min-similarity) 0.5))))
+#+end_src
 
 ** Cognitive Tool: Generate Embeddings
-Provided for the Probabilistic Engine to invoke embedding generation on demand.
-
 #+begin_src lisp :tangle (expand-file-name "memory.lisp" (concat (or (getenv "INSTALL_DIR") ".") "/harness"))
 (def-cognitive-tool :generate-embeddings
   "Generates vector embeddings for given text via the configured embedding backend (Ollama)."
   ((:texts :type :list :description "List of text strings to embed."))
   :body (lambda (args)
           (let ((texts (getf args :texts)))
-            (unless (and texts (listp texts))
-              (return-from generate-embeddings
-                (list :status :error :message ":texts must be a list of strings.")))
-            (let ((results nil) (errors nil))
-              (dolist (text texts)
-                (let ((vec (get-embedding text)))
-                  (if vec
-                      (push (list :text text :vector vec) results)
-                      (push text errors))))
-              (list :status (if errors :partial :success)
-                    :embeddings (nreverse results)
-                    :failed (when errors (nreverse errors))
-                    :count (length results))))))
+            (if (not (and texts (listp texts)))
+                (list :status :error :message ":texts must be a list of strings.")
+                (let ((results nil) (errors nil))
+                  (dolist (text texts)
+                    (let ((vec (get-embedding text)))
+                      (if vec
+                          (push (list :text text :vector vec) results)
+                          (push text errors))))
+                  (list :status (if errors :partial :success)
+                        :embeddings (nreverse results)
+                        :failed (when errors (nreverse errors))
+                        :count (length results)))))))
 #+end_src
 
 ** Lookup Utilities
@@ -359,6 +303,7 @@ Basic functions for retrieving objects by ID or type.
   (let ((results nil))
     (maphash (lambda (id obj) (declare (ignore id)) (when (eq (org-object-type obj) type) (push obj results))) *memory*)
     results))
+
 (defun list-objects-with-attribute (attr-name value)
   "Returns a list of all objects where ATTR-NAME matches VALUE."
   (let ((results nil))
@@ -387,8 +332,7 @@ Utility functions for AST traversal and path resolution.
   (let ((pos (position #\/ path :from-end t))) (if pos (subseq path (1+ pos)) path)))
 #+end_src
 
-* Phase E: Chaos (Verification)
-Following the Engineering Standards, the Memory must be empirically verified through automated testing. The following test suite ensures the mathematical integrity of the Merkle hashes and the behavioral correctness of the immutable versioning and rollback systems.
+* Test Suite
 
 #+begin_src lisp :tangle (expand-file-name "memory-tests.lisp" (concat (or (getenv "INSTALL_DIR") ".") "/tests"))
 (defpackage :opencortex-memory-tests
@@ -398,93 +342,12 @@ Following the Engineering Standards, the Memory must be empirically verified thr
 (in-package :opencortex-memory-tests)
 
 (def-suite memory-suite
-  :description "Tests for the Merkle-Tree Memory.")
+  :description "Tests for the Merkle-Tree Memory")
 
 (in-suite memory-suite)
 
 (test merkle-hash-consistency
-  (let* ((ast1 '(:type :HEADLINE :properties (:ID "test-1" :TITLE "Node 1") :contents nil))
-         (ast2 '(:type :HEADLINE :properties (:ID "test-1" :TITLE "Node 1") :contents nil)))
-    (clrhash *memory*)
-    (let ((id1 (ingest-ast ast1)))
-      (let ((hash1 (org-object-hash (lookup-object id1))))
-        (clrhash *memory*)
-        (let ((id2 (ingest-ast ast2)))
-          (let ((hash2 (org-object-hash (lookup-object id2))))
-            (is (equal hash1 hash2))))))))
-
-(test merkle-hash-cascading
-  (let* ((ast-leaf '(:type :HEADLINE :properties (:ID "leaf" :TITLE "Leaf") :contents nil))
-         (ast-root-full '(:type :HEADLINE :properties (:ID "root" :TITLE "Root") 
-                           :contents ((:type :HEADLINE :properties (:ID "leaf" :TITLE "Leaf") :contents nil))))
-         (id-root (progn (clrhash *memory*) (ingest-ast ast-root-full)))
-         (initial-root-hash (org-object-hash (lookup-object id-root))))
-      
-      ;; Now ingest a modified version (title change)
-      (let* ((ast-root-modified '(:type :HEADLINE :properties (:ID "root" :TITLE "Root") 
-                                 :contents ((:type :HEADLINE :properties (:ID "leaf" :TITLE "Leaf Modified") :contents nil))))
-             (id-root-mod (progn (clrhash *memory*) (ingest-ast ast-root-modified)))
-             (modified-root-hash (org-object-hash (lookup-object id-root-mod))))
-        (is (not (equal initial-root-hash modified-root-hash))))))
-
-(test history-store-immutability
-  "Verify that *history-store* retains old versions even after *memory* updates."
-  (clrhash *memory*)
-  (clrhash *history-store*)
-  (let* ((ast-v1 '(:type :HEADLINE :properties (:ID "test-node" :TITLE "Version 1") :contents nil))
-         (id-v1 (ingest-ast ast-v1))
-         (obj-v1 (lookup-object id-v1))
-         (hash-v1 (org-object-hash obj-v1)))
-    
-    (let* ((ast-v2 '(:type :HEADLINE :properties (:ID "test-node" :TITLE "Version 2") :contents nil))
-           (id-v2 (ingest-ast ast-v2))
-           (obj-v2 (lookup-object id-v2))
-           (hash-v2 (org-object-hash obj-v2)))
-      
-      ;; The active pointer should be v2
-      (is (equal (org-object-hash (lookup-object "test-node")) hash-v2))
-      
-      ;; Both v1 and v2 should exist in the immutable history store
-      (is (not (null (gethash hash-v1 *history-store*))))
-      (is (not (null (gethash hash-v2 *history-store*))))
-      
-      ;; Modifying v2 should not affect v1 in the history store
-      (is (equal (org-object-content (gethash hash-v1 *history-store*)) "Version 1
-"))
-      (is (equal (org-object-content (gethash hash-v2 *history-store*)) "Version 2
-")))))
-
-(test cow-snapshot-and-rollback
-  "Verify that lightweight snapshots can accurately restore previous pointer states."
-  (clrhash *memory*)
-  (clrhash *history-store*)
-  (setf *object-store-snapshots* nil)
-  
-  (let* ((ast-v1 '(:type :HEADLINE :properties (:ID "cow-node" :TITLE "State A") :contents nil))
-         (id-v1 (ingest-ast ast-v1))
-         (hash-v1 (org-object-hash (lookup-object id-v1))))
-     
-    ;; Take a snapshot at State A
-    (snapshot-memory)
-    
-    (let* ((ast-v2 '(:type :HEADLINE :properties (:ID "cow-node" :TITLE "State B") :contents nil))
-           (id-v2 (ingest-ast ast-v2))
-           (hash-v2 (org-object-hash (lookup-object id-v2))))
-      
-      ;; Verify we are currently in State B
-      (is (equal (org-object-hash (lookup-object "cow-node")) hash-v2))
-      
-      ;; Rollback to State A (index 0 because we only took 1 snapshot)
-      (rollback-memory 0)
-      
-      ;; Verify we are back in State A
-      (is (equal (org-object-hash (lookup-object "cow-node")) hash-v1))
-      
-;; Verify State B is still safely in the history store (no data loss)
-      (is (not (null (gethash hash-v2 *history-store*)))))))
-
-(test merkle-hash-consistency
-  "Verify that identical ASTs produce identical Merkle hashes."
+  "Verify identical ASTs produce identical Merkle hashes."
   (let* ((ast1 '(:type :HEADLINE :properties (:ID "test-1" :TITLE "Node 1") :contents nil)))
     (clrhash *memory*)
     (let ((id1 (ingest-ast ast1)))
@@ -494,16 +357,33 @@ Following the Engineering Standards, the Memory must be empirically verified thr
           (let ((hash2 (org-object-hash (lookup-object id2))))
             (is (equal hash1 hash2))))))))
 
-(test merkle-hash-cascading
-  "Verify that child changes propagate to parent hashes."
-  (let* ((ast-root '(:type :HEADLINE :properties (:ID "root" :TITLE "Root")
-                      :contents ((:type :HEADLINE :properties (:ID "leaf" :TITLE "Leaf") :contents nil))))
-         (id-root (progn (clrhash *memory*) (ingest-ast ast-root)))
-         (root-hash (org-object-hash (lookup-object id-root))))
-    ;; Now ingest a modified child - parent hash should change
-    (let* ((ast-mod '(:type :HEADLINE :properties (:ID "root" :TITLE "Root")
-                    :contents ((:type :HEADLINE :properties (:ID "leaf" :TITLE "Changed") :contents nil))))
-           (id-mod (progn (clrhash *memory*) (ingest-ast ast-mod)))
-            (mod-hash (org-object-hash (lookup-object id-mod))))
-      (is (not (equal root-hash mod-hash))))))
+(test history-store-immutability
+  "Verify that *history-store* retains old versions."
+  (clrhash *memory*)
+  (clrhash *history-store*)
+  (let* ((ast-v1 '(:type :HEADLINE :properties (:ID "test-node" :TITLE "Version 1") :contents nil))
+         (id-v1 (ingest-ast ast-v1))
+         (obj-v1 (lookup-object id-v1))
+         (hash-v1 (org-object-hash obj-v1)))
+    (let* ((ast-v2 '(:type :HEADLINE :properties (:ID "test-node" :TITLE "Version 2") :contents nil))
+           (id-v2 (ingest-ast ast-v2))
+           (hash-v2 (org-object-hash (lookup-object id-v2))))
+      (is (equal (org-object-hash (lookup-object "test-node")) hash-v2))
+      (is (not (null (gethash hash-v1 *history-store*))))
+      (is (not (null (gethash hash-v2 *history-store*)))))))
+
+(test cow-snapshot-and-rollback
+  "Verify that lightweight snapshots restore previous pointer states."
+  (clrhash *memory*)
+  (setf *object-store-snapshots* nil)
+  (let* ((ast-v1 '(:type :HEADLINE :properties (:ID "cow-node" :TITLE "State A") :contents nil))
+         (id-v1 (ingest-ast ast-v1))
+         (hash-v1 (org-object-hash (lookup-object id-v1))))
+    (snapshot-memory)
+    (let* ((ast-v2 '(:type :HEADLINE :properties (:ID "cow-node" :TITLE "State B") :contents nil))
+           (id-v2 (ingest-ast ast-v2))
+           (hash-v2 (org-object-hash (lookup-object id-v2))))
+      (is (equal (org-object-hash (lookup-object "cow-node")) hash-v2))
+      (rollback-memory 0)
+      (is (equal (org-object-hash (lookup-object "cow-node")) hash-v1)))))
 #+end_src

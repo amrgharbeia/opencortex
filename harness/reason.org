@@ -1,3 +1,4 @@
+#+PROPERTY: header-args:lisp :tangle (expand-file-name "reason.lisp" (concat (or (getenv "INSTALL_DIR") ".") "/harness"))
 #+TITLE: Stage 2: Reason (reason.lisp)
 #+AUTHOR: Amr
 #+FILETAGS: :harness:reason:
@@ -33,7 +34,7 @@ This means the reasoning pipeline can generate, modify, and execute its own comm
 
 * Package Context
 
-#+begin_src lisp :tangle (expand-file-name "reason.lisp" (concat (or (getenv "INSTALL_DIR") ".") "/harness"))
+#+begin_src lisp
 (in-package :opencortex)
 #+end_src
 
@@ -43,7 +44,7 @@ The probabilistic engine is responsible for all neural/LLM operations. It mainta
 
 ** Backend Registry Variables
 
-#+begin_src lisp :tangle (expand-file-name "reason.lisp" (concat (or (getenv "INSTALL_DIR") ".") "/harness"))
+#+begin_src lisp
 (defvar *probabilistic-backends* (make-hash-table :test 'equal)
   "Registry mapping provider keywords (:openrouter, :ollama) to their calling functions.")
 
@@ -60,7 +61,7 @@ The probabilistic engine is responsible for all neural/LLM operations. It mainta
 
 ** register-probabilistic-backend: Backend Registration
 
-#+begin_src lisp :tangle (expand-file-name "reason.lisp" (concat (or (getenv "INSTALL_DIR") ".") "/harness"))
+#+begin_src lisp
 (defun register-probabilistic-backend (name fn)
   "Register a neural provider backend.
 
@@ -79,7 +80,7 @@ The probabilistic engine is responsible for all neural/LLM operations. It mainta
 
 ** probabilistic-call: Cascade Dispatch
 
-#+begin_src lisp :tangle (expand-file-name "reason.lisp" (concat (or (getenv "INSTALL_DIR") ".") "/harness"))
+#+begin_src lisp
 (defun probabilistic-call (prompt &key
                                 (system-prompt "You are the Probabilistic engine.")
                                 (cascade nil)
@@ -129,7 +130,7 @@ The `think` function is the heart of the probabilistic engine. It constructs a p
 
 ** strip-markdown: Clean LLM Output
 
-#+begin_src lisp :tangle (expand-file-name "reason.lisp" (concat (or (getenv "INSTALL_DIR") ".") "/harness"))
+#+begin_src lisp
 (defun strip-markdown (text)
   "Strip markdown formatting from LLM output.
 
@@ -152,7 +153,7 @@ The `think` function is the heart of the probabilistic engine. It constructs a p
 
 ** normalize-plist-keywords: Fix LLM Keyword Output
 
-#+begin_src lisp :tangle (expand-file-name "reason.lisp" (concat (or (getenv "INSTALL_DIR") ".") "/harness"))
+#+begin_src lisp
 (defun normalize-plist-keywords (plist)
   "Normalize all keys in a plist to keywords.
 
@@ -176,7 +177,7 @@ The `think` function is the heart of the probabilistic engine. It constructs a p
 
 ** think: Generate Action Proposal
 
-#+begin_src lisp :tangle (expand-file-name "reason.lisp" (concat (or (getenv "INSTALL_DIR") ".") "/harness"))
+#+begin_src lisp
 (defun think (context)
   "Generate a Lisp action proposal based on current context.
 
@@ -328,7 +329,7 @@ The deterministic engine runs all registered skills' verification functions. Thi
 
 ** deterministic-verify: Skill Chain Verification
 
-#+begin_src lisp :tangle (expand-file-name "reason.lisp" (concat (or (getenv "INSTALL_DIR") ".") "/harness"))
+#+begin_src lisp
 (defun deterministic-verify (proposed-action context)
   "Run all skill deterministic gates on a proposed action.
 
@@ -399,7 +400,7 @@ The deterministic engine runs all registered skills' verification functions. Thi
 
 ** reason-gate: The Stage Function
 
-#+begin_src lisp :tangle (expand-file-name "reason.lisp" (concat (or (getenv "INSTALL_DIR") ".") "/harness"))
+#+begin_src lisp
 (defun reason-gate (signal)
   "Stage 2 of the metabolic pipeline: Reason.
 

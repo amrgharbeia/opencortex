@@ -1,3 +1,4 @@
+#+PROPERTY: header-args:lisp :tangle (expand-file-name "org-skill-peripheral-vision.lisp" (concat (or (getenv "INSTALL_DIR") ".") "/skills"))
 :PROPERTIES:
 :ID:       org-skill-peripheral-vision
 :CREATED:  [2026-04-12 Sun 14:15]
@@ -39,10 +40,10 @@ Move context pruning and rendering logic out of `context.lisp` to allow for more
 
 
 * Package Context
-#+begin_src lisp :tangle (expand-file-name "org-skill-peripheral-vision.lisp" (concat (or (getenv "INSTALL_DIR") ".") "/skills"))
+#+begin_src lisp
 (in-package :opencortex)
 #+end_src
-\n#+begin_src lisp :tangle (expand-file-name "org-skill-peripheral-vision.lisp" (concat (or (getenv "INSTALL_DIR") ".") "/skills"))
+\n#+begin_src lisp
 (defun context-render-to-org (obj &key depth foveal-id semantic-threshold foveal-vector)
   "Recursively renders an org-object with foveal-peripheral pruning.")
 
@@ -53,7 +54,7 @@ Move context pruning and rendering logic out of `context.lisp` to allow for more
 * Phase D: Build (Implementation)
 
 ** Foveal-Peripheral Pruning
-#+begin_src lisp :tangle (expand-file-name "org-skill-peripheral-vision.lisp" (concat (or (getenv "INSTALL_DIR") ".") "/skills"))
+#+begin_src lisp
 
 (defun context-render-to-org (obj &key (depth 1) (foveal-id nil) (semantic-threshold 0.75) (foveal-vector nil))
   "Recursively renders an org-object and its children to an Org string using a Foveal-Peripheral Hybrid model."
@@ -117,7 +118,7 @@ Move context pruning and rendering logic out of `context.lisp` to allow for more
 #+end_src
 
 * Registration
-#+begin_src lisp :tangle (expand-file-name "org-skill-peripheral-vision.lisp" (concat (or (getenv "INSTALL_DIR") ".") "/skills"))
+#+begin_src lisp
 (defskill :skill-peripheral-vision
   :priority 90
   :dependencies ("org-skill-embedding")

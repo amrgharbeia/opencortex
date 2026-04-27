@@ -1,3 +1,4 @@
+#+PROPERTY: header-args:lisp :tangle (expand-file-name "communication.lisp" (concat (or (getenv "INSTALL_DIR") ".") "/harness"))
 #+TITLE: Communication Protocol (communication.lisp)
 #+AUTHOR: Amr
 #+FILETAGS: :harness:protocol:
@@ -10,7 +11,7 @@ The ~communication.lisp~ module defines the low-level transport and framing logi
 
 * Implementation (communication.lisp)
 
-#+begin_src lisp :tangle (expand-file-name "communication.lisp" (concat (or (getenv "INSTALL_DIR") ".") "/harness"))
+#+begin_src lisp
 (in-package :opencortex)
 
 (defun proto-get (plist key)
@@ -21,7 +22,7 @@ The ~communication.lisp~ module defines the low-level transport and framing logi
     (or (getf plist up) (getf plist dn))))
 #+end_src
 
-#+begin_src lisp :tangle (expand-file-name "communication.lisp" (concat (or (getenv "INSTALL_DIR") ".") "/harness"))
+#+begin_src lisp
 (in-package :opencortex)
 
 (defvar *actuator-registry* (make-hash-table :test 'equalp)
@@ -128,7 +129,7 @@ The validator ensures that incoming messages adhere to the strict property list 
 ** Message Framing (communication.lisp)
 Frames a message with a hex length prefix and ensures all data is serializable.
 
-#+begin_src lisp :tangle (expand-file-name "communication.lisp" (concat (or (getenv "INSTALL_DIR") ".") "/harness"))
+#+begin_src lisp
 (defun sanitize-protocol-message (msg)
   "Recursively strips non-serializable objects from a protocol plist."
   (if (and msg (listp msg))

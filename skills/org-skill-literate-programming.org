@@ -1,3 +1,4 @@
+#+PROPERTY: header-args:lisp :tangle (expand-file-name "org-skill-literate-programming.lisp" (concat (or (getenv "INSTALL_DIR") ".") "/skills"))
 :PROPERTIES:
 :ID:       literate-programming-skill-2026
 :CREATED:  [2026-04-25 Sat]
@@ -57,7 +58,7 @@ Code without surrounding prose is a bug report waiting to happen.
 
 ** Block Balance Checker
 
-#+begin_src lisp :tangle (expand-file-name "org-skill-literate-programming.lisp" (concat (or (getenv "INSTALL_DIR") ".") "/skills"))
+#+begin_src lisp
 (in-package :opencortex)
 
 (defun literate-check-block-balance (code-string)
@@ -94,7 +95,7 @@ Code without surrounding prose is a bug report waiting to happen.
 
 ** File-Level Balance Audit
 
-#+begin_src lisp :tangle (expand-file-name "org-skill-literate-programming.lisp" (concat (or (getenv "INSTALL_DIR") ".") "/skills"))
+#+begin_src lisp
 (defun literate-audit-org-file (filepath)
   "Audits all tangled lisp blocks in an Org file for structural balance.
 
@@ -145,7 +146,7 @@ Code without surrounding prose is a bug report waiting to happen.
 
 Verifies that tangled `.lisp` files are in sync with their Org source. Violation: edited .lisp directly instead of through Org.
 
-#+begin_src lisp :tangle (expand-file-name "org-skill-literate-programming.lisp" (concat (or (getenv "INSTALL_DIR") ".") "/skills"))
+#+begin_src lisp
 (defvar *tangle-targets*
   '(("skills/org-skill-engineering-standards.org" . "library/gen/org-skill-engineering-standards.lisp")
     ("skills/org-skill-literate-programming.org" . "library/gen/org-skill-literate-programming.lisp")
@@ -184,7 +185,7 @@ This detects direct .lisp edits (which violate the LP workflow)."
 
 The LP skill runs at priority 1100 (just below engineering-standards at 1000).
 
-#+begin_src lisp :tangle (expand-file-name "org-skill-literate-programming.lisp" (concat (or (getenv "INSTALL_DIR") ".") "/skills"))
+#+begin_src lisp
 (defskill :skill-literate-programming
   :priority 1100
   :trigger (lambda (ctx)
@@ -218,7 +219,7 @@ The LP skill runs at priority 1100 (just below engineering-standards at 1000).
 
 ** Initialize Project Root
 
-#+begin_src lisp :tangle (expand-file-name "org-skill-literate-programming.lisp" (concat (or (getenv "INSTALL_DIR") ".") "/skills"))
+#+begin_src lisp
 (defvar *lp-initialized* nil)
 
 (defun lp-init ()

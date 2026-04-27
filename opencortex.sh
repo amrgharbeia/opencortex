@@ -30,7 +30,7 @@ fi
 
 # --- 1. BOOTSTRAP ---
 # If the script is run standalone, it clones the full repo and restarts itself.
-if [ ! -d "$SCRIPT_DIR/.git" ] && [ ! -d "$HOME/.opencortex" ] && [[ ! "$(pwd)" =~ "opencortex" ]]; then
+if [ ! -d "$SCRIPT_DIR/.git" ] && [ ! -f "$SCRIPT_DIR/harness/package.org" ] && [ ! -d "$HOME/.opencortex" ] && [[ ! "$(pwd)" =~ "opencortex" ]]; then
     echo -e "${BLUE}=== OpenCortex: Zero-to-One Bootstrapper ===${NC}"
     git clone ssh://git@10.10.10.201:2222/amr/opencortex.git ~/.opencortex
     cd ~/.opencortex && git submodule update --init --recursive
@@ -144,7 +144,7 @@ setup_system() {
     fi
 
     echo -e "${YELLOW}--- Finalizing: Awakening the Brain ---${NC}"
-    "$I_DIR/opencortex.sh" --boot > "$I_DIR/brain.log" 2>&1 &
+    export I_DIR="$I_DIR"; "$I_DIR/opencortex.sh" --boot > "$I_DIR/brain.log" 2>&1 &
 
     success=false
     for i in {1..30}; do
@@ -188,7 +188,7 @@ case "$COMMAND" in
         if [ -f "$SCRIPT_DIR/.env" ]; then
            export OPENROUTER_API_KEY=$(grep OPENROUTER_API_KEY "$SCRIPT_DIR/.env" | cut -d'"' -f2)
         fi
-        exec sbcl --non-interactive --eval '(load (merge-pathnames "quicklisp/setup.lisp" (user-homedir-pathname)))' --eval '(setf *debugger-hook* (lambda (c h) (declare (ignore h)) (format *error-output* "FATAL LISP ERROR: ~a~%" c) (uiop:print-backtrace :stream *error-output*) (uiop:quit 1)))' --eval '(push (truename (uiop:getenv "I_DIR")) asdf:*central-registry*)' --eval '(format t "--- Quickloading OpenCortex ---~%")' --eval "(ql:quickload '(:opencortex :croatoan))" --eval '(opencortex:main)'
+        exec sbcl --non-interactive --eval '(load (merge-pathnames "quicklisp/setup.lisp" (user-homedir-pathname)))' --eval '(setf *debugger-hook* (lambda (c h) (declare (ignore h)) (format *error-output* "FATAL LISP ERROR: ~a~%" c) (uiop:print-backtrace :stream *error-output*) (uiop:quit 1)))' --eval '(let ((path (or (uiop:getenv "I_DIR") (uiop:getenv "SCRIPT_DIR")))) (when path (push (truename path) asdf:*central-registry*)))' --eval '(format t "--- Quickloading OpenCortex ---~%")' --eval "(ql:quickload '(:opencortex :croatoan))" --eval '(opencortex:main)'
         ;;
 
     tui)
@@ -205,7 +205,7 @@ case "$COMMAND" in
         echo -e "Launching Croatoan TUI..."
         export SKILLS_DIR="${SCRIPT_DIR}/skills"
         [ -z "$MEMEX_DIR" ] && export MEMEX_DIR="$HOME/memex"
-        exec sbcl --eval '(load (merge-pathnames "quicklisp/setup.lisp" (user-homedir-pathname)))' --eval '(push (truename (uiop:getenv "I_DIR")) asdf:*central-registry*)' --eval '(ql:quickload :opencortex/tui)' --eval '(opencortex.tui:main)'
+        exec sbcl --eval '(load (merge-pathnames "quicklisp/setup.lisp" (user-homedir-pathname)))' --eval '(let ((path (or (uiop:getenv "I_DIR") (uiop:getenv "SCRIPT_DIR")))) (when path (push (truename path) asdf:*central-registry*)))' --eval '(ql:quickload :opencortex/tui)' --eval '(opencortex.tui:main)'
         ;;
 
     cli)

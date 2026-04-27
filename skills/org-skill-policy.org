@@ -1,3 +1,4 @@
+#+PROPERTY: header-args:lisp :tangle (expand-file-name "org-skill-policy.lisp" (concat (or (getenv "INSTALL_DIR") ".") "/skills"))
 :PROPERTIES:
 :ID:       47425a43-2be0-423c-8509-22592cfe9c9e
 :CREATED:  [2026-04-07 Tue 12:57]
@@ -44,23 +45,11 @@ Therefore, Policy encodes not just rules, but *values*:
 
 Every skill executes within its own jailed package namespace, inheriting core harness symbols while maintaining isolation from other skills.
 
-#+begin_src lisp :tangle (expand-file-name "org-skill-policy.lisp" (concat (or (getenv "INSTALL_DIR") ".") "/skills"))
+#+begin_src lisp
 (in-package :opencortex)
 #+end_src
 
-* The Override Hierarchy
-
-When two invariants conflict, resolution follows a strict priority order. This prevents the agent from freezing on ethical edge cases.
-
-| Priority | Invariant | Philosophy |
-|----------|-----------|------------|
-| 500 | Transparency | If you can't explain it, you can't do it |
-| 400 | Autonomy | Independence from proprietary control is the primary goal |
-| 300 | Zero-Bloat | Complexity must be earned, not imported |
-| 250 | Modularity | Complexity belongs at the edges, not the core |
-| 200 | Mentorship | Teaching increases capability; doing removes it |
-| 100 | Sustainability | Offline capability today enables 100-year survival |
-
+* Global Policy Configuration
 #+begin_src lisp :tangle (expand-file-name "org-skill-policy.lisp" (concat (or (getenv "INSTALL_DIR") ".") "/skills"))
 (defvar *policy-invariant-priorities*
   '((:transparency . 500)
@@ -76,6 +65,75 @@ When two invariants conflict, the higher priority wins.
 Example: Modularity (250) takes precedence over Mentorship (200),
 meaning a change that would fatten the harness is blocked
 even if it would be educational.")
+
+(defvar *proprietary-domain-watchlist*
+  '("googleapis.com" "api.openai.com" "anthropic.com" "api.groq.com" "openrouter.ai")
+  "Domains representing centralized, proprietary control.
+
+  Actions targeting these are logged as autonomy debt, not hard-blocked.
+  This is because tactical gateway usage (Telegram, Signal, OpenRouter)
+  is permitted under the strategic mandate for autonomy.
+
+  Strategic goal: Replace all proprietary APIs with local alternatives.
+  Tactical reality: Use what's available while building toward that goal.")
+
+(defvar *policy-max-skill-size-chars* 50000
+  "Maximum recommended size for a skill file tangled from an Org note.
+
+  This is a soft limit—the check warns but does not block.
+  A large, well-documented skill is acceptable; a small, poorly-documented
+  one that adds unnecessary complexity is not.")
+
+(defvar *modularity-protected-paths*
+  '("harness/" "opencortex.asd")
+  "Paths that constitute the unbreakable core of the system.
+
+  Any action targeting these paths must include a :modularity-justification
+  explaining why the change cannot be implemented as a skill.
+
+  The Thin Harness principle: What belongs in the harness?
+  - Core signal processing (Perceive-Reason-Act loop)
+  - Memory and persistence primitives
+  - Protocol definition and validation
+  - Skills register and dispatch
+
+  What belongs in skills?
+  - Policy and security
+  - LLM integration
+  - Domain-specific functionality
+  - New actuators")
+
+(defvar *mentorship-required-actions*
+  '(:create-skill :eval :modify-file :write-file :replace
+    :rename-file :delete-file :shell :create-note)
+  "Actions that trigger the Mentorship invariant.
+
+  These are high-impact actions that should come with explanations
+  not just for the user, but for future debugging and maintenance.")
+
+(defvar *cloud-only-backends* '(:openrouter :openai :anthropic :groq :gemini-api)
+  "Backends requiring internet connection and external infrastructure.
+
+  These are acceptable as fallbacks when local inference is unavailable,
+  but should be logged as sustainability debt for tracking purposes.")
+#+end_src
+
+
+* The Override Hierarchy
+
+When two invariants conflict, resolution follows a strict priority order. This prevents the agent from freezing on ethical edge cases.
+
+| Priority | Invariant | Philosophy |
+|----------|-----------|------------|
+| 500 | Transparency | If you can't explain it, you can't do it |
+| 400 | Autonomy | Independence from proprietary control is the primary goal |
+| 300 | Zero-Bloat | Complexity must be earned, not imported |
+| 250 | Modularity | Complexity belongs at the edges, not the core |
+| 200 | Mentorship | Teaching increases capability; doing removes it |
+| 100 | Sustainability | Offline capability today enables 100-year survival |
+
+#+begin_src lisp
+
 #+end_src
 
 * The Core Invariants
@@ -91,7 +149,7 @@ At the gate:
 - Every user-facing action must carry an `:explanation`
 - Log messages must include the triggering invariant
 
-#+begin_src lisp :tangle (expand-file-name "org-skill-policy.lisp" (concat (or (getenv "INSTALL_DIR") ".") "/skills"))
+#+begin_src lisp
 (defun policy-check-transparency (action context)
 (defun policy-check-transparency (action context)
   "Ensures the action is inspectable and user-facing actions carry an explanation.
@@ -138,17 +196,8 @@ At the gate:
 
 Every action should increase the user's independence from centralized, proprietary platforms. When the system uses a proprietary API, it's logged as "autonomy debt"—acceptable tactically, but flagged for eventual replacement.
 
-#+begin_src lisp :tangle (expand-file-name "org-skill-policy.lisp" (concat (or (getenv "INSTALL_DIR") ".") "/skills"))
-(defvar *proprietary-domain-watchlist*
-  '("googleapis.com" "api.openai.com" "anthropic.com" "api.groq.com" "openrouter.ai")
-  "Domains representing centralized, proprietary control.
+#+begin_src lisp
 
-  Actions targeting these are logged as autonomy debt, not hard-blocked.
-  This is because tactical gateway usage (Telegram, Signal, OpenRouter)
-  is permitted under the strategic mandate for autonomy.
-
-  Strategic goal: Replace all proprietary APIs with local alternatives.
-  Tactical reality: Use what's available while building toward that goal.")
 
 (defun policy-scan-proprietary-references (action)
   "Scans ACTION text fields for proprietary domain references.
@@ -205,13 +254,8 @@ Every action should increase the user's independence from centralized, proprieta
 
 The system harness must remain minimalist. "Just-in-case" code is a security vulnerability. Complexity must be earned through demonstrated need, not anticipation of future use.
 
-#+begin_src lisp :tangle (expand-file-name "org-skill-policy.lisp" (concat (or (getenv "INSTALL_DIR") ".") "/skills"))
-(defvar *policy-max-skill-size-chars* 50000
-  "Maximum recommended size for a skill file tangled from an Org note.
+#+begin_src lisp
 
-  This is a soft limit—the check warns but does not block.
-  A large, well-documented skill is acceptable; a small, poorly-documented
-  one that adds unnecessary complexity is not.")
 
 (defun policy-check-bloat (action context)
   "Warns if a :create-skill action exceeds the bloat threshold.
@@ -256,25 +300,8 @@ This is the most important invariant for system stability. If the harness grows 
 - Harder to debug when things go wrong
 - Harder to maintain across versions
 
-#+begin_src lisp :tangle (expand-file-name "org-skill-policy.lisp" (concat (or (getenv "INSTALL_DIR") ".") "/skills"))
-(defvar *modularity-protected-paths*
-  '("harness/" "opencortex.asd")
-  "Paths that constitute the unbreakable core of the system.
+#+begin_src lisp
 
-  Any action targeting these paths must include a :modularity-justification
-  explaining why the change cannot be implemented as a skill.
-
-  The Thin Harness principle: What belongs in the harness?
-  - Core signal processing (Perceive-Reason-Act loop)
-  - Memory and persistence primitives
-  - Protocol definition and validation
-  - Skills register and dispatch
-
-  What belongs in skills?
-  - Policy and security
-  - LLM integration
-  - Domain-specific functionality
-  - New actuators")
 
 (defun policy-check-modularity (action context)
   "Blocks modifications to the system's protected core unless justified.
@@ -323,14 +350,8 @@ This is the most important invariant for system stability. If the harness grows 
 
 The agent's goal is not to "do it for the user," but to "empower the user." Every autonomous action must be explained at a level that increases the user's technical understanding.
 
-#+begin_src lisp :tangle (expand-file-name "org-skill-policy.lisp" (concat (or (getenv "INSTALL_DIR") ".") "/skills"))
-(defvar *mentorship-required-actions*
-  '(:create-skill :eval :modify-file :write-file :replace
-    :rename-file :delete-file :shell :create-note)
-  "Actions that trigger the Mentorship invariant.
+#+begin_src lisp
 
-  These are high-impact actions that should come with explanations
-  not just for the user, but for future debugging and maintenance.")
 
 (defun policy-check-mentorship (action context)
   "Blocks high-impact actions that lack a mentorship note.
@@ -380,12 +401,8 @@ The Memex should be functional even when:
 
 This means preferring local, energy-efficient architectures over cloud-dependent ones.
 
-#+begin_src lisp :tangle (expand-file-name "org-skill-policy.lisp" (concat (or (getenv "INSTALL_DIR") ".") "/skills"))
-(defvar *cloud-only-backends* '(:openrouter :openai :anthropic :groq :gemini-api)
-  "Backends requiring internet connection and external infrastructure.
+#+begin_src lisp
 
-  These are acceptable as fallbacks when local inference is unavailable,
-  but should be logged as sustainability debt for tracking purposes.")
 
 (defun policy-check-sustainability (action context)
   "Logs sustainability debt when action relies on cloud-only infrastructure.
@@ -417,7 +434,7 @@ This means preferring local, energy-efficient architectures over cloud-dependent
 
 When the policy gate blocks or modifies an action, it must tell the user *why*. This creates an auditable log of every policy decision.
 
-#+begin_src lisp :tangle (expand-file-name "org-skill-policy.lisp" (concat (or (getenv "INSTALL_DIR") ".") "/skills"))
+#+begin_src lisp
 (defun policy-explain (invariant-key message &optional original-action)
   "Formats a policy decision into an auditable explanation plist.
 
@@ -446,7 +463,7 @@ When the policy gate blocks or modifies an action, it must tell the user *why*. 
 
 ** Running Invariant Checks
 
-#+begin_src lisp :tangle (expand-file-name "org-skill-policy.lisp" (concat (or (getenv "INSTALL_DIR") ".") "/skills"))
+#+begin_src lisp
 (defun policy-run-invariant-checks (action context)
   "Runs all invariant checks in priority order.
 
@@ -509,7 +526,7 @@ When the policy gate blocks or modifies an action, it must tell the user *why*. 
 
 ** Main Policy Gate
 
-#+begin_src lisp :tangle (expand-file-name "org-skill-policy.lisp" (concat (or (getenv "INSTALL_DIR") ".") "/skills"))
+#+begin_src lisp
 (defun policy-deterministic-gate (action context)
   "The main policy gate entry point.
 
@@ -541,7 +558,7 @@ When the policy gate blocks or modifies an action, it must tell the user *why*. 
 
 * Skill Registration
 
-#+begin_src lisp :tangle (expand-file-name "org-skill-policy.lisp" (concat (or (getenv "INSTALL_DIR") ".") "/skills"))
+#+begin_src lisp
 (defskill :skill-policy
   :priority 500
   :trigger (lambda (ctx) (declare (ignore ctx)) t)

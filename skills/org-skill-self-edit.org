@@ -1,3 +1,4 @@
+#+PROPERTY: header-args:lisp :tangle (expand-file-name "org-skill-self-edit.lisp" (concat (or (getenv "INSTALL_DIR") ".") "/skills"))
 :PROPERTIES:
 :ID:       self-edit-001
 :END:
@@ -14,14 +15,14 @@ The *Self-Edit Agent* enables the agent to modify its own code and files with sa
 * Phase D: Build (Implementation)
 
 ** Package Context
-#+begin_src lisp :tangle (expand-file-name "org-skill-self-edit.lisp" (concat (or (getenv "INSTALL_DIR") ".") "/skills"))
+#+begin_src lisp
 (in-package :opencortex)
 #+end_src
 
 ** Deterministic Paren Repair
 Fast paren balancing for syntax errors.
 
-#+begin_src lisp :tangle (expand-file-name "org-skill-self-edit.lisp" (concat (or (getenv "INSTALL_DIR") ".") "/skills"))
+#+begin_src lisp
 (defun self-edit-count-char (char string)
   "Counts occurrences of CHAR in STRING."
   (loop for c across string count (char= c char)))
@@ -41,7 +42,7 @@ Fast paren balancing for syntax errors.
 ** Parse Target Location
 Extract file and line info from error context.
 
-#+begin_src lisp :tangle (expand-file-name "org-skill-self-edit.lisp" (concat (or (getenv "INSTALL_DIR") ".") "/skills"))
+#+begin_src lisp
 (defun self-edit-parse-location (context)
   "Extracts file and line from error context payload."
   (let* ((payload (getf context :payload))
@@ -58,7 +59,7 @@ Extract file and line info from error context.
 ** Apply Surgical Edit
 Apply a find/replace to a file with rollback on failure.
 
-#+begin_src lisp :tangle (expand-file-name "org-skill-self-edit.lisp" (concat (or (getenv "INSTALL_DIR") ".") "/skills"))
+#+begin_src lisp
 (defun self-edit-apply (target-file old-code new-code)
   "Applies surgical edit to TARGET-FILE: replace OLD-CODE with NEW-CODE.
 Returns list with :status and :message keys."
@@ -90,7 +91,7 @@ Returns list with :status and :message keys."
 #+end_src
 
 ** Cognitive Tool: Edit File
-#+begin_src lisp :tangle (expand-file-name "org-skill-self-edit.lisp" (concat (or (getenv "INSTALL_DIR") ".") "/skills"))
+#+begin_src lisp
 (def-cognitive-tool :self-edit
   "Applies a surgical code modification to a file with automatic rollback on failure."
   ((:file :type :string :description "Path to the target file")
@@ -106,7 +107,7 @@ Returns list with :status and :message keys."
 ** Skill Definition
 Hooks into syntax-error events for self-repair.
 
-#+begin_src lisp :tangle (expand-file-name "org-skill-self-edit.lisp" (concat (or (getenv "INSTALL_DIR") ".") "/skills"))
+#+begin_src lisp
 (defskill :skill-self-edit
   :priority 95
   :trigger (lambda (ctx)
@@ -146,7 +147,7 @@ Provide a fixed version of the code as a lisp form.")
 #+end_src
 
 ** Tool: Quick Paren Fix
-#+begin_src lisp :tangle (expand-file-name "org-skill-self-edit.lisp" (concat (or (getenv "INSTALL_DIR") ".") "/skills"))
+#+begin_src lisp
 (def-cognitive-tool :balance-parens
   "Balances parentheses in a code string."
   ((:code :type :string :description "The code to balance"))
@@ -164,7 +165,7 @@ Provide a fixed version of the code as a lisp form.")
 ** Skill Hot-Reload
 Swap compiled skill files without breaking active sockets.
 
-#+begin_src lisp :tangle (expand-file-name "org-skill-self-edit.lisp" (concat (or (getenv "INSTALL_DIR") ".") "/skills"))
+#+begin_src lisp
 (defvar *self-edit-skills-backup* nil
   "Backup of skill registry before hot-reload.")
 
@@ -217,7 +218,7 @@ Swap compiled skill files without breaking active sockets.
 
 ** Cognitive Tool: Reload Skill
 
-#+begin_src lisp :tangle (expand-file-name "org-skill-self-edit.lisp" (concat (or (getenv "INSTALL_DIR") ".") "/skills"))
+#+begin_src lisp
 (def-cognitive-tool :reload-skill
   "Hot-reloads a skill from its compiled source file without restarting the system."
   ((:skill-name :type :string :description "Name of the skill to reload (e.g. :skill-engineering-standards)")
