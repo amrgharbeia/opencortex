@@ -40,7 +40,7 @@ The OpenCortex TUI Client is a standalone Common Lisp application built on **Cro
   (when (and cmd (> (length cmd) 0))
     (unless (and (> (length *command-history*) 0)
                   (string= cmd (aref *command-history* (1- (length *command-history*)))))
-      (vector-push-extend cmd *command-history* :adjustable t))
+      (vector-push-extend cmd *command-history*))
     (setf *history-index* (length *command-history*))))
 
 (defun history-previous ()
