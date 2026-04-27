@@ -38,7 +38,7 @@ When something is blocked, the logs clearly show which layer blocked it and why.
 
 * Package Context
 
-#+begin_src lisp :tangle ../library/gen/org-skill-bouncer.lisp
+#+begin_src lisp :tangle ./org-skill-bouncer.lisp
 (in-package :opencortex)
 #+end_src
 
@@ -58,7 +58,7 @@ The Bouncer implements the 5-Vector security model:
 
 The vault stores sensitive credentials. This check scans action text for vault secrets to prevent accidental exposure.
 
-#+begin_src lisp :tangle ../library/gen/org-skill-bouncer.lisp
+#+begin_src lisp :tangle ./org-skill-bouncer.lisp
 (defun bouncer-scan-secrets (text)
   "Scans TEXT for known secrets from the vault.
 
@@ -91,7 +91,7 @@ The vault stores sensitive credentials. This check scans action text for vault s
 
 Detects when shell commands try to send data to untrusted network destinations.
 
-#+begin_src lisp :tangle ../library/gen/org-skill-bouncer.lisp
+#+begin_src lisp :tangle ./org-skill-bouncer.lisp
 (defvar *bouncer-network-whitelist*
   '("api.telegram.org" "matrix.org" "googleapis.com" "openai.com" "anthropic.com")
   "Domains that the Bouncer considers safe for outbound connections.
@@ -129,7 +129,7 @@ Detects when shell commands try to send data to untrusted network destinations.
 
 ** bouncer-check: Main Security Gate
 
-#+begin_src lisp :tangle ../library/gen/org-skill-bouncer.lisp
+#+begin_src lisp :tangle ./org-skill-bouncer.lisp
 (defun bouncer-check (action context)
   "The 5-Vector security gate for high-risk actions.
 
@@ -213,7 +213,7 @@ Detects when shell commands try to send data to untrusted network destinations.
 
 When a flight plan is approved in Emacs, the Bouncer detects it and re-injects the action.
 
-#+begin_src lisp :tangle ../library/gen/org-skill-bouncer.lisp
+#+begin_src lisp :tangle ./org-skill-bouncer.lisp
 (defun bouncer-process-approvals ()
   "Scans the object store for APPROVED flight plans and re-injects them.
 
@@ -269,7 +269,7 @@ When a flight plan is approved in Emacs, the Bouncer detects it and re-injects t
 
 When the Bouncer intercepts a high-risk action, it creates a flight plan node for manual approval.
 
-#+begin_src lisp :tangle ../library/gen/org-skill-bouncer.lisp
+#+begin_src lisp :tangle ./org-skill-bouncer.lisp
 (defun bouncer-create-flight-plan (blocked-action)
   "Creates an Org node representing a pending flight plan for manual approval.
 
@@ -306,7 +306,7 @@ When the Bouncer intercepts a high-risk action, it creates a flight plan node fo
 
 ** Main Gate Function
 
-#+begin_src lisp :tangle ../library/gen/org-skill-bouncer.lisp
+#+begin_src lisp :tangle ./org-skill-bouncer.lisp
 (defun bouncer-deterministic-gate (action context)
   "Main deterministic gate for the Bouncer skill.
 
@@ -345,7 +345,7 @@ When the Bouncer intercepts a high-risk action, it creates a flight plan node fo
 
 ** Skill Registration
 
-#+begin_src lisp :tangle ../library/gen/org-skill-bouncer.lisp
+#+begin_src lisp :tangle ./org-skill-bouncer.lisp
 (defskill :skill-bouncer
   :priority 150
   :trigger (lambda (ctx) (declare (ignore ctx)) t)

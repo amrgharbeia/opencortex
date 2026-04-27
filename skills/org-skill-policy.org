@@ -44,7 +44,7 @@ Therefore, Policy encodes not just rules, but *values*:
 
 Every skill executes within its own jailed package namespace, inheriting core harness symbols while maintaining isolation from other skills.
 
-#+begin_src lisp :tangle ../library/gen/org-skill-policy.lisp
+#+begin_src lisp :tangle ./org-skill-policy.lisp
 (in-package :opencortex)
 #+end_src
 
@@ -61,7 +61,7 @@ When two invariants conflict, resolution follows a strict priority order. This p
 | 200 | Mentorship | Teaching increases capability; doing removes it |
 | 100 | Sustainability | Offline capability today enables 100-year survival |
 
-#+begin_src lisp :tangle ../library/gen/org-skill-policy.lisp
+#+begin_src lisp :tangle ./org-skill-policy.lisp
 (defvar *policy-invariant-priorities*
   '((:transparency . 500)
     (:autonomy . 400)
@@ -91,7 +91,7 @@ At the gate:
 - Every user-facing action must carry an `:explanation`
 - Log messages must include the triggering invariant
 
-#+begin_src lisp :tangle ../library/gen/org-skill-policy.lisp
+#+begin_src lisp :tangle ./org-skill-policy.lisp
 (defun policy-check-transparency (action context)
   "Ensures the action is inspectable and user-facing actions carry an explanation.
 
@@ -137,7 +137,7 @@ At the gate:
 
 Every action should increase the user's independence from centralized, proprietary platforms. When the system uses a proprietary API, it's logged as "autonomy debt"—acceptable tactically, but flagged for eventual replacement.
 
-#+begin_src lisp :tangle ../library/gen/org-skill-policy.lisp
+#+begin_src lisp :tangle ./org-skill-policy.lisp
 (defvar *proprietary-domain-watchlist*
   '("googleapis.com" "api.openai.com" "anthropic.com" "api.groq.com" "openrouter.ai")
   "Domains representing centralized, proprietary control.
@@ -204,7 +204,7 @@ Every action should increase the user's independence from centralized, proprieta
 
 The system harness must remain minimalist. "Just-in-case" code is a security vulnerability. Complexity must be earned through demonstrated need, not anticipation of future use.
 
-#+begin_src lisp :tangle ../library/gen/org-skill-policy.lisp
+#+begin_src lisp :tangle ./org-skill-policy.lisp
 (defvar *policy-max-skill-size-chars* 50000
   "Maximum recommended size for a skill file tangled from an Org note.
 
@@ -255,7 +255,7 @@ This is the most important invariant for system stability. If the harness grows 
 - Harder to debug when things go wrong
 - Harder to maintain across versions
 
-#+begin_src lisp :tangle ../library/gen/org-skill-policy.lisp
+#+begin_src lisp :tangle ./org-skill-policy.lisp
 (defvar *modularity-protected-paths*
   '("harness/" "opencortex.asd")
   "Paths that constitute the unbreakable core of the system.
@@ -322,7 +322,7 @@ This is the most important invariant for system stability. If the harness grows 
 
 The agent's goal is not to "do it for the user," but to "empower the user." Every autonomous action must be explained at a level that increases the user's technical understanding.
 
-#+begin_src lisp :tangle ../library/gen/org-skill-policy.lisp
+#+begin_src lisp :tangle ./org-skill-policy.lisp
 (defvar *mentorship-required-actions*
   '(:create-skill :eval :modify-file :write-file :replace
     :rename-file :delete-file :shell :create-note)
@@ -379,7 +379,7 @@ The Memex should be functional even when:
 
 This means preferring local, energy-efficient architectures over cloud-dependent ones.
 
-#+begin_src lisp :tangle ../library/gen/org-skill-policy.lisp
+#+begin_src lisp :tangle ./org-skill-policy.lisp
 (defvar *cloud-only-backends* '(:openrouter :openai :anthropic :groq :gemini-api)
   "Backends requiring internet connection and external infrastructure.
 
@@ -416,7 +416,7 @@ This means preferring local, energy-efficient architectures over cloud-dependent
 
 When the policy gate blocks or modifies an action, it must tell the user *why*. This creates an auditable log of every policy decision.
 
-#+begin_src lisp :tangle ../library/gen/org-skill-policy.lisp
+#+begin_src lisp :tangle ./org-skill-policy.lisp
 (defun policy-explain (invariant-key message &optional original-action)
   "Formats a policy decision into an auditable explanation plist.
 
@@ -445,7 +445,7 @@ When the policy gate blocks or modifies an action, it must tell the user *why*. 
 
 ** Running Invariant Checks
 
-#+begin_src lisp :tangle ../library/gen/org-skill-policy.lisp
+#+begin_src lisp :tangle ./org-skill-policy.lisp
 (defun policy-run-invariant-checks (action context)
   "Runs all invariant checks in priority order.
 
@@ -492,7 +492,7 @@ When the policy gate blocks or modifies an action, it must tell the user *why*. 
 
 ** Finding Engineering Standards
 
-#+begin_src lisp :tangle ../library/gen/org-skill-policy.lisp
+#+begin_src lisp :tangle ./org-skill-policy.lisp
 (defun policy-find-engineering-standards-gate ()
   "Searches for the Engineering Standards gate across known jailed package names.
 
@@ -515,7 +515,7 @@ When the policy gate blocks or modifies an action, it must tell the user *why*. 
 
 ** Main Policy Gate
 
-#+begin_src lisp :tangle ../library/gen/org-skill-policy.lisp
+#+begin_src lisp :tangle ./org-skill-policy.lisp
 (defun policy-deterministic-gate (action context)
   "The main policy gate entry point.
 
@@ -547,7 +547,7 @@ When the policy gate blocks or modifies an action, it must tell the user *why*. 
 
 * Skill Registration
 
-#+begin_src lisp :tangle ../library/gen/org-skill-policy.lisp
+#+begin_src lisp :tangle ./org-skill-policy.lisp
 (defskill :skill-policy
   :priority 500
   :trigger (lambda (ctx) (declare (ignore ctx)) t)

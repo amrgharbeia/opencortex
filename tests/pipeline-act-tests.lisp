@@ -24,10 +24,10 @@
     :priority 200
     :trigger (lambda (ctx) t)
     :deterministic (lambda (action ctx)
-                     (list :type :LOG :payload '(:text "BLOCKED BY SYMBOLIC GUARD"))))
+                     (list :type :LOG :payload (:text "BLOCKED BY SYMBOLIC GUARD"))))
   (let* ((signal (list :type :EVENT :status nil :depth 0 :approved-action '(:target :shell :payload (:cmd "ls"))))
          (result (opencortex:act-gate signal)))
     (is (eq :acted (getf signal :status)))
     (is (not (null result)))
     (is (eq :LOG (getf result :type)))
-    (is (search "BLOCKED BY SYMBOLIC GUARD" (getf (getf result :payload) :text)))))
+    (is (search "BLOCKED BY SYMBOLIC GUARD" (getf (getf result :payload) :text))))))

@@ -61,14 +61,14 @@ Separate repair functions that can be called independently.
 * Phase D: Build (Implementation)
 
 ** Package Context
-#+begin_src lisp :tangle ../library/gen/org-skill-lisp-utils.lisp
+#+begin_src lisp :tangle ./org-skill-lisp-utils.lisp
 (in-package :opencortex)
 #+end_src
 
 ** Character & String Utilities
 General-purpose utilities for string manipulation.
 
-#+begin_src lisp :tangle ../library/gen/org-skill-lisp-utils.lisp
+#+begin_src lisp :tangle ./org-skill-lisp-utils.lisp
 (defun count-char (char string)
   "Counts occurrences of CHAR in STRING.
 Returns an integer count."
@@ -83,7 +83,7 @@ Returns an integer count."
 Attempts instant fixes on broken Lisp code (e.g., balancing parens).
 This is the fast path - used for simple syntax errors.
 
-#+begin_src lisp :tangle ../library/gen/org-skill-lisp-utils.lisp
+#+begin_src lisp :tangle ./org-skill-lisp-utils.lisp
 (defun deterministic-repair (code)
   "Attempts instant fixes on broken Lisp code (e.g., balancing parens).
 Returns the fixed code string."
@@ -99,7 +99,7 @@ Returns the fixed code string."
 Uses the LLM to deeply repair syntax structure when deterministic fails.
 This is the slow path - used for complex errors.
 
-#+begin_src lisp :tangle ../library/gen/org-skill-lisp-utils.lisp
+#+begin_src lisp :tangle ./org-skill-lisp-utils.lisp
 (defun neural-repair (code error-message)
   "Uses the Probabilistic Engine to deeply repair the syntax structure.
 Returns the fixed code string."
@@ -117,7 +117,7 @@ MANDATE: Output EXACTLY ONE valid Common Lisp list. Do not explain. Do not use m
 Scans the raw string character-by-character, tracking open/close pairs.
 This is O(n) and does not invoke the Lisp reader.
 
-#+begin_src lisp :tangle ../library/gen/org-skill-lisp-utils.lisp
+#+begin_src lisp :tangle ./org-skill-lisp-utils.lisp
 (defun lisp-utils-check-structural (code-string)
   "Checks for balanced parens, brackets, and terminated strings.
 Returns (VALUES t nil) if clean, or (VALUES nil reason-string line col)."
@@ -173,7 +173,7 @@ Returns (VALUES t nil) if clean, or (VALUES nil reason-string line col)."
 ** Check 2: Syntactic Validation (Reader Check)
 Wraps the code and attempts to read with *read-eval* disabled.
 
-#+begin_src lisp :tangle ../library/gen/org-skill-lisp-utils.lisp
+#+begin_src lisp :tangle ./org-skill-lisp-utils.lisp
 (defun lisp-utils-check-syntactic (code-string)
   "Checks if the code can be read by SBCL with *read-eval* nil.
 Returns (VALUES t nil) if clean, or (VALUES nil error-message nil nil)."
@@ -190,7 +190,7 @@ Returns (VALUES t nil) if clean, or (VALUES nil error-message nil nil)."
 ** Check 3: Semantic Validation (Whitelist AST Walk)
 Recursively walks the parsed AST and verifies whitelisted symbols.
 
-#+begin_src lisp :tangle ../library/gen/org-skill-lisp-utils.lisp
+#+begin_src lisp :tangle ./org-skill-lisp-utils.lisp
 (defparameter *lisp-utils-whitelist*
   '(;; Math & Logic
     + - * / = < > <= >= 1+ 1- min max mod abs floor ceiling round
@@ -272,7 +272,7 @@ Returns (VALUES t nil) if clean, or (VALUES nil reason-string nil nil)."
 ** Unified Entry Point
 Orchestrates the three validation checks.
 
-#+begin_src lisp :tangle ../library/gen/org-skill-lisp-utils.lisp
+#+begin_src lisp :tangle ./org-skill-lisp-utils.lisp
 (defun lisp-utils-validate (code-string &key strict)
   "Validates Lisp code through structural, syntactic, and optional semantic checks.
 Returns a plist:
@@ -310,7 +310,7 @@ When STRICT is non-nil, the semantic whitelist check is enforced."
 ** Cognitive Tools
 Exposes utilities to the Probabilistic Engine.
 
-#+begin_src lisp :tangle ../library/gen/org-skill-lisp-utils.lisp
+#+begin_src lisp :tangle ./org-skill-lisp-utils.lisp
 (def-cognitive-tool :validate-lisp
   "Deterministically validates Lisp code for structural, syntactic, and semantic correctness.
 Use this BEFORE declaring any Lisp code edit complete."
@@ -348,7 +348,7 @@ Use this BEFORE declaring any Lisp code edit complete."
 ** Skill Definition: Lisp Repair
 Intercepts :syntax-error events and repairs the code.
 
-#+begin_src lisp :tangle ../library/gen/org-skill-lisp-utils.lisp
+#+begin_src lisp :tangle ./org-skill-lisp-utils.lisp
 (defskill :skill-lisp-repair
   :priority 90
   :trigger (lambda (ctx) (eq (getf (getf ctx :payload) :sensor) :syntax-error))
@@ -379,7 +379,7 @@ Intercepts :syntax-error events and repairs the code.
 ** Skill Definition: Lisp Validator
 Validates all Lisp code before execution.
 
-#+begin_src lisp :tangle ../library/gen/org-skill-lisp-utils.lisp
+#+begin_src lisp :tangle ./org-skill-lisp-utils.lisp
 (defskill :skill-lisp-validator
   :priority 900
   :trigger (lambda (ctx)
@@ -407,7 +407,7 @@ Validates all Lisp code before execution.
 #+end_src
 
 * Phase E: Chaos (Verification)
-#+begin_src lisp :tangle ../tests/lisp-utils-tests.lisp
+#+begin_src lisp :tangle ./tests/lisp-utils-tests.lisp
 (defpackage :opencortex-lisp-utils-tests
   (:use :cl :fiveam :opencortex)
   (:export #:lisp-utils-suite))
@@ -511,7 +511,7 @@ Validates all Lisp code before execution.
 These tests verify the Lisp Validator gate. Run with:
 ~(fiveam:run! 'lisp-validator-suite)~
 
-#+begin_src lisp :tangle ../tests/lisp-validator-tests.lisp
+#+begin_src lisp :tangle ./tests/lisp-validator-tests.lisp
 (defpackage :opencortex-lisp-validator-tests
   (:use :cl :fiveam :opencortex)
   (:export #:lisp-validator-suite))

@@ -1,25 +1,27 @@
 (in-package :opencortex)
 
 (defun COSINE-SIMILARITY (v1 v2)
-  "Computes the cosine similarity between two vectors.
-Both arguments should be sequences of numbers. Returns a value between -1.0 and 1.0."
-  (let ((len1 (length v1)) (len2 (length v2)))
+  "Computes the cosine similarity between two vectors."
+  (let* ((len1 (length v1))
+         (len2 (length v2)))
     (if (or (zerop len1) (zerop len2))
         0.0
-        (let ((dot-product 0.0d0)
-              (norm1 0.0d0)
-              (norm2 0.0d0))
-          (let ((len (min len1 len2)))
-            (dotimes (i len)
-              (let ((x (coerce (elt v1 i) 'double-float)))
-                (let ((y (coerce (elt v2 i) 'double-float)))
-                  (incf dot-product (* x y))
-                  (incf norm1 (* x x))
-                  (incf norm2 (* y y))))))
+        (let* ((dot-product 0.0d0)
+               (norm1 0.0d0)
+               (norm2 0.0d0))
+          (dotimes (i (min len1 len2))
+            (let* ((x (coerce (elt v1 i) 'double-float))
+                  (y (coerce (elt v2 i) 'double-float)))
+              (incf dot-product (* x y))
+              (incf norm1 (* x x))
+              (incf norm2 (* y y))))
           (if (or (zerop norm1) (zerop norm2))
               0.0
               (/ dot-product (sqrt (* norm1 norm2))))))))
-(defun VAULT-MASK-STRING (s) "[MASKED]") ; Stub
+
+;; TODO: Stub for vault - implement later
+(defun VAULT-MASK-STRING (s) "[MASKED]")
+
 (defvar *VAULT-MEMORY* (make-hash-table :test 'equal))
 
 
@@ -49,11 +51,11 @@ Both arguments should be sequences of numbers. Returns a value between -1.0 and 
   "Registers a new skill into the global registry."
   `(setf (gethash (string-downcase (string ,name)) *skills-registry*)
          (make-skill :name (string-downcase (string ,name)) 
-                     :priority (or ,priority 10) 
-                     :dependencies ',dependencies
-                     :trigger-fn ,trigger 
-                     :probabilistic-prompt ,probabilistic 
-                     :deterministic-fn ,deterministic)))
+                    :priority (or ,priority 10) 
+                    :dependencies ',dependencies
+                    :trigger-fn ,trigger 
+                    :probabilistic-prompt ,probabilistic 
+                    :deterministic-fn ,deterministic)))
 
 (defun resolve-skill-dependencies (skill-name)
   "Recursively resolves dependencies for a given skill name."
@@ -70,20 +72,24 @@ Both arguments should be sequences of numbers. Returns a value between -1.0 and 
       (nreverse resolved))))
 
 (defun parse-skill-metadata (filepath)
-  "Extracts ID and DEPENDS_ON tags using robust regex scanning."
+  "Extracts ID and DEPENDS_ON tags from org file."
   (let ((dependencies nil)
         (id nil)
         (content (uiop:read-file-string filepath)))
-    ;; Extract ID
-    (multiple-value-bind (match regs)
-        (ppcre:scan-to-strings "(?im:^:ID:\\s*([^\\s\\r\\n]+))" content)
-      (when match (setf id (aref regs 0))))
-    ;; Extract all DEPENDS_ON lines
-    (ppcre:do-register-groups (deps-string)
-        ("(?im:^#\\+DEPENDS_ON:\\s*(.*))" content)
-      (let ((deps (ppcre:split "\\s+" (string-trim " " deps-string))))
-        (setf dependencies (append dependencies (mapcar (lambda (s) (string-trim "[] " s)) deps)))))
-    (values id (remove-if (lambda (s) (= 0 (length s))) dependencies))))
+    ;; Simple ID extraction using string search
+    (let ((id-start (search ":ID:" content)))
+      (when id-start
+        (let ((id-end (position #\Newline content :start id-start)))
+          (when id-end
+            (setf id (subseq content (+ id-start 4) id-end)))))
+    ;; Simple DEPENDS_ON extraction
+    (let ((pos 0))
+      (loop while (setf pos (search "#+DEPENDS_ON:" content :start2 pos))
+            do (let ((end (position #\Newline content :start pos)))
+              (when end
+                (push (subseq content (+ pos 13) end) dependencies)
+                (setf pos end))))
+    (values id (reverse dependencies))))
 
 (defun topological-sort-skills (skills-dir)
   "Returns a list of skill filepaths sorted by dependency (dependencies first)."
@@ -179,7 +185,7 @@ Only loads blocks that specify a .lisp tangle target, ignoring tests and example
                     ((and in-lisp-block collect-this-block)
                      (unless (or (uiop:string-prefix-p ":PROPERTIES:" (string-upcase clean-line))
                                  (uiop:string-prefix-p ":END:" (string-upcase clean-line)))
-                       (setf lisp-code (concatenate 'string lisp-code line (string #\Newline))))))))
+                       (setf lisp-code (concatenate 'string lisp-code line (string #\Newline)))))))
           
           (if (= (length lisp-code) 0)
               (progn (setf (skill-entry-status entry) :ready) t)
@@ -199,7 +205,7 @@ Only loads blocks that specify a .lisp tangle target, ignoring tests and example
           (harness-log "LOADER ERROR in skill '~a': ~a" skill-base-name msg)
           (setf (skill-entry-status entry) :failed)
           (setf (skill-entry-error-log entry) msg)
-          nil)))))
+          nil)))
 
 (defun load-skill-with-timeout (filepath timeout-seconds)
   "Loads a skill Org file with a hard execution timeout."

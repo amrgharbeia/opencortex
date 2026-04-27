@@ -107,7 +107,7 @@ The engineering standards skill is a HARD BLOCK gate. Violations are rejected, n
 
 ** Pre-Task Enforcement (Blocking)
 
-#+begin_src lisp :tangle ../library/gen/org-skill-engineering-standards.lisp
+#+begin_src lisp :tangle ./org-skill-engineering-standards.lisp
 (in-package :opencortex)
 
 (defvar *engineering-std-*project-root* nil
@@ -137,7 +137,7 @@ The engineering standards skill is a HARD BLOCK gate. Violations are rejected, n
 
 ** Git Clean Check (Blocking)
 
-#+begin_src lisp :tangle ../library/gen/org-skill-engineering-standards.lisp
+#+begin_src lisp :tangle ./org-skill-engineering-standards.lisp
 (defun verify-git-clean-p (&optional (dir *engineering-std-*project-root*))
   "Returns T if the git repository at DIR has no uncommitted changes."
   (when dir
@@ -162,7 +162,7 @@ The engineering standards skill is a HARD BLOCK gate. Violations are rejected, n
 These tests verify the enforcement logic. Run with:
 ~(fiveam:run! 'engineering-standards-suite)~
 
-#+begin_src lisp :tangle ../tests/engineering-standards-tests.lisp
+#+begin_src lisp :tangle ./tests/engineering-standards-tests.lisp
 (defpackage :opencortex-engineering-standards-tests
   (:use :cl :fiveam :opencortex)
   (:export #:engineering-standards-suite))
@@ -229,7 +229,7 @@ These tests verify the enforcement logic. Run with:
 
 ** Blocking Gate (Hard Enforcement)
 
-#+begin_src lisp :tangle ../library/gen/org-skill-engineering-standards.lisp
+#+begin_src lisp :tangle ./org-skill-engineering-standards.lisp
 (defun engineering-standards-gate (action context)
   "The deterministic HARD BLOCK gate for Engineering Standards.
 
@@ -262,7 +262,7 @@ These tests verify the enforcement logic. Run with:
 
 The skill runs at highest priority (1000) to block violations before any other skill.
 
-#+begin_src lisp :tangle ../library/gen/org-skill-engineering-standards.lisp
+#+begin_src lisp :tangle ./org-skill-engineering-standards.lisp
 (defskill :skill-engineering-standards
   :priority 1000
   :trigger (lambda (ctx)
@@ -274,7 +274,7 @@ The skill runs at highest priority (1000) to block violations before any other s
 
 ** Initialize Project Root
 
-#+begin_src lisp :tangle ../library/gen/org-skill-engineering-standards.lisp
+#+begin_src lisp :tangle ./org-skill-engineering-standards.lisp
 (defvar *engineering-std-initialized* nil)
 
 (defun engineering-std-init ()

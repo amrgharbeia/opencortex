@@ -83,62 +83,6 @@
                (harness-log "MEMORY - Memory rolled back to snapshot ~a" index))
         (harness-log "MEMORY ERROR - Snapshot ~a not found." index))))
 
-(defvar *embedding-cache* (make-hash-table :test 'equal)
-  "Cache for embeddings to avoid redundant API calls.")
-
-(defun get-embedding (text)
-  "Generates a vector embedding for the given text via Ollama. Returns nil on failure."
-  (when (or (null text) (string= text ""))
-    (return-from get-embedding nil))
-  (let ((cached (gethash text *embedding-cache*)))
-    (when cached (return-from get-embedding cached)))
-  (let ((result (funcall (get-cognitive-tool-body :get-ollama-embedding) (list :text text))))
-    (when (eq (getf result :status) :success)
-      (let ((vec (getf result :vector)))
-        (setf (gethash text *embedding-cache*) vec)
-        vec))))
-
-(defun cosine-similarity (vec-a vec-b)
-  "Computes cosine similarity between two vectors. Both should be sequences of numbers."
-  (when (or (null vec-a) (null vec-b) (zerop (length vec-a)) (zerop (length vec-b)))
-    (return-from cosine-similarity 0.0))
-  (let ((dot-product (loop for a across vec-a
-                          for b across vec-b
-                          sum (* a b)))
-        (norm-a (sqrt (loop for a across vec-a sum (* a a))))
-        (norm-b (sqrt (loop for b across vec-b sum (* b b)))))
-    (if (or (zerop norm-a) (zerop norm-b))
-        0.0
-        (/ dot-product (* norm-a norm-b)))))
-
-(defun semantic-search (query &key (limit 10) (min-similarity 0.5))
-  "Searches memory for objects semantically similar to the query.
-Returns up to LIMIT objects with similarity >= MIN-SIMILARITY, sorted by similarity descending."
-  (let* ((query-vec (get-embedding query))
-         (results nil))
-    (unless query-vec
-      (harness-log "EMBEDDING: Failed to generate embedding for query: ~a" query)
-      (return-from semantic-search nil))
-    (maphash (lambda (id obj)
-               (let ((obj-vec (org-object-vector obj)))
-                 (when obj-vec
-                   (let ((sim (cosine-similarity query-vec obj-vec)))
-                     (when (>= sim min-similarity)
-                       (push (list :id id :object obj :similarity sim) results))))))
-             *memory*)
-    (setf results (sort results #'> :key (lambda (r) (getf r :similarity))))
-    (subseq results 0 (min limit (length results)))))
-
-(def-cognitive-tool :semantic-search
-  "Searches memory for objects semantically similar to a query."
-  ((:query :type :string :description "The search query.")
-   (:limit :type :integer :description "Maximum results to return." :default 10)
-   (:min-similarity :type :number :description "Minimum similarity threshold (0-1)." :default 0.5))
-  :body (lambda (args)
-          (semantic-search (getf args :query)
-                        :limit (or (getf args :limit) 10)
-                        :min-similarity (or (getf args :min-similarity) 0.5))))
-
 (defun org-id-new ()
   "Generates a new UUID string for Org-mode identification."
   (string-downcase (format nil "~a" (uuid:make-v4-uuid))))

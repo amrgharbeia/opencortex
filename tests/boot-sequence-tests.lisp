@@ -44,4 +44,4 @@
          (progn
            (opencortex::load-skill-from-org tmp-skill)
            (is (not (null (gethash "org-skill-jail-test" opencortex::*skills-registry*)))))
-       (uiop:delete-file-if-exists tmp-skill)))))
+       (uiop:delete-file-if-exists tmp-skill))))

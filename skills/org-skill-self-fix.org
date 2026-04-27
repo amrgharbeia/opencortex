@@ -15,11 +15,11 @@ This skill enables self-editing by applying surgical fixes to files (including s
 * Phase D: Build (Implementation)
 
 ** Repair Logic
-#+begin_src lisp :tangle ../library/gen/org-skill-self-fix.lisp
+#+begin_src lisp :tangle ./org-skill-self-fix.lisp
 (in-package :opencortex)
 #+end_src
 
-#+begin_src lisp :tangle ../library/gen/org-skill-self-fix.lisp
+#+begin_src lisp :tangle ./org-skill-self-fix.lisp
 (defun self-fix-apply (action context)
   "Applies a surgical code fix and reloads the modified skill."
   (declare (ignore context))
@@ -66,7 +66,7 @@ This skill enables self-editing by applying surgical fixes to files (including s
 #+end_src
 
 ** Cognitive Tool
-#+begin_src lisp :tangle ../library/gen/org-skill-self-fix.lisp
+#+begin_src lisp :tangle ./org-skill-self-fix.lisp
 (def-cognitive-tool :repair-file 
   "Applies a surgical code modification to a file and reloads the skill if applicable."
   ((:file :type :string :description "Path to the target file")
@@ -79,7 +79,7 @@ This skill enables self-editing by applying surgical fixes to files (including s
 #+end_src
 
 ** Skill Definition
-#+begin_src lisp :tangle ../library/gen/org-skill-self-fix.lisp
+#+begin_src lisp :tangle ./org-skill-self-fix.lisp
 (defskill :skill-self-fix
   :priority 95
   :trigger (lambda (context) (eq (getf (getf context :payload) :sensor) :repair-request))

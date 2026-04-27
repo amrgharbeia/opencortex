@@ -19,7 +19,7 @@ The gateway utilizes a functional dispatch pattern. A single entry point, `execu
 * Phase D: Build (Implementation)
 
 ** Implementation
-#+begin_src lisp :tangle ../library/gen/org-skill-llm-gateway.lisp
+#+begin_src lisp :tangle ./org-skill-llm-gateway.lisp
 
 (defun get-nested (alist &rest keys)
   "Recursively extracts nested values from an alist, handling both objects and arrays."
