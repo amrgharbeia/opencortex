@@ -47,7 +47,7 @@ Tool permissions and embedding generation via multiple providers.
     (case perm
       (:allow :allow)
       (:deny :deny)
-      (:ask (list :ask tool-name context))
+      (:ask (list :ask tool-name))
       (t :allow))))
 
 (def-cognitive-tool :get-embedding
@@ -111,10 +111,22 @@ Tool permissions and embedding generation via multiple providers.
 
 (defskill :skill-tool-permissions
   :priority 600
-  :trigger (lambda (c) (declare (ignore c)) nil)
+  ;; Trigger whenever there's a tool call
+  :trigger (lambda (c) 
+             (let* ((action (getf c :candidate))
+                    (target (getf action :target)))
+               (or (eq target :TOOL) (eq target :tool))))
   :deterministic (lambda (a c)
     (let ((tool (getf (getf a :payload) :tool)))
-      (when tool (check-tool-permission-gate tool c)))))
+      (if tool
+          (let ((perm (check-tool-permission-gate tool c)))
+            (cond
+              ((eq perm :deny)
+               (list :type :LOG :payload (list :text (format nil "Tool '~a' execution denied by permission tiers." tool))))
+              ((and (listp perm) (eq (car perm) :ask))
+               (list :type :EVENT :status :suspended :reason :ask-permission :payload (list :tool tool :action a)))
+              (t a)))
+          a))))
 #+end_src
 
 * Test Suite

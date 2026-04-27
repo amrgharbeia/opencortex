@@ -184,6 +184,7 @@ Write AST back to file preserving structure.
 (defun emacs-edit-write-file (file-path ast)
   "Writes AST back to FILE-PATH, preserving org structure.
 Clears cache after write."
+  (opencortex::snapshot-memory)
   (let ((org-text (emacs-edit-ast-to-org ast)))
     (with-open-file (out file-path :direction :output :if-exists :supersede)
       (write-string org-text out)))

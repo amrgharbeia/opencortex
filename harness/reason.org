@@ -199,7 +199,8 @@ The `think` function is the heart of the probabilistic engine. It constructs a p
          (tool-belt (generate-tool-belt-prompt))
          (global-context (context-assemble-global-awareness))
          (system-logs (context-get-system-logs))
-         (assistant-name (or (uiop:getenv "MEMEX_ASSISTANT") "Agent")))
+         (assistant-name (or (uiop:getenv "MEMEX_ASSISTANT") "Agent"))
+         (rejection-trace (proto-get (proto-get context :payload) :rejection-trace)))
 
     ;; Generate prompt from skill or raw text
     (let* ((prompt-generator (when active-skill
@@ -211,8 +212,14 @@ The `think` function is the heart of the probabilistic engine. It constructs a p
                              (if (and p (stringp p))
                                  p
                                  "Maintain metabolic stasis."))))
+           
+           ;; Inject Reflection Loop feedback if a previous proposal was rejected
+           (reflection-feedback (if rejection-trace
+                                    (format nil "~%~%PREVIOUS PROPOSAL REJECTED:~%Your previous proposal was rejected by the deterministic safety gates.~%Rejection Trace: ~a~%You MUST fix the syntax or logic error described above and try again." rejection-trace)
+                                    ""))
+
            (system-prompt (format nil
-                                   "IDENTITY: ~a
+                                   "IDENTITY: ~a~a
 
 You are a component of the OpenCortex neurosymbolic AI agent.
 Your task is to generate exactly ONE valid Lisp plist response.
@@ -243,6 +250,7 @@ GLOBAL CONTEXT:
 RECENT LOGS:
 ~a"
                                    assistant-name
+                                   reflection-feedback
                                    tool-belt
                                    global-context
                                    system-logs)))
@@ -417,30 +425,45 @@ The deterministic engine runs all registered skills' verification functions. Thi
                 (member sensor '(:user-input :chat-message)))
       (return-from reason-gate signal))
 
-    ;; Generate proposal via LLM
-    (let ((candidate (think signal)))
+    ;; Reflection Loop: Retry up to 3 times if deterministic gates reject
+    (let ((retries 3)
+          (current-signal (copy-tree signal))
+          (last-rejection nil))
+      (loop
+        (when (<= retries 0)
+          (harness-log "REASON: Reflection loop exhausted. Final rejection.")
+          (setf (getf signal :approved-action) last-rejection)
+          (setf (getf signal :status) :reasoned)
+          (return signal))
 
-      (harness-log "REASON: candidate type = ~a" (type-of candidate))
+        (when last-rejection
+          (setf (getf (getf current-signal :payload) :rejection-trace) last-rejection))
 
-      ;; Validate candidate is a proper plist (not an error string or symbol)
-      (if (and candidate
-               (listp candidate)
-               (or (keywordp (car candidate))
-                   (eq (car candidate) 'TYPE)
-                   (eq (car candidate) 'type)))
+        (let ((candidate (think current-signal)))
+          (harness-log "REASON: candidate type = ~a" (type-of candidate))
 
-          ;; Valid proposal - run through deterministic verification
-          (setf (getf signal :approved-action)
-                (deterministic-verify candidate signal))
+          (if (and candidate
+                   (listp candidate)
+                   (or (keywordp (car candidate))
+                       (eq (car candidate) 'TYPE)
+                       (eq (car candidate) 'type)))
 
-          ;; Invalid response - log and drop
-          (progn
-            (harness-log "REASON: Invalid candidate type ~a, dropping"
-                         (type-of candidate))
-            (setf (getf signal :approved-action) nil)))
+              (let ((verified (deterministic-verify candidate current-signal)))
+                (if (member (getf verified :type) '(:LOG :EVENT :log :event))
+                    (progn
+                      (harness-log "REASON: Proposal rejected by gate. Retrying (~a left)." (1- retries))
+                      (decf retries)
+                      (setf last-rejection verified))
+                    (progn
+                      (setf (getf signal :approved-action) verified)
+                      (setf (getf signal :status) :reasoned)
+                      (return signal))))
 
-      (setf (getf signal :status) :reasoned)
-      signal)))
+              (progn
+                (harness-log "REASON: Invalid candidate type ~a, dropping" (type-of candidate))
+                (setf (getf signal :approved-action) nil)
+                (setf (getf signal :status) :reasoned)
+                (return signal))))))))
 #+end_src
 
 * Test Suite

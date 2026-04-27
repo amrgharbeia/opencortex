@@ -363,11 +363,13 @@ EXAMPLES:
 ---
 " )))
     (maphash (lambda (name tool)
-               (setf output (concatenate 'string output
-                                         (format nil "- ~a: ~a~%  Parameters: ~s~%~%"
-                                                 name
-                                                 (cognitive-tool-description tool)
-                                                 (cognitive-tool-parameters tool)))))
+               (let ((perm (ignore-errors (uiop:symbol-call :opencortex.skills.org-skill-tool-permissions :get-tool-permission name))))
+                 (unless (eq perm :deny)
+                   (setf output (concatenate 'string output
+                                             (format nil "- ~a: ~a~%  Parameters: ~s~%~%"
+                                                     name
+                                                     (cognitive-tool-description tool)
+                                                     (cognitive-tool-parameters tool)))))))
              *cognitive-tools*)
     output))
 #+end_src
@@ -462,9 +464,9 @@ EXAMPLES:
            (declare (ignore context))
            (let* ((file (getf args :file))
                   (memex-root (or (uiop:getenv "MEMEX_DIR") "/home/user/memex"))
-                  (truename (ignore-errors (namestring (truename file)))))
-             (or (null truename)
-                 (str:starts-with-p memex-root truename))))
+                  (abs-path (namestring (uiop:ensure-absolute-pathname file (uiop:getcwd)))))
+             (and (str:starts-with-p memex-root abs-path)
+                  (not (search ".." abs-path)))))
   :body (lambda (args)
           (let ((file (getf args :file)))
             (handler-case
@@ -483,9 +485,10 @@ EXAMPLES:
            (declare (ignore context))
            (let* ((file (getf args :file))
                   (memex-root (or (uiop:getenv "MEMEX_DIR") "/home/user/memex"))
-                  (truename (ignore-errors (namestring (truename file)))))
-             (or (null truename)
-                 (str:starts-with-p memex-root truename))))
+                  (abs-path (namestring (uiop:ensure-absolute-pathname file (uiop:getcwd)))))
+             (and (str:starts-with-p memex-root abs-path)
+                  (not (search ".." abs-path))
+                  (not (str:ends-with-p ".org" abs-path))))) ;; Force AST tools for .org files
   :body (lambda (args)
           (let ((file (getf args :file))
                 (content (getf args :content))
@@ -515,9 +518,10 @@ EXAMPLES:
            (declare (ignore context))
            (let* ((file (getf args :file))
                   (memex-root (or (uiop:getenv "MEMEX_DIR") "/home/user/memex"))
-                  (truename (ignore-errors (namestring (truename file)))))
-             (or (null truename)
-                 (str:starts-with-p memex-root truename))))
+                  (abs-path (namestring (uiop:ensure-absolute-pathname file (uiop:getcwd)))))
+             (and (str:starts-with-p memex-root abs-path)
+                  (not (search ".." abs-path))
+                  (not (str:ends-with-p ".org" abs-path))))) ;; Force AST tools for .org files
   :body (lambda (args)
           (let ((file (getf args :file))
                 (old (getf args :old))
