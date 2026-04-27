@@ -45,7 +45,7 @@ Decouple protocol parsing (framing/unframing) from semantic validation.
 * Phase D: Build (Implementation)
 
 ** Schema Enforcement
-#+begin_src lisp :tangle ./org-skill-protocol-validator.lisp
+#+begin_src lisp :tangle (expand-file-name "org-skill-protocol-validator.lisp" (concat (or (getenv "INSTALL_DIR") ".") "/skills"))
 (in-package :opencortex)
 
 (defun validate-communication-protocol-schema (msg)
@@ -84,7 +84,7 @@ Decouple protocol parsing (framing/unframing) from semantic validation.
 #+end_src
 
 * Registration
-#+begin_src lisp :tangle ./org-skill-protocol-validator.lisp
+#+begin_src lisp :tangle (expand-file-name "org-skill-protocol-validator.lisp" (concat (or (getenv "INSTALL_DIR") ".") "/skills"))
 (defskill :skill-communication-protocol-validator
   :priority 95
   :trigger (lambda (ctx) (member (getf (getf ctx :payload) :sensor) '(:protocol-received)))

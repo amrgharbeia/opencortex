@@ -67,7 +67,7 @@ The loop operates in a multi-threaded environment:
 
 * Package and Thread-Safe Variables
 
-#+begin_src lisp :tangle ./loop.lisp
+#+begin_src lisp :tangle (expand-file-name "loop.lisp" (concat (or (getenv "INSTALL_DIR") ".") "/harness"))
 (in-package :opencortex)
 
 (defvar *interrupt-flag* nil
@@ -90,7 +90,7 @@ This function implements the Perceive-Reason-Act pipeline. It processes a signal
 
 The depth counter prevents infinite recursion—a signal that generates another signal that generates another, etc. By limiting to depth 10, we ensure the system eventually converges or gracefully terminates.
 
-#+begin_src lisp :tangle ./loop.lisp
+#+begin_src lisp :tangle (expand-file-name "loop.lisp" (concat (or (getenv "INSTALL_DIR") ".") "/harness"))
 (defun process-signal (signal)
   "The entry point to the Metabolic Pipeline: Perceive -> Reason -> Act.
 
@@ -184,7 +184,7 @@ The heartbeat thread ensures the agent remains alive even without external input
 
 ** Heartbeat Configuration Variables
 
-#+begin_src lisp :tangle ./loop.lisp
+#+begin_src lisp :tangle (expand-file-name "loop.lisp" (concat (or (getenv "INSTALL_DIR") ".") "/harness"))
 (defvar *auto-save-interval* 300
   "Interval in seconds between automatic memory saves.
   Defaults to 300 seconds (5 minutes). Set via MEMORY_AUTO_SAVE_INTERVAL env var.")
@@ -195,7 +195,7 @@ The heartbeat thread ensures the agent remains alive even without external input
 
 ** start-heartbeat: The Pulsing Heart
 
-#+begin_src lisp :tangle ./loop.lisp
+#+begin_src lisp :tangle (expand-file-name "loop.lisp" (concat (or (getenv "INSTALL_DIR") ".") "/harness"))
 (defun start-heartbeat ()
   "Starts the background heartbeat thread.
 
@@ -241,7 +241,7 @@ The heartbeat thread ensures the agent remains alive even without external input
 
 ** Shutdown Configuration
 
-#+begin_src lisp :tangle ./loop.lisp
+#+begin_src lisp :tangle (expand-file-name "loop.lisp" (concat (or (getenv "INSTALL_DIR") ".") "/harness"))
 (defvar *shutdown-save-enabled* t
   "When T, save memory to disk on graceful shutdown.
   Disable for testing or when memory persistence is handled externally.")
@@ -258,7 +258,7 @@ The main function orchestrates system startup:
 5. Register SIGINT handler for graceful Ctrl+C shutdown
 6. Enter idle loop (sleeping in 1-hour increments)
 
-#+begin_src lisp :tangle ./loop.lisp
+#+begin_src lisp :tangle (expand-file-name "loop.lisp" (concat (or (getenv "INSTALL_DIR") ".") "/harness"))
 (defun main ()
   "Entry point for OpenCortex. Initializes the system and enters idle loop.
 
@@ -323,7 +323,7 @@ The main function orchestrates system startup:
 These tests verify the metabolic loop and error recovery. Run with:
 ~(fiveam:run! 'immune-suite)~
 
-#+begin_src lisp :tangle ./tests/immune-system-tests.lisp
+#+begin_src lisp :tangle (expand-file-name "tests/immune-system-tests.lisp" (concat (or (getenv "INSTALL_DIR") ".") "/harness"))
 (defpackage :opencortex-immune-system-tests
   (:use :cl :fiveam :opencortex)
   (:export #:immune-suite))

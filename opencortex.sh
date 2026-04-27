@@ -87,18 +87,30 @@ setup_system() {
 
         # Hydrate default paths
         M_DIR=$(grep MEMEX_DIR .env | cut -d'"' -f2 | sed "s|\$HOME|$HOME|")
-        sed -i "s|SKILLS_DIR=.*|SKILLS_DIR=\"$SCRIPT_DIR/skills\"|" .env
+        I_DIR=$(grep INSTALL_DIR .env | cut -d'"' -f2 | sed "s|\$HOME|$HOME|")
+        if [ -z "$I_DIR" ]; then I_DIR="$HOME/opencortex"; fi
+        sed -i "s|SKILLS_DIR=.*|SKILLS_DIR=\"$I_DIR/skills\"|" .env
         sed -i "s|ZETTELKASTEN_DIR=.*|ZETTELKASTEN_DIR=\"$M_DIR/notes\"|" .env
         mkdir -p "$M_DIR" "$M_DIR/notes" "$M_DIR/areas" "$M_DIR/resources" "$M_DIR/archives" "$M_DIR/system" "$M_DIR/inbox" "$M_DIR/daily" "$M_DIR/projects"
     fi
 
-    mkdir -p library
+    I_DIR=$(grep INSTALL_DIR .env | cut -d'"' -f2 | sed "s|\$HOME|$HOME|")
+    if [ -z "$I_DIR" ]; then I_DIR="$HOME/opencortex"; fi
+
+    echo -e "${YELLOW}--- Deploying to Instance Directory ($I_DIR) ---${NC}"
+    mkdir -p "$I_DIR/harness" "$I_DIR/skills" "$I_DIR/tests"
+    cp "$SCRIPT_DIR/opencortex.asd" "$I_DIR/"
+    cp "$SCRIPT_DIR/opencortex.sh" "$I_DIR/"
+    cp "$SCRIPT_DIR/.env" "$I_DIR/"
+
+    echo -e "${BLUE}Tangling Lisp files to instance directory...${NC}"
+    export INSTALL_DIR="$I_DIR"
     for f in harness/*.org skills/*.org; do
         emacs -Q --batch --eval "(require 'org)" --eval "(org-babel-tangle-file \"$f\")" >/dev/null 2>&1 || true
     done
 
     mkdir -p "$HOME/.local/bin"
-    ln -sf "$SCRIPT_DIR/opencortex.sh" "$HOME/.local/bin/opencortex"
+    ln -sf "$I_DIR/opencortex.sh" "$HOME/.local/bin/opencortex"
 
     for shell_config in "$HOME/.bashrc" "$HOME/.profile"; do
         if [ -f "$shell_config" ]; then
@@ -110,7 +122,7 @@ setup_system() {
     export PATH="$HOME/.local/bin:$PATH"
 
     echo -e "${YELLOW}--- Compiling and Loading OpenCortex ---${NC}"
-    sbcl --non-interactive --eval '(load (merge-pathnames "quicklisp/setup.lisp" (user-homedir-pathname)))' --eval '(push (truename (uiop:getenv "SCRIPT_DIR")) asdf:*central-registry*)' --eval "(ql:quickload '(:opencortex :croatoan))"
+    sbcl --non-interactive --eval '(load (merge-pathnames "quicklisp/setup.lisp" (user-homedir-pathname)))' --eval "(push (truename \"$I_DIR/\") asdf:*central-registry*)" --eval "(ql:quickload '(:opencortex :croatoan))"
 
     if [ $? -ne 0 ]; then
         echo -e "${RED}✗ Compilation failed.${NC}"
@@ -123,7 +135,7 @@ setup_system() {
     fi
 
     echo -e "${YELLOW}--- Finalizing: Awakening the Brain ---${NC}"
-    "$SCRIPT_DIR/opencortex.sh" --boot > "$SCRIPT_DIR/brain.log" 2>&1 &
+    "$I_DIR/opencortex.sh" --boot > "$I_DIR/brain.log" 2>&1 &
 
     success=false
     for i in {1..30}; do
@@ -152,7 +164,7 @@ TARGET_PORT=${PORT:-$DEFAULT_PORT}
 TARGET_HOST=${HOST:-$DEFAULT_HOST}
 
 # If uninitialized, force setup.
-if [ ! -f "$SCRIPT_DIR/library/package.lisp" ] || [ ! -f "$SCRIPT_DIR/.env" ]; then
+if [ ! -f "$SCRIPT_DIR/harness/package.lisp" ] || [ ! -f "$SCRIPT_DIR/.env" ]; then
     COMMAND="setup"
 fi
 

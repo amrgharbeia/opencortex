@@ -53,7 +53,7 @@ Other sensors (heartbeats, interrupts) are processed synchronously to maintain o
 
 * Package Context
 
-#+begin_src lisp :tangle ./perceive.lisp
+#+begin_src lisp :tangle (expand-file-name "perceive.lisp" (concat (or (getenv "INSTALL_DIR") ".") "/harness"))
 (in-package :opencortex)
 #+end_src
 
@@ -61,7 +61,7 @@ Other sensors (heartbeats, interrupts) are processed synchronously to maintain o
 
 ** Async Sensor Registry
 
-#+begin_src lisp :tangle ./perceive.lisp
+#+begin_src lisp :tangle (expand-file-name "perceive.lisp" (concat (or (getenv "INSTALL_DIR") ".") "/harness"))
 (defvar *async-sensors* '(:chat-message :delegation :user-command)
   "Sensors that are processed in dedicated threads.
 
@@ -74,7 +74,7 @@ Other sensors (heartbeats, interrupts) are processed synchronously to maintain o
 
 ** Foveal Focus State
 
-#+begin_src lisp :tangle ./perceive.lisp
+#+begin_src lisp :tangle (expand-file-name "perceive.lisp" (concat (or (getenv "INSTALL_DIR") ".") "/harness"))
 (defvar *foveal-focus-id* nil
   "The Org ID of the node the user is currently interacting with.
 
@@ -89,7 +89,7 @@ Other sensors (heartbeats, interrupts) are processed synchronously to maintain o
 
 ** inject-stimulus: Entry Point
 
-#+begin_src lisp :tangle ./perceive.lisp
+#+begin_src lisp :tangle (expand-file-name "perceive.lisp" (concat (or (getenv "INSTALL_DIR") ".") "/harness"))
 (defun inject-stimulus (raw-message &key stream (depth 0))
   "Inject a raw message into the signal processing pipeline.
 
@@ -146,7 +146,7 @@ Other sensors (heartbeats, interrupts) are processed synchronously to maintain o
 
 ** perceive-gate: Signal Normalization
 
-#+begin_src lisp :tangle ./perceive.lisp
+#+begin_src lisp :tangle (expand-file-name "perceive.lisp" (concat (or (getenv "INSTALL_DIR") ".") "/harness"))
 (defun perceive-gate (signal)
   "Stage 1 of the metabolic pipeline: Normalize sensory input.
 
@@ -226,7 +226,7 @@ Other sensors (heartbeats, interrupts) are processed synchronously to maintain o
 These tests verify the Perceive pipeline. Run with:
 ~(fiveam:run! 'pipeline-perceive-suite)~
 
-#+begin_src lisp :tangle ./tests/pipeline-perceive-tests.lisp
+#+begin_src lisp :tangle (expand-file-name "tests/pipeline-perceive-tests.lisp" (concat (or (getenv "INSTALL_DIR") ".") "/harness"))
 (defpackage :opencortex-pipeline-perceive-tests
   (:use :cl :fiveam :opencortex)
   (:export #:pipeline-perceive-suite))

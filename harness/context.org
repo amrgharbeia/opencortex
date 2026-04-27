@@ -37,14 +37,14 @@ The ~context.lisp~ module provides the deterministic functional layer for queryi
 ** Package Context
 We begin by ensuring we are executing within the correct isolated package namespace.
 
-#+begin_src lisp :tangle ./context.lisp
+#+begin_src lisp :tangle (expand-file-name "context.lisp" (concat (or (getenv "INSTALL_DIR") ".") "/harness"))
 (in-package :opencortex)
 #+end_src
 
 ** Querying the Store (context-query-store)
 A generalized filter for the Memory. This function allows skills to perform high-level semantic sweeps of the Memex based on tags, TODO states, or Org element types. It returns a list of ~org-object~ structures.
 
-#+begin_src lisp :tangle ./context.lisp
+#+begin_src lisp :tangle (expand-file-name "context.lisp" (concat (or (getenv "INSTALL_DIR") ".") "/harness"))
 (defun context-query-store (&key tag todo-state type)
   "Filters the Memory based on tags, todo states, or types."
   (let ((results nil))
@@ -62,7 +62,7 @@ A generalized filter for the Memory. This function allows skills to perform high
 ** Active Projects (context-get-active-projects)
 Identifies headlines tagged with ~project~ that have not yet reached a terminal ~DONE~ state. This provides the primary high-level structure for the agent's global awareness.
 
-#+begin_src lisp :tangle ./context.lisp
+#+begin_src lisp :tangle (expand-file-name "context.lisp" (concat (or (getenv "INSTALL_DIR") ".") "/harness"))
 (defun context-get-active-projects ()
   "Returns headlines tagged as 'project' that are not yet marked DONE."
   (remove-if (lambda (obj) (equal (getf (org-object-attributes obj) :TODO-STATE) "DONE"))
@@ -72,7 +72,7 @@ Identifies headlines tagged with ~project~ that have not yet reached a terminal 
 ** Completed Tasks (context-get-recent-completed-tasks)
 Retrieves a list of tasks that have reached the terminal ~DONE~ state. This is useful for providing the agent with historical context or for generating summaries of recent work.
 
-#+begin_src lisp :tangle ./context.lisp
+#+begin_src lisp :tangle (expand-file-name "context.lisp" (concat (or (getenv "INSTALL_DIR") ".") "/harness"))
 (defun context-get-recent-completed-tasks () 
   "Retrieves recently finished tasks from the store."
   (context-query-store :todo-state "DONE" :type :HEADLINE))
@@ -81,7 +81,7 @@ Retrieves a list of tasks that have reached the terminal ~DONE~ state. This is u
 ** Capability Discovery (context-list-all-skills)
 Provides a sorted list of all currently loaded skills. In a "Self-Writing" environment, the agent must be able to discover and understand its own capabilities. This function provides the metadata necessary for the agent to decide which skill to trigger or how to resolve dependencies.
 
-#+begin_src lisp :tangle ./context.lisp
+#+begin_src lisp :tangle (expand-file-name "context.lisp" (concat (or (getenv "INSTALL_DIR") ".") "/harness"))
 (defun context-list-all-skills ()
   "Provides a sorted overview of currently loaded system capabilities."
   (let ((results nil))
@@ -95,7 +95,7 @@ Provides a sorted list of all currently loaded skills. In a "Self-Writing" envir
 ** Skill Inspection (context-get-skill-source)
 Reads the raw literate Org source of a specific skill. This is a foundational capability for an agent expected to eventually "self-write" or perform its own maintenance. By reading the literate source, the agent can understand the *intent* behind a skill's logic before proposing a modification. We use the `SKILLS_DIR` environment variable to locate the source files.
 
-#+begin_src lisp :tangle ./context.lisp
+#+begin_src lisp :tangle (expand-file-name "context.lisp" (concat (or (getenv "INSTALL_DIR") ".") "/harness"))
 (defun context-get-skill-source (skill-name)
   "Reads the raw literate source of a specific skill for inspection."
   (let* ((filename (format nil "~a.org" skill-name))
@@ -108,7 +108,7 @@ Reads the raw literate Org source of a specific skill. This is a foundational ca
 ** Harness Logs (context-get-system-logs)
 Retrieves the most recent entries from the harness's internal circular log buffer. This allows the Probabilistic Engine to see recent errors or successful dispatches, enabling it to course-correct or explain failures to the user. The log limit is externalized to `CONTEXT_LOG_LIMIT`.
 
-#+begin_src lisp :tangle ./context.lisp
+#+begin_src lisp :tangle (expand-file-name "context.lisp" (concat (or (getenv "INSTALL_DIR") ".") "/harness"))
 (defun context-get-system-logs (&optional limit)
   "Retrieves the most recent lines from the harness's internal log."
   (let ((log-limit (or limit (ignore-errors (parse-integer (uiop:getenv "CONTEXT_LOG_LIMIT"))) 20)))
@@ -128,7 +128,7 @@ It implements the following deterministic logic:
 
 The semantic threshold is externalized to `CONTEXT_SEMANTIC_THRESHOLD`.
 
-#+begin_src lisp :tangle ./context.lisp
+#+begin_src lisp :tangle (expand-file-name "context.lisp" (concat (or (getenv "INSTALL_DIR") ".") "/harness"))
 (defun context-render-to-org (obj &key (depth 1) (foveal-id nil) semantic-threshold (foveal-vector nil))
   "Recursively renders an org-object and its children to an Org string using a Foveal-Peripheral Hybrid model."
   (let* ((id (org-object-id obj))
@@ -177,7 +177,7 @@ The semantic threshold is externalized to `CONTEXT_SEMANTIC_THRESHOLD`.
 ** Path Resolution (context-resolve-path)
 A utility function that expands environment variables (like ~$HOME~ or ~$MEMEX_ROOT~) within path strings. This ensures that the agent can interact with files across different machine configurations without hardcoding absolute paths. This version is more robust, supporting multiple environment variables throughout the string.
 
-#+begin_src lisp :tangle ./context.lisp
+#+begin_src lisp :tangle (expand-file-name "context.lisp" (concat (or (getenv "INSTALL_DIR") ".") "/harness"))
 (defun context-resolve-path (path-string)
   "Expands environment variables and strips literal quotes from a path string."
   (let ((path (if (stringp path-string) 
@@ -196,7 +196,7 @@ A utility function that expands environment variables (like ~$HOME~ or ~$MEMEX_R
 ** Global Awareness (context-assemble-global-awareness)
 The primary entry point for context generation. This function identifies active projects and the current user focus (captured during the Perceive stage), then invokes the recursive renderer to assemble the pruned Org-mode skeletal outline sent to the LLM.
 
-#+begin_src lisp :tangle ./context.lisp
+#+begin_src lisp :tangle (expand-file-name "context.lisp" (concat (or (getenv "INSTALL_DIR") ".") "/harness"))
 (defun context-assemble-global-awareness (&optional signal)
   "Produces a high-level skeletal outline of the current Memory for the LLM."
   (let* ((foveal-id (or (getf signal :foveal-focus) 
@@ -216,7 +216,7 @@ The primary entry point for context generation. This function identifies active 
 Following the Engineering Standards, the peripheral vision extraction and rendering logic must be empirically verified. 
 
 ** Test Suite Context
-#+begin_src lisp :tangle ./tests/peripheral-vision-tests.lisp
+#+begin_src lisp :tangle (expand-file-name "tests/peripheral-vision-tests.lisp" (concat (or (getenv "INSTALL_DIR") ".") "/harness"))
 (defpackage :opencortex-peripheral-vision-tests
   (:use :cl :fiveam :opencortex)
   (:export #:vision-suite))
@@ -230,7 +230,7 @@ Following the Engineering Standards, the peripheral vision extraction and render
 ** Foveal Rendering Test
 Verify that the foveal target is rendered with content, while siblings are skeletal.
 
-#+begin_src lisp :tangle ./tests/peripheral-vision-tests.lisp
+#+begin_src lisp :tangle (expand-file-name "tests/peripheral-vision-tests.lisp" (concat (or (getenv "INSTALL_DIR") ".") "/harness"))
 (test test-foveal-rendering
   "Verify that the foveal target is rendered with content, while siblings are skeletal."
   (clrhash opencortex::*memory*)
@@ -250,7 +250,7 @@ Verify that the foveal target is rendered with content, while siblings are skele
 ** Awareness Budget Test
 Verify that context-assemble-global-awareness handles multiple projects correctly.
 
-#+begin_src lisp :tangle ./tests/peripheral-vision-tests.lisp
+#+begin_src lisp :tangle (expand-file-name "tests/peripheral-vision-tests.lisp" (concat (or (getenv "INSTALL_DIR") ".") "/harness"))
 (test test-awareness-budget
   "Verify that context-assemble-global-awareness handles multiple projects."
   (clrhash opencortex::*memory*)

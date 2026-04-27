@@ -35,7 +35,7 @@ Example feedback chain:
 
 * Package Context
 
-#+begin_src lisp :tangle ./act.lisp
+#+begin_src lisp :tangle (expand-file-name "act.lisp" (concat (or (getenv "INSTALL_DIR") ".") "/harness"))
 (in-package :opencortex)
 #+end_src
 
@@ -43,7 +43,7 @@ Example feedback chain:
 
 ** Actuator Registry Variables
 
-#+begin_src lisp :tangle ./act.lisp
+#+begin_src lisp :tangle (expand-file-name "act.lisp" (concat (or (getenv "INSTALL_DIR") ".") "/harness"))
 (defvar *default-actuator* :cli
   "The actuator used when no explicit target is specified.
   Override with DEFAULT_ACTUATOR environment variable.")
@@ -55,7 +55,7 @@ Example feedback chain:
 
 ** initialize-actuators: System Bootstrap
 
-#+begin_src lisp :tangle ./act.lisp
+#+begin_src lisp :tangle (expand-file-name "act.lisp" (concat (or (getenv "INSTALL_DIR") ".") "/harness"))
 (defun initialize-actuators ()
   "Load actuator configuration from environment and register core actuators.
 
@@ -102,7 +102,7 @@ Example feedback chain:
 
 ** dispatch-action: The Router
 
-#+begin_src lisp :tangle ./act.lisp
+#+begin_src lisp :tangle (expand-file-name "act.lisp" (concat (or (getenv "INSTALL_DIR") ".") "/harness"))
 (defun dispatch-action (action context)
   "Route an approved action to its registered actuator.
 
@@ -149,7 +149,7 @@ Example feedback chain:
 
 ** execute-system-action: Internal Commands
 
-#+begin_src lisp :tangle ./act.lisp
+#+begin_src lisp :tangle (expand-file-name "act.lisp" (concat (or (getenv "INSTALL_DIR") ".") "/harness"))
 (defun execute-system-action (action context)
   "Execute internal harness commands.
 
@@ -198,7 +198,7 @@ Example feedback chain:
 
 ** execute-tool-action: Cognitive Tool Execution
 
-#+begin_src lisp :tangle ./act.lisp
+#+begin_src lisp :tangle (expand-file-name "act.lisp" (concat (or (getenv "INSTALL_DIR") ".") "/harness"))
 (defun execute-tool-action (action context)
   "Execute a registered cognitive tool.
 
@@ -267,7 +267,7 @@ Example feedback chain:
 
 ** format-tool-result: Human-Readable Output
 
-#+begin_src lisp :tangle ./act.lisp
+#+begin_src lisp :tangle (expand-file-name "act.lisp" (concat (or (getenv "INSTALL_DIR") ".") "/harness"))
 (defun format-tool-result (tool-name result)
   "Format a tool result for human-readable display.
 
@@ -295,7 +295,7 @@ Example feedback chain:
 
 ** act-gate: Final Pipeline Stage
 
-#+begin_src lisp :tangle ./act.lisp
+#+begin_src lisp :tangle (expand-file-name "act.lisp" (concat (or (getenv "INSTALL_DIR") ".") "/harness"))
 (defun act-gate (signal)
   "Final stage of the metabolic pipeline: Actuation.
 
@@ -392,7 +392,7 @@ Example feedback chain:
 These tests verify the Act pipeline. Run with:
 ~(fiveam:run! 'pipeline-act-suite)~
 
-#+begin_src lisp :tangle ./tests/pipeline-act-tests.lisp
+#+begin_src lisp :tangle (expand-file-name "tests/pipeline-act-tests.lisp" (concat (or (getenv "INSTALL_DIR") ".") "/harness"))
 (defpackage :opencortex-pipeline-act-tests
   (:use :cl :fiveam :opencortex)
   (:export #:pipeline-act-suite))

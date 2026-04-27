@@ -37,14 +37,14 @@ The Gardener runs on a low-priority heartbeat. It performs a "Deep Audit" of the
 * Phase D: Build (Implementation)
 
 ** Package Context
-#+begin_src lisp :tangle ./org-skill-gardener.lisp
+#+begin_src lisp :tangle (expand-file-name "org-skill-gardener.lisp" (concat (or (getenv "INSTALL_DIR") ".") "/skills"))
 (in-package :opencortex)
 #+end_src
 
 ** State: Maintenance Cycle
 We track the last audit time to ensure the Gardener doesn't over-consume resources.
 
-#+begin_src lisp :tangle ./org-skill-gardener.lisp
+#+begin_src lisp :tangle (expand-file-name "org-skill-gardener.lisp" (concat (or (getenv "INSTALL_DIR") ".") "/skills"))
 (defvar *gardener-last-audit* 0
   "The universal-time of the last full Memex audit.")
 #+end_src
@@ -52,7 +52,7 @@ We track the last audit time to ensure the Gardener doesn't over-consume resourc
 ** Audit: Broken Links
 Scans the content of all objects for `id:` links and verifies the targets exist.
 
-#+begin_src lisp :tangle ./org-skill-gardener.lisp
+#+begin_src lisp :tangle (expand-file-name "org-skill-gardener.lisp" (concat (or (getenv "INSTALL_DIR") ".") "/skills"))
 (defun gardener-find-broken-links ()
   "Returns a list of broken ID links found in the Memex."
   (let ((broken nil))
@@ -69,7 +69,7 @@ Scans the content of all objects for `id:` links and verifies the targets exist.
 ** Audit: Orphaned Nodes
 Identifies nodes that are not linked to and do not link to anything else.
 
-#+begin_src lisp :tangle ./org-skill-gardener.lisp
+#+begin_src lisp :tangle (expand-file-name "org-skill-gardener.lisp" (concat (or (getenv "INSTALL_DIR") ".") "/skills"))
 (defun gardener-find-orphans ()
   "Returns a list of IDs for headlines that are structurally isolated."
   (let ((inbound (make-hash-table :test 'equal))
@@ -95,7 +95,7 @@ Identifies nodes that are not linked to and do not link to anything else.
 ** Skill Logic: The Audit Pass
 The Gardener's deterministic gate performs the actual analysis and logs the results. In future versions, it will generate probabilistic repair proposals.
 
-#+begin_src lisp :tangle ./org-skill-gardener.lisp
+#+begin_src lisp :tangle (expand-file-name "org-skill-gardener.lisp" (concat (or (getenv "INSTALL_DIR") ".") "/skills"))
 (defun gardener-deterministic-gate (action context)
   "Main gate for the Gardener skill. Audits graph integrity."
   (declare (ignore action context))
@@ -118,7 +118,7 @@ The Gardener's deterministic gate performs the actual analysis and logs the resu
 #+end_src
 
 ** Skill Registration
-#+begin_src lisp :tangle ./org-skill-gardener.lisp
+#+begin_src lisp :tangle (expand-file-name "org-skill-gardener.lisp" (concat (or (getenv "INSTALL_DIR") ".") "/skills"))
 (defskill :skill-gardener
   :priority 40
   :trigger (lambda (ctx)

@@ -27,7 +27,7 @@ Also provides vector embeddings via Ollama or llama.cpp.
 * Implementation
 Tool permissions and embedding generation via multiple providers.
 
-#+begin_src lisp :tangle ./org-skill-tool-permissions.lisp
+#+begin_src lisp :tangle (expand-file-name "org-skill-tool-permissions.lisp" (concat (or (getenv "INSTALL_DIR") ".") "/skills"))
 (in-package :opencortex)
 
 (defvar *tool-permissions* (make-hash-table :test 'equal)
@@ -122,7 +122,7 @@ Tool permissions and embedding generation via multiple providers.
 These tests verify tool permissions. Run with:
 ~(fiveam:run! 'tool-permissions-suite)~
 
-#+begin_src lisp :tangle ./tests/tool-permissions-tests.lisp
+#+begin_src lisp :tangle (expand-file-name "tests/tool-permissions-tests.lisp" (concat (or (getenv "INSTALL_DIR") ".") "/skills"))
 (defpackage :opencortex-tool-permissions-tests
   (:use :cl :fiveam :opencortex)
   (:export #:tool-permissions-suite))

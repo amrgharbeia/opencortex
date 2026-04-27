@@ -11,7 +11,7 @@ The *CLI Gateway* is the primary sensory and actuating interface for human inter
 
 * Implementation
 
-#+begin_src lisp :tangle ./org-skill-cli-gateway.lisp
+#+begin_src lisp :tangle (expand-file-name "org-skill-cli-gateway.lisp" (concat (or (getenv "INSTALL_DIR") ".") "/skills"))
 
 (defvar *cli-port* 9105)
 (defvar *cli-server-socket* nil)

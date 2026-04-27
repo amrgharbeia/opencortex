@@ -7,7 +7,7 @@
 The ~setup.org~ file defines the automated installation and initialization sequence for the OpenCortex.
 
 ** The Installer Script (opencortex.sh)
-#+begin_src bash :tangle ../opencortex.sh
+#+begin_src bash :tangle (expand-file-name "../opencortex.sh" (concat (or (getenv "INSTALL_DIR") ".") "/harness"))
 #!/bin/bash
 set -e
 
@@ -244,7 +244,7 @@ esac
 #+end_src
 
 ** Metabolic Docker Infrastructure (Dockerfile)
-#+begin_src dockerfile :tangle ../infrastructure/docker/Dockerfile
+#+begin_src dockerfile :tangle (expand-file-name "../infrastructure/docker/Dockerfile" (concat (or (getenv "INSTALL_DIR") ".") "/harness"))
 FROM debian:bullseye-slim
 
 ENV DEBIAN_FRONTEND=noninteractive

@@ -33,11 +33,11 @@ Define a high-integrity, recursive security sandbox for Lisp execution.
 * Implementation
 
 ** Package
-#+begin_src lisp :tangle ./org-skill-lisp-validator.lisp :tangle ./org-skill-lisp-validator.lisp
+#+begin_src lisp :tangle (expand-file-name "org-skill-lisp-validator.lisp" (concat (or (getenv "INSTALL_DIR") ".") "/skills")) :tangle (expand-file-name "org-skill-lisp-validator.lisp" (concat (or (getenv "INSTALL_DIR") ".") "/skills"))
 #+end_src
 
 ** Whitelist Definition
-#+begin_src lisp :tangle ./org-skill-lisp-validator.lisp :tangle ./org-skill-lisp-validator.lisp
+#+begin_src lisp :tangle (expand-file-name "org-skill-lisp-validator.lisp" (concat (or (getenv "INSTALL_DIR") ".") "/skills")) :tangle (expand-file-name "org-skill-lisp-validator.lisp" (concat (or (getenv "INSTALL_DIR") ".") "/skills"))
 (defparameter *lisp-validator-whitelist*
   '(;; Math & Logic
     + - * / = < > <= >= 1+ 1- min max
@@ -83,7 +83,7 @@ Define a high-integrity, recursive security sandbox for Lisp execution.
 ** Dynamic Symbol Registration
 We allow other skills to register safe symbols for the validator.
 
-#+begin_src lisp :tangle ./org-skill-lisp-validator.lisp
+#+begin_src lisp :tangle (expand-file-name "org-skill-lisp-validator.lisp" (concat (or (getenv "INSTALL_DIR") ".") "/skills"))
 (defvar *lisp-validator-registry* nil
   "List of dynamically registered safe symbols.")
 
@@ -99,7 +99,7 @@ We allow other skills to register safe symbols for the validator.
 #+end_src
 
 ** Recursive AST Walker
-#+begin_src lisp :tangle ./org-skill-lisp-validator.lisp
+#+begin_src lisp :tangle (expand-file-name "org-skill-lisp-validator.lisp" (concat (or (getenv "INSTALL_DIR") ".") "/skills"))
 (defun lisp-validator-ast-walk (form)
   "Recursively walks the Lisp AST. Returns T if safe, NIL if unsafe."
   (cond
@@ -124,7 +124,7 @@ We allow other skills to register safe symbols for the validator.
 #+end_src
 
 ** Cognitive Tools
-#+begin_src lisp :tangle ./org-skill-lisp-validator.lisp
+#+begin_src lisp :tangle (expand-file-name "org-skill-lisp-validator.lisp" (concat (or (getenv "INSTALL_DIR") ".") "/skills"))
 (opencortex:def-cognitive-tool :lisp-validator-status "Returns validator-related telemetry, including blocked actions and harness status."
   nil
   :body (lambda (args)
@@ -139,7 +139,7 @@ We allow other skills to register safe symbols for the validator.
 #+end_src
 
 ** Skill Definition
-#+begin_src lisp :tangle ./org-skill-lisp-validator.lisp
+#+begin_src lisp :tangle (expand-file-name "org-skill-lisp-validator.lisp" (concat (or (getenv "INSTALL_DIR") ".") "/skills"))
 (opencortex:defskill :skill-lisp-validator
   :priority 900 ; High priority, before most skills
   :trigger (lambda (ctx) 
@@ -156,7 +156,7 @@ We allow other skills to register safe symbols for the validator.
 
 
 * Phase E: Chaos (Verification)
-#+begin_src lisp :tangle ./org-skill-lisp-validator.lisp
+#+begin_src lisp :tangle (expand-file-name "org-skill-lisp-validator.lisp" (concat (or (getenv "INSTALL_DIR") ".") "/skills"))
 (defpackage :opencortex-lisp-validator-tests
   (:use :cl :fiveam :opencortex)
   (:export #:lisp-validator-suite))
