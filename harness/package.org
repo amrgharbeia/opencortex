@@ -98,6 +98,29 @@ The ~package.lisp~ file defines the public API of the ~opencortex~ harness. It s
    ;; --- Tool Registry ---
    #:def-cognitive-tool
    #:*cognitive-tools*
+
+   ;; --- Emacs Edit Skill ---
+   #:emacs-edit-read-file
+   #:emacs-edit-write-file
+   #:emacs-edit-add-headline
+   #:emacs-edit-set-property
+   #:emacs-edit-set-todo
+   #:emacs-edit-find-headline-by-id
+   #:emacs-edit-find-headline-by-title
+   #:emacs-edit-generate-id
+   #:emacs-edit-id-format
+
+   ;; --- Lisp Utils Skill ---
+   #:lisp-utils-validate
+   #:lisp-utils-check-structural
+   #:lisp-utils-check-syntactic
+   #:lisp-utils-check-semantic
+   #:lisp-utils-register
+
+   ;; --- Tool Permissions Skill ---
+   #:get-tool-permission
+   #:set-tool-permission
+   #:check-tool-permission-gate
    #:cognitive-tool
    #:cognitive-tool-name
    #:cognitive-tool-description
@@ -226,7 +249,7 @@ Centralized logging function. It simultaneously writes to standard output and th
     (finish-output)))
 #+end_src
 * Global Test Runner
-#+begin_src lisp :tangle (expand-file-name "tests/run-all-tests.lisp" (concat (or (getenv "INSTALL_DIR") ".") "/harness"))
+#+begin_src lisp :tangle (expand-file-name "run-all-tests.lisp" (concat (or (getenv "INSTALL_DIR") ".") "/harness"))
 (load "~/quicklisp/setup.lisp")
 
 (push #p"./" asdf:*central-registry*)

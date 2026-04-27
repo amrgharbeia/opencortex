@@ -231,7 +231,7 @@ Swap compiled skill files without breaking active sockets.
 
 * Phase E: Verification
 
-#+begin_src lisp :tangle (expand-file-name "tests/self-edit-tests.lisp" (concat (or (getenv "INSTALL_DIR") ".") "/skills"))
+#+begin_src lisp :tangle (expand-file-name "self-edit-tests.lisp" (concat (or (getenv "INSTALL_DIR") ".") "/tests"))
 (defpackage :opencortex-self-edit-tests
   (:use :cl :fiveam :opencortex)
   (:export #:self-edit-suite))

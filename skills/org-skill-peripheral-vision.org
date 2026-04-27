@@ -37,7 +37,12 @@ Move context pruning and rendering logic out of `context.lisp` to allow for more
 
 ** 2. Semantic Interfaces
 
+
+* Package Context
 #+begin_src lisp :tangle (expand-file-name "org-skill-peripheral-vision.lisp" (concat (or (getenv "INSTALL_DIR") ".") "/skills"))
+(in-package :opencortex)
+#+end_src
+\n#+begin_src lisp :tangle (expand-file-name "org-skill-peripheral-vision.lisp" (concat (or (getenv "INSTALL_DIR") ".") "/skills"))
 (defun context-render-to-org (obj &key depth foveal-id semantic-threshold foveal-vector)
   "Recursively renders an org-object with foveal-peripheral pruning.")
 

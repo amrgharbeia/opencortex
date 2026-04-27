@@ -134,7 +134,7 @@ Tool permissions and embedding generation via multiple providers.
 These tests verify tool permissions. Run with:
 ~(fiveam:run! 'tool-permissions-suite)~
 
-#+begin_src lisp :tangle (expand-file-name "tests/tool-permissions-tests.lisp" (concat (or (getenv "INSTALL_DIR") ".") "/skills"))
+#+begin_src lisp :tangle (expand-file-name "tool-permissions-tests.lisp" (concat (or (getenv "INSTALL_DIR") ".") "/tests"))
 (defpackage :opencortex-tool-permissions-tests
   (:use :cl :fiveam :opencortex)
   (:export #:tool-permissions-suite))

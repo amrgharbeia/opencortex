@@ -113,7 +113,7 @@ Code without surrounding prose is a bug report waiting to happen.
                (header (subseq content pos eol))
                (header-lower (string-downcase header))
                (tangle-p (and (search ".lisp" header-lower)
-                             (not (search ":tangle (expand-file-name "no"" (concat (or (getenv "INSTALL_DIR") ".") "/skills")) header-lower)))))
+                             (not (search ":tangle no" header-lower)))))
           (if (not tangle-p)
               (setf idx (1+ eol))
               (let ((end-pos (search "#+end_src" content :start2 eol :test #'string-equal)))
@@ -240,7 +240,7 @@ The LP skill runs at priority 1100 (just below engineering-standards at 1000).
 These tests verify the LP enforcement logic. Run with:
 ~(fiveam:run! 'literate-programming-suite)~
 
-#+begin_src lisp :tangle (expand-file-name "tests/literate-programming-tests.lisp" (concat (or (getenv "INSTALL_DIR") ".") "/skills"))
+#+begin_src lisp :tangle (expand-file-name "literate-programming-tests.lisp" (concat (or (getenv "INSTALL_DIR") ".") "/tests"))
 (defpackage :opencortex-literate-programming-tests
   (:use :cl :fiveam :opencortex)
   (:export #:literate-programming-suite))

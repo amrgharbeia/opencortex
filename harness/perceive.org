@@ -226,7 +226,7 @@ Other sensors (heartbeats, interrupts) are processed synchronously to maintain o
 These tests verify the Perceive pipeline. Run with:
 ~(fiveam:run! 'pipeline-perceive-suite)~
 
-#+begin_src lisp :tangle (expand-file-name "tests/pipeline-perceive-tests.lisp" (concat (or (getenv "INSTALL_DIR") ".") "/harness"))
+#+begin_src lisp :tangle (expand-file-name "pipeline-perceive-tests.lisp" (concat (or (getenv "INSTALL_DIR") ".") "/tests"))
 (defpackage :opencortex-pipeline-perceive-tests
   (:use :cl :fiveam :opencortex)
   (:export #:pipeline-perceive-suite))

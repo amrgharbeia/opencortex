@@ -287,19 +287,19 @@ When the Bouncer intercepts a high-risk action, it creates a flight plan node fo
 
   Returns the generated org-id for the flight plan."
 
-  (let ((id (org-id-new)))
-    (harness-log "BOUNCER: Creating flight plan node '~a'..." id)
+    (let ((id (org-id-new)))
+      (harness-log "BOUNCER: Creating flight plan node '~a'..." id)
 
-    ;; Inject a node creation request
-    (list :type :REQUEST
-          :target :emacs
-          :payload (list :action :insert-node
-                        :id id
-                        :attributes (list
-                                     :TITLE "Flight Plan: High-Risk Action"
-                                     :TODO "PLAN"
-                                     :TAGS '("FLIGHT_PLAN")
-                                     :ACTION (format nil "~s" blocked-action)))))
+      ;; Inject a node creation request
+      (list :type :REQUEST
+            :target :emacs
+            :payload (list :action :insert-node
+                          :id id
+                          :attributes (list
+                                       :TITLE "Flight Plan: High-Risk Action"
+                                       :TODO "PLAN"
+                                       :TAGS '("FLIGHT_PLAN")
+                                       :ACTION (format nil "~s" blocked-action))))))
 #+end_src
 
 * Skill Gate

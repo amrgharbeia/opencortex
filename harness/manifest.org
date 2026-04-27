@@ -79,7 +79,7 @@ The testing system (~:opencortex/tests~) is separate from the production system 
 
 ** Main Harness System
 
-#+begin_src lisp :tangle (expand-file-name "../opencortex.asd" (concat (or (getenv "INSTALL_DIR") ".") "/harness"))
+#+begin_src lisp :tangle (expand-file-name "opencortex.asd" (concat (or (getenv "INSTALL_DIR") ".") "/harness"))
 (defsystem :opencortex
   :name "opencortex"
   :author "Amr"
@@ -119,7 +119,7 @@ The testing system (~:opencortex/tests~) is separate from the production system 
 
 ** Test System
 
-#+begin_src lisp :tangle (expand-file-name "../opencortex.asd" (concat (or (getenv "INSTALL_DIR") ".") "/harness"))
+#+begin_src lisp :tangle (expand-file-name "opencortex.asd" (concat (or (getenv "INSTALL_DIR") ".") "/harness"))
 (defsystem :opencortex/tests
   :depends-on (:opencortex           ; The harness we're testing
                :fiveam)              ; Testing framework
@@ -154,7 +154,7 @@ The testing system (~:opencortex/tests~) is separate from the production system 
 
 ** TUI Client System
 
-#+begin_src lisp :tangle (expand-file-name "../opencortex.asd" (concat (or (getenv "INSTALL_DIR") ".") "/harness"))
+#+begin_src lisp :tangle (expand-file-name "opencortex.asd" (concat (or (getenv "INSTALL_DIR") ".") "/harness"))
 (defsystem :opencortex/tui
   :depends-on (:opencortex           ; The daemon we're connecting to
                :croatoan            ; Terminal UI library

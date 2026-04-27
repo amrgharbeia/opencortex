@@ -162,7 +162,7 @@ The engineering standards skill is a HARD BLOCK gate. Violations are rejected, n
 These tests verify the enforcement logic. Run with:
 ~(fiveam:run! 'engineering-standards-suite)~
 
-#+begin_src lisp :tangle (expand-file-name "tests/engineering-standards-tests.lisp" (concat (or (getenv "INSTALL_DIR") ".") "/skills"))
+#+begin_src lisp :tangle (expand-file-name "engineering-standards-tests.lisp" (concat (or (getenv "INSTALL_DIR") ".") "/tests"))
 (defpackage :opencortex-engineering-standards-tests
   (:use :cl :fiveam :opencortex)
   (:export #:engineering-standards-suite))

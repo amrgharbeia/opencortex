@@ -153,7 +153,7 @@ Restores the state of the Memex from one of the previous snapshots.
 These tests verify the Memory system. Run with:
 ~(fiveam:run! 'memory-suite)~
 
-#+begin_src lisp :tangle (expand-file-name "tests/memory-tests.lisp" (concat (or (getenv "INSTALL_DIR") ".") "/harness"))
+#+begin_src lisp :tangle (expand-file-name "memory-tests.lisp" (concat (or (getenv "INSTALL_DIR") ".") "/tests"))
 (defpackage :opencortex-memory-tests
   (:use :cl :fiveam :opencortex)
   (:export #:memory-suite))
@@ -390,7 +390,7 @@ Utility functions for AST traversal and path resolution.
 * Phase E: Chaos (Verification)
 Following the Engineering Standards, the Memory must be empirically verified through automated testing. The following test suite ensures the mathematical integrity of the Merkle hashes and the behavioral correctness of the immutable versioning and rollback systems.
 
-#+begin_src lisp :tangle (expand-file-name "tests/memory-tests.lisp" (concat (or (getenv "INSTALL_DIR") ".") "/harness"))
+#+begin_src lisp :tangle (expand-file-name "memory-tests.lisp" (concat (or (getenv "INSTALL_DIR") ".") "/tests"))
 (defpackage :opencortex-memory-tests
   (:use :cl :fiveam :opencortex)
   (:export #:memory-suite))

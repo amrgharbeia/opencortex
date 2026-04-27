@@ -148,14 +148,17 @@ flowchart LR
       (when id-start
         (let ((id-end (position #\Newline content :start id-start)))
           (when id-end
-            (setf id (subseq content (+ id-start 4) id-end)))))))
+            (setf id (string-trim " " (subseq content (+ id-start 4) id-end)))))))
     ;; Simple DEPENDS_ON extraction
     (let ((pos 0))
       (loop while (setf pos (search "#+DEPENDS_ON:" content :start2 pos))
             do (let ((end (position #\Newline content :start pos)))
               (when end
-                (push (subseq content (+ pos 13) end) dependencies)
-                (setf pos end))))
+                (let ((line (string-trim " " (subseq content (+ pos 13) end))))
+                  (dolist (d (uiop:split-string line :separator '(#\Space #\Tab)))
+                    (unless (string= d "")
+                      (push d dependencies))))
+                (setf pos end)))))
     (values id (reverse dependencies))))
 #+end_src
 
@@ -210,8 +213,8 @@ flowchart LR
 Delegates to the Lisp Validator skill when available; falls back to a basic
 reader check during early boot before the validator skill is loaded."
   (let ((result
-          (if (fboundp 'lisp-validator-validate)
-              (lisp-validator-validate code-string :strict nil)
+          (if (fboundp 'lisp-utils-validate)
+              (lisp-utils-validate code-string :strict nil)
               (handler-case
                   (let ((*read-eval* nil))
                     (with-input-from-string (stream (format nil "(progn ~a)" code-string))
@@ -223,8 +226,19 @@ reader check during early boot before the validator skill is loaded."
         (values t nil)
         (values nil (or (getf result :reason) "Lisp Validator rejected code.")))))
 
+(defun extract-tangle-target (line)
+  "Extracts the value of the :tangle header from an org src block line."
+  (let ((pos (search ":tangle" line)))
+    (when pos
+      (let* ((rest (subseq line (+ pos 7)))
+             (trimmed (string-trim '(#\Space #\Tab) rest))
+             (end (position #\Space trimmed)))
+        (if end
+            (subseq trimmed 0 end)
+            trimmed)))))
+
 (defun load-skill-from-org (filepath)
-  "Parses and evaluates Lisp blocks with :tangle (expand-file-name "directives" (concat (or (getenv "INSTALL_DIR") ".") "/harness")) from an Org file.
+  "Parses and evaluates Lisp blocks with :tangle directives from an Org file.
 Only loads blocks that specify a .lisp tangle target, ignoring tests and examples."
   (let* ((skill-base-name (pathname-name filepath))
          (entry (or (gethash skill-base-name *skill-catalog*) (make-skill-entry :filename skill-base-name))))
@@ -232,33 +246,33 @@ Only loads blocks that specify a .lisp tangle target, ignoring tests and example
     (setf (gethash skill-base-name *skill-catalog*) entry)
     
     (handler-case
-        (let* ((content (uiop:read-file-string filepath)) 
+        (let* ((content (uiop:read-file-string filepath))
                (lines (uiop:split-string content :separator '(#\Newline)))
-               (in-lisp-block nil) 
+               (in-lisp-block nil)
                (collect-this-block nil)
-               (lisp-code "") 
+               (lisp-code "")
                (pkg-name (intern (string-upcase (format nil "OPENCORTEX.SKILLS.~a" skill-base-name)) :keyword)))
           
           (dolist (line lines)
             (let ((clean-line (string-trim '(#\Space #\Tab #\Return) line)))
-              (cond ((uiop:string-prefix-p "#+begin_src lisp" (string-downcase clean-line))
-                     (setf in-lisp-block t)
-                     ;; Only collect blocks with a :tangle (expand-file-name "directive" (concat (or (getenv "INSTALL_DIR") ".") "/harness")) pointing to a
-                     ;; runtime .lisp file (exclude tests and :tangle no)
-                     (let ((tl (string-downcase clean-line)))
-                       (setf collect-this-block
-                             (and (search ":tangle" tl)
-                                  (not (search ":tangle (expand-file-name "no"" (concat (or (getenv "INSTALL_DIR") ".") "/harness")) tl))
-                                  (search ".lisp" tl)
-                                  (not (search "tests/" tl))
-                                  (not (search "test/" tl))))))
-                     ((uiop:string-prefix-p "#+end" (string-downcase clean-line))
-                      (setf in-lisp-block nil)
-                      (setf collect-this-block nil))
-                    ((and in-lisp-block collect-this-block)
-                     (unless (or (uiop:string-prefix-p ":PROPERTIES:" (string-upcase clean-line))
-                                 (uiop:string-prefix-p ":END:" (string-upcase clean-line)))
-                       (setf lisp-code (concatenate 'string lisp-code line (string #\Newline)))))))
+              (cond
+                ((uiop:string-prefix-p "#+begin_src lisp" clean-line)
+                 (setf in-lisp-block t)
+                 (let ((tangle-target (extract-tangle-target clean-line)))
+                   (if (and tangle-target 
+                            (not (search "tests/" tangle-target))
+                            (not (search ":tangle no" clean-line)))
+                       (setf collect-this-block t)
+                       (setf collect-this-block nil))))
+                
+                ((uiop:string-prefix-p "#+end_src" clean-line)
+                 (setf in-lisp-block nil)
+                 (setf collect-this-block nil))
+                
+                ((and in-lisp-block collect-this-block)
+                 (unless (or (uiop:string-prefix-p ":PROPERTIES:" (string-upcase clean-line))
+                             (uiop:string-prefix-p ":END:" (string-upcase clean-line)))
+                   (setf lisp-code (concatenate 'string lisp-code line (string #\Newline))))))))
           
           (if (= (length lisp-code) 0)
               (progn (setf (skill-entry-status entry) :ready) t)
@@ -278,7 +292,7 @@ Only loads blocks that specify a .lisp tangle target, ignoring tests and example
           (harness-log "LOADER ERROR in skill '~a': ~a" skill-base-name msg)
           (setf (skill-entry-status entry) :failed)
           (setf (skill-entry-error-log entry) msg)
-          nil))))
+          nil)))))
 
 (defun load-skill-with-timeout (filepath timeout-seconds)
   "Loads a skill Org file with a hard execution timeout."
@@ -286,8 +300,7 @@ Only loads blocks that specify a .lisp tangle target, ignoring tests and example
          (thread (bt:make-thread (lambda () 
                                    (if (load-skill-from-org filepath)
                                        (setf finished t)
-                                       (setf finished :error)))
-                                 :name (format nil "loader-~a" (pathname-name filepath))))
+                                       (setf finished :error)))))
          (start-time (get-internal-real-time))
          (timeout-units (truncate (* timeout-seconds internal-time-units-per-second))))
     (loop 
@@ -299,11 +312,8 @@ Only loads blocks that specify a .lisp tangle target, ignoring tests and example
         #+sbcl (sb-thread:terminate-thread thread)
         #-sbcl (bt:destroy-thread thread)
         (return :timeout))
-      (sleep 0.05))))))
-#+end_src
+      (sleep 0.05))))
 
-** Initializing All Skills (initialize-all-skills)
-#+begin_src lisp :tangle (expand-file-name "skills.lisp" (concat (or (getenv "INSTALL_DIR") ".") "/harness"))
 (defun initialize-all-skills ()
   "Scans the directory defined by SKILLS_DIR and hot-loads skills using topological order."
   (let* ((env-path (uiop:getenv "SKILLS_DIR"))
@@ -382,9 +392,9 @@ EXAMPLES:
   :guard (lambda (args context)
            (declare (ignore context))
            (let ((code (getf args :code)))
-             (let ((harness-pkg (find-package :opencortex.skills.org-skill-lisp-validator)))
+             (let ((harness-pkg (find-package :opencortex.skills.org-skill-lisp-utils)))
                (if harness-pkg 
-                   (uiop:symbol-call :opencortex.skills.org-skill-lisp-validator :lisp-validator-validate code)
+                   (uiop:symbol-call :opencortex.skills.org-skill-lisp-utils :lisp-utils-validate code)
                    t))))
   :body (lambda (args)
           (let ((code (getf args :code)))
@@ -542,10 +552,7 @@ EXAMPLES:
 
 * Test Suite
 
-These tests verify the Skill Engine and loader. Run with:
-~(fiveam:run! 'boot-suite)~
-
-#+begin_src lisp :tangle (expand-file-name "tests/boot-sequence-tests.lisp" (concat (or (getenv "INSTALL_DIR") ".") "/harness"))
+#+begin_src lisp :tangle (expand-file-name "boot-sequence-tests.lisp" (concat (or (getenv "INSTALL_DIR") ".") "/tests"))
 (defpackage :opencortex-boot-tests
   (:use :cl :fiveam :opencortex)
   (:export #:boot-suite))
@@ -577,20 +584,35 @@ These tests verify the Skill Engine and loader. Run with:
     (with-open-file (out (merge-pathnames "org-skill-b.org" tmp-dir) :direction :output :if-exists :supersede)
       (format out ":PROPERTIES:~%:ID: skill-b-id~%:END:~%"))
     (unwind-protect
-         (let ((sorted (opencortex::topological-sort-skills tmp-dir))
+         (let ((sorted (opencortex::topological-sort-skills tmp-dir)))
            (let ((pos-a (position "org-skill-a" sorted :key #'pathname-name :test #'string-equal))
-                 (pos-b (position "org-skill-b" sorted :key #'pathname-name :test #'string-equal))
-             (is (< pos-b pos-a)))
+                 (pos-b (position "org-skill-b" sorted :key #'pathname-name :test #'string-equal)))
+             (is (< pos-b pos-a))))
        (uiop:delete-directory-tree (uiop:ensure-directory-pathname tmp-dir) :validate t))))
 
 (test test-skill-jailing
   "Verify that skills are loaded into their own packages."
   (let ((tmp-skill "/tmp/org-skill-jail-test.org"))
     (with-open-file (out tmp-skill :direction :output :if-exists :supersede)
-      (format out ":PROPERTIES:~%:ID: jail-test-id~%:END:~%#+TITLE: Jail Test Skill~%#+begin_src lisp :tangle (expand-file-name "no~(defun" (concat (or (getenv "INSTALL_DIR") ".") "/harness")) jail-test-fn () t)~#+end_src"))
+      (format out ":PROPERTIES:~%:ID: jail-test-id~%:END:~%#+TITLE: Jail Test Skill~%#+begin_src lisp :tangle jail-test.lisp~%(defskill :org-skill-jail-test :priority 1 :trigger (lambda (ctx) nil) :deterministic (lambda (a c) a))~%#+end_src~%"))
     (unwind-protect
          (progn
            (opencortex::load-skill-from-org tmp-skill)
            (is (not (null (gethash "org-skill-jail-test" opencortex::*skills-registry*)))))
-       (uiop:delete-file-if-exists tmp-skill))))))
+       (uiop:delete-file-if-exists tmp-skill))))
+
+(test test-path-traversal-guard
+  "Verify that file I/O cognitive tools block path traversal escapes."
+  (let* ((tool (gethash "read-file" opencortex::*cognitive-tools*))
+         (guard (opencortex::cognitive-tool-guard tool)))
+    ;; Set a dummy MEMEX_DIR for the test
+    (setf (uiop:getenv "MEMEX_DIR") "/home/user/memex")
+    
+    ;; Valid internal paths should return true
+    (is (not (null (funcall guard '(:file "/home/user/memex/safe.txt") nil))))
+    (is (not (null (funcall guard '(:file "/home/user/memex/projects/safe.txt") nil))))
+    
+    ;; Path traversal escape should return false
+    (is (null (funcall guard '(:file "/home/user/memex/../.bashrc") nil)))
+    (is (null (funcall guard '(:file "/home/user/memex/projects/../../etc/passwd") nil)))))
 #+end_src

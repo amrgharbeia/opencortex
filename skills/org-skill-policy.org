@@ -93,6 +93,7 @@ At the gate:
 
 #+begin_src lisp :tangle (expand-file-name "org-skill-policy.lisp" (concat (or (getenv "INSTALL_DIR") ".") "/skills"))
 (defun policy-check-transparency (action context)
+(defun policy-check-transparency (action context)
   "Ensures the action is inspectable and user-facing actions carry an explanation.
 
   TRANSPARENCY CHECK:
@@ -126,9 +127,9 @@ At the gate:
       (return-from policy-check-transparency
         (list :type :LOG
               :payload (list :level :error
-                             :text "POLICY [Transparency]: User-facing action missing :explanation. Blocked.")))))
+                             :text "POLICY [Transparency]: User-facing action missing :explanation. Blocked."))))
 
-  action))
+    action))
 #+end_src
 
 ** 2. Autonomy Above All
@@ -485,14 +486,7 @@ When the policy gate blocks or modifies an action, it must tell the user *why*. 
 
               ;; Soft warning: log but continue with original action
               (t
-               (harness-log "~a" (getf (getf result :payload) :text)))))))))
-
-  action))
-#+end_src
-
-** Finding Engineering Standards
-
-#+begin_src lisp :tangle (expand-file-name "org-skill-policy.lisp" (concat (or (getenv "INSTALL_DIR") ".") "/skills"))
+               (harness-log "~a" (getf (getf result :payload) :text))))))))))
 (defun policy-find-engineering-standards-gate ()
   "Searches for the Engineering Standards gate across known jailed package names.
 
