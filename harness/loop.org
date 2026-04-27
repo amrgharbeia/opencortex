@@ -26,6 +26,38 @@ The three-stage pipeline mirrors the classical sense-think-act paradigm but with
 
 The feedback loop (Act returning a signal that feeds back into Perceive) enables complex multi-step operations where each action can trigger subsequent reasoning.
 
+** The Metabolic Pipeline
+
+Every signal in openCortex moves through the same three-stage pipeline:
+
+1. *Perceive:* Normalize raw input into a standardized Signal
+2. *Reason:* Generate a proposal via LLM, verify via skills
+3. *Act:* Execute the approved action, generate feedback
+
+#+begin_src mermaid
+sequenceDiagram
+    participant User
+    participant Gateway
+    participant Perceive
+    participant Reason
+    participant Act
+    participant User
+
+    User->>Gateway: "Write a note about X"
+    Gateway->>Perceive: Raw message
+    Perceive->>Perceive: Normalize to Signal
+    Perceive->>Reason: Signal
+    Reason->>Reason: LLM generates proposal
+    Reason->>Reason: Skills verify proposal
+    Reason->>Act: Approved action
+    Act->>Act: Execute action
+    Act->>Reason: Feedback signal
+    Reason->>Perceive: New signal
+    Perceive->>Gateway: Response
+    Gateway->>User: "Done"
+#+end_src
+
+
 ** Thread Safety
 
 The loop operates in a multi-threaded environment:

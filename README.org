@@ -1,380 +1,76 @@
-#+TITLE: OpenCortex: The Conductor of your Life Stack
+#+TITLE: OpenCortex: Your Autonomous, Plain-Text Life Assistant
+#+AUTHOR: Amr
+#+FILETAGS: :opencortex:ai:assistant:
 
-#+CAPTION: A neurosymbolic AI agent framework for the 100-year Memex
-#+ATTR_HTML: :width 800
+* Meet OpenCortex
 
-*opencortex* is a minimalist, extensible AI agent framework designed to manage and continuously organize your personal knowledge base. It transforms a static collection of plaintext notes into a live, programmable [[https://en.wikipedia.org/wiki/Memex][Memex]]—an automated, personalized memory system where humans and AI collaborate in the exact same workspace.
+Most AI assistants are just chatbots. You ask a question, they answer, you close the tab, and they forget you exist. They trap your conversations in proprietary web apps and silo your data.
 
-* Meet Your Private, Always-On Assistant
+**OpenCortex is different. It is an AI that lives inside your own text files.**
 
-Most AI assistants are just chatbots. They answer a question, you close the tab, and they immediately forget who you are.
+It runs locally on your machine as a background process. It reads the same plain-text notes you do, organizes your life while you sleep, and acts as a permanent, private companion. It doesn't lock you into a database; it manages a folder of text files that you completely own and control.
 
-**OpenCortex is different. It is an AI that actually lives inside your notes.** 
+* The OpenCortex Experience: What It Actually Does
 
-It runs locally on your machine, reads the exact same plain-text files you do, and organizes your life in the background. It is designed to be a permanent, private companion that works for you, securely, for the next 100 years.
+OpenCortex acts as the ultimate digital librarian and executor. Here is what it feels like to use it:
 
-** The OpenCortex Experience
-- **Zero-Friction Capture:** Type a messy, half-finished thought into your daily journal. While you sleep, OpenCortex reads it, researches the topic, summarizes it, and seamlessly links it into your permanent knowledge base.
-- **Autonomous Execution:** Add a task like `=TODO Run system updates=` to your inbox. OpenCortex sees it, opens a secure background terminal, runs the bash commands, and marks the task `=DONE=` with the exact terminal output attached.
-- **Radical Privacy:** OpenCortex runs on your hardware. It defaults to using local AI models (like Ollama). Your personal notes, API keys, and drafts never leave your machine unless you explicitly tell them to.
+** 1. Zero-Friction Capture & Organization
+You don't need to categorize everything perfectly. Just dump your messy, half-finished thoughts, meeting notes, and to-dos into a single "Inbox" text file. 
+In the background, OpenCortex reads your inbox, extracts the actionable tasks into your to-do lists, and distills your random thoughts into permanent, beautifully linked reference notes (your knowledge base).
 
-* The Philosophy: A 100-Year Memory
+** 2. Autonomous Task Execution
+OpenCortex isn't just a writer; it's a doer. If you add a task like `=TODO Update the web server packages=`, the agent recognizes it. It opens a secure, hidden terminal, writes the necessary commands, verifies they are safe, runs them, and updates your text file with the result and terminal output. 
 
-How do you build a digital brain that will survive the next century? You can't rely on SaaS subscriptions, proprietary databases, or trendy Javascript frameworks that break every six months.
+** 3. Proactive "Gardening"
+OpenCortex runs on a heartbeat. When you step away from your computer, it goes to work. It scans your notes to fix formatting, finds related ideas you forgot to link together, and flags outdated information. You wake up to a cleaner, more connected workspace.
 
-You build it using the most durable, time-tested format in computing: **Plain Text.**
+** 4. Uninterrupted Background Research
+You can tell OpenCortex: "Research the history of digital privacy and draft a report." Instead of freezing and making you wait, it spawns a background thread. It silently browses the web and drafts the document in your notes while you continue working on other things.
 
-** 1. Why Org-Mode?
-OpenCortex uses **Org-mode** (a powerful plain-text markup language) as its only database. Unlike Markdown, Org-mode natively supports scheduling, metadata, tags, and code execution. 
-There is no opaque database. The agent's memory and your memory are exactly the same file. You can read it, edit it, and back it up using any text editor, forever.
+* The Philosophy: Fixing the Broken AI Agent Ecosystem
 
-** 2. Why Local-First?
-Dependency on cloud services is a massive vulnerability for an autonomous agent. OpenCortex is designed to survive offline. It uses a "dynamic cascade" to route complex thoughts to big cloud models when available, but gracefully falls back to local, open-source models when the internet is down.
+We built OpenCortex from the ground up because the current generation of AI agents are built on fundamentally flawed architecture. They prioritize quick demos over long-term reliability and user sovereignty.
 
-* The Engine: Safe, Self-Modifying Intelligence
+Here is how we address the three massive issues with modern AI agents:
 
-Under the hood, OpenCortex is a **Neurosymbolic Lisp Machine**. It solves the biggest problem with modern AI agents: they hallucinate, and they are dangerous if let loose on a computer.
+** The Data Silo Problem
+**The Flaw:** Popular agents bury your memories, preferences, and documents inside opaque databases (like SQLite or specialized vector stores). If you want to see your own data, you have to ask the AI to fetch it. If the app shuts down, your data is gone.
+**The OpenCortex Solution:** Total plain-text transparency. We use a powerful plain-text format (Org-mode). There is no database. Your entire life is just a folder of text files. You can open them in any basic text editor, sync them anywhere, and they are guaranteed to be readable decades from now.
 
-OpenCortex splits its brain into two engines:
-1. **The Probabilistic Engine (The Creative LLM):** This part reads your notes, understands context, and proposes creative solutions or code.
-2. **The Deterministic Engine (The Strict Lisp Guard):** Before the LLM is allowed to touch your files or run a terminal command, this strict, symbolic engine intercepts the proposal. It mathematically verifies that the action is safe, permitted, and properly formatted before execution.
+** The Safety and Hallucination Problem
+**The Flaw:** Most agents are built using languages (like Python) that blindly pipe AI-generated text directly into your computer's terminal. If the AI hallucinates or makes a mistake, it can delete files or break your system.
+**The OpenCortex Solution:** A "Neurosymbolic" safeguard. OpenCortex splits its brain into two parts:
+1. **The Creative Brain (AI):** Understands your notes and suggests actions.
+2. **The Strict Guard (Logic):** Before the AI is allowed to touch a file or run a command, a mathematically strict set of rules intercepts the proposal. It verifies the action is safe and permitted. If the AI hallucinates, the guard blocks it.
 
-Because the system is written in Common Lisp, the agent can actually safely rewrite its own code while it runs—a capability most Python-based agents can only dream of.
+** The Cloud Dependency Problem
+**The Flaw:** Most assistants rely entirely on big tech cloud APIs. When your internet drops, or the service goes down, your assistant dies. Worse, your private, personal notes are constantly sent to third-party servers.
+**The OpenCortex Solution:** Local-First and Private. OpenCortex is designed to run directly on your own hardware using free, open-source AI models. Your private journals and API keys never leave your laptop. It can intelligently use cloud models for highly complex tasks, but only when you give explicit permission.
 
-#+begin_src mermaid
-flowchart LR
-    subgraph Probabilistic["Probabilistic Engine (LLM)"]
-        LLM[LLM Call]
-    end
+* Quick Start & Installation
 
-    subgraph Deterministic["Deterministic Engine (Skills)"]
-        Policy[Policy Skill<br/>Constitutional invariants]
-        Bouncer[Bouncer Skill<br/>Security vectors]
-        Validator[Lisp Validator<br/>Structural verification]
-    end
+To boot your local assistant, you need a Common Lisp compiler (SBCL) and a cloned repository. 
 
-    subgraph Actuation["Actuation"]
-        Shell[Shell Actuator]
-        TUI[TUI Client]
-        Emacs[Emacs Gateway]
-    end
+#+begin_src bash
+# Clone the repository
+git clone https://github.com/your-username/opencortex.git ~/memex/projects/opencortex
 
-    LLM -->|Proposes action| Deterministic
-    Policy -->|Checks| Bouncer
-    Bouncer -->|Verifies| Validator
-    Validator -->|Approves| Actuation
-    Actuation -->|Feeds back| LLM
+# Run the setup wizard
+cd ~/memex/projects/opencortex
+./opencortex.sh setup
 #+end_src
 
-* Architecture: Thin Harness, Fat Skills
+The setup wizard will guide you through connecting your local AI models and initializing your text-based workspace.
 
-To guarantee long-term stability, openCortex enforces a strict architectural boundary inspired by the "thin harness, fat skills" philosophy.
+* Project Navigation
 
-** The Minimalist Harness
+OpenCortex is built using **Literate Programming**—the explanations and the code are woven together in the same files so anyone can understand how the system works.
 
-The Lisp microkernel is a thin, unbreakable harness strictly responsible for:
-
-| Layer | Responsibility | Examples |
-|-------|----------------|----------|
-| *Perceive* | Normalize sensory input | CLI parsing, Emacs events, heartbeats |
-| *Reason* | Bridge neural and deterministic | LLM dispatch, response parsing, skill routing |
-| *Act* | Execute approved actions | Shell commands, tool calls, UI output |
-| *Memory* | Live object store | Org-object graph, snapshots, rollback |
-
-What the harness does /not/ contain:
-- Policy rules (those are skills)
-- LLM integrations (those are skills)
-- Domain-specific functionality (those are skills)
-
-** Literate, Single-File Skills
-
-In openCortex, a Skill is simply a *single .org file* containing everything:
-- The documentation (prose explaining the skill's purpose)
-- The AI instructions (how the LLM should use this skill)
-- The deterministic code (Lisp that verifies/proposes actions)
-
-When the system boots, it compiles these skills directly into the live Lisp image. Skills are hot-reloadable without restarting the daemon.
-
-#+begin_src mermaid
-flowchart TD
-    subgraph Skill["Skill: policy.org"]
-        Docs["Documentation<br/>'This skill enforces...'"]
-        AI["AI Instructions<br/>'When the user asks about...'"]
-        Code["Deterministic Code<br/>'(defun policy-check-...)'"]
-    end
-
-    subgraph Harness["Harness Core"]
-        Package["package.lisp"]
-        Loop["loop.lisp"]
-        Perceive["perceive.lisp"]
-        Reason["reason.lisp"]
-        Act["act.lisp"]
-    end
-
-    Code --> |Compiles into| Harness
-    Harness --> |Runs| Pipeline
-    Pipeline --> |Feeds| Skill
-#+end_src
-
-** The Metabolic Pipeline
-
-Every signal in openCortex moves through the same three-stage pipeline:
-
-1. *Perceive:* Normalize raw input into a standardized Signal
-2. *Reason:* Generate a proposal via LLM, verify via skills
-3. *Act:* Execute the approved action, generate feedback
-
-#+begin_src mermaid
-sequenceDiagram
-    participant User
-    participant Gateway
-    participant Perceive
-    participant Reason
-    participant Act
-    participant User
-
-    User->>Gateway: "Write a note about X"
-    Gateway->>Perceive: Raw message
-    Perceive->>Perceive: Normalize to Signal
-    Perceive->>Reason: Signal
-    Reason->>Reason: LLM generates proposal
-    Reason->>Reason: Skills verify proposal
-    Reason->>Act: Approved action
-    Act->>Act: Execute action
-    Act->>Reason: Feedback signal
-    Reason->>Perceive: New signal
-    Perceive->>Gateway: Response
-    Gateway->>User: "Done"
-#+end_src
-
-** The Skill Registry
-
-Skills are discovered, sorted by dependency, and loaded at boot:
-
-#+begin_src mermaid
-flowchart LR
-    subgraph Discovery["Skill Discovery"]
-        Scan["Scan skills/ directory"]
-        Sort["Topological sort by DEPENDS_ON"]
-    end
-
-    subgraph Loading["Skill Loading"]
-        Validate["Validate syntax"]
-        Jail["Jail in package namespace"]
-        Register["Register in catalog"]
-    end
-
-    Scan --> Sort --> Validate --> Jail --> Register
-#+end_src
-
-* The Three Data Stores
-
-openCortex maintains three distinct representations of your knowledge:
-
-| Store | Format | Location | Purpose |
-|-------|--------|----------|---------|
-| *Source of Truth* | Plaintext .org files | `~/memex/` | Human-readable, version-controlled |
-| *Active Brain* | RAM (Lisp hash tables) | Memory | Fast, live, queryable |
-| *Snapshots* | Binary .snap files | `~/.opencortex/` | Crash recovery, rollback |
-
-The Active Brain is built from the Source of Truth on boot and kept in sync via:
-- Buffer updates from Emacs (when you edit)
-- Heartbeat snapshots (periodic persistence)
-- Graceful shutdown saves
-
-* The Evolutionary Roadmap
-
-The roadmap is designed working backwards from SOTA parity (V 1.0.0), guiding each version toward a fully autonomous, self-editing agent. Each version builds on the previous, with features designed to be implemented in pure Common Lisp + Org-mode.
-
-** Non-Negotiable Identity
-- Pure Common Lisp + Org-mode. No JSON. No YAML. No external databases.
-- Single-address-space memory (Lisp hash tables in RAM — the agent IS the memory).
-- "Thin harness, fat skills" — complexity lives at the edges, not the kernel.
-- One agent composed of many skills. Concurrency via bordeaux-threads (shared memory).
-- Plists everywhere — homoiconic communication between all components.
-
-** Version Roadmap
-
-*** v0.1.0: The Autonomous Foundation — CURRENT RELEASE ✅
-
-The secure, auditable Lisp kernel. All core infrastructure in place.
-
-| Component | Status | Notes |
-|-----------|--------|-------|
-| Perceive-Reason-Act pipeline | ✅ | 3-stage metabolic loop |
-| Skills engine with jailed loading | ✅ | defskill, topological sort, hot-reload |
-| Policy skill (6 invariants) | ✅ | Transparency, Autonomy, Bloat, Modularity, Mentorship, Sustainability |
-| Bouncer skill | ✅ | Command whitelist guard functions |
-| Memory (org-object + Merkle) | ✅ | Hash tables, snapshots, rollback |
-| Lisp validator skill | ✅ | Syntax validation before eval |
-| Scribe + Gardener skills | ✅ | Heartbeat-driven distillation + audit |
-| LLM gateway (OpenRouter + Ollama) | ✅ | Provider cascade |
-| Shell actuator | ✅ | Safe command execution |
-| Emacs bridge via Swank | ✅ | Point/buffer updates |
-| FiveAM test suite | ✅ | Memory, boot, pipeline, act, communication |
-| Credentials vault | ✅ | Encrypted storage |
-
-*** v0.2.0: Self-Improvement + Local LLMs — NEXT
-
-Self-editing is the foundation of all future growth. Full org-mode manipulation makes the agent a true Emacs citizen.
-
-| Feature | Description |
-|---------|-------------|
-| org-skill-self-edit | Hook into =:syntax-error= events. Deterministic: auto-balance parens. Probabilistic: LLM surgical fix with memory rollback on failure. |
-| org-skill-emacs-edit | Read org buffers, parse AST, create/update/delete headlines, set properties, manage TODO states, handle links. |
-| Local vector search | =generate-embeddings= via Ollama. Add =:vector= to org-object. Semantic search with cosine similarity. |
-| Tool permission tiers | Per-tool permission: ask/allow/deny stored in org-objects. Filter tools before LLM sees them. |
-| Skill hot-reload | Swap compiled skill files without breaking active sockets. |
-
-*** v0.3.0: Event Orchestration + HITL
-
-Unified control plane and Human-in-the-Loop (HITL) state management.
-
-| Feature | Description |
-|---------|-------------|
-| org-skill-event-orchestrator | Unified hooks + cron + routing. Three tiers: =:REFLEX= (no LLM), =:COGNITION= (light LLM), =:REASONING= (full LLM). |
-| Human-in-the-Loop (HITL) | Continuation-based interaction. The agent can "suspend" its cognitive loop to ask for permission or clarification and resume precisely where it left off. |
-| org-skill-context-manager | Stack-based project scoping. =push-context= / =pop-context=. Path resolution relative to context. |
-| Memory scope segmentation | =:scope= property on org-objects: memex/session/project. Scope-aware retrieval. |
-| Model-tier routing | Complexity-based model selection: heartbeat → tiny, user → medium, reasoning → large. |
-| Slash commands | =M-x= style command palette in TUI. Commands defined in Org-mode. |
-
-*** v0.4.0: Long-Horizon Planning + Git Workflows
-
-Structured tracking, failure handling, and course correction for multi-step engineering work.
-
-| Feature | Description |
-|---------|-------------|
-| org-skill-long-horizon | Decompose tasks into Org-mode headline trees. Terminal states: =:done= / =:blocked= / =:stuck=. Parent summarises children. Branch pruning. |
-| org-skill-git-steward | Status, diff, commit, push, branch. Policy enforces commit-before-modify. |
-| TDD runner | FiveAM on file save. =:test-failure= events. Hook into self-fix for auto-repair. |
-| Deep Emacs integration | Full org-agenda awareness. Navigate, clock time, refile, archive. |
-
-*** v0.5.0: Interactive Actuation & Environment Stewardship
-
-Interactive terminal sessions and autonomous dependency management.
-
-| Feature | Description |
-|---------|-------------|
-| Interactive PTY Actuator | Stream long-running process output to the context window (e.g., `npm run dev`, REPLs) with async interrupt control. |
-| The Environment Steward | Autonomously detect missing dependencies (e.g., "Command not found"), propose an installation command, and retry the failed action. |
-
-*** v0.6.0: Concurrency + Creator + GTD
-
-The agent bootstraps itself and manages parallel workstreams.
-
-| Feature | Description |
-|---------|-------------|
-| org-skill-sub-agent-manager | Lightweight Lisp-native sub-agents (via bordeaux-threads) that share memory but have isolated execution contexts for background work. |
-| org-skill-creator | LLM drafts complete skill org-file from natural language. Mandatory: syntax validation → jail-load → test → register. |
-| org-skill-architect | Scan =:STATUS: FROZEN= PRDs. Generate Phase B PROTOCOL. |
-| org-skill-gtd | Full GTD cycle: capture, clarify, organize, reflect, engage. org-gtd v4.0 DAG (=:TRIGGER:=, =:BLOCKER:=). |
-| Consensus loop | Run multiple providers for critical decisions. Compare results, detect disagreements. |
-| Web research | Headless Chromium via Python bridge. Text extraction, screenshots, Gemini Web UI automation. |
-
-*** v0.7.0: Visual Grounding & MCP Bridge
-
-Multimodal visual interaction and ecosystem-wide tool compatibility.
-
-| Feature | Description |
-|---------|-------------|
-| Computer Use / Vision | Allow the agent to request host OS or browser screenshots, analyze the UI, and issue precise X/Y coordinate click/type commands via an X11/Wayland bridge. |
-| MCP Gateway Bridge | Lisp-native client for the Model Context Protocol, allowing OpenCortex to connect to the entire ecosystem of external tools and data sources. |
-
-*** v0.8.0: The Evaluation Harness
-
-Automated benchmarking to mathematically prove the agent's reasoning capabilities.
-
-| Feature | Description |
-|---------|-------------|
-| SWE-Bench Harness | Automated pipeline that clones repositories, feeds GitHub issues, tracks the multi-step resolution trajectory, runs tests, and scores success. |
-
-*** v1.0.0: SOTA Parity
-
-Feature-complete agent competitive with commercial agents. All features reimplemented in pure Lisp.
-
-| Area | Status | Notes |
-|------|--------|-------|
-| Self-improvement | ✅ v0.2.0 | Self-edit + lisp-repair |
-| Planning | ✅ v0.4.0 | Task tree DAGs with terminal states |
-| Tool ecosystem | 🟡 v0.4.0 | 10+ cognitive tools |
-| Context window | ✅ v0.3.0 | Semantic search + scope segmentation |
-| Safety | ✅ v0.1.0 | 6 Policy invariants + formal verification |
-| Multi-step tasks | ✅ v0.4.0 | Task trees with failure handling |
-| Code editing | ✅ v0.2.0 | Full org-mode file read/write |
-| Memory | ✅ v0.2.0 | Vector recall in org-object |
-| Emacs integration | ✅ v0.2.0 | Full org-mode control |
-| Autonomy | ✅ v0.1.0 | 100% local capable (Ollama) |
-
-*** v2.0.0: Lisp Machine Emergence
-
-From Lisp-using agent to true Lisp machine. Agent IS the Emacs process.
-
-| Feature | Description |
-|---------|-------------|
-| Lish: Lisp editor | Org-mode as IDE. Org-babel for interactive evaluation. Full REPL in TUI. No bridge needed. |
-| Lish: Shell replacement | Lisp-based shell that speaks plists. Org-mode buffers as file system. |
-
-*** v3.0.0: Neurosymbolic Maturity
-
-Deterministic planner takes the wheel. LLM relegated to semantic translation.
-
-| Feature | Description |
-|---------|-------------|
-| Deterministic planner | Pure Lisp task scheduler. No LLM needed for planning. |
-| Self-correcting gates | Gates learn from false positives (user override patterns). |
-
-*** v4.0.0: AI Stack Internalized
-
-The agent understands its own weights. No external inference.
-
-| Feature | Description |
-|---------|-------------|
-| Llama.cpp in Lisp | FFI binding. No Python subprocess. Pure Common Lisp inference. |
-| Weights as sexps | Neural weights as Lisp data structures. Homoiconic model introspection. |
-
-*** v5.0.0: True Agency
-
-World models, temporal reasoning, goal persistence across restarts.
-
-| Feature | Description |
-|---------|-------------|
-| World models | Predictive models of user behavior, project dynamics, system state. |
-| Temporal reasoning | Scheduling, deadlines, elapsed duration awareness. |
-| Goal persistence | Goals survive restarts. Long-term projects in org-objects. |
-
-** Design Principles
-
-*** Radical Transparency
-
-If you can't explain it, you can't do it. Every action must be auditable. Hidden reasoning is forbidden.
-
-*** Autonomy First
-
-Dependency on proprietary systems is debt. Prefer local, offline-capable solutions.
-
-*** Zero Bloat
-
-Complexity must be earned, not anticipated. The harness must remain minimal.
-
-*** Modularity
-
-The kernel must survive even if all skills fail. Complexity belongs at the edges.
-
-*** Mentorship
-
-Teaching is the highest form of assistance. Every action should increase capability.
-
-*** Sustainability
-
-Build for the 100-year horizon. Design for offline operation, local inference.
-
-* Contributing
-
-See [[file:docs/CONTRIBUTING.org][CONTRIBUTING.org]] for the Literate Granularity standard and skill creation guidelines.
+- **[[file:docs/ROADMAP.org][The Evolutionary Roadmap]]:** See our detailed plan for reaching State-of-the-Art capabilities.
+- **[[file:docs/CONTRIBUTING.org][Contributing Guidelines]]:** Learn how to teach OpenCortex new skills.
+- **[[file:harness/loop.org][The Core Engine]]:** Read the code that drives the agent's heartbeat.
 
 * License
 
 openCortex is released under the [[file:LICENSE][AGPLv3 license]].
-
 See [[file:CLA.org][CLA.org]] for the Contributor License Agreement.

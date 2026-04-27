@@ -1,0 +1,163 @@
+#+TITLE: OpenCortex Evolutionary Roadmap
+#+STARTUP: content
+
+* The Evolutionary Roadmap
+
+The roadmap is designed working backwards from SOTA parity (V 1.0.0), guiding each version toward a fully autonomous, self-editing agent. Each version builds on the previous, with features designed to be implemented in pure Common Lisp + Org-mode.
+
+** Non-Negotiable Identity
+- Pure Common Lisp + Org-mode. No JSON. No YAML. No external databases.
+- Single-address-space memory (Lisp hash tables in RAM — the agent IS the memory).
+- "Thin harness, fat skills" — complexity lives at the edges, not the kernel.
+- One agent composed of many skills. Concurrency via bordeaux-threads (shared memory).
+- Plists everywhere — homoiconic communication between all components.
+
+** Version Roadmap
+
+*** v0.1.0: The Autonomous Foundation — CURRENT RELEASE ✅
+
+The secure, auditable Lisp kernel. All core infrastructure in place.
+
+| Component | Status | Notes |
+|-----------|--------|-------|
+| Perceive-Reason-Act pipeline | ✅ | 3-stage metabolic loop |
+| Skills engine with jailed loading | ✅ | defskill, topological sort, hot-reload |
+| Policy skill (6 invariants) | ✅ | Transparency, Autonomy, Bloat, Modularity, Mentorship, Sustainability |
+| Bouncer skill | ✅ | Command whitelist guard functions |
+| Memory (org-object + Merkle) | ✅ | Hash tables, snapshots, rollback |
+| Lisp validator skill | ✅ | Syntax validation before eval |
+| Scribe + Gardener skills | ✅ | Heartbeat-driven distillation + audit |
+| LLM gateway (OpenRouter + Ollama) | ✅ | Provider cascade |
+| Shell actuator | ✅ | Safe command execution |
+| Emacs bridge via Swank | ✅ | Point/buffer updates |
+| FiveAM test suite | ✅ | Memory, boot, pipeline, act, communication |
+| Credentials vault | ✅ | Encrypted storage |
+
+*** v0.2.0: Self-Improvement + Local LLMs — NEXT
+
+Self-editing is the foundation of all future growth. Full org-mode manipulation makes the agent a true Emacs citizen.
+
+| Feature | Description |
+|---------|-------------|
+| org-skill-self-edit | Hook into =:syntax-error= events. Deterministic: auto-balance parens. Probabilistic: LLM surgical fix with memory rollback on failure. |
+| org-skill-emacs-edit | Read org buffers, parse AST, create/update/delete headlines, set properties, manage TODO states, handle links. |
+| Local vector search | =generate-embeddings= via Ollama. Add =:vector= to org-object. Semantic search with cosine similarity. |
+| Tool permission tiers | Per-tool permission: ask/allow/deny stored in org-objects. Filter tools before LLM sees them. |
+| Skill hot-reload | Swap compiled skill files without breaking active sockets. |
+
+*** v0.3.0: Event Orchestration + HITL
+
+Unified control plane and Human-in-the-Loop (HITL) state management.
+
+| Feature | Description |
+|---------|-------------|
+| org-skill-event-orchestrator | Unified hooks + cron + routing. Three tiers: =:REFLEX= (no LLM), =:COGNITION= (light LLM), =:REASONING= (full LLM). |
+| Human-in-the-Loop (HITL) | Continuation-based interaction. The agent can "suspend" its cognitive loop to ask for permission or clarification and resume precisely where it left off. |
+| org-skill-context-manager | Stack-based project scoping. =push-context= / =pop-context=. Path resolution relative to context. |
+| Memory scope segmentation | =:scope= property on org-objects: memex/session/project. Scope-aware retrieval. |
+| Model-tier routing | Complexity-based model selection: heartbeat → tiny, user → medium, reasoning → large. |
+| Slash commands | =M-x= style command palette in TUI. Commands defined in Org-mode. |
+
+*** v0.4.0: Long-Horizon Planning + Git Workflows
+
+Structured tracking, failure handling, and course correction for multi-step engineering work.
+
+| Feature | Description |
+|---------|-------------|
+| org-skill-long-horizon | Decompose tasks into Org-mode headline trees. Terminal states: =:done= / =:blocked= / =:stuck=. Parent summarises children. Branch pruning. |
+| org-skill-git-steward | Status, diff, commit, push, branch. Policy enforces commit-before-modify. |
+| TDD runner | FiveAM on file save. =:test-failure= events. Hook into self-fix for auto-repair. |
+| Deep Emacs integration | Full org-agenda awareness. Navigate, clock time, refile, archive. |
+
+*** v0.5.0: Interactive Actuation & Environment Stewardship
+
+Interactive terminal sessions and autonomous dependency management.
+
+| Feature | Description |
+|---------|-------------|
+| Interactive PTY Actuator | Stream long-running process output to the context window (e.g., `npm run dev`, REPLs) with async interrupt control. |
+| The Environment Steward | Autonomously detect missing dependencies (e.g., "Command not found"), propose an installation command, and retry the failed action. |
+
+*** v0.6.0: Concurrency + Creator + GTD
+
+The agent bootstraps itself and manages parallel workstreams.
+
+| Feature | Description |
+|---------|-------------|
+| org-skill-sub-agent-manager | Lightweight Lisp-native sub-agents (via bordeaux-threads) that share memory but have isolated execution contexts for background work. |
+| org-skill-creator | LLM drafts complete skill org-file from natural language. Mandatory: syntax validation → jail-load → test → register. |
+| org-skill-architect | Scan =:STATUS: FROZEN= PRDs. Generate Phase B PROTOCOL. |
+| org-skill-gtd | Full GTD cycle: capture, clarify, organize, reflect, engage. org-gtd v4.0 DAG (=:TRIGGER:=, =:BLOCKER:=). |
+| Consensus loop | Run multiple providers for critical decisions. Compare results, detect disagreements. |
+| Web research | Headless Chromium via Python bridge. Text extraction, screenshots, Gemini Web UI automation. |
+
+*** v0.7.0: Visual Grounding & MCP Bridge
+
+Multimodal visual interaction and ecosystem-wide tool compatibility.
+
+| Feature | Description |
+|---------|-------------|
+| Computer Use / Vision | Allow the agent to request host OS or browser screenshots, analyze the UI, and issue precise X/Y coordinate click/type commands via an X11/Wayland bridge. |
+| MCP Gateway Bridge | Lisp-native client for the Model Context Protocol, allowing OpenCortex to connect to the entire ecosystem of external tools and data sources. |
+
+*** v0.8.0: The Evaluation Harness
+
+Automated benchmarking to mathematically prove the agent's reasoning capabilities.
+
+| Feature | Description |
+|---------|-------------|
+| SWE-Bench Harness | Automated pipeline that clones repositories, feeds GitHub issues, tracks the multi-step resolution trajectory, runs tests, and scores success. |
+
+*** v1.0.0: SOTA Parity
+
+Feature-complete agent competitive with commercial agents. All features reimplemented in pure Lisp.
+
+| Area | Status | Notes |
+|------|--------|-------|
+| Self-improvement | ✅ v0.2.0 | Self-edit + lisp-repair |
+| Planning | ✅ v0.4.0 | Task tree DAGs with terminal states |
+| Tool ecosystem | 🟡 v0.4.0 | 10+ cognitive tools |
+| Context window | ✅ v0.3.0 | Semantic search + scope segmentation |
+| Safety | ✅ v0.1.0 | 6 Policy invariants + formal verification |
+| Multi-step tasks | ✅ v0.4.0 | Task trees with failure handling |
+| Code editing | ✅ v0.2.0 | Full org-mode file read/write |
+| Memory | ✅ v0.2.0 | Vector recall in org-object |
+| Emacs integration | ✅ v0.2.0 | Full org-mode control |
+| Autonomy | ✅ v0.1.0 | 100% local capable (Ollama) |
+
+*** v2.0.0: Lisp Machine Emergence
+
+From Lisp-using agent to true Lisp machine. Agent IS the Emacs process.
+
+| Feature | Description |
+|---------|-------------|
+| Lish: Lisp editor | Org-mode as IDE. Org-babel for interactive evaluation. Full REPL in TUI. No bridge needed. |
+| Lish: Shell replacement | Lisp-based shell that speaks plists. Org-mode buffers as file system. |
+
+*** v3.0.0: Neurosymbolic Maturity
+
+Deterministic planner takes the wheel. LLM relegated to semantic translation.
+
+| Feature | Description |
+|---------|-------------|
+| Deterministic planner | Pure Lisp task scheduler. No LLM needed for planning. |
+| Self-correcting gates | Gates learn from false positives (user override patterns). |
+
+*** v4.0.0: AI Stack Internalized
+
+The agent understands its own weights. No external inference.
+
+| Feature | Description |
+|---------|-------------|
+| Llama.cpp in Lisp | FFI binding. No Python subprocess. Pure Common Lisp inference. |
+| Weights as sexps | Neural weights as Lisp data structures. Homoiconic model introspection. |
+
+*** v5.0.0: True Agency
+
+World models, temporal reasoning, goal persistence across restarts.
+
+| Feature | Description |
+|---------|-------------|
+| World models | Predictive models of user behavior, project dynamics, system state. |
+| Temporal reasoning | Scheduling, deadlines, elapsed duration awareness. |
+| Goal persistence | Goals survive restarts. Long-term projects in org-objects. |

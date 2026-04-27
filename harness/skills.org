@@ -8,6 +8,57 @@
 
 A static, hardcoded architecture is inherently fragile. The ~opencortex~ Skill Engine enables **Late-Binding Intelligence**, allowing the system to discover and integrate new cognitive capabilities (actuators, solvers, sensors) at runtime without a kernel restart.
 
+** Literate, Single-File Skills
+
+In openCortex, a Skill is simply a *single .org file* containing everything:
+- The documentation (prose explaining the skill's purpose)
+- The AI instructions (how the LLM should use this skill)
+- The deterministic code (Lisp that verifies/proposes actions)
+
+When the system boots, it compiles these skills directly into the live Lisp image. Skills are hot-reloadable without restarting the daemon.
+
+#+begin_src mermaid
+flowchart TD
+    subgraph Skill["Skill: policy.org"]
+        Docs["Documentation<br/>'This skill enforces...'"]
+        AI["AI Instructions<br/>'When the user asks about...'"]
+        Code["Deterministic Code<br/>'(defun policy-check-...)'"]
+    end
+
+    subgraph Harness["Harness Core"]
+        Package["package.lisp"]
+        Loop["loop.lisp"]
+        Perceive["perceive.lisp"]
+        Reason["reason.lisp"]
+        Act["act.lisp"]
+    end
+
+    Code --> |Compiles into| Harness
+    Harness --> |Runs| Pipeline
+    Pipeline --> |Feeds| Skill
+#+end_src
+
+** The Skill Registry
+
+Skills are discovered, sorted by dependency, and loaded at boot:
+
+#+begin_src mermaid
+flowchart LR
+    subgraph Discovery["Skill Discovery"]
+        Scan["Scan skills/ directory"]
+        Sort["Topological sort by DEPENDS_ON"]
+    end
+
+    subgraph Loading["Skill Loading"]
+        Validate["Validate syntax"]
+        Jail["Jail in package namespace"]
+        Register["Register in catalog"]
+    end
+
+    Scan --> Sort --> Validate --> Jail --> Register
+#+end_src
+
+
 ** Global Skill Registry
 
 #+begin_src lisp :tangle ./skills.lisp
