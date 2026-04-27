@@ -19,6 +19,8 @@
                 (:file "harness/reason")
                 (:file "harness/act")
                 (:file "harness/loop")
+                (:file "harness/doctor")
+                (:file "harness/setup-wizard")
 
                 (:file "skills/org-skill-policy")
                 (:file "skills/org-skill-bouncer")
@@ -31,7 +33,6 @@
                 (:file "skills/org-skill-emacs-edit")
                 (:file "skills/org-skill-tool-permissions")
                 (:file "skills/org-skill-self-fix")
-                (:file "skills/org-skill-lisp-validator")
                 (:file "skills/org-skill-peripheral-vision"))
 
   :build-operation "program-op"
@@ -53,7 +54,9 @@
                (:file "tests/lisp-validator-tests")
                (:file "tests/literate-programming-tests")
                (:file "tests/self-edit-tests")
-               (:file "tests/tool-permissions-tests")))
+               (:file "tests/tool-permissions-tests")
+               (:file "tests/doctor-tests")
+               (:file "tests/setup-wizard-tests")))
 
 (defsystem :opencortex/tui
   :depends-on (:opencortex :croatoan :usocket :bordeaux-threads)

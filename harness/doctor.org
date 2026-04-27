@@ -1,0 +1,168 @@
+#+TITLE: System Diagnostic Doctor (doctor.org)
+#+AUTHOR: Agent
+#+FILETAGS: :harness:setup:diagnostic:
+#+STARTUP: content
+
+* Overview
+The *System Doctor* is the primary diagnostic utility for the OpenCortex. Its purpose is to transform opaque startup failures into actionable engineering reports. 
+
+By centralizing environment validation, we ensure that the "Brain" never attempts to boot in a compromised or incomplete state.
+
+* Phase A: Demand (Thinking)
+** The XDG Standard Rationale
+To ensure OpenCortex behaves as a first-class POSIX citizen, we adopt the **XDG Base Directory Specification**. This separates the system into four logical layers:
+
+1. **Configuration (`~/.config/opencortex`)**: User-editable settings and secrets.
+2. **Data (`~/.local/share/opencortex`)**: Tangled Lisp engine artifacts (immutable by user).
+3. **State (`~/.local/state/opencortex`)**: Dynamic persistence like brain snapshots.
+4. **Bin (`~/.local/bin`)**: The CLI shim for global invocation.
+
+** The Detection Invariant: Shell Probing
+Common Lisp's `uiop:getenv` is strictly typed in SBCL. The Doctor must ensure that missing variables are handled as logic failures, not type crashes. Furthermore, binary detection must use a shell probe (`command -v` or `which`) to account for varying `$PATH` inheritance between interactive and headless sessions.
+
+* Phase B: Protocol (Success Criteria)
+
+** Package Context
+#+begin_src lisp :tangle (expand-file-name "doctor-tests.lisp" (concat (or (getenv "INSTALL_DIR") ".") "/tests"))
+(defpackage :opencortex-doctor-tests
+  (:use :cl :fiveam :opencortex)
+  (:export #:doctor-suite))
+#+end_src
+
+#+begin_src lisp :tangle (expand-file-name "doctor-tests.lisp" (concat (or (getenv "INSTALL_DIR") ".") "/tests"))
+(in-package :opencortex-doctor-tests)
+#+end_src
+
+#+begin_src lisp :tangle (expand-file-name "doctor-tests.lisp" (concat (or (getenv "INSTALL_DIR") ".") "/tests"))
+(def-suite doctor-suite :description "Verification of the System Doctor diagnostic logic")
+#+end_src
+
+#+begin_src lisp :tangle (expand-file-name "doctor-tests.lisp" (concat (or (getenv "INSTALL_DIR") ".") "/tests"))
+(in-suite doctor-suite)
+#+end_src
+
+** Dependency Tests
+#+begin_src lisp :tangle (expand-file-name "doctor-tests.lisp" (concat (or (getenv "INSTALL_DIR") ".") "/tests"))
+(test test-dependency-check-fail
+  "Verify that missing binaries are correctly identified as failures."
+  (let ((opencortex::*doctor-required-binaries* '("non-existent-binary-123")))
+    (is (null (opencortex:doctor-check-dependencies)))))
+#+end_src
+
+** Environment Tests
+#+begin_src lisp :tangle (expand-file-name "doctor-tests.lisp" (concat (or (getenv "INSTALL_DIR") ".") "/tests"))
+(test test-env-validation-fail
+  "Verify that an invalid MEMEX_DIR triggers a critical failure."
+  (let ((old-m (uiop:getenv "MEMEX_DIR"))
+        (old-s (uiop:getenv "SKILLS_DIR")))
+    (unwind-protect
+         (progn
+           (setf (uiop:getenv "MEMEX_DIR") "/non/existent/path/999")
+           (is (null (opencortex:doctor-check-env))))
+      (setf (uiop:getenv "MEMEX_DIR") (or old-m ""))
+      (setf (uiop:getenv "SKILLS_DIR") (or old-s "")))))
+#+end_src
+
+* Phase C: Implementation (Build)
+
+** Package Context
+#+begin_src lisp :tangle (expand-file-name "doctor.lisp" (concat (or (getenv "INSTALL_DIR") ".") "/harness"))
+(in-package :opencortex)
+#+end_src
+
+** Global Configuration
+#+begin_src lisp :tangle (expand-file-name "doctor.lisp" (concat (or (getenv "INSTALL_DIR") ".") "/harness"))
+(defvar *doctor-required-binaries* '("sbcl" "emacs" "git" "socat" "nc")
+  "List of external binaries required for full system operation.")
+#+end_src
+
+** Dependency Verification
+#+begin_src lisp :tangle (expand-file-name "doctor.lisp" (concat (or (getenv "INSTALL_DIR") ".") "/harness"))
+(defun doctor-check-dependencies ()
+  "Verifies that required external binaries are available in the PATH via a shell probe."
+  (let ((all-ok t))
+    (harness-log "DOCTOR: Checking system dependencies...")
+    (dolist (dep *doctor-required-binaries*)
+      (let ((path (ignore-errors 
+                    (uiop:run-program (list "which" dep) 
+                                      :output :string :ignore-error-status t))))
+        (if (and path (> (length path) 0))
+            (harness-log "  [OK] Found ~a" dep)
+            (progn
+              (harness-log "  [FAIL] Missing binary: ~a" dep)
+              (setf all-ok nil)))))
+    all-ok))
+#+end_src
+
+** Environment & XDG Validation
+#+begin_src lisp :tangle (expand-file-name "doctor.lisp" (concat (or (getenv "INSTALL_DIR") ".") "/harness"))
+(defun doctor-check-env ()
+  "Validates XDG directories and environment configuration against the POSIX standard."
+  (harness-log "DOCTOR: Checking XDG environment...")
+  (let ((all-ok t)
+        (config-dir (uiop:getenv "OC_CONFIG_DIR"))
+        (data-dir (uiop:getenv "OC_DATA_DIR"))
+        (state-dir (uiop:getenv "OC_STATE_DIR"))
+        (memex-dir (uiop:getenv "MEMEX_DIR")))
+    
+    (flet ((check-dir (name path critical)
+             (if (and path (> (length path) 0))
+                 (if (uiop:directory-exists-p path)
+                     (harness-log "  [OK] ~a: ~a" name path)
+                     (progn
+                       (harness-log "  [FAIL] ~a directory missing: ~a" name path)
+                       (when critical (setf all-ok nil))))
+                 (progn
+                   (harness-log "  [FAIL] ~a variable not set." name)
+                   (when critical (setf all-ok nil))))))
+
+      (check-dir "Config (OC_CONFIG_DIR)" config-dir t)
+      (check-dir "Data (OC_DATA_DIR)" data-dir t)
+      (check-dir "State (OC_STATE_DIR)" state-dir t)
+      (check-dir "Memex (MEMEX_DIR)" memex-dir t))
+    all-ok))
+#+end_src
+
+** LLM Connectivity
+#+begin_src lisp :tangle (expand-file-name "doctor.lisp" (concat (or (getenv "INSTALL_DIR") ".") "/harness"))
+(defun doctor-check-llm ()
+  "Tests connectivity to primary LLM providers. Non-critical fallback allowed."
+  (harness-log "DOCTOR: Checking LLM connectivity...")
+  (let ((openrouter-key (uiop:getenv "OPENROUTER_API_KEY")))
+    (if (and openrouter-key (> (length openrouter-key) 0))
+        (progn
+          (harness-log "  [OK] OpenRouter API Key detected.")
+          t)
+        (progn
+          (harness-log "  [WARN] No OpenRouter API Key. Falling back to local inference only.")
+          t))))
+#+end_src
+
+** Orchestration
+#+begin_src lisp :tangle (expand-file-name "doctor.lisp" (concat (or (getenv "INSTALL_DIR") ".") "/harness"))
+(defun doctor-run-all ()
+  "Executes the full diagnostic suite and returns T if system is healthy."
+  (harness-log "==================================================")
+  (harness-log " OPENCORTEX DOCTOR: Commencing Health Check")
+  (harness-log "==================================================")
+  (let ((dep-ok (doctor-check-dependencies))
+        (env-ok (doctor-check-env))
+        (llm-ok (doctor-check-llm)))
+    (harness-log "==================================================")
+    (if (and dep-ok env-ok)
+        (progn
+          (harness-log " ✓ SYSTEM HEALTHY: Ready for ignition.")
+          t)
+        (progn
+          (harness-log " ✗ SYSTEM UNHEALTHY: Fix the errors above.")
+          nil))))
+#+end_src
+
+** CLI Entry Point
+#+begin_src lisp :tangle (expand-file-name "doctor.lisp" (concat (or (getenv "INSTALL_DIR") ".") "/harness"))
+(defun doctor-main ()
+  "Entry point for the 'doctor' CLI command."
+  (if (doctor-run-all)
+      (uiop:quit 0)
+      (uiop:quit 1)))
+#+end_src

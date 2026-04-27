@@ -32,6 +32,21 @@ The ~package.lisp~ file defines the public API of the ~opencortex~ harness. It s
    #:harness-log
    #:main
 
+   ;; --- Diagnostic Doctor ---
+   #:doctor-run-all
+   #:doctor-main
+   #:doctor-check-dependencies
+   #:doctor-check-env
+
+   ;; --- Setup Wizard ---
+   #:register-provider
+   #:system-ready-p
+   #:run-setup-wizard
+
+   ;; --- Diagnostic Doctor ---
+   #:doctor-run-all
+   #:doctor-main
+
    ;; --- Memory (CLOSOS) ---
    #:ingest-ast
    #:lookup-object
