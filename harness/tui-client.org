@@ -129,16 +129,16 @@ A simple MVP console is insufficient for a Lisp Machine. To reach v0.2.0, the TU
 (defun enqueue-msg (msg)
   "Thread-safe addition to incoming message queue."
   (bt:with-lock-held (*queue-lock*)
-    (push msg *incoming-msgs*)))
-#+end_src
+    (setf *incoming-msgs* (append *incoming-msgs* (list msg)))))
 
 #+begin_src lisp :tangle (expand-file-name "tui-client.lisp" (concat (or (getenv "INSTALL_DIR") ".") "/harness"))
 (defun dequeue-msgs ()
   "Thread-safe retrieval of incoming messages."
   (bt:with-lock-held (*queue-lock*)
-    (let ((msgs (nreverse *incoming-msgs*)))
+    (let ((msgs *incoming-msgs*))
       (setf *incoming-msgs* nil)
       msgs)))
+#+end_src
 #+end_src
 
 ** Styling Engine
@@ -193,7 +193,7 @@ A simple MVP console is insufficient for a Lisp Machine. To reach v0.2.0, the TU
                                                                :PAYLOAD (list :SENSOR :user-input :TEXT cmd))))
             (finish-output stream))
         (error (c)
-          (push "ERROR: Connection to daemon lost." *chat-history*)
+          (enqueue-msg "ERROR: Connection to daemon lost.")
           (setf *is-running* nil))))
     (when (string= cmd "/exit") (setf *is-running* nil))
     (when (string= cmd "/clear") (setf *chat-history* nil))))

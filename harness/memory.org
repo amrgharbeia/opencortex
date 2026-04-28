@@ -128,7 +128,12 @@ Because objects are stored immutably in the `*history-store*`, a snapshot is a l
 
 (defun snapshot-memory ()
   "Creates a lightweight, Copy-on-Write snapshot using Merkle-Tree pointers."
-  (let ((snapshot (copy-hash-table *memory*)))
+  ;; To prevent live modification of objects from affecting snapshots,
+  ;; we must copy the objects themselves when creating the snapshot.
+  (let ((snapshot (make-hash-table :test 'equal :size (hash-table-size *memory*))))
+    (maphash (lambda (k v) 
+               (setf (gethash k snapshot) (copy-org-object v)))
+             *memory*)
     (push (list :timestamp (get-universal-time) :data snapshot) *object-store-snapshots*)
     (when (> (length *object-store-snapshots*) 20)
       (setf *object-store-snapshots* (subseq *object-store-snapshots* 0 20)))
