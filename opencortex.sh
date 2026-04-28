@@ -63,7 +63,7 @@ setup_system() {
 
     export INSTALL_DIR="$OC_DATA_DIR"
 
-    # Critical: Tangle manifest first to establish system structure (into root and harness)
+    # Critical: Tangle manifest first to establish system structure (into root)
     echo "Tangling harness/manifest.org..."
     (cd "$OC_DATA_DIR" && emacs -Q --batch --eval "(require 'org)" --eval "(setq org-confirm-babel-evaluate nil)" --eval "(org-babel-tangle-file \"$OC_DATA_DIR/harness/manifest.org\")" >/dev/null 2>&1) || true
 
@@ -80,6 +80,14 @@ setup_system() {
         echo "Tangling $f..."
         (cd "$OC_DATA_DIR/skills" && emacs -Q --batch --eval "(require 'org)" --eval "(setq org-confirm-babel-evaluate nil)" --eval "(org-babel-tangle-file \"$OC_DATA_DIR/$f\")" >/dev/null 2>&1) || true
     done
+
+    # Special handling for tests that need to go into tests/
+    # We'll just move them after tangling since many .org files tangle to both code and tests
+    mkdir -p "$OC_DATA_DIR/tests"
+    find "$OC_DATA_DIR/harness" "$OC_DATA_DIR/skills" -name "*-tests.lisp" -exec mv {} "$OC_DATA_DIR/tests/" \; 2>/dev/null || true
+    
+    # Also move run-all-tests.lisp if it landed in the wrong place
+    [ -f "$OC_DATA_DIR/run-all-tests.lisp" ] && mv "$OC_DATA_DIR/run-all-tests.lisp" "$OC_DATA_DIR/harness/"
     cd "$SCRIPT_DIR"    # Create the bin shim
     echo -e "${YELLOW}--- Creating Bin Shim in $OC_BIN_DIR/opencortex ---${NC}"
     ln -sf "$SCRIPT_DIR/opencortex.sh" "$OC_BIN_DIR/opencortex"
