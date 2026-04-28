@@ -18,26 +18,26 @@ The skill strictly validates the POSIX standard paths resolved during bootstrap,
 * Phase B: Protocol (Success Criteria)
 
 ** Test Suite Context
-#+begin_src lisp :tangle (expand-file-name "diagnostics-tests.lisp" (concat (or (uiop:getenv "INSTALL_DIR") ".") "/tests"))
+#+begin_src lisp :tangle (expand-file-name "diagnostics-tests.lisp" (concat (or (identity (getenv "INSTALL_DIR")) ".") "/tests"))
 (defpackage :opencortex-diagnostics-tests
   (:use :cl :fiveam :opencortex)
   (:export #:diagnostics-suite))
 #+end_src
 
-#+begin_src lisp :tangle (expand-file-name "diagnostics-tests.lisp" (concat (or (uiop:getenv "INSTALL_DIR") ".") "/tests"))
+#+begin_src lisp :tangle (expand-file-name "diagnostics-tests.lisp" (concat (or (identity (getenv "INSTALL_DIR")) ".") "/tests"))
 (in-package :opencortex-diagnostics-tests)
 #+end_src
 
-#+begin_src lisp :tangle (expand-file-name "diagnostics-tests.lisp" (concat (or (uiop:getenv "INSTALL_DIR") ".") "/tests"))
+#+begin_src lisp :tangle (expand-file-name "diagnostics-tests.lisp" (concat (or (identity (getenv "INSTALL_DIR")) ".") "/tests"))
 (def-suite diagnostics-suite :description "Verification of the Diagnostics skill")
 #+end_src
 
-#+begin_src lisp :tangle (expand-file-name "diagnostics-tests.lisp" (concat (or (uiop:getenv "INSTALL_DIR") ".") "/tests"))
+#+begin_src lisp :tangle (expand-file-name "diagnostics-tests.lisp" (concat (or (identity (getenv "INSTALL_DIR")) ".") "/tests"))
 (in-suite diagnostics-suite)
 #+end_src
 
 ** Dependency Tests
-#+begin_src lisp :tangle (expand-file-name "diagnostics-tests.lisp" (concat (or (uiop:getenv "INSTALL_DIR") ".") "/tests"))
+#+begin_src lisp :tangle (expand-file-name "diagnostics-tests.lisp" (concat (or (identity (getenv "INSTALL_DIR")) ".") "/tests"))
 (test test-dependency-check-fail
   "Verify that missing binaries are correctly identified as failures."
   (let ((opencortex::*doctor-required-binaries* '("non-existent-binary-123")))
@@ -47,12 +47,12 @@ The skill strictly validates the POSIX standard paths resolved during bootstrap,
 * Phase C: Implementation (Build)
 
 ** Package Context
-#+begin_src lisp :tangle (expand-file-name "org-skill-diagnostics.lisp" (concat (or (uiop:getenv "INSTALL_DIR") ".") "/skills"))
+#+begin_src lisp :tangle (expand-file-name "org-skill-diagnostics.lisp" (concat (or (identity (getenv "INSTALL_DIR")) ".") "/skills"))
 (in-package :opencortex)
 #+end_src
 
 ** Skill Metadata
-#+begin_src lisp :tangle (expand-file-name "org-skill-diagnostics.lisp" (concat (or (uiop:getenv "INSTALL_DIR") ".") "/skills"))
+#+begin_src lisp :tangle (expand-file-name "org-skill-diagnostics.lisp" (concat (or (identity (getenv "INSTALL_DIR")) ".") "/skills"))
 (defparameter *skill-diagnostics*
   '(:name "diagnostics"
     :description "Performs system health checks and environment validation."
@@ -62,13 +62,13 @@ The skill strictly validates the POSIX standard paths resolved during bootstrap,
 #+end_src
 
 ** Global Configuration
-#+begin_src lisp :tangle (expand-file-name "org-skill-diagnostics.lisp" (concat (or (uiop:getenv "INSTALL_DIR") ".") "/skills"))
+#+begin_src lisp :tangle (expand-file-name "org-skill-diagnostics.lisp" (concat (or (identity (getenv "INSTALL_DIR")) ".") "/skills"))
 (defvar *doctor-required-binaries* '("sbcl" "emacs" "git" "socat" "nc")
   "List of external binaries required for full system operation.")
 #+end_src
 
 ** Dependency Verification
-#+begin_src lisp :tangle (expand-file-name "org-skill-diagnostics.lisp" (concat (or (uiop:getenv "INSTALL_DIR") ".") "/skills"))
+#+begin_src lisp :tangle (expand-file-name "org-skill-diagnostics.lisp" (concat (or (identity (getenv "INSTALL_DIR")) ".") "/skills"))
 (defun doctor-check-dependencies ()
   "Verifies that required external binaries are available in the PATH via a shell probe."
   (let ((all-ok t))
@@ -86,7 +86,7 @@ The skill strictly validates the POSIX standard paths resolved during bootstrap,
 #+end_src
 
 ** Environment & XDG Validation
-#+begin_src lisp :tangle (expand-file-name "org-skill-diagnostics.lisp" (concat (or (uiop:getenv "INSTALL_DIR") ".") "/skills"))
+#+begin_src lisp :tangle (expand-file-name "org-skill-diagnostics.lisp" (concat (or (identity (getenv "INSTALL_DIR")) ".") "/skills"))
 (defun doctor-check-env ()
   "Validates XDG directories and environment configuration against the POSIX standard."
   (harness-log "DOCTOR: Checking XDG environment...")
@@ -115,7 +115,7 @@ The skill strictly validates the POSIX standard paths resolved during bootstrap,
 #+end_src
 
 ** LLM Connectivity
-#+begin_src lisp :tangle (expand-file-name "org-skill-diagnostics.lisp" (concat (or (uiop:getenv "INSTALL_DIR") ".") "/skills"))
+#+begin_src lisp :tangle (expand-file-name "org-skill-diagnostics.lisp" (concat (or (identity (getenv "INSTALL_DIR")) ".") "/skills"))
 (defun doctor-check-llm ()
   "Tests connectivity to primary LLM providers. Non-critical fallback allowed."
   (harness-log "DOCTOR: Checking LLM connectivity...")
@@ -130,7 +130,7 @@ The skill strictly validates the POSIX standard paths resolved during bootstrap,
 #+end_src
 
 ** Orchestration
-#+begin_src lisp :tangle (expand-file-name "org-skill-diagnostics.lisp" (concat (or (uiop:getenv "INSTALL_DIR") ".") "/skills"))
+#+begin_src lisp :tangle (expand-file-name "org-skill-diagnostics.lisp" (concat (or (identity (getenv "INSTALL_DIR")) ".") "/skills"))
 (defun doctor-run-all ()
   "Executes the full diagnostic suite and returns T if system is healthy."
   (harness-log "==================================================")
@@ -150,7 +150,7 @@ The skill strictly validates the POSIX standard paths resolved during bootstrap,
 #+end_src
 
 ** CLI Entry Point
-#+begin_src lisp :tangle (expand-file-name "org-skill-diagnostics.lisp" (concat (or (uiop:getenv "INSTALL_DIR") ".") "/skills"))
+#+begin_src lisp :tangle (expand-file-name "org-skill-diagnostics.lisp" (concat (or (identity (getenv "INSTALL_DIR")) ".") "/skills"))
 (defun doctor-main ()
   "Entry point for the 'doctor' CLI command."
   (if (doctor-run-all)

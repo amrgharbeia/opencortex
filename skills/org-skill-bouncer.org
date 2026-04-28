@@ -1,4 +1,4 @@
-#+PROPERTY: header-args:lisp :tangle (expand-file-name "org-skill-bouncer.lisp" (concat (or (uiop:getenv "INSTALL_DIR") ".") "/skills"))
+#+PROPERTY: header-args:lisp :tangle (expand-file-name "org-skill-bouncer.lisp" (concat (or (identity (getenv "INSTALL_DIR")) ".") "/skills"))
 :PROPERTIES:
 :ID:       bouncer-agent-skill
 :CREATED:  [2026-04-11 Sat 15:20]

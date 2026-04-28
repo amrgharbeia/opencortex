@@ -1,4 +1,4 @@
-#+PROPERTY: header-args:lisp :tangle (expand-file-name "org-skill-literate-programming.lisp" (concat (or (uiop:getenv "INSTALL_DIR") ".") "/skills"))
+#+PROPERTY: header-args:lisp :tangle (expand-file-name "org-skill-literate-programming.lisp" (concat (or (identity (getenv "INSTALL_DIR")) ".") "/skills"))
 :PROPERTIES:
 :ID:       literate-programming-skill-2026
 :CREATED:  [2026-04-25 Sat]
@@ -241,7 +241,7 @@ The LP skill runs at priority 1100 (just below engineering-standards at 1000).
 These tests verify the LP enforcement logic. Run with:
 ~(fiveam:run! 'literate-programming-suite)~
 
-#+begin_src lisp :tangle (expand-file-name "literate-programming-tests.lisp" (concat (or (uiop:getenv "INSTALL_DIR") ".") "/tests"))
+#+begin_src lisp :tangle (expand-file-name "literate-programming-tests.lisp" (concat (or (identity (getenv "INSTALL_DIR")) ".") "/tests"))
 (defpackage :opencortex-literate-programming-tests
   (:use :cl :fiveam :opencortex)
   (:export #:literate-programming-suite))

@@ -1,4 +1,4 @@
-#+PROPERTY: header-args:lisp :tangle (expand-file-name "loop.lisp" (concat (or (uiop:getenv "INSTALL_DIR") ".") "/harness"))
+#+PROPERTY: header-args:lisp :tangle (expand-file-name "loop.lisp" (concat (or (identity (getenv "INSTALL_DIR")) ".") "/harness"))
 #+TITLE: The Metabolic Loop (loop.lisp)
 #+AUTHOR: Amr
 #+FILETAGS: :harness:loop:
@@ -324,7 +324,7 @@ The main function orchestrates system startup:
 These tests verify the metabolic loop and error recovery. Run with:
 ~(fiveam:run! 'immune-suite)~
 
-#+begin_src lisp :tangle (expand-file-name "immune-system-tests.lisp" (concat (or (uiop:getenv "INSTALL_DIR") ".") "/tests"))
+#+begin_src lisp :tangle (expand-file-name "immune-system-tests.lisp" (concat (or (identity (getenv "INSTALL_DIR")) ".") "/tests"))
 (defpackage :opencortex-immune-system-tests
   (:use :cl :fiveam :opencortex)
   (:export #:immune-suite))

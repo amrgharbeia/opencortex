@@ -1,4 +1,4 @@
-#+PROPERTY: header-args:lisp :tangle (expand-file-name "org-skill-lisp-utils.lisp" (concat (or (uiop:getenv "INSTALL_DIR") ".") "/skills"))
+#+PROPERTY: header-args:lisp :tangle (expand-file-name "org-skill-lisp-utils.lisp" (concat (or (identity (getenv "INSTALL_DIR")) ".") "/skills"))
 :PROPERTIES:
 :ID:       lisp-utils-skill
 :CREATED:  [2026-04-23 Thu]
@@ -159,7 +159,7 @@ Returns (VALUES t nil) if clean, or (VALUES nil error-message nil nil)."
 
 * Test Suite
 
-#+begin_src lisp :tangle (expand-file-name "lisp-utils-tests.lisp" (concat (or (uiop:getenv "INSTALL_DIR") ".") "/tests"))
+#+begin_src lisp :tangle (expand-file-name "lisp-utils-tests.lisp" (concat (or (identity (getenv "INSTALL_DIR")) ".") "/tests"))
 (defpackage :opencortex-lisp-utils-tests
   (:use :cl :fiveam :opencortex)
   (:export #:lisp-utils-suite))
