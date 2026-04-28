@@ -402,7 +402,7 @@ Utility functions for AST traversal and path resolution.
     ;; We'll use a manual check here since automatic validation is in the Loop
     (let ((obj (lookup-object id)))
       (let ((current-hash (org-object-hash obj))
-            (computed-hash (compute-merkle-hash (org-object-id obj) 
+            (computed-hash (opencortex:compute-merkle-hash (org-object-id obj) 
                                                (org-object-type obj)
                                                (org-object-attributes obj)
                                                (org-object-content obj)

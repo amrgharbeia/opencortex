@@ -28,7 +28,7 @@ The *LLM Gateway* skill provides a unified interface for interacting with multip
     (unwind-protect
          (progn
            (setf (uiop:getenv "OLLAMA_HOST") "localhost:1")
-           (let ((result (opencortex::execute-llm-request :prompt "hello" :provider :ollama)))
+           (let ((result (opencortex.skills.org-skill-llm-gateway::execute-llm-request :prompt "hello" :provider :ollama)))
              (is (eq (getf result :status) :error))
              (is (uiop:string-prefix-p "Ollama Failure" (getf result :message)))))
       (setf (uiop:getenv "OLLAMA_HOST") old-host))))
