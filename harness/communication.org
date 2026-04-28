@@ -67,6 +67,40 @@ The ~communication.lisp~ module defines the low-level transport and framing logi
       (error () :error))))
 #+end_src
 
+** Server Listener (start-daemon)
+#+begin_src lisp
+(defvar *server-socket* nil)
+
+(defun handle-client-connection (socket)
+  "Handles a single TUI/CLI client connection in a dedicated thread."
+  (let ((stream (usocket:socket-stream socket)))
+    (handler-case
+        (progn
+          (format stream "~a" (frame-message (make-hello-message "0.2.0")))
+          (finish-output stream)
+          (loop
+            (let ((msg (read-framed-message stream)))
+              (cond
+                ((eq msg :eof) (return))
+                ((eq msg :error) (return))
+                (t (inject-stimulus msg :stream stream))))))
+      (error (c) (harness-log "CLIENT ERROR: ~a" c)))
+    (ignore-errors (usocket:socket-close socket))))
+
+(defun start-daemon (&key (port 9105))
+  "Starts the network listener for TUI/CLI clients."
+  (setf *server-socket* (usocket:socket-listen "127.0.0.1" port :reuse-address t))
+  (harness-log "DAEMON: Listening on localhost:~a" port)
+  (bt:make-thread
+   (lambda ()
+     (loop
+       (let ((client-socket (usocket:socket-accept *server-socket*)))
+         (when client-socket
+           (bt:make-thread (lambda () (handle-client-connection client-socket))
+                          :name "opencortex-client-handler")))))
+   :name "opencortex-server-listener"))
+#+end_src
+
 ** Handshake Logic
 #+begin_src lisp
 (defun make-hello-message (version)

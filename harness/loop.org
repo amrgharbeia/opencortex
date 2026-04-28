@@ -109,6 +109,7 @@ The Metabolic Loop is the fundamental rhythm of OpenCortex: the continuous proce
   (initialize-actuators)
   (initialize-all-skills)
   (start-heartbeat)
+  (start-daemon)
 
   #+sbcl
   (sb-sys:enable-interrupt sb-unix:sigint
