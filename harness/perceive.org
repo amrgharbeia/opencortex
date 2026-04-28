@@ -1,67 +1,20 @@
-#+PROPERTY: header-args:lisp :tangle (concat (identity (getenv "INSTALL_DIR")) "/harness/perceive.lisp")" )
 #+TITLE: Stage 1: Perceive (perceive.lisp)
-#+AUTHOR: Amr
+#+AUTHOR: Agent
 #+FILETAGS: :harness:perceive:
 #+STARTUP: content
+#+PROPERTY: header-args:lisp :tangle perceive.lisp
 
-* Stage 1: Perceive (perceive.lisp)
-
-** Architectural Intent: Sensory Normalization
-
+* Overview
 The Perceive stage is the "sensory cortex" of OpenCortex. Its job is to take raw stimuli from the outside world and transform them into standardized Signals that the rest of the pipeline can process.
 
-Raw stimuli come from diverse sources:
-- Terminal input (CLI)
-- Emacs org-mode buffers (via swank)
-- Telegram/Signal messages
-- Heartbeats (internal clock)
-- Shell command outputs
+* Implementation
 
-Each source has its own format and protocol. Perceive normalizes all of them into the Signal format:
-
-: (TYPE :EVENT META (...) PAYLOAD (...))
-
-** Why Normalize?
-
-Without normalization, each downstream component (Reason, Act) would need to understand each input format. With normalization:
-
-1. The gateway layer (CLI, Emacs, Telegram) just sends raw messages
-2. Perceive transforms them into Signals
-3. Reason and Act work with a single, consistent format
-4. Adding new input sources only requires gateway code, not changes to the core
-
-** The Signal Format
-
-Signals are property lists with a consistent structure:
-
-| Key | Description |
-|-----|-------------|
-| :type | :EVENT, :REQUEST, :RESPONSE, :LOG |
-| :payload | The actual content (sensor data, actions, etc.) |
-| :meta | Metadata: source, session, reply stream |
-| :status | Processing status: :perceived, :reasoned, :acted |
-| :depth | Recursion depth for feedback loops |
-| :approved-action | Set by Reason, executed by Act |
-| :foveal-focus | ID of the node user is interacting with |
-
-** Async vs Sync Processing
-
-Some sensors (user input, chat messages) are processed asynchronously in dedicated threads. This prevents:
-- A slow API call from blocking the entire system
-- Race conditions when multiple inputs arrive simultaneously
-
-Other sensors (heartbeats, interrupts) are processed synchronously to maintain ordering guarantees.
-
-* Package Context
-
+** Package Context
 #+begin_src lisp
 (in-package :opencortex)
 #+end_src
 
-* Sensor Configuration
-
-** Async Sensor Registry
-
+** Sensor Configuration
 #+begin_src lisp
 (defvar *async-sensors* '(:chat-message :delegation :user-command)
   "Sensors that are processed in dedicated threads.
@@ -71,11 +24,7 @@ Other sensors (heartbeats, interrupts) are processed synchronously to maintain o
 
   Other sensors (:heartbeat, :interrupt, :buffer-update) are processed
   synchronously to maintain temporal ordering.")
-#+end_src
 
-** Foveal Focus State
-
-#+begin_src lisp
 (defvar *foveal-focus-id* nil
   "The Org ID of the node the user is currently interacting with.
 
@@ -86,10 +35,7 @@ Other sensors (heartbeats, interrupts) are processed synchronously to maintain o
   Updated on :point-update events from Emacs.")
 #+end_src
 
-* Stimulus Injection
-
-** inject-stimulus: Entry Point
-
+** Stimulus Injection (inject-stimulus)
 #+begin_src lisp
 (defun inject-stimulus (raw-message &key stream (depth 0))
   "Inject a raw message into the signal processing pipeline.
@@ -120,19 +66,16 @@ Other sensors (heartbeats, interrupts) are processed synchronously to maintain o
       (setf (getf meta :reply-stream) stream))
 
     (setf (getf raw-message :meta) meta)
+    (setf (getf raw-message :depth) depth)
 
     (if async-p
         ;; Async: process in dedicated thread
         (bt:make-thread
          (lambda ()
-           (restart-case
-               (handler-bind ((error (lambda (c)
-                                       (harness-log "ASYNC ERROR: ~a" c)
-                                       (invoke-restart 'skip-event))))
-                 (process-signal raw-message))
+           (restart-case (process-signal raw-message)
              (skip-event () nil)))
-         :name "opencortex-async-task
-
+         :name "opencortex-async-task")
+        
         ;; Sync: process in main thread with recovery
         (restart-case
             (handler-bind ((error (lambda (c)
@@ -140,13 +83,10 @@ Other sensors (heartbeats, interrupts) are processed synchronously to maintain o
                                     (invoke-restart 'skip-event))))
               (process-signal raw-message))
           (skip-event ()
-            (harness-log "SYSTEM RECOVERY: Stimulus dropped.)))))
+            (harness-log "SYSTEM RECOVERY: Stimulus dropped."))))))
 #+end_src
 
-* The Perceive Gate
-
-** perceive-gate: Signal Normalization
-
+** Perceive Gate (perceive-gate)
 #+begin_src lisp
 (defun perceive-gate (signal)
   "Stage 1 of the metabolic pipeline: Normalize sensory input.
@@ -158,10 +98,7 @@ Other sensors (heartbeats, interrupts) are processed synchronously to maintain o
   4. Tracks foveal focus (user's current node)
   5. Sets :status to :perceived
 
-  Modifies the signal in place and returns it for the next stage.
-
-  Memory snapshots are taken before AST updates to enable rollback
-  if the update causes issues."
+  Modifies the signal in place and returns it for the next stage."
 
   (let* ((payload (getf signal :payload))
          (type (getf signal :type))
@@ -170,7 +107,7 @@ Other sensors (heartbeats, interrupts) are processed synchronously to maintain o
 
     ;; Log the incoming signal for debugging
     (harness-log "GATE [Perceive]: ~a (~a) [Source: ~s]"
-                 type (or sensor "no-sensor (getf meta :source))
+                 type (or sensor "no-sensor") (getf meta :source))
 
     ;; Handle EVENT type sensors
     (cond ((eq type :EVENT)
@@ -180,7 +117,7 @@ Other sensors (heartbeats, interrupts) are processed synchronously to maintain o
              (:buffer-update
               (let ((ast (getf payload :ast)))
                 (when ast
-                  (snapshot-memory)  ; Enable rollback if update causes issues
+                  (snapshot-memory)
                   (ingest-ast ast))))
 
              ;; Point moved to different org node - update focus
@@ -195,8 +132,7 @@ Other sensors (heartbeats, interrupts) are processed synchronously to maintain o
 
              ;; System interrupt - trigger shutdown
              (:interrupt
-              (bt:with-lock-held (*interrupt-lock*)
-                (setf *interrupt-flag* t)))))
+              (setf *interrupt-flag* t))))
 
           ;; Log responses from actuators
           ((eq type :RESPONSE)
@@ -209,40 +145,22 @@ Other sensors (heartbeats, interrupts) are processed synchronously to maintain o
     signal))
 #+end_src
 
-** Sensor Types Reference
-
-| Sensor | Source | Processing | Description |
-|--------|--------|------------|-------------|
-| :user-input | CLI/TUI | Async | Text input from terminal |
-| :chat-message | Telegram/Signal | Async | Messages from messaging apps |
-| :heartbeat | Internal | Sync | Periodic maintenance trigger |
-| :buffer-update | Emacs | Sync | Org buffer was modified |
-| :point-update | Emacs | Sync | Cursor moved to different headline |
-| :interrupt | System | Sync | SIGINT received |
-| :tool-output | Internal | Sync | Result from cognitive tool |
-| :loop-error | Internal | Sync | Error during signal processing |
-
 * Test Suite
 
-These tests verify the Perceive pipeline. Run with:
-~(fiveam:run! 'pipeline-perceive-suite)~
-
-#+begin_src lisp :tangle pipeline-perceive-tests.lisp" (concat (concat (or (getenv "INSTALL_DIR ". "/harness "/tests)
+#+begin_src lisp :tangle tests/pipeline-perceive-tests.lisp
 (defpackage :opencortex-pipeline-perceive-tests
   (:use :cl :fiveam :opencortex)
   (:export #:pipeline-perceive-suite))
 
 (in-package :opencortex-pipeline-perceive-tests)
 
-(def-suite pipeline-perceive-suite
-  :description "Test suite for Perceive pipeline
-
+(def-suite pipeline-perceive-suite :description "Test suite for Perceive pipeline")
 (in-suite pipeline-perceive-suite)
 
 (test test-perceive-gate
   "Perceive gate should update the object store and normalize signal."
   (clrhash opencortex::*memory*)
-  (let* ((signal (list :type :EVENT :payload (list :sensor :buffer-update :ast (list :type :HEADLINE :properties (list :ID "test-node" :TITLE "Test :contents nil))))
+  (let* ((signal (list :type :EVENT :payload (list :sensor :buffer-update :ast (list :type :HEADLINE :properties (list :ID "test-node" :TITLE "Test") :contents nil))))
          (result (perceive-gate signal)))
     (is (eq :perceived (getf result :status)))
     (is (not (null (gethash "test-node" opencortex::*memory*))))))
