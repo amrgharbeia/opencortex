@@ -69,7 +69,7 @@ The *System Manifest* defines the structural components of the OpenCortex. It se
                   (namestring (truename "./")))))
   (push (uiop:ensure-directory-pathname oc-dir) asdf:*central-registry*))
 
-(ql:quickload '(:opencortex :opencortex/tests) :silent t)
+(ql:quickload '(:opencortex :opencortex/tui :opencortex/tests) :silent t)
 
 (format t "~%=== Initializing Skills BEFORE loading tests ===~%")
 (opencortex:initialize-all-skills)
