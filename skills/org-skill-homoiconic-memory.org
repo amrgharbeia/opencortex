@@ -13,6 +13,7 @@ The *Homoiconic Memory* skill provides the core persistence layer for OpenCortex
 * Implementation
 
 #+begin_src lisp
+(in-package :opencortex)
 
 (defun memory-org-to-json (source)
   "Converts Org-mode source to JSON AST."

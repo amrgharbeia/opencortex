@@ -12,7 +12,8 @@ The *Shell Actuator* provides a controlled interface for the OpenCortex to execu
 
 * Implementation
 
-#+begin_src lisp
+#+begin_src lisp :tangle (expand-file-name "org-skill-shell-actuator.lisp" (concat (or (getenv "INSTALL_DIR") ".") "/skills"))
+(in-package :opencortex)
 
 (defparameter *allowed-commands* '("ls" "git" "rg" "grep" "date" "echo" "cat" "node" "python3" "sbcl"))
 

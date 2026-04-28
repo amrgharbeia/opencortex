@@ -13,6 +13,7 @@ The *CLI Gateway* is the primary sensory and actuating interface for human inter
 * Implementation
 
 #+begin_src lisp
+(in-package :opencortex)
 
 (defvar *cli-port* 9105)
 (defvar *cli-server-socket* nil)

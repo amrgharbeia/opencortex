@@ -37,6 +37,13 @@ Fast paren balancing for syntax errors.
        (concatenate 'string code (make-string (- opens closes) :initial-element #\))))
       ((> closes opens)
        (concatenate 'string (make-string (- closes opens) :initial-element #\() code)))))
+
+(defun copy-hash-table (table)
+  "Returns a shallow copy of a hash table."
+  (let ((new-table (make-hash-table :test (hash-table-test table)
+                                    :size (hash-table-count table))))
+    (maphash (lambda (k v) (setf (gethash k new-table) v)) table)
+    new-table))
 #+end_src
 
 ** Parse Target Location
@@ -152,8 +159,8 @@ Provide a fixed version of the code as a lisp form.")
   "Balances parentheses in a code string."
   ((:code :type :string :description "The code to balance"))
   :body (lambda (args)
-          (let ((code (getf args :code))
-                (balanced (self-edit-balance-parens code)))
+          (let* ((code (getf args :code))
+                 (balanced (self-edit-balance-parens code)))
             (handler-case
                 (progn
                   (read-from-string balanced)

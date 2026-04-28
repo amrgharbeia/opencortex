@@ -18,23 +18,7 @@
                 (:file "harness/perceive")
                 (:file "harness/reason")
                 (:file "harness/act")
-                (:file "harness/loop")
-
-                (:file "skills/org-skill-policy")
-                (:file "skills/org-skill-bouncer")
-                (:file "skills/org-skill-scribe")
-                (:file "skills/org-skill-gardener")
-                (:file "skills/org-skill-lisp-utils")
-                (:file "skills/org-skill-literate-programming")
-                (:file "skills/org-skill-engineering-standards")
-                (:file "skills/org-skill-self-edit")
-                (:file "skills/org-skill-emacs-edit")
-                (:file "skills/org-skill-tool-permissions")
-                (:file "skills/org-skill-self-fix")
-                (:file "skills/org-skill-peripheral-vision")
-                (:file "skills/org-skill-gateway-manager")
-                (:file "skills/org-skill-diagnostics")
-                (:file "skills/org-skill-config-manager"))
+                (:file "harness/loop"))
 
   :build-operation "program-op"
   :build-pathname "opencortex-server"

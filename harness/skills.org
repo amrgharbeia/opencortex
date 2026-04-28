@@ -400,18 +400,8 @@ EXAMPLES:
 #+begin_src lisp
 ** Cognitive Tool Registration
 #+begin_src lisp :tangle (expand-file-name "skills.lisp" (concat (or (getenv "INSTALL_DIR") ".") "/harness"))
-(defvar *cognitive-tools* nil "Registry of available Agent capabilities.")
-
-(defmacro def-cognitive-tool (name arg-list &body body)
-  "Registers a new cognitive tool (capability) into the global registry."
-  `(setf (getf *cognitive-tools* ,name)
-         (list :args ',arg-list
-               :executor (lambda (args)
-                           (let ,(mapcar (lambda (arg)
-                                           (let ((arg-name (if (listp arg) (first arg) arg)))
-                                             `(,arg-name (getf args ,(intern (string arg-name) :keyword)))))
-                                         arg-list)
-                             ,@body)))))
+;; Cognitive tools are registered in *cognitive-tools* (defined in package.lisp)
+;; using the def-cognitive-tool macro.
 #+end_src
 
 (def-cognitive-tool :eval "Evaluates raw Common Lisp code in the harness image. Use this for complex calculations or internal state inspection."

@@ -99,6 +99,7 @@ case "$COMMAND" in
              --eval '(load (merge-pathnames "quicklisp/setup.lisp" (user-homedir-pathname)))' \
              --eval "(push (truename \"$OC_DATA_DIR/\") asdf:*central-registry*)" \
              --eval '(ql:quickload :opencortex)' \
+             --eval '(opencortex:initialize-all-skills)' \
              --eval '(opencortex:doctor-main)'
         ;;
 

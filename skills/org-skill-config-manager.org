@@ -75,15 +75,38 @@ Secrets are appended to `~/.config/opencortex/.env`, while structural metadata i
 ** Registry Persistence
 #+begin_src lisp :tangle (expand-file-name "org-skill-config-manager.lisp" (concat (or (getenv "INSTALL_DIR") ".") "/skills"))
 (defvar *providers* nil "Global registry of configured LLM providers.")
-#+end_src
 
-#+begin_src lisp :tangle (expand-file-name "org-skill-config-manager.lisp" (concat (or (getenv "INSTALL_DIR") ".") "/skills"))
+(defun get-oc-config-dir ()
+  "Returns the XDG-compliant config directory for OpenCortex."
+  (let ((env (uiop:getenv "OC_CONFIG_DIR")))
+    (if (and env (> (length env) 0))
+        (uiop:ensure-directory-pathname env)
+        (uiop:merge-pathnames* ".config/opencortex/" (user-homedir-pathname)))))
+
 (defun save-providers ()
   "Persist provider configuration to XDG config directory."
   (let ((path (merge-pathnames "providers.lisp" (get-oc-config-dir))))
     (ensure-directories-exist path)
     (with-open-file (s path :direction :output :if-exists :supersede)
       (format s ";;; OpenCortex Provider Metadata~%~s~%" *providers*))))
+
+(defun prompt-for (label &optional default)
+  "Prompts the user for input on the CLI."
+  (format t "~a~@[ [~a]~]: " label default)
+  (finish-output)
+  (let ((input (read-line)))
+    (if (string= input "")
+        (or default "")
+        input)))
+
+(defun save-secret (provider field val)
+  "Appends a secret to the XDG .env file."
+  (let ((env-file (merge-pathnames ".env" (get-oc-config-dir)))
+        (var-name (format nil "~:@(~a_~a~)" provider field)))
+    (ensure-directories-exist env-file)
+    (with-open-file (out env-file :direction :output :if-exists :append :if-does-not-exist :create)
+      (format out "~a=~a~%" var-name val))
+    (setf (uiop:getenv var-name) val)))
 #+end_src
 
 ** Registry API

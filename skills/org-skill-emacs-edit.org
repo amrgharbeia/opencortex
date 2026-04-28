@@ -89,10 +89,10 @@ Converts AST back to org format, preserving structure.
 (defun emacs-edit-print-headline (ast &key indent-level)
   "Converts a HEADLINE AST node to org text.
 INDENT-LEVEL is number of leading asterisks."
-  (let ((level (or indent-level 1))
-        (stars (make-string level :initial-element #\*))
-        (title (or (getf (getf ast :properties) :TITLE) ""))
-        (todo (getf (getf ast :properties) :TODO)))
+  (let* ((level (or indent-level 1))
+         (stars (make-string level :initial-element #\*))
+         (title (or (getf (getf ast :properties) :TITLE) ""))
+         (todo (getf (getf ast :properties) :TODO)))
     (format nil "~a ~a~%~a"
             stars
             (if todo (format nil "[~a] " (string-upcase todo)) "")
@@ -200,17 +200,17 @@ Add a new headline to an existing AST.
 (defun emacs-edit-add-headline (ast title &key todo properties)
   "Adds a new headline to AST.
 Returns modified AST."
-  (let ((new-id (emacs-edit-generate-id))
-        (new-props (list :ID new-id
-                        :TITLE title
-                        :TODO (or todo "TODO")
-                        :CREATED (format nil "[~a]" 
-                                       (multiple-value-bind (s mi h d mo y)
-                                           (decode-universal-time (get-universal-time))
-                                         (format nil "~a-~a-~a ~a:~a"
-                                                  y mo d h mi)))))
-        (merged-props (loop for (k v) on properties by #'cddr
-                           collect k collect v)))
+  (let* ((new-id (emacs-edit-generate-id))
+         (new-props (list :ID new-id
+                         :TITLE title
+                         :TODO (or todo "TODO")
+                         :CREATED (format nil "[~a]" 
+                                        (multiple-value-bind (s mi h d mo y)
+                                            (decode-universal-time (get-universal-time))
+                                          (format nil "~a-~a-~a ~a:~a"
+                                                   y mo d h mi)))))
+         (merged-props (loop for (k v) on properties by #'cddr
+                            collect k collect v)))
     
     (setf merged-props (append merged-props new-props))
     

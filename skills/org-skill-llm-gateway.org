@@ -49,23 +49,33 @@ The *LLM Gateway* skill provides a unified interface for interacting with multip
 
 ** Cognitive Tools
 #+begin_src lisp :tangle (expand-file-name "org-skill-llm-gateway.lisp" (concat (or (getenv "INSTALL_DIR") ".") "/skills"))
-(def-cognitive-tool :get-ollama-embedding (text)
-  (let* ((host (or (uiop:getenv "OLLAMA_HOST") "localhost:11434"))
-         (url (format nil "http://~a/api/embeddings" host))
-         (body (cl-json:encode-json-to-string `((model . "nomic-embed-text") (prompt . ,text)))))
-    (handler-case
-        (let* ((response (dex:post url :headers '(("Content-Type" . "application/json")) :content body))
-               (json (cl-json:decode-json-from-string response)))
-          (cdr (assoc :embedding json)))
-      (error (c) (harness-log "OLLAMA EMBED ERROR: ~a" c) nil))))
+(def-cognitive-tool :get-ollama-embedding 
+  "Generates vector embeddings via Ollama API."
+  ((:text :type :string :description "Text to embed."))
+  :body (lambda (args)
+          (let ((text (getf args :text)))
+            (let* ((host (or (uiop:getenv "OLLAMA_HOST") "localhost:11434"))
+                   (url (format nil "http://~a/api/embeddings" host))
+                   (body (cl-json:encode-json-to-string `((model . "nomic-embed-text") (prompt . ,text)))))
+              (handler-case
+                  (let* ((response (dex:post url :headers '(("Content-Type" . "application/json")) :content body))
+                         (json (cl-json:decode-json-from-string response)))
+                    (cdr (assoc :embedding json)))
+                (error (c) (harness-log "OLLAMA EMBED ERROR: ~a" c) nil))))))
 #+end_src
 
 #+begin_src lisp :tangle (expand-file-name "org-skill-llm-gateway.lisp" (concat (or (getenv "INSTALL_DIR") ".") "/skills"))
-(def-cognitive-tool :ask-llm (prompt system-prompt provider model)
-  (execute-llm-request :prompt prompt 
-                       :system-prompt system-prompt 
-                       :provider provider 
-                       :model model))
+(def-cognitive-tool :ask-llm 
+  "Unified interface for interacting with LLM providers."
+  ((:prompt :type :string :description "The user prompt")
+   (:system-prompt :type :string :description "The system prompt (optional)")
+   (:provider :type :keyword :description "The provider (e.g., :ollama, :openai)")
+   (:model :type :string :description "The model name"))
+  :body (lambda (args)
+          (execute-llm-request :prompt (getf args :prompt)
+                               :system-prompt (getf args :system-prompt)
+                               :provider (getf args :provider)
+                               :model (getf args :model))))
 #+end_src
 
 ** Skill Registration
