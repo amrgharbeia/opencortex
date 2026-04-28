@@ -1,4 +1,4 @@
-#+PROPERTY: header-args:lisp :tangle (concat (getenv "INSTALL_DIR") "/harness/skills.lisp" (expand-file-name ""))
+#+PROPERTY: header-args:lisp :tangle (expand-file-name "skills.lisp")
 #+TITLE: The Skill Engine (skills.lisp)
 #+AUTHOR: Amr
 #+FILETAGS: :harness:skills:
@@ -347,7 +347,7 @@ Only loads blocks that specify a .lisp tangle target, ignoring tests and example
 
 (defun initialize-all-skills ()
   "Scans the directory defined by SKILLS_DIR and hot-loads skills using topological order."
-  (let* ((env-path (getenv "SKILLS_DIR"))
+  (let* ((env-path (uiop:getenv "SKILLS_DIR"))
          (skills-dir-str (or env-path (namestring (merge-pathnames "notes/" (user-homedir-pathname)))))
          (resolved-path (context-resolve-path skills-dir-str))
          (skills-dir (if resolved-path (uiop:ensure-directory-pathname resolved-path) nil)))
@@ -419,7 +419,7 @@ EXAMPLES:
 *** The Eval Tool (Internal Inspection)
 #+begin_src lisp
 ** Cognitive Tool Registration
-#+begin_src lisp :tangle (concat (getenv "INSTALL_DIR") "/harness/skills.lisp" (expand-file-name ""))
+#+begin_src lisp :tangle (expand-file-name "skills.lisp" (expand-file-name ""))
 ;; Cognitive tools are registered in *cognitive-tools* (defined in package.lisp)
 ;; using the def-cognitive-tool macro.
 #+end_src
@@ -475,17 +475,17 @@ EXAMPLES:
            (declare (ignore context))
            (let ((skill (getf args :skill)))
              (or (uiop:file-exists-p skill)
-                 (let ((skills-dir (or (ignore-errors (getenv "SKILLS_DIR"))
+                 (let ((skills-dir (or (ignore-errors (uiop:getenv "SKILLS_DIR"))
                                        (namestring (merge-pathnames "notes/" (user-homedir-pathname))))))
                    (uiop:file-exists-p (merge-pathnames (format nil "~a.org" skill) skills-dir))))))
   :body (lambda (args)
           (let ((skill (getf args :skill)))
             (snapshot-memory)
-            (let ((skills-dir (or (ignore-errors (getenv "SKILLS_DIR"))
+            (let ((skills-dir (or (ignore-errors (uiop:getenv "SKILLS_DIR"))
                                   (namestring (merge-pathnames "notes/" (user-homedir-pathname)))))
                  (resolved-path (context-resolve-path skills-dir))
-                 (skills-dir-actual (if (ignore-errors (getenv "SKILLS_DIR"))
-                                        (uiop:ensure-directory-pathname (context-resolve-path (getenv "SKILLS_DIR")))
+                 (skills-dir-actual (if (ignore-errors (uiop:getenv "SKILLS_DIR"))
+                                        (uiop:ensure-directory-pathname (context-resolve-path (uiop:getenv "SKILLS_DIR")))
                                         (uiop:ensure-directory-pathname (user-homedir-pathname)))))
               (let ((file (if (uiop:file-exists-p skill)
                              (uiop:ensure-pathname skill)
