@@ -23,7 +23,7 @@ The `*memory*` is the global hash table that holds every Org element by its uniq
 (defvar *memory* (make-hash-table :test 'equal))
 
 (defvar *history-store* (make-hash-table :test 'equal)
-  "Immutable Merkle-Tree versioning store mapping hashes to objects.
+  "Immutable Merkle-Tree versioning store mapping hashes to objects.")
 #+end_src
 
 ** The Data Structure (org-object)
