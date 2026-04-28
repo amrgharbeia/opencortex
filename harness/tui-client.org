@@ -140,10 +140,10 @@ A simple MVP console is insufficient for a Lisp Machine. To reach v0.2.0, the TU
 (defun get-line-style (text)
   "Determines croatoan attributes based on content patterns."
   (cond
-    ((uiop:string-prefix-p "*" text) '(:bold :color-yellow))
-    ((uiop:string-prefix-p "⬆" text) '(:color-cyan))
+    ((uiop:string-prefix-p "*" text) '(:bold :yellow))
+    ((uiop:string-prefix-p "⬆" text) '(:cyan))
     ((uiop:string-prefix-p "🤔" text) '(:italic))
-    ((uiop:string-prefix-p "ERROR" text) '(:bold :color-red))
+    ((uiop:string-prefix-p "ERROR" text) '(:bold :red))
     (t nil)))
 #+end_src
 
@@ -200,9 +200,11 @@ A simple MVP console is insufficient for a Lisp Machine. To reach v0.2.0, the TU
   
   (unwind-protect
       (with-screen (scr :input-echoing nil :input-blocking nil :enable-colors t)
-        (let* ((h (height scr)) (w (width scr))
-               (chat-win (make-instance 'window :height (- h 5) :width (- w 2) :position '(1 1) :border t))
-               (input-win (make-instance 'window :height 1 :width (- w 2) :position (list (- h 2) 1) :border t)))
+        (let* ((h (height scr)) (w (width scr)))
+          (unless (and h w)
+             (error "Screen dimensions are NIL: h=~a, w=~a" h w))
+          (let ((chat-win (make-instance 'window :height (- h 5) :width (- w 2) :position '(1 1) :border t))
+                (input-win (make-instance 'window :height 1 :width (- w 2) :position (list (- h 2) 1) :border t)))
           
           (setf (input-blocking input-win) nil)
           
@@ -218,14 +220,13 @@ A simple MVP console is insufficient for a Lisp Machine. To reach v0.2.0, the TU
                 (cond
                   ((or (eq ch #\Newline) (eq ch #\Return)) (handle-return *stream*))
                   ((or (eq ch :backspace) (eq ch (code-char 127))) (handle-backspace))
-                  ((eq ch :page-up) (scroll-history 5))
-                  ((eq ch :page-down) (scroll-history -5))
                   ((characterp ch) (vector-push-extend ch *input-buffer*))))
               
               (clear input-win)
               (add-string input-win (format nil "▶ ~a" (coerce *input-buffer* 'string)) :y 0 :x 1)
               (refresh input-win))
-            (sleep 0.02))))
+            (sleep 0.02)))))
     (setf *is-running* nil)
     (when *socket* (ignore-errors (usocket:socket-close *socket*)))))
 #+end_src
+
