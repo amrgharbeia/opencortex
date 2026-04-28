@@ -1,28 +1,5 @@
-#+PROPERTY: header-args:lisp :tangle (expand-file-name "org-skill-self-edit.lisp" (concat (or (getenv "INSTALL_DIR") ".") "/skills"))
-:PROPERTIES:
-:ID:       self-edit-001
-:END:
-#+TITLE: SKILL: Self-Edit Agent
-#+STARTUP: content
-#+FILETAGS: :self-repair:autonomy:editing:
-
-* Overview
-The *Self-Edit Agent* enables the agent to modify its own code and files with safety guarantees. It handles:
-1. Syntax errors - auto-balance parens, then LLM fix
-2. File modifications - surgical edits with memory rollback on failure
-3. Skill hot-reload - swap compiled skills without breaking the system
-
-* Phase D: Build (Implementation)
-
-** Package Context
-#+begin_src lisp
 (in-package :opencortex)
-#+end_src
 
-** Deterministic Paren Repair
-Fast paren balancing for syntax errors.
-
-#+begin_src lisp
 (defun self-edit-count-char (char string)
   "Counts occurrences of CHAR in STRING."
   (loop for c across string count (char= c char)))
@@ -44,12 +21,7 @@ Fast paren balancing for syntax errors.
                                     :size (hash-table-count table))))
     (maphash (lambda (k v) (setf (gethash k new-table) v)) table)
     new-table))
-#+end_src
 
-** Parse Target Location
-Extract file and line info from error context.
-
-#+begin_src lisp
 (defun self-edit-parse-location (context)
   "Extracts file and line from error context payload."
   (let* ((payload (getf context :payload))
@@ -61,12 +33,7 @@ Extract file and line info from error context.
                    (let ((match (cl-ppcre:scan-to-strings "line.?(\\d+)" message)))
                      (when match (parse-integer (aref match 0)))))))
     (list :file file :line line)))
-#+end_src
 
-** Apply Surgical Edit
-Apply a find/replace to a file with rollback on failure.
-
-#+begin_src lisp
 (defun self-edit-apply (target-file old-code new-code)
   "Applies surgical edit to TARGET-FILE: replace OLD-CODE with NEW-CODE.
 Returns list with :status and :message keys."
@@ -95,10 +62,7 @@ Returns list with :status and :message keys."
         (harness-log "SELF-EDIT: Edit failed: ~a" c)
         (rollback-memory 0)
         (list :status :error :message (format nil "Edit failed: ~a" c))))))
-#+end_src
 
-** Cognitive Tool: Edit File
-#+begin_src lisp
 (def-cognitive-tool :self-edit
   "Applies a surgical code modification to a file with automatic rollback on failure."
   ((:file :type :string :description "Path to the target file")
@@ -109,12 +73,7 @@ Returns list with :status and :message keys."
                  (old (getf args :old))
                  (new (getf args :new)))
             (self-edit-apply file old new))))
-#+end_src
 
-** Skill Definition
-Hooks into syntax-error events for self-repair.
-
-#+begin_src lisp
 (defskill :skill-self-edit
   :priority 95
   :trigger (lambda (ctx)
@@ -151,10 +110,7 @@ Provide a fixed version of the code as a lisp form.")
                               (new (getf payload :new)))
                           (self-edit-apply file old new)))
                        (t nil)))))
-#+end_src
 
-** Tool: Quick Paren Fix
-#+begin_src lisp
 (def-cognitive-tool :balance-parens
   "Balances parentheses in a code string."
   ((:code :type :string :description "The code to balance"))
@@ -167,12 +123,7 @@ Provide a fixed version of the code as a lisp form.")
                   (list :status :success :repaired balanced))
               (error (c)
                 (list :status :error :message (format nil "Could not repair: ~a" c)))))))
-#+end_src
 
-** Skill Hot-Reload
-Swap compiled skill files without breaking active sockets.
-
-#+begin_src lisp
 (defvar *self-edit-skills-backup* nil
   "Backup of skill registry before hot-reload.")
 
@@ -221,11 +172,7 @@ Swap compiled skill files without breaking active sockets.
                  *self-edit-skills-backup*))
       (harness-log "SELF-EDIT: Hot-reload FAILED for ~a: ~a" skill-name e)
       (values :error (format nil "Hot-reload failed: ~a" e)))))
-#+end_src
 
-** Cognitive Tool: Reload Skill
-
-#+begin_src lisp
 (def-cognitive-tool :reload-skill
   "Hot-reloads a skill from its compiled source file without restarting the system."
   ((:skill-name :type :string :description "Name of the skill to reload (e.g. :skill-engineering-standards)")
@@ -235,94 +182,3 @@ Swap compiled skill files without breaking active sockets.
                 (path (getf args :gen-path)))
             (multiple-value-bind (status message) (self-edit-hot-reload-skill name path)
               (list :status status :message message)))))
-#+end_src
-
-* Phase E: Verification
-
-#+begin_src lisp :tangle (expand-file-name "self-edit-tests.lisp" (concat (or (getenv "INSTALL_DIR") ".") "/tests"))
-(defpackage :opencortex-self-edit-tests
-  (:use :cl :fiveam :opencortex)
-  (:export #:self-edit-suite))
-
-(in-package :opencortex-self-edit-tests)
-
-(def-suite self-edit-suite
-  :description "Tests for Self-Edit skill.")
-
-(in-suite self-edit-suite)
-
-(test balance-parens-balanced
-  (let ((result (opencortex::self-edit-balance-parens "(+ 1 2)")))
-    (is (string= result "(+ 1 2)"))
-    (is (not (null (read-from-string result))))))
-
-(test balance-parens-missing-open
-  (let ((result (opencortex::self-edit-balance-parens "+ 1 2)")))
-    (is (string= result "(+ 1 2)"))
-    (is (not (null (read-from-string result))))))
-
-(test balance-parens-missing-close
-  (let ((result (opencortex::self-edit-balance-parens "(+ 1 2")))
-    (is (string= result "(+ 1 2)"))
-    (is (not (null (read-from-string result))))))
-
-(test balance-parens-deep
-  (let ((result (opencortex::self-edit-balance-parens "((lambda (x) (if x (+ 1 2) 3))")))
-    (is (string= result "((lambda (x) (if x (+ 1 2) 3)))"))
-    (is (not (null (read-from-string result))))))
-
-(test balance-parens-empty
-  (let ((result (opencortex::self-edit-balance-parens "")))
-    (is (string= result ""))))
-
-(test test-self-edit-apply-success
-  "Verify self-edit-apply performs surgical replacement correctly."
-  (let ((test-file "/tmp/self-edit-test.lisp"))
-    (unwind-protect
-        (progn
-          (with-open-file (out test-file :direction :output :if-exists :supersede)
-            (write-string "(defun hello () (format t \"world~%\"))" out))
-          (let ((result (opencortex::self-edit-apply test-file "world" "universe")))
-            (is (eq (getf result :status) :success))
-            (let ((content (uiop:read-file-string test-file)))
-              (is (search "universe" content))
-              (is (not (search "world" content))))))
-      (uiop:delete-file-if-exists test-file))))
-
-(test test-self-edit-apply-not-found
-  "Verify self-edit-apply returns error when pattern not found."
-  (let ((test-file "/tmp/self-edit-test2.lisp"))
-    (unwind-protect
-        (progn
-          (with-open-file (out test-file :direction :output :if-exists :supersede)
-            (write-string "(defun hello () t)" out))
-          (let ((result (opencortex::self-edit-apply test-file "nonexistent-pattern" "new")))
-            (is (eq (getf result :status) :error))
-            (is (search "not found" (getf result :message)))))
-      (uiop:delete-file-if-exists test-file))))
-
-(test test-self-edit-apply-file-not-found
-  "Verify self-edit-apply returns error when file does not exist."
-  (let ((result (opencortex::self-edit-apply "/nonexistent/path/file.lisp" "old" "new")))
-    (is (eq (getf result :status) :error))
-    (is (search "not found" (getf result :message)))))
-
-(test test-self-edit-parse-location-from-payload
-  "Verify self-edit-parse-location extracts file/line from payload."
-  (let ((context '(:payload (:file "/tmp/test.lisp" :line 42 :message "error"))))
-    (let ((result (opencortex::self-edit-parse-location context)))
-      (is (equal "/tmp/test.lisp" (getf result :file)))
-      (is (eq 42 (getf result :line))))))
-
-(test test-self-edit-parse-location-from-message
-  "Verify self-edit-parse-location extracts file/line from error message."
-  (let ((context '(:payload (:message "Error in /home/user/project/foo.lisp at line 99"))))
-    (let ((result (opencortex::self-edit-parse-location context)))
-      (is (listp result))
-      (is (getf result :line))
-      (is (eq 99 (getf result :line))))))
-#+end_src
-
-* See Also
-- [[file:org-skill-lisp-utils.org][Lisp Utils]] - Validation and repair
-- [[file:org-skill-self-fix.org][Self-Fix]] - File modification with rollback

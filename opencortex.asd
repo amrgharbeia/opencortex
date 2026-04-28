@@ -4,12 +4,9 @@
   :version "0.2.0"
   :license "AGPLv3"
   :description "The Probabilistic-Deterministic Lisp Machine"
-
   :depends-on (:usocket :bordeaux-threads :dexador :uiop :cl-dotenv :cl-ppcre :hunchentoot :ironclad :str :cl-json :uuid)
-
   :serial t
-
-   :components ((:file "harness/package")
+  :components ((:file "harness/package")
                 (:file "harness/skills")
                 (:file "harness/communication")
                 (:file "harness/communication-validator")
@@ -18,11 +15,7 @@
                 (:file "harness/perceive")
                 (:file "harness/reason")
                 (:file "harness/act")
-                (:file "harness/loop"))
-
-  :build-operation "program-op"
-  :build-pathname "opencortex-server"
-  :entry-point "opencortex:main")
+                (:file "harness/loop")))
 
 (defsystem :opencortex/tests
   :depends-on (:opencortex :fiveam)
@@ -39,11 +32,10 @@
                (:file "tests/literate-programming-tests")
                (:file "tests/self-edit-tests")
                (:file "tests/tool-permissions-tests")
-
-               (:file "tests/gateway-manager-tests")
-               (:file "tests/tui-tests")
                (:file "tests/diagnostics-tests")
-               (:file "tests/config-manager-tests")))
+               (:file "tests/config-manager-tests")
+               (:file "tests/gateway-manager-tests")
+               (:file "tests/tui-tests")))
 
 (defsystem :opencortex/tui
   :depends-on (:opencortex :croatoan :usocket :bordeaux-threads)

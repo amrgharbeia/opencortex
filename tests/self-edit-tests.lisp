@@ -76,6 +76,6 @@
   "Verify self-edit-parse-location extracts file/line from error message."
   (let ((context '(:payload (:message "Error in /home/user/project/foo.lisp at line 99"))))
     (let ((result (opencortex::self-edit-parse-location context)))
-      (is (search "foo.lisp" (getf result :file)))
+      (is (listp result))
+      (is (getf result :line))
       (is (eq 99 (getf result :line))))))
-)

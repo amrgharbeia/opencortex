@@ -1,0 +1,384 @@
+(in-package :opencortex)
+
+(defvar *probabilistic-backends* (make-hash-table :test 'equal)
+  "Registry mapping provider keywords (:openrouter, :ollama) to their calling functions.")
+
+(defvar *provider-cascade* nil
+  "Ordered list of provider keywords to try. First available provider wins.")
+
+(defvar *model-selector-fn* nil
+  "Optional function that selects a specific model for each provider.
+  Signature: (funcall fn provider context) => model-name-string")
+
+(defvar *consensus-enabled-p* nil
+  "When T, run multiple providers and compare results for critical decisions.")
+
+(defun register-probabilistic-backend (name fn)
+  "Register a neural provider backend.
+
+  NAME is a keyword like :openrouter or :ollama.
+  FN is a function with signature: (funcall fn prompt system-prompt &key model)
+     returning either:
+     - (list :status :success :content \"response text\")
+     - (list :status :error :message \"error description\")
+     - a simple string on success
+
+  Example registration:
+    (register-probabilistic-backend :openrouter #'openrouter-call)"
+
+  (setf (gethash name *probabilistic-backends*) fn))
+
+(defun probabilistic-call (prompt &key
+                                (system-prompt "You are the Probabilistic engine.")
+                                (cascade nil)
+                                (context nil))
+  "Dispatch a neural request through the provider cascade.
+
+  PROMPT - The user's query or task description.
+  SYSTEM-PROMPT - Instructions for how the LLM should behave.
+  CASCADE - Override the default provider cascade.
+  CONTEXT - Current signal context (for model selection).
+
+  Returns the LLM response as a string, or a failure plist if all providers fail.
+
+  The cascade mechanism ensures reliability: if OpenRouter is rate-limited,
+  it automatically falls back to OpenAI, then Anthropic, etc."
+
+  (let ((backends (or cascade *provider-cascade*)))
+    (or (dolist (backend backends)
+          (let ((backend-fn (gethash backend *probabilistic-backends*)))
+            (when backend-fn
+              (harness-log "PROBABILISTIC: Attempting backend ~a..." backend)
+
+              ;; Optional model selection based on context
+              (let* ((model (when *model-selector-fn*
+                              (funcall *model-selector-fn* backend context)))
+                     (result (if model
+                                 (funcall backend-fn prompt system-prompt :model model)
+                                 (funcall backend-fn prompt system-prompt))))
+
+                ;; Normalize result format
+                (cond ((and (listp result) (eq (getf result :status) :success))
+                       (return (getf result :content)))
+                      ((stringp result)
+                       (return result))
+                      (t
+                       (harness-log "PROBABILISTIC: Backend ~a failed: ~a"
+                                   backend (getf result :message))))))))
+
+        ;; All providers failed
+        (list :type :LOG
+              :payload (list :text "Neural Cascade Failure: All providers exhausted.")))))
+
+(defun strip-markdown (text)
+  "Strip markdown formatting from LLM output.
+
+  LLMs often wrap their responses in code fences (```lisp ...```).
+  This function removes those markers to extract the raw plist.
+
+  Handles:
+  - Leading code fences with language tags: ```lisp
+  - Trailing code fences: ```
+  - Orphan closing fences: ```"
+
+  (if (and text (stringp text))
+      (let ((cleaned text))
+        (setf cleaned (cl-ppcre:regex-replace-all "^```[a-z]*\\n" cleaned ""))
+        (setf cleaned (cl-ppcre:regex-replace-all "\\n```$" cleaned ""))
+        (setf cleaned (cl-ppcre:regex-replace-all "```" cleaned ""))
+        (string-trim '(#\Space #\Newline #\Tab) cleaned))
+      text))
+
+(defun normalize-plist-keywords (plist)
+  "Normalize all keys in a plist to keywords.
+
+  LLMs often return plists with unquoted keys: (TYPE REQUEST ...)
+  instead of keyword syntax: (:TYPE :REQUEST ...)
+
+  This function converts all symbol keys to their keyword equivalents,
+  making the plist compatible with standard Lisp property accessors.
+
+  Example transformation:
+    (TYPE REQUEST PAYLOAD (ACTION MESSAGE TEXT \"Hi\"))
+    => (:TYPE :REQUEST :PAYLOAD (:ACTION :MESSAGE :TEXT \"Hi\"))"
+
+  (when (listp plist)
+    (loop for (k . rest) on plist by #'cddr
+          collect (if (and (symbolp k) (not (keywordp k)))
+                       (intern (string k) :keyword)
+                       k)
+          collect (car rest))))
+
+(defun think (context)
+  "Generate a Lisp action proposal based on current context.
+
+  This is the core cognitive function. It:
+
+  1. Finds the most relevant skill based on context
+  2. Assembles global awareness (memory context, system logs)
+  3. Constructs a detailed prompt with available tools
+  4. Calls the LLM via probabilistic-call
+  5. Parses the LLM response into a structured action plist
+
+  The LLM is instructed to respond with exactly ONE plist, never prose.
+  This constraint makes parsing deterministic and prevents rambling.
+
+  Returns a plist with structure:
+    (:TYPE :REQUEST :TARGET :CLI :PAYLOAD (:ACTION :MESSAGE :TEXT \"...\"))"
+
+  ;; Gather context components
+  (let* ((active-skill (find-triggered-skill context))
+         (tool-belt (generate-tool-belt-prompt))
+         (global-context (context-assemble-global-awareness))
+         (system-logs (context-get-system-logs))
+         (assistant-name (or (uiop:getenv "MEMEX_ASSISTANT") "Agent"))
+         (rejection-trace (proto-get (proto-get context :payload) :rejection-trace)))
+
+    ;; Generate prompt from skill or raw text
+    (let* ((prompt-generator (when active-skill
+                              (skill-probabilistic-prompt active-skill)))
+           (raw-prompt (if prompt-generator
+                           (funcall prompt-generator context)
+                           ;; Fallback: use raw user input
+                           (let ((p (proto-get (proto-get context :payload) :text)))
+                             (if (and p (stringp p))
+                                 p
+                                 "Maintain metabolic stasis."))))
+           
+           ;; Inject Reflection Loop feedback if a previous proposal was rejected
+           (reflection-feedback (if rejection-trace
+                                    (format nil "~%~%PREVIOUS PROPOSAL REJECTED:~%Your previous proposal was rejected by the deterministic safety gates.~%Rejection Trace: ~a~%You MUST fix the syntax or logic error described above and try again." rejection-trace)
+                                    ""))
+
+           (system-prompt (format nil
+                                   "IDENTITY: ~a~a
+
+You are a component of the OpenCortex neurosymbolic AI agent.
+Your task is to generate exactly ONE valid Lisp plist response.
+
+MANDATE: Respond with ONE Lisp plist. Never output prose.
+
+IMPORTANT: To reply to the user, you MUST use:
+(:TYPE :REQUEST :PAYLOAD (:ACTION :MESSAGE :TEXT \"<Response Text>\"))
+
+To call a tool, you MUST use:
+(:TYPE :REQUEST :TARGET :TOOL :ACTION :CALL :TOOL \"<name>\" :ARGS (:arg1 \"val\"))
+
+MANDATORY VALIDATION RULE: Before declaring any Lisp code edit complete,
+you MUST call the `:validate-lisp` tool with the proposed code. If the tool
+returns `:status :error`, read the `:reason` and `:failed` fields, fix the
+defect, and re-validate. You are strictly forbidden from relying on your
+own paren-balancing or syntax intuition.
+
+PROVIDER RULE: Always use the default cascade provider unless a specific
+model or capability is required for the task.
+
+AVAILABLE TOOLS:
+~a
+
+GLOBAL CONTEXT:
+~a
+
+RECENT LOGS:
+~a"
+                                   assistant-name
+                                   reflection-feedback
+                                   tool-belt
+                                   global-context
+                                   system-logs)))
+
+      ;; Call LLM and process response
+      (let* ((thought (probabilistic-call raw-prompt
+                                           :system-prompt system-prompt
+                                           :context context))
+             (cleaned (strip-markdown thought))
+             (meta (proto-get context :meta))
+             (source (proto-get meta :source)))
+
+        (when cleaned
+          (harness-log "THINK: LLM raw output = ~a"
+                       (subseq cleaned 0 (min 200 (length cleaned)))))
+
+        ;; Parse LLM response
+        (if (and cleaned (stringp cleaned) (> (length cleaned) 0))
+            (let ((*read-eval* nil))
+              (if (char= (char cleaned 0) #\()
+                  ;; Response starts with paren - try to parse as plist
+                  (handler-case
+                      (let ((parsed (read-from-string cleaned)))
+                        (when parsed
+                          (harness-log "THINK: parsed = ~a" parsed)
+
+                          ;; Normalize keyword keys (LLM often returns TYPE instead of :TYPE)
+                          (let ((parsed-normalized (normalize-plist-keywords parsed))
+                                (type (proto-get parsed :TYPE))
+                                (target (or (proto-get parsed :TARGET)
+                                           (proto-get parsed :target))))
+
+                            (cond
+                              ;; Recognized message type - use directly
+                              ((member type '(:REQUEST :EVENT :STATUS :RESPONSE))
+                               (unless (proto-get parsed :target)
+                                 (setf (getf parsed :target) (or source :CLI)))
+                               parsed-normalized)
+
+                              ;; Tool call detected - wrap in standard envelope
+                              ((or (eq target :TOOL)
+                                   (eq target :tool)
+                                   (getf parsed :TOOL)
+                                   (getf parsed :tool)
+                                   (and (listp parsed)
+                                        (listp (car parsed))
+                                        (keywordp (caar parsed))))
+                               (list :TYPE :REQUEST
+                                     :TARGET :TOOL
+                                     :PAYLOAD (normalize-plist-keywords parsed)))
+
+                              ;; Unknown format - treat as user message
+                              (t
+                               (list :TYPE :REQUEST
+                                     :TARGET (or source :CLI)
+                                     :PAYLOAD (list :ACTION :MESSAGE :TEXT cleaned)))))))
+                    (error (c)
+                      (harness-log "THINK ERROR: ~a" c)
+                      (list :TYPE :REQUEST
+                            :TARGET (or source :CLI)
+                            :PAYLOAD (list :ACTION :MESSAGE :TEXT cleaned))))
+
+                  ;; No leading paren - treat as plain text message
+                  (list :TYPE :REQUEST
+                        :TARGET (or source :CLI)
+                        :PAYLOAD (list :ACTION :MESSAGE :TEXT cleaned))))
+
+            ;; No response from LLM
+            thought)))))
+
+(defun deterministic-verify (proposed-action context)
+  "Run all skill deterministic gates on a proposed action.
+
+  Each skill can define a deterministic function that either:
+  - Passes the action through unchanged
+  - Modifies the action (adds explanation, changes target, etc.)
+  - Blocks the action (returns a :LOG message instead)
+
+  Skills are sorted by priority (highest first). A skill with higher
+  priority can intercept and modify actions before lower-priority
+  skills see them.
+
+  The Bouncer Pattern: If any skill returns a :LOG or :EVENT type,
+  processing stops and that message is returned immediately. This
+  allows skills to veto actions.
+
+  Example skill chain:
+  1. Policy skill (priority 500) - checks for missing explanations
+  2. Protocol validator (priority 95) - validates message schema
+  3. Shell actuator guard (priority 50) - checks command whitelist"
+
+  (let ((current-action proposed-action)
+        (skills nil))
+
+    ;; Collect all skills with deterministic functions
+    (maphash (lambda (name skill)
+               (declare (ignore name))
+               (when (skill-deterministic-fn skill)
+                 (push skill skills)))
+             *skills-registry*)
+
+    ;; Sort by priority (highest first)
+    (setf skills (sort skills #'> :key #'skill-priority))
+
+    ;; Run each skill's gate
+    (dolist (skill skills)
+      (let ((trigger (skill-trigger-fn skill))
+            (gate (skill-deterministic-fn skill)))
+
+        ;; Skill activates if no trigger or trigger returns true
+        (when (or (null trigger)
+                  (ignore-errors (funcall trigger context)))
+
+          ;; Run the gate
+          (let ((next-action (funcall gate current-action context)))
+            (let ((original-type (proto-get current-action :type)))
+
+              ;; Check if skill intercepted (returned LOG/EVENT instead of REQUEST)
+              (when (and (listp next-action)
+                         (member (proto-get next-action :type)
+                                '(:LOG :EVENT :log :event))
+                         (or (not (member original-type '(:LOG :EVENT :log :event)))
+                             (not (eq next-action current-action))))
+
+                ;; Skill blocked or modified - stop processing
+                (harness-log "DETERMINISTIC: Intercepted by skill '~a'"
+                            (skill-name skill))
+                (return-from deterministic-verify next-action)))
+
+            ;; Action passed through - continue to next skill
+            (setf current-action next-action)))))
+
+    ;; Return final action (may be modified by skills, or original if all passed)
+    current-action))
+
+(defun reason-gate (signal)
+  "Stage 2 of the metabolic pipeline: Reason.
+
+  Transforms perceived signals into approved actions by combining:
+  1. Probabilistic reasoning (LLM generates proposal)
+  2. Deterministic verification (skills validate proposal)
+
+  Only processes :EVENT signals with :user-input or :chat-message sensors.
+  Other signals pass through unchanged (heartbeats, tool outputs, etc.).
+
+  Modifies the signal in place by setting:
+  - :approved-action - The final verified action, or NIL
+  - :status - :reasoned
+
+  Returns the modified signal."
+
+  (let* ((type (proto-get signal :type))
+         (payload (proto-get signal :payload))
+         (sensor (proto-get payload :sensor)))
+
+    ;; Only reason about user input, not internal signals
+    (unless (and (eq type :EVENT)
+                (member sensor '(:user-input :chat-message)))
+      (return-from reason-gate signal))
+
+    ;; Reflection Loop: Retry up to 3 times if deterministic gates reject
+    (let ((retries 3)
+          (current-signal (copy-tree signal))
+          (last-rejection nil))
+      (loop
+        (when (<= retries 0)
+          (harness-log "REASON: Reflection loop exhausted. Final rejection.")
+          (setf (getf signal :approved-action) last-rejection)
+          (setf (getf signal :status) :reasoned)
+          (return signal))
+
+        (when last-rejection
+          (setf (getf (getf current-signal :payload) :rejection-trace) last-rejection))
+
+        (let ((candidate (think current-signal)))
+          (harness-log "REASON: candidate type = ~a" (type-of candidate))
+
+          (if (and candidate
+                   (listp candidate)
+                   (or (keywordp (car candidate))
+                       (eq (car candidate) 'TYPE)
+                       (eq (car candidate) 'type)))
+
+              (let ((verified (deterministic-verify candidate current-signal)))
+                (if (member (getf verified :type) '(:LOG :EVENT :log :event))
+                    (progn
+                      (harness-log "REASON: Proposal rejected by gate. Retrying (~a left)." (1- retries))
+                      (decf retries)
+                      (setf last-rejection verified))
+                    (progn
+                      (setf (getf signal :approved-action) verified)
+                      (setf (getf signal :status) :reasoned)
+                      (return signal))))
+
+              (progn
+                (harness-log "REASON: Invalid candidate type ~a, dropping" (type-of candidate))
+                (setf (getf signal :approved-action) nil)
+                (setf (getf signal :status) :reasoned)
+                (return signal))))))))
