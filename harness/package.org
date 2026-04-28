@@ -10,7 +10,7 @@ The ~package.lisp~ file defines the public API of the ~opencortex~ harness.
 * Implementation
 
 ** Public API Export
-#+begin_src lisp
+#+begin_src lisp :tangle package.lisp
 (defpackage :opencortex
   (:use :cl)
   (:export
@@ -193,7 +193,7 @@ The ~package.lisp~ file defines the public API of the ~opencortex~ harness.
 #+end_src
 
 ** Package Implementation
-#+begin_src lisp
+#+begin_src lisp :tangle package.lisp
 (in-package :opencortex)
 
 (defun proto-get (plist key)
