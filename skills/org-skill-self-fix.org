@@ -1,4 +1,4 @@
-#+PROPERTY: header-args:lisp :tangle (expand-file-name "org-skill-self-fix.lisp" (expand-file-name "skills/" (or (identity (getenv "INSTALL_DIR")) ".")))
+#+PROPERTY: header-args:lisp :tangle (expand-file-name "org-skill-self-fix.lisp" (expand-file-name "" (concat (or (identity (getenv "INSTALL_DIR")) ".") "/skills")))
 :PROPERTIES:
 :ID:       65891ce2-a465-49e6-a0c1-be13d3288d55
 :CREATED:  [2026-03-30 Mon 21:16]

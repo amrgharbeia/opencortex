@@ -1,4 +1,4 @@
-#+PROPERTY: header-args:lisp :tangle (expand-file-name "org-skill-emacs-edit.lisp" (expand-file-name "skills/" (or (identity (getenv "INSTALL_DIR")) ".")))
+#+PROPERTY: header-args:lisp :tangle (expand-file-name "org-skill-emacs-edit.lisp" (expand-file-name "" (concat (or (identity (getenv "INSTALL_DIR")) ".") "/skills")))
 :PROPERTIES:
 :ID:       emacs-edit-skill
 :CREATED:  [2026-04-23 Thu]
@@ -390,7 +390,7 @@ Use this AFTER modifications to save changes."
 #+end_src
 
 * Phase E: Chaos (Verification)
-#+begin_src lisp :tangle (expand-file-name "emacs-edit-tests.lisp" (expand-file-name "skills/" (or (identity (getenv "INSTALL_DIR")) ".")))
+#+begin_src lisp :tangle (expand-file-name "emacs-edit-tests.lisp" (expand-file-name "" (concat (or (identity (getenv "INSTALL_DIR")) ".") "/skills")))
 (defpackage :opencortex-emacs-edit-tests
   (:use :cl :fiveam :opencortex)
   (:export #:emacs-edit-suite))
