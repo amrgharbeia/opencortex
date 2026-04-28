@@ -68,15 +68,16 @@ setup_system() {
 
     # Critical: Tangle manifest first to establish system structure
     echo "Tangling harness/manifest.org..."
-    emacs -Q --batch --eval "(require 'org)" --eval "(require 'uiop)" --eval "(setenv \"INSTALL_DIR\" \"$OC_DATA_DIR\")" --eval "(setq org-confirm-babel-evaluate nil)" --eval "(org-babel-tangle-file \"harness/manifest.org\")" >/dev/null 2>&1 || true
+    (cd "$OC_DATA_DIR/harness" && emacs -Q --batch --eval "(require 'org)" --eval "(setq org-confirm-babel-evaluate nil)" --eval "(org-babel-tangle-file \"$OC_DATA_DIR/harness/manifest.org\")" >/dev/null 2>&1) || true
 
     echo "Tangling harness/tui-client.org..."
-    emacs -Q --batch --eval "(require 'org)" --eval "(require 'uiop)" --eval "(setenv \"INSTALL_DIR\" \"$OC_DATA_DIR\")" --eval "(setq org-confirm-babel-evaluate nil)" --eval "(org-babel-tangle-file \"harness/tui-client.org\")" >/dev/null 2>&1 || true
+    (cd "$OC_DATA_DIR/harness" && emacs -Q --batch --eval "(require 'org)" --eval "(setq org-confirm-babel-evaluate nil)" --eval "(org-babel-tangle-file \"$OC_DATA_DIR/harness/tui-client.org\")" >/dev/null 2>&1) || true
 
     for f in harness/*.org skills/*.org; do
         if [ "$f" != "harness/manifest.org" ] && [ "$f" != "harness/tui-client.org" ]; then
             echo "Tangling $f..."
-            emacs -Q --batch --eval "(require 'org)" --eval "(require 'uiop)" --eval "(setenv \"INSTALL_DIR\" \"$OC_DATA_DIR\")" --eval "(setq org-confirm-babel-evaluate nil)" --eval "(org-babel-tangle-file \"$f\")" >/dev/null 2>&1 || true
+            DIR_NAME=$(dirname "$f")
+            (cd "$OC_DATA_DIR/$DIR_NAME" && emacs -Q --batch --eval "(require 'org)" --eval "(setq org-confirm-babel-evaluate nil)" --eval "(org-babel-tangle-file \"$OC_DATA_DIR/$f\")" >/dev/null 2>&1) || true
         fi
     done
 
