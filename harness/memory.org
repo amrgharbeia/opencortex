@@ -31,14 +31,14 @@ flowchart TD
 #+end_src
 
 ** Package Context
-#+begin_src lisp :tangle (concat (uiop:getenv "INSTALL_DIR") "/harness/memory.lisp" (expand-file-name ""))
+#+begin_src lisp :tangle (concat (getenv "INSTALL_DIR") "/harness/memory.lisp" (expand-file-name ""))
 (in-package :opencortex)
 #+end_src
 
 ** The Object Repository
 The `*memory*` is the global hash table that holds every Org element by its unique ID. This is the "live RAM" of the agent's memory.
 
-#+begin_src lisp :tangle (concat (uiop:getenv "INSTALL_DIR") "/harness/memory.lisp" (expand-file-name ""))
+#+begin_src lisp :tangle (concat (getenv "INSTALL_DIR") "/harness/memory.lisp" (expand-file-name ""))
 (defvar *memory* (make-hash-table :test 'equal))
 
 (defvar *history-store* (make-hash-table :test 'equal)
@@ -48,7 +48,7 @@ The `*memory*` is the global hash table that holds every Org element by its uniq
 ** The Data Structure (org-object)
 Every element in the Memex (headlines, paragraphs, etc.) is represented by an `org-object` structure. It contains both semantic metadata (attributes, content) and structural metadata (parent/child pointers, Merkle hashes).
 
-#+begin_src lisp :tangle (concat (uiop:getenv "INSTALL_DIR") "/harness/memory.lisp" (expand-file-name ""))
+#+begin_src lisp :tangle (concat (getenv "INSTALL_DIR") "/harness/memory.lisp" (expand-file-name ""))
 (defstruct org-object
   id type attributes content vector parent-id children version last-sync hash)
 
@@ -60,7 +60,7 @@ Every element in the Memex (headlines, paragraphs, etc.) is represented by an `o
 ** Merkle Tree Integrity (compute-merkle-hash)
 The `compute-merkle-hash` function ensures the cryptographic integrity of the knowledge graph. A node's hash depends on its own properties and the hashes of all its children. This creates a recursive fingerprint where any change to a single note propagates up to the root hash.
 
-#+begin_src lisp :tangle (concat (uiop:getenv "INSTALL_DIR") "/harness/memory.lisp" (expand-file-name ""))
+#+begin_src lisp :tangle (concat (getenv "INSTALL_DIR") "/harness/memory.lisp" (expand-file-name ""))
 (defun compute-merkle-hash (id type attributes content child-hashes)
   "Computes a SHA-256 Merkle hash for a node based on its core properties and children's hashes."
   (let* ((alist (loop for (k v) on attributes by #'cddr collect (cons k v)))
@@ -77,7 +77,7 @@ The `compute-merkle-hash` function ensures the cryptographic integrity of the kn
 ** Ingesting the AST (ingest-ast)
 The `ingest-ast` function is the primary bridge between the external world (Emacs/JSON) and the internal Lisp machine. It recursively parses an Org-mode Abstract Syntax Tree (AST) into `org-object` structures and registers them in the store.
 
-#+begin_src lisp :tangle (concat (uiop:getenv "INSTALL_DIR") "/harness/memory.lisp" (expand-file-name ""))
+#+begin_src lisp :tangle (concat (getenv "INSTALL_DIR") "/harness/memory.lisp" (expand-file-name ""))
 (defun ingest-ast (ast &optional parent-id)
   "Parses an Org AST into the recursive Lisp Memory with Merkle hashing."
   (let* ((type (getf ast :type))
@@ -116,7 +116,7 @@ The `ingest-ast` function is the primary bridge between the external world (Emac
 ** Memory Snapshots (snapshot-memory)
 Because objects are stored immutably in the `*history-store*`, a snapshot is a lightweight shallow copy of the active `*memory*` pointers. The system maintains a rolling buffer of 20 snapshots, allowing for near-instant, zero-cost rollback.
 
-#+begin_src lisp :tangle (concat (uiop:getenv "INSTALL_DIR") "/harness/memory.lisp" (expand-file-name ""))
+#+begin_src lisp :tangle (concat (getenv "INSTALL_DIR") "/harness/memory.lisp" (expand-file-name ""))
 (defvar *object-store-snapshots* nil)
 
 (defun copy-hash-table (hash-table)
@@ -143,7 +143,7 @@ Because objects are stored immutably in the `*history-store*`, a snapshot is a l
 ** Memory Rollback (rollback-memory)
 Restores the state of the Memex from one of the previous snapshots.
 
-#+begin_src lisp :tangle (concat (uiop:getenv "INSTALL_DIR") "/harness/memory.lisp" (expand-file-name ""))
+#+begin_src lisp :tangle (concat (getenv "INSTALL_DIR") "/harness/memory.lisp" (expand-file-name ""))
 (defun rollback-memory (&optional (index 0))
   "Restores the Memory to a previously captured snapshot using immutable history pointers."
   (let ((snapshot (nth index *object-store-snapshots*)))
@@ -156,14 +156,14 @@ Restores the state of the Memex from one of the previous snapshots.
 ** Disk Persistence (save-memory / load-memory)
 Essential for surviving crashes. Saves the in-memory hash tables to disk and loads them back on restart.
 
-#+begin_src lisp :tangle (concat (uiop:getenv "INSTALL_DIR") "/harness/memory.lisp" (expand-file-name ""))
+#+begin_src lisp :tangle (concat (getenv "INSTALL_DIR") "/harness/memory.lisp" (expand-file-name ""))
 (defvar *memory-snapshot-path* nil
   "Path to the memory snapshot file. Set from MEMORY_SNAPSHOT_PATH env or default.")
 
 (defun ensure-memory-snapshot-path ()
   "Initializes the snapshot path from environment or default location."
   (or *memory-snapshot-path*
-      (let ((env-path (uiop:getenv "MEMORY_SNAPSHOT_PATH")))
+      (let ((env-path (getenv "MEMORY_SNAPSHOT_PATH")))
         (setf *memory-snapshot-path*
               (or env-path
                   (uiop:merge-pathnames* "memory.snap" (user-homedir-pathname)))))))
@@ -209,7 +209,7 @@ Reconstitutes alists into hash tables."
 ** Semantic Search (get-embedding, semantic-search)
 Support for vector embeddings via Ollama and semantic search with cosine similarity.
 
-#+begin_src lisp :tangle (concat (uiop:getenv "INSTALL_DIR") "/harness/memory.lisp" (expand-file-name ""))
+#+begin_src lisp :tangle (concat (getenv "INSTALL_DIR") "/harness/memory.lisp" (expand-file-name ""))
 (defvar *embedding-cache* (make-hash-table :test 'equal)
   "Cache for embeddings to avoid redundant API calls.")
 
@@ -258,7 +258,7 @@ Returns up to LIMIT objects with similarity >= MIN-SIMILARITY, sorted by similar
 #+end_src
 
 ** Cognitive Tool: Semantic Search
-#+begin_src lisp :tangle (concat (uiop:getenv "INSTALL_DIR") "/harness/memory.lisp" (expand-file-name ""))
+#+begin_src lisp :tangle (concat (getenv "INSTALL_DIR") "/harness/memory.lisp" (expand-file-name ""))
 (def-cognitive-tool :semantic-search
   "Searches memory for objects semantically similar to a query."
   ((:query :type :string :description "The search query.")
@@ -271,7 +271,7 @@ Returns up to LIMIT objects with similarity >= MIN-SIMILARITY, sorted by similar
 #+end_src
 
 ** Cognitive Tool: Generate Embeddings
-#+begin_src lisp :tangle (concat (uiop:getenv "INSTALL_DIR") "/harness/memory.lisp" (expand-file-name ""))
+#+begin_src lisp :tangle (concat (getenv "INSTALL_DIR") "/harness/memory.lisp" (expand-file-name ""))
 (def-cognitive-tool :generate-embeddings
   "Generates vector embeddings for given text via the configured embedding backend (Ollama)."
   ((:texts :type :list :description "List of text strings to embed."))
@@ -294,7 +294,7 @@ Returns up to LIMIT objects with similarity >= MIN-SIMILARITY, sorted by similar
 ** Lookup Utilities
 Basic functions for retrieving objects by ID or type.
 
-#+begin_src lisp :tangle (concat (uiop:getenv "INSTALL_DIR") "/harness/memory.lisp" (expand-file-name ""))
+#+begin_src lisp :tangle (concat (getenv "INSTALL_DIR") "/harness/memory.lisp" (expand-file-name ""))
 (defun org-id-new ()
   "Generates a new UUID string for Org-mode identification."
   (string-downcase (format nil "~a" (uuid:make-v4-uuid))))
@@ -324,7 +324,7 @@ Basic functions for retrieving objects by ID or type.
 ** Structural Helpers
 Utility functions for AST traversal and path resolution.
 
-#+begin_src lisp :tangle (concat (uiop:getenv "INSTALL_DIR") "/harness/memory.lisp" (expand-file-name ""))
+#+begin_src lisp :tangle (concat (getenv "INSTALL_DIR") "/harness/memory.lisp" (expand-file-name ""))
 (defun find-headline-missing-id (ast)
   "Traverses an AST to find headlines that lack an :ID: property."
   (when (listp ast)
@@ -339,7 +339,7 @@ Utility functions for AST traversal and path resolution.
 
 * Test Suite
 
-#+begin_src lisp :tangle (expand-file-name "memory-tests.lisp" (concat (concat (or (uiop:getenv "INSTALL_DIR") ".") "/harness") "/tests"))
+#+begin_src lisp :tangle (expand-file-name "memory-tests.lisp" (concat (concat (or (getenv "INSTALL_DIR") ".") "/harness") "/tests"))
 (defpackage :opencortex-memory-tests
   (:use :cl :fiveam :opencortex)
   (:export #:memory-suite))

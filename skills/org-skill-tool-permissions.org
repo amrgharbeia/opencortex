@@ -1,4 +1,4 @@
-#+PROPERTY: header-args:lisp :tangle (concat (uiop:getenv "INSTALL_DIR") "/skills/org-skill-tool-permissions.lisp" (expand-file-name ""))
+#+PROPERTY: header-args:lisp :tangle (concat (getenv "INSTALL_DIR") "/skills/org-skill-tool-permissions.lisp" (expand-file-name ""))
 :PROPERTIES:
 :ID:       tool-permissions-skill-001
 :CREATED:   [2026-04-23 Thu]
@@ -56,12 +56,12 @@ Tool permissions and embedding generation via multiple providers.
   ((:text :type :string :description "Text to embed."))
   :body (lambda (args)
           (let* ((text (getf args :text))
-                 (provider (or (uiop:getenv "EMBEDDING_PROVIDER") "ollama"))
-                 (model (or (uiop:getenv "EMBEDDING_MODEL") "nomic-embed-text"))
+                 (provider (or (getenv "EMBEDDING_PROVIDER") "ollama"))
+                 (model (or (getenv "EMBEDDING_MODEL") "nomic-embed-text"))
                  (embedding nil))
             (cond
               ((string= provider "ollama")
-               (let* ((host (or (uiop:getenv "OLLAMA_HOST") "localhost:11434"))
+               (let* ((host (or (getenv "OLLAMA_HOST") "localhost:11434"))
                       (url (format nil "http://~a/api/embeddings" host))
                       (body (cl-json:encode-json-to-string `((model . ,model) (prompt . ,text)))))
                  (handler-case
@@ -71,7 +71,7 @@ Tool permissions and embedding generation via multiple providers.
                        (when vec (setf embedding vec)))
                    (error (c) (harness-log "EMBEDDING: Ollama failed: ~a" c)))))
               ((string= provider "llama.cpp")
-               (let* ((host (or (uiop:getenv "LLAMA_HOST") "localhost:8080"))
+               (let* ((host (or (getenv "LLAMA_HOST") "localhost:8080"))
                       (url (format nil "http://~a/v1/embeddings" host))
                       (body (cl-json:encode-json-to-string `((model . ,model) (input . ,text)))))
                  (handler-case
@@ -135,7 +135,7 @@ Tool permissions and embedding generation via multiple providers.
 These tests verify tool permissions. Run with:
 ~(fiveam:run! 'tool-permissions-suite)~
 
-#+begin_src lisp :tangle (concat (uiop:getenv "INSTALL_DIR") "/skills/tool-permissions-tests.lisp" (expand-file-name ""))
+#+begin_src lisp :tangle (concat (getenv "INSTALL_DIR") "/skills/tool-permissions-tests.lisp" (expand-file-name ""))
 (defpackage :opencortex-tool-permissions-tests
   (:use :cl :fiveam :opencortex)
   (:export #:tool-permissions-suite))

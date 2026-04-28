@@ -1,4 +1,4 @@
-#+PROPERTY: header-args:lisp :tangle (concat (uiop:getenv "INSTALL_DIR") "/harness/loop.lisp" (expand-file-name ""))
+#+PROPERTY: header-args:lisp :tangle (concat (getenv "INSTALL_DIR") "/harness/loop.lisp" (expand-file-name ""))
 #+TITLE: The Metabolic Loop (loop.lisp)
 #+AUTHOR: Amr
 #+FILETAGS: :harness:loop:
@@ -210,8 +210,8 @@ The heartbeat thread ensures the agent remains alive even without external input
   - HEARTBEAT_INTERVAL: Seconds between heartbeats (default: 60)
   - MEMORY_AUTO_SAVE_INTERVAL: Seconds between auto-saves (default: 300)"
 
-  (let ((interval (or (ignore-errors (parse-integer (uiop:getenv "HEARTBEAT_INTERVAL"))) 60))
-        (auto-save (or (ignore-errors (parse-integer (uiop:getenv "MEMORY_AUTO_SAVE_INTERVAL"))) *auto-save-interval*)))
+  (let ((interval (or (ignore-errors (parse-integer (getenv "HEARTBEAT_INTERVAL"))) 60))
+        (auto-save (or (ignore-errors (parse-integer (getenv "MEMORY_AUTO_SAVE_INTERVAL"))) *auto-save-interval*)))
     (setf *auto-save-interval* auto-save)
     (setf *heartbeat-save-counter* 0)
 
@@ -275,7 +275,7 @@ The main function orchestrates system startup:
   The idle loop checks for interrupts and saves memory before exit."
 
   ;; Step 1: Load environment variables from standard location
-  (let* ((home (uiop:getenv "HOME"))
+  (let* ((home (getenv "HOME"))
          (env-file (uiop:merge-pathnames*
                      ".local/share/opencortex/.env"
                      (uiop:ensure-directory-pathname home))))
@@ -305,7 +305,7 @@ The main function orchestrates system startup:
 
   ;; Step 7: Idle loop - sleep in chunks, checking for interrupts
   (let ((sleep-interval (or (ignore-errors
-                              (parse-integer (uiop:getenv "DAEMON_SLEEP_INTERVAL")))
+                              (parse-integer (getenv "DAEMON_SLEEP_INTERVAL")))
                             3600)))
     (loop
       ;; Check for interrupt before each sleep cycle
@@ -324,7 +324,7 @@ The main function orchestrates system startup:
 These tests verify the metabolic loop and error recovery. Run with:
 ~(fiveam:run! 'immune-suite)~
 
-#+begin_src lisp :tangle (expand-file-name "immune-system-tests.lisp" (concat (concat (or (uiop:getenv "INSTALL_DIR") ".") "/harness") "/tests"))
+#+begin_src lisp :tangle (expand-file-name "immune-system-tests.lisp" (concat (concat (or (getenv "INSTALL_DIR") ".") "/harness") "/tests"))
 (defpackage :opencortex-immune-system-tests
   (:use :cl :fiveam :opencortex)
   (:export #:immune-suite))

@@ -1,4 +1,4 @@
-#+PROPERTY: header-args:lisp :tangle (concat (uiop:getenv "INSTALL_DIR") "/harness/reason.lisp" (expand-file-name ""))
+#+PROPERTY: header-args:lisp :tangle (concat (getenv "INSTALL_DIR") "/harness/reason.lisp" (expand-file-name ""))
 #+TITLE: Stage 2: Reason (reason.lisp)
 #+AUTHOR: Amr
 #+FILETAGS: :harness:reason:
@@ -200,7 +200,7 @@ The `think` function is the heart of the probabilistic engine. It constructs a p
          (tool-belt (generate-tool-belt-prompt))
          (global-context (context-assemble-global-awareness))
          (system-logs (context-get-system-logs))
-         (assistant-name (or (uiop:getenv "MEMEX_ASSISTANT") "Agent"))
+         (assistant-name (or (getenv "MEMEX_ASSISTANT") "Agent"))
          (rejection-trace (proto-get (proto-get context :payload) :rejection-trace)))
 
     ;; Generate prompt from skill or raw text
@@ -472,7 +472,7 @@ The deterministic engine runs all registered skills' verification functions. Thi
 These tests verify the Reason (cognitive) pipeline. Run with:
 ~(fiveam:run! 'pipeline-reason-suite)~
 
-#+begin_src lisp :tangle (expand-file-name "pipeline-reason-tests.lisp" (concat (concat (or (uiop:getenv "INSTALL_DIR") ".") "/harness") "/tests"))
+#+begin_src lisp :tangle (expand-file-name "pipeline-reason-tests.lisp" (concat (concat (or (getenv "INSTALL_DIR") ".") "/harness") "/tests"))
 (defpackage :opencortex-pipeline-reason-tests
   (:use :cl :fiveam :opencortex)
   (:export #:pipeline-reason-suite))

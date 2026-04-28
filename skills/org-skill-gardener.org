@@ -1,4 +1,4 @@
-#+PROPERTY: header-args:lisp :tangle (concat (uiop:getenv "INSTALL_DIR") "/skills/org-skill-gardener.lisp" (expand-file-name ""))
+#+PROPERTY: header-args:lisp :tangle (concat (getenv "INSTALL_DIR") "/skills/org-skill-gardener.lisp" (expand-file-name ""))
 :PROPERTIES:
 :ID:       gardener-skill
 :CREATED:  [2026-04-13 Mon 18:50]

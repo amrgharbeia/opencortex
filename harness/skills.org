@@ -1,4 +1,4 @@
-#+PROPERTY: header-args:lisp :tangle (concat (uiop:getenv "INSTALL_DIR") "/harness/skills.lisp" (expand-file-name ""))
+#+PROPERTY: header-args:lisp :tangle (concat (getenv "INSTALL_DIR") "/harness/skills.lisp" (expand-file-name ""))
 #+TITLE: The Skill Engine (skills.lisp)
 #+AUTHOR: Amr
 #+FILETAGS: :harness:skills:
@@ -347,7 +347,7 @@ Only loads blocks that specify a .lisp tangle target, ignoring tests and example
 
 (defun initialize-all-skills ()
   "Scans the directory defined by SKILLS_DIR and hot-loads skills using topological order."
-  (let* ((env-path (uiop:getenv "SKILLS_DIR"))
+  (let* ((env-path (getenv "SKILLS_DIR"))
          (skills-dir-str (or env-path (namestring (merge-pathnames "notes/" (user-homedir-pathname)))))
          (resolved-path (context-resolve-path skills-dir-str))
          (skills-dir (if resolved-path (uiop:ensure-directory-pathname resolved-path) nil)))
@@ -357,7 +357,7 @@ Only loads blocks that specify a .lisp tangle target, ignoring tests and example
       (return-from initialize-all-skills nil))
 
     (let ((sorted-files (topological-sort-skills skills-dir)))
-      (let* ((mandatory-env (uiop:getenv "MANDATORY_SKILLS"))
+      (let* ((mandatory-env (getenv "MANDATORY_SKILLS"))
              (mandatory-skills (if mandatory-env 
                                    (mapcar (lambda (s) (string-trim '(#\Space #\" #\') s)) 
                                            (uiop:split-string mandatory-env :separator '( #\,)))
@@ -419,7 +419,7 @@ EXAMPLES:
 *** The Eval Tool (Internal Inspection)
 #+begin_src lisp
 ** Cognitive Tool Registration
-#+begin_src lisp :tangle (concat (uiop:getenv "INSTALL_DIR") "/harness/skills.lisp" (expand-file-name ""))
+#+begin_src lisp :tangle (concat (getenv "INSTALL_DIR") "/harness/skills.lisp" (expand-file-name ""))
 ;; Cognitive tools are registered in *cognitive-tools* (defined in package.lisp)
 ;; using the def-cognitive-tool macro.
 #+end_src
@@ -447,7 +447,7 @@ EXAMPLES:
    (:dir :type :string :description "Directory to search in (default is project root)"))
   :body (lambda (args)
           (let ((pattern (getf args :pattern))
-                (dir (or (getf args :dir) (uiop:getenv "MEMEX_DIR"))))
+                (dir (or (getf args :dir) (getenv "MEMEX_DIR"))))
             (uiop:run-program (list "grep" "-r" "-n" "--exclude-dir=node_modules" pattern dir) 
                               :output :string :ignore-error-status t))))
 #+end_src
@@ -475,17 +475,17 @@ EXAMPLES:
            (declare (ignore context))
            (let ((skill (getf args :skill)))
              (or (uiop:file-exists-p skill)
-                 (let ((skills-dir (or (ignore-errors (uiop:getenv "SKILLS_DIR"))
+                 (let ((skills-dir (or (ignore-errors (getenv "SKILLS_DIR"))
                                        (namestring (merge-pathnames "notes/" (user-homedir-pathname))))))
                    (uiop:file-exists-p (merge-pathnames (format nil "~a.org" skill) skills-dir))))))
   :body (lambda (args)
           (let ((skill (getf args :skill)))
             (snapshot-memory)
-            (let ((skills-dir (or (ignore-errors (uiop:getenv "SKILLS_DIR"))
+            (let ((skills-dir (or (ignore-errors (getenv "SKILLS_DIR"))
                                   (namestring (merge-pathnames "notes/" (user-homedir-pathname)))))
                  (resolved-path (context-resolve-path skills-dir))
-                 (skills-dir-actual (if (ignore-errors (uiop:getenv "SKILLS_DIR"))
-                                        (uiop:ensure-directory-pathname (context-resolve-path (uiop:getenv "SKILLS_DIR")))
+                 (skills-dir-actual (if (ignore-errors (getenv "SKILLS_DIR"))
+                                        (uiop:ensure-directory-pathname (context-resolve-path (getenv "SKILLS_DIR")))
                                         (uiop:ensure-directory-pathname (user-homedir-pathname)))))
               (let ((file (if (uiop:file-exists-p skill)
                              (uiop:ensure-pathname skill)
@@ -510,7 +510,7 @@ EXAMPLES:
   :guard (lambda (args context)
            (declare (ignore context))
            (let* ((file (getf args :file))
-                  (memex-root (or (uiop:getenv "MEMEX_DIR") "/home/user/memex"))
+                  (memex-root (or (getenv "MEMEX_DIR") "/home/user/memex"))
                   (abs-path (namestring (uiop:ensure-absolute-pathname file (uiop:getcwd)))))
              (and (str:starts-with-p memex-root abs-path)
                   (not (search ".." abs-path)))))
@@ -531,7 +531,7 @@ EXAMPLES:
   :guard (lambda (args context)
            (declare (ignore context))
            (let* ((file (getf args :file))
-                  (memex-root (or (uiop:getenv "MEMEX_DIR") "/home/user/memex"))
+                  (memex-root (or (getenv "MEMEX_DIR") "/home/user/memex"))
                   (abs-path (namestring (uiop:ensure-absolute-pathname file (uiop:getcwd)))))
              (and (str:starts-with-p memex-root abs-path)
                   (not (search ".." abs-path))
@@ -564,7 +564,7 @@ EXAMPLES:
   :guard (lambda (args context)
            (declare (ignore context))
            (let* ((file (getf args :file))
-                  (memex-root (or (uiop:getenv "MEMEX_DIR") "/home/user/memex"))
+                  (memex-root (or (getenv "MEMEX_DIR") "/home/user/memex"))
                   (abs-path (namestring (uiop:ensure-absolute-pathname file (uiop:getcwd)))))
              (and (str:starts-with-p memex-root abs-path)
                   (not (search ".." abs-path))
@@ -589,7 +589,7 @@ EXAMPLES:
 
 * Test Suite
 
-#+begin_src lisp :tangle (expand-file-name "boot-sequence-tests.lisp" (concat (concat (or (uiop:getenv "INSTALL_DIR") ".") "/harness") "/tests"))
+#+begin_src lisp :tangle (expand-file-name "boot-sequence-tests.lisp" (concat (concat (or (getenv "INSTALL_DIR") ".") "/harness") "/tests"))
 (defpackage :opencortex-boot-tests
   (:use :cl :fiveam :opencortex)
   (:export #:boot-suite))
@@ -643,7 +643,7 @@ EXAMPLES:
   (let* ((tool (gethash "read-file" opencortex::*cognitive-tools*))
          (guard (opencortex::cognitive-tool-guard tool)))
     ;; Set a dummy MEMEX_DIR for the test
-    (setf (uiop:getenv "MEMEX_DIR") "/home/user/memex")
+    (setf (getenv "MEMEX_DIR") "/home/user/memex")
     
     ;; Valid internal paths should return true
     (is (not (null (funcall guard '(:file "/home/user/memex/safe.txt") nil))))

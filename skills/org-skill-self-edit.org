@@ -1,4 +1,4 @@
-#+PROPERTY: header-args:lisp :tangle (concat (uiop:getenv "INSTALL_DIR") "/skills/org-skill-self-edit.lisp" (expand-file-name ""))
+#+PROPERTY: header-args:lisp :tangle (concat (getenv "INSTALL_DIR") "/skills/org-skill-self-edit.lisp" (expand-file-name ""))
 :PROPERTIES:
 :ID:       self-edit-001
 :END:
@@ -239,7 +239,7 @@ Swap compiled skill files without breaking active sockets.
 
 * Phase E: Verification
 
-#+begin_src lisp :tangle (concat (uiop:getenv "INSTALL_DIR") "/skills/self-edit-tests.lisp" (expand-file-name ""))
+#+begin_src lisp :tangle (concat (getenv "INSTALL_DIR") "/skills/self-edit-tests.lisp" (expand-file-name ""))
 (defpackage :opencortex-self-edit-tests
   (:use :cl :fiveam :opencortex)
   (:export #:self-edit-suite))

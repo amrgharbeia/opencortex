@@ -1,4 +1,4 @@
-#+PROPERTY: header-args:lisp :tangle (concat (uiop:getenv "INSTALL_DIR") "/skills/org-skill-shell-actuator.lisp" (expand-file-name ""))
+#+PROPERTY: header-args:lisp :tangle (concat (getenv "INSTALL_DIR") "/skills/org-skill-shell-actuator.lisp" (expand-file-name ""))
 :PROPERTIES:
 :ID:       shell-actuator-skill
 :CREATED:  [2026-04-12 Sun]
@@ -12,7 +12,7 @@ The *Shell Actuator* provides a controlled interface for the OpenCortex to execu
 
 * Implementation
 
-#+begin_src lisp :tangle (concat (uiop:getenv "INSTALL_DIR") "/skills/org-skill-shell-actuator.lisp" (expand-file-name ""))
+#+begin_src lisp :tangle (concat (getenv "INSTALL_DIR") "/skills/org-skill-shell-actuator.lisp" (expand-file-name ""))
 (in-package :opencortex)
 
 (defparameter *allowed-commands* '("ls" "git" "rg" "grep" "date" "echo" "cat" "node" "python3" "sbcl"))

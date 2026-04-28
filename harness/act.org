@@ -1,4 +1,4 @@
-#+PROPERTY: header-args:lisp :tangle (concat (uiop:getenv "INSTALL_DIR") "/harness/act.lisp" (expand-file-name ""))
+#+PROPERTY: header-args:lisp :tangle (concat (getenv "INSTALL_DIR") "/harness/act.lisp" (expand-file-name ""))
 #+TITLE: Stage 3: Act (act.lisp)
 #+AUTHOR: Amr
 #+FILETAGS: :harness:act:
@@ -70,8 +70,8 @@ Example feedback chain:
   3. :tui - Terminal UI output via reply stream"
 
   ;; Load environment configuration
-  (let ((def (uiop:getenv "DEFAULT_ACTUATOR"))
-        (silent (uiop:getenv "SILENT_ACTUATORS")))
+  (let ((def (getenv "DEFAULT_ACTUATOR"))
+        (silent (getenv "SILENT_ACTUATORS")))
 
     ;; Set default actuator
     (when def
@@ -393,7 +393,7 @@ Example feedback chain:
 These tests verify the Act pipeline. Run with:
 ~(fiveam:run! 'pipeline-act-suite)~
 
-#+begin_src lisp :tangle (expand-file-name "pipeline-act-tests.lisp" (concat (concat (or (uiop:getenv "INSTALL_DIR") ".") "/harness") "/tests"))
+#+begin_src lisp :tangle (expand-file-name "pipeline-act-tests.lisp" (concat (concat (or (getenv "INSTALL_DIR") ".") "/harness") "/tests"))
 (defpackage :opencortex-pipeline-act-tests
   (:use :cl :fiveam :opencortex)
   (:export #:pipeline-act-suite))

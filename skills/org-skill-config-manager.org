@@ -16,26 +16,26 @@ Secrets are appended to `~/.config/opencortex/.env`, while structural metadata i
 * Phase B: Protocol (Success Criteria)
 
 ** Test Suite Context
-#+begin_src lisp :tangle (concat (uiop:getenv "INSTALL_DIR") "/skills/config-manager-tests.lisp" (expand-file-name ""))
+#+begin_src lisp :tangle (concat (getenv "INSTALL_DIR") "/skills/config-manager-tests.lisp" (expand-file-name ""))
 (defpackage :opencortex-config-manager-tests
   (:use :cl :fiveam :opencortex)
   (:export #:config-suite))
 #+end_src
 
-#+begin_src lisp :tangle (concat (uiop:getenv "INSTALL_DIR") "/skills/config-manager-tests.lisp" (expand-file-name ""))
+#+begin_src lisp :tangle (concat (getenv "INSTALL_DIR") "/skills/config-manager-tests.lisp" (expand-file-name ""))
 (in-package :opencortex-config-manager-tests)
 #+end_src
 
-#+begin_src lisp :tangle (concat (uiop:getenv "INSTALL_DIR") "/skills/config-manager-tests.lisp" (expand-file-name ""))
+#+begin_src lisp :tangle (concat (getenv "INSTALL_DIR") "/skills/config-manager-tests.lisp" (expand-file-name ""))
 (def-suite config-suite :description "Verification of the Config Manager skill")
 #+end_src
 
-#+begin_src lisp :tangle (concat (uiop:getenv "INSTALL_DIR") "/skills/config-manager-tests.lisp" (expand-file-name ""))
+#+begin_src lisp :tangle (concat (getenv "INSTALL_DIR") "/skills/config-manager-tests.lisp" (expand-file-name ""))
 (in-suite config-suite)
 #+end_src
 
 ** Registry Tests
-#+begin_src lisp :tangle (concat (uiop:getenv "INSTALL_DIR") "/skills/config-manager-tests.lisp" (expand-file-name ""))
+#+begin_src lisp :tangle (concat (getenv "INSTALL_DIR") "/skills/config-manager-tests.lisp" (expand-file-name ""))
 (test test-provider-registration
   "Verify that multiple providers can be registered and saved."
   (let ((opencortex::*providers* nil))
@@ -44,36 +44,36 @@ Secrets are appended to `~/.config/opencortex/.env`, while structural metadata i
 
 (test test-get-oc-config-dir-default
   "Verify get-oc-config-dir returns XDG-compliant path when env not set."
-  (let ((orig-env (uiop:getenv "OC_CONFIG_DIR")))
+  (let ((orig-env (getenv "OC_CONFIG_DIR")))
     (unwind-protect
         (progn
-          (setf (uiop:getenv "OC_CONFIG_DIR") nil)
+          (setf (getenv "OC_CONFIG_DIR") nil)
           (let ((dir (opencortex:get-oc-config-dir)))
             (is (search ".config/opencortex" (namestring dir)))))
       (if orig-env
-          (setf (uiop:getenv "OC_CONFIG_DIR") orig-env)
-          (setf (uiop:getenv "OC_CONFIG_DIR") nil)))))
+          (setf (getenv "OC_CONFIG_DIR") orig-env)
+          (setf (getenv "OC_CONFIG_DIR") nil)))))
 
 (test test-get-oc-config-dir-env-override
   "Verify get-oc-config-dir uses OC_CONFIG_DIR when set."
-  (let ((orig-env (uiop:getenv "OC_CONFIG_DIR")))
+  (let ((orig-env (getenv "OC_CONFIG_DIR")))
     (unwind-protect
         (progn
-          (setf (uiop:getenv "OC_CONFIG_DIR") "/tmp/test-opencortex-config")
+          (setf (getenv "OC_CONFIG_DIR") "/tmp/test-opencortex-config")
           (let ((dir (opencortex:get-oc-config-dir)))
             (is (string= "/tmp/test-opencortex-config/" (namestring dir)))))
       (if orig-env
-          (setf (uiop:getenv "OC_CONFIG_DIR") orig-env)
-          (setf (uiop:getenv "OC_CONFIG_DIR") nil)))))
+          (setf (getenv "OC_CONFIG_DIR") orig-env)
+          (setf (getenv "OC_CONFIG_DIR") nil)))))
 
 (test test-save-providers-roundtrip
   "Verify save-providers writes and providers can be reloaded."
   (let ((opencortex::*providers* nil)
         (test-dir "/tmp/test-opencortex-config/")
-        (orig-env (uiop:getenv "OC_CONFIG_DIR")))
+        (orig-env (getenv "OC_CONFIG_DIR")))
     (unwind-protect
         (progn
-          (setf (uiop:getenv "OC_CONFIG_DIR") test-dir)
+          (setf (getenv "OC_CONFIG_DIR") test-dir)
           (opencortex:register-provider :openai '(:key "test-key-123" :model "gpt-4"))
           (opencortex:save-providers)
           (let ((loaded-provs (uiop:read-file-string (merge-pathnames "providers.lisp" (uiop:ensure-directory-pathname test-dir)))))
@@ -81,8 +81,8 @@ Secrets are appended to `~/.config/opencortex/.env`, while structural metadata i
             (is (search "test-key-123" loaded-provs))))
       (uiop:delete-directory-tree (uiop:ensure-directory-pathname test-dir) :validate t)
       (if orig-env
-          (setf (uiop:getenv "OC_CONFIG_DIR") orig-env)
-          (setf (uiop:getenv "OC_CONFIG_DIR") nil)))))
+          (setf (getenv "OC_CONFIG_DIR") orig-env)
+          (setf (getenv "OC_CONFIG_DIR") nil)))))
 
 (test test-configure-provider-validation
   "Verify configure-provider validates required fields."
@@ -95,12 +95,12 @@ Secrets are appended to `~/.config/opencortex/.env`, while structural metadata i
 * Phase C: Implementation (Build)
 
 ** Package Context
-#+begin_src lisp :tangle (concat (uiop:getenv "INSTALL_DIR") "/skills/org-skill-config-manager.lisp" (expand-file-name ""))
+#+begin_src lisp :tangle (concat (getenv "INSTALL_DIR") "/skills/org-skill-config-manager.lisp" (expand-file-name ""))
 (in-package :opencortex)
 #+end_src
 
 ** Skill Metadata
-#+begin_src lisp :tangle (concat (uiop:getenv "INSTALL_DIR") "/skills/org-skill-config-manager.lisp" (expand-file-name ""))
+#+begin_src lisp :tangle (concat (getenv "INSTALL_DIR") "/skills/org-skill-config-manager.lisp" (expand-file-name ""))
 (defparameter *skill-config-manager*
   '(:name "config-manager"
     :description "Manages system settings and LLM provider configurations."
@@ -110,7 +110,7 @@ Secrets are appended to `~/.config/opencortex/.env`, while structural metadata i
 #+end_src
 
 ** Provider Templates
-#+begin_src lisp :tangle (concat (uiop:getenv "INSTALL_DIR") "/skills/org-skill-config-manager.lisp" (expand-file-name ""))
+#+begin_src lisp :tangle (concat (getenv "INSTALL_DIR") "/skills/org-skill-config-manager.lisp" (expand-file-name ""))
 (defvar *provider-templates*
   '((:ollama . (:name "Ollama (Local)" :fields ((:url :label "URL") (:model :label "Model")) :default-url "http://localhost:11434" :default-model "llama3"))
     (:openrouter . (:name "OpenRouter" :fields ((:key :label "API Key" :secret t) (:model :label "Model")) :default-model "anthropic/claude-3-opus-20240229"))
@@ -122,12 +122,12 @@ Secrets are appended to `~/.config/opencortex/.env`, while structural metadata i
 #+end_src
 
 ** Registry Persistence
-#+begin_src lisp :tangle (concat (uiop:getenv "INSTALL_DIR") "/skills/org-skill-config-manager.lisp" (expand-file-name ""))
+#+begin_src lisp :tangle (concat (getenv "INSTALL_DIR") "/skills/org-skill-config-manager.lisp" (expand-file-name ""))
 (defvar *providers* nil "Global registry of configured LLM providers.")
 
 (defun get-oc-config-dir ()
   "Returns the XDG-compliant config directory for OpenCortex."
-  (let ((env (uiop:getenv "OC_CONFIG_DIR")))
+  (let ((env (getenv "OC_CONFIG_DIR")))
     (if (and env (> (length env) 0))
         (uiop:ensure-directory-pathname env)
         (uiop:merge-pathnames* ".config/opencortex/" (user-homedir-pathname)))))
@@ -155,18 +155,18 @@ Secrets are appended to `~/.config/opencortex/.env`, while structural metadata i
     (ensure-directories-exist env-file)
     (with-open-file (out env-file :direction :output :if-exists :append :if-does-not-exist :create)
       (format out "~a=~a~%" var-name val))
-    (setf (uiop:getenv var-name) val)))
+    (setf (getenv var-name) val)))
 #+end_src
 
 ** Registry API
-#+begin_src lisp :tangle (concat (uiop:getenv "INSTALL_DIR") "/skills/org-skill-config-manager.lisp" (expand-file-name ""))
+#+begin_src lisp :tangle (concat (getenv "INSTALL_DIR") "/skills/org-skill-config-manager.lisp" (expand-file-name ""))
 (defun register-provider (id config)
   "Update the global provider registry."
   (setf (getf *providers* id) config))
 #+end_src
 
 ** Setup Wizard Implementation
-#+begin_src lisp :tangle (concat (uiop:getenv "INSTALL_DIR") "/skills/org-skill-config-manager.lisp" (expand-file-name ""))
+#+begin_src lisp :tangle (concat (getenv "INSTALL_DIR") "/skills/org-skill-config-manager.lisp" (expand-file-name ""))
 (defun configure-provider (id)
   "Guided configuration for a specific LLM provider template."
   (let* ((template (cdr (assoc id *provider-templates*)))
@@ -187,7 +187,7 @@ Secrets are appended to `~/.config/opencortex/.env`, while structural metadata i
     (format t "✓ ~a metadata registered.~%" (getf template :name))))
 #+end_src
 
-#+begin_src lisp :tangle (concat (uiop:getenv "INSTALL_DIR") "/skills/org-skill-config-manager.lisp" (expand-file-name ""))
+#+begin_src lisp :tangle (concat (getenv "INSTALL_DIR") "/skills/org-skill-config-manager.lisp" (expand-file-name ""))
 (defun run-setup-wizard ()
   "Entry point for the interactive OpenCortex Lisp Setup Wizard."
   (format t "=== OpenCortex: Advanced Setup Wizard ===~%")

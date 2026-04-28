@@ -1,4 +1,4 @@
-#+PROPERTY: header-args:lisp :tangle (concat (uiop:getenv "INSTALL_DIR") "/skills/org-skill-literate-programming.lisp" (expand-file-name ""))
+#+PROPERTY: header-args:lisp :tangle (concat (getenv "INSTALL_DIR") "/skills/org-skill-literate-programming.lisp" (expand-file-name ""))
 :PROPERTIES:
 :ID:       literate-programming-skill-2026
 :CREATED:  [2026-04-25 Sat]
@@ -225,8 +225,8 @@ The LP skill runs at priority 1100 (just below engineering-standards at 1000).
 (defun lp-init ()
   "Initialize the LP system with project root."
   (unless *lp-initialized*
-    (let ((env-root (or (uiop:getenv "OPENCORTEX_ROOT")
-                        (uiop:getenv "MEMEX_DIR")
+    (let ((env-root (or (getenv "OPENCORTEX_ROOT")
+                        (getenv "MEMEX_DIR")
                         "/home/user/memex/projects/opencortex")))
       (lp-set-project-root env-root)
       (setf *lp-initialized* t)
@@ -241,7 +241,7 @@ The LP skill runs at priority 1100 (just below engineering-standards at 1000).
 These tests verify the LP enforcement logic. Run with:
 ~(fiveam:run! 'literate-programming-suite)~
 
-#+begin_src lisp :tangle (concat (uiop:getenv "INSTALL_DIR") "/skills/literate-programming-tests.lisp" (expand-file-name ""))
+#+begin_src lisp :tangle (concat (getenv "INSTALL_DIR") "/skills/literate-programming-tests.lisp" (expand-file-name ""))
 (defpackage :opencortex-literate-programming-tests
   (:use :cl :fiveam :opencortex)
   (:export #:literate-programming-suite))
