@@ -120,6 +120,14 @@ The ~package.lisp~ file defines the public API of the ~opencortex~ harness. It s
    #:def-cognitive-tool
    #:*cognitive-tools*
 
+   ;; --- Engineering Standards Skill ---
+   #:verify-git-clean-p
+
+   ;; --- Literate Programming Skill ---
+   #:literate-check-block-balance
+   #:check-tangle-sync
+   #:*tangle-targets*
+
    ;; --- Emacs Edit Skill ---
    #:emacs-edit-read-file
    #:emacs-edit-write-file
@@ -130,6 +138,8 @@ The ~package.lisp~ file defines the public API of the ~opencortex~ harness. It s
    #:emacs-edit-find-headline-by-title
    #:emacs-edit-generate-id
    #:emacs-edit-id-format
+   #:emacs-edit-ast-to-org
+   #:emacs-edit-modify
 
    ;; --- Lisp Utils Skill ---
    #:lisp-utils-validate
@@ -137,6 +147,19 @@ The ~package.lisp~ file defines the public API of the ~opencortex~ harness. It s
    #:lisp-utils-check-syntactic
    #:lisp-utils-check-semantic
    #:lisp-utils-register
+
+   ;; --- Config Manager & Diagnostics Skill ---
+   #:register-provider
+   #:save-providers
+   #:configure-provider
+   #:run-setup-wizard
+   #:get-oc-config-dir
+   #:prompt-for
+   #:save-secret
+   #:doctor-check-dependencies
+   #:doctor-check-xdg
+   #:doctor-check-llm
+   #:doctor-run-all
 
    ;; --- Tool Permissions Skill ---
    #:get-tool-permission
@@ -271,54 +294,47 @@ Centralized logging function. It simultaneously writes to standard output and th
 #+end_src
 * Global Test Runner
 #+begin_src lisp :tangle (expand-file-name "run-all-tests.lisp" (concat (or (getenv "INSTALL_DIR") ".") "/harness"))
-(load "~/quicklisp/setup.lisp")
+(load (merge-pathnames "quicklisp/setup.lisp" (user-homedir-pathname)))
 
-(push #p"./" asdf:*central-registry*)
+(let ((oc-dir (or (uiop:getenv "OC_DATA_DIR") 
+                  (namestring (truename "./")))))
+  (push (uiop:ensure-directory-pathname oc-dir) asdf:*central-registry*))
 
-(ql:quickload '(:usocket :bordeaux-threads :cl-postgres :split-sequence
-                :dexador :jonathan :cl-dotenv :hunchentoot
-                :trivial-garbage :s-sql :str :uuid :cl-json :uiop :fiveam))
+(progn
+  (ql:quickload :opencortex :silent t)
+  (finish-output))
 
-(asdf:load-system :opencortex)
-(asdf:load-system :opencortex/tests)
+(format t "~%=== Initializing Skills BEFORE loading tests ===~%")
+(finish-output)
+(opencortex:initialize-all-skills)
+
+(format t "~%=== Loading Test System ===~%")
+(finish-output)
+(progn
+  (ql:quickload :opencortex/tests :silent t)
+  (finish-output))
 
 (format t "~%=== Running ALL Test Suites ===~%")
+(finish-output)
 
-;; Engineering Standards tests
-(when (find-package :OPENCORTEX-ENGINEERING-STANDARDS-TESTS)
-  (fiveam:run! 'OPENCORTEX-ENGINEERING-STANDARDS-TESTS::ENGINEERING-STANDARDS-SUITE))
-
-;; Literate Programming tests
-(when (find-package :OPENCORTEX-LITERATE-PROGRAMMING-TESTS)
-  (fiveam:run! 'OPENCORTEX-LITERATE-PROGRAMMING-TESTS::LITERATE-PROGRAMMING-SUITE))
-
-;; Communication tests
-(when (find-package :OPENCORTEX-COMMUNICATION-TESTS)
-  (fiveam:run! 'OPENCORTEX-COMMUNICATION-TESTS::COMMUNICATION-PROTOCOL-SUITE))
-
-;; Pipeline tests
-(when (find-package :OPENCORTEX-PIPELINE-TESTS)
-  (fiveam:run! 'OPENCORTEX-PIPELINE-TESTS::PIPELINE-SUITE))
-
-;; Boot sequence tests
-(when (find-package :OPENCORTEX-BOOT-TESTS)
-  (fiveam:run! 'OPENCORTEX-BOOT-TESTS::BOOT-SUITE))
-
-;; Memory tests
-(when (find-package :OPENCORTEX-MEMORY-TESTS)
-  (fiveam:run! 'OPENCORTEX-MEMORY-TESTS::MEMORY-SUITE))
-
-;; Immune system tests
-(when (find-package :OPENCORTEX-IMMUNE-SYSTEM-TESTS)
-  (fiveam:run! 'OPENCORTEX-IMMUNE-SYSTEM-TESTS::IMMUNE-SUITE))
-
-;; Emacs edit tests
-(when (find-package :OPENCORTEX-EMACS-EDIT-TESTS)
-  (fiveam:run! 'OPENCORTEX-EMACS-EDIT-TESTS::EMACS-EDIT-SUITE))
-
-;; Lisp utils tests
-(when (find-package :OPENCORTEX-LISP-UTILS-TESTS)
-  (fiveam:run! 'OPENCORTEX-LISP-UTILS-TESTS::LISP-UTILS-SUITE))
+(let ((suites '(("ENGINEERING-STANDARDS" . "OPENCORTEX-ENGINEERING-STANDARDS-TESTS::ENGINEERING-STANDARDS-SUITE")
+                ("LITERATE-PROGRAMMING" . "OPENCORTEX-LITERATE-PROGRAMMING-TESTS::LITERATE-PROGRAMMING-SUITE")
+                ("COMMUNICATION" . "OPENCORTEX-COMMUNICATION-TESTS::COMMUNICATION-PROTOCOL-SUITE")
+                ("PIPELINE" . "OPENCORTEX-PIPELINE-TESTS::PIPELINE-SUITE")
+                ("BOOT" . "OPENCORTEX-BOOT-TESTS::BOOT-SUITE")
+                ("MEMORY" . "OPENCORTEX-MEMORY-TESTS::MEMORY-SUITE")
+                ("IMMUNE" . "OPENCORTEX-IMMUNE-SYSTEM-TESTS::IMMUNE-SUITE")
+                ("EMACS-EDIT" . "OPENCORTEX-EMACS-EDIT-TESTS::EMACS-EDIT-SUITE")
+                ("LISP-UTILS" . "OPENCORTEX-LISP-UTILS-TESTS::LISP-UTILS-SUITE")
+                ("SELF-EDIT" . "OPENCORTEX-SELF-EDIT-TESTS::SELF-EDIT-SUITE")
+                ("TOOL-PERMISSIONS" . "OPENCORTEX-TOOL-PERMISSIONS-TESTS::TOOL-PERMISSIONS-SUITE")
+                ("CONFIG" . "OPENCORTEX-CONFIG-MANAGER-TESTS::CONFIG-SUITE")
+                ("DIAGNOSTICS" . "OPENCORTEX-DIAGNOSTICS-TESTS::DIAGNOSTICS-SUITE"))))
+  (dolist (suite suites)
+    (let ((pkg (intern (string-upcase (car (uiop:split-string (cdr suite) :separator "::"))) :keyword)))
+      (when (find-package pkg)
+        (format t "~&--- Suite: ~A ---~%" (car suite))
+        (fiveam:run! (uiop:safe-read-from-string (cdr suite)))))))
 
 (format t "~%=== ALL TESTS COMPLETE ===~%")
 #+end_src

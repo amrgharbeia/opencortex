@@ -296,6 +296,26 @@ Only loads blocks that specify a .lisp tangle target, ignoring tests and example
                     (use-package :opencortex new-pkg)))
                 (let ((*read-eval* nil) (*package* (find-package pkg-name)))
                   (eval (read-from-string (format nil "(progn ~a)" lisp-code))))
+                
+                ;; Export symbols back to :OPENCORTEX for discoverability and testing
+                (let* ((target-pkg (find-package :opencortex))
+                       (raw-name (string-upcase skill-base-name))
+                       (short-name (if (uiop:string-prefix-p "ORG-SKILL-" raw-name)
+                                       (subseq raw-name 10)
+                                       raw-name)))
+                  (do-symbols (sym (find-package pkg-name))
+                    (when (eq (symbol-package sym) (find-package pkg-name))
+                      (let ((sn (symbol-name sym)))
+                        (when (or (uiop:string-prefix-p raw-name sn)
+                                  (uiop:string-prefix-p short-name sn))
+                          (harness-log "LOADER: Exporting ~a to :OPENCORTEX" sn)
+                          ;; Resolve potential name conflicts by uninterning first
+                          (let ((existing (find-symbol sn target-pkg)))
+                            (when (and existing (not (eq existing sym)))
+                              (unintern existing target-pkg)))
+                          (import sym target-pkg)
+                          (export sym target-pkg))))))
+                
                 (setf (skill-entry-status entry) :ready)
                 t)))
       (error (c)
