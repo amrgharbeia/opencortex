@@ -28,9 +28,13 @@ The *LLM Gateway* skill provides a unified interface for interacting with multip
     (unwind-protect
          (progn
            (setf (uiop:getenv "OLLAMA_HOST") "localhost:1")
-           (let ((result (opencortex.skills.org-skill-llm-gateway::execute-llm-request :prompt "hello" :provider :ollama)))
-             (is (eq (getf result :status) :error))
-             (is (uiop:string-prefix-p "Ollama Failure" (getf result :message)))))
+           (let ((fn (or (find-symbol "EXECUTE-LLM-REQUEST" :opencortex.skills.org-skill-llm-gateway)
+                         (find-symbol "EXECUTE-LLM-REQUEST" :opencortex))))
+             (if fn
+                 (let ((result (funcall fn :prompt "hello" :provider :ollama)))
+                   (is (eq (getf result :status) :error))
+                   (is (uiop:string-prefix-p "Ollama Failure" (getf result :message))))
+                 (fail "Could not find EXECUTE-LLM-REQUEST symbol"))))
       (setf (uiop:getenv "OLLAMA_HOST") old-host))))
 #+end_src
 
