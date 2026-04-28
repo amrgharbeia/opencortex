@@ -1,4 +1,4 @@
-#+PROPERTY: header-args:lisp :tangle (expand-file-name "harness/skills.lisp")
+#+PROPERTY: header-args:lisp :tangle skills.lisp
 #+TITLE: The Skill Engine (skills.lisp)
 #+AUTHOR: Amr
 #+FILETAGS: :harness:skills:
@@ -46,7 +46,7 @@ Skills are discovered, sorted by dependency, and loaded at boot:
 #+begin_src mermaid
 flowchart LR
     subgraph Discovery["Skill Discovery"]
-        Scan["Scan skills/ directory"]
+        Scan["Scan  directory"]
         Sort["Topological sort by DEPENDS_ON"]
     end
 
@@ -85,7 +85,7 @@ flowchart LR
               (/ dot (sqrt (* n1 n2))))))))
 
 ;; TODO: Stub for vault - implement later
-(defun VAULT-MASK-STRING (s) "[MASKED]")
+(defun VAULT-MASK-STRING (s) "[MASKED]
 
 (defvar *VAULT-MEMORY* (make-hash-table :test 'equal))
 
@@ -93,7 +93,7 @@ flowchart LR
 (defstruct skill name priority dependencies trigger-fn probabilistic-prompt deterministic-fn)
 
 (defvar *skill-catalog* (make-hash-table :test 'equal)
-  "A stateful tracking table for all skill files discovered in the environment.")
+  "A stateful tracking table for all skill files discovered in the environment.
 
 (defstruct skill-entry 
   filename 
@@ -157,7 +157,7 @@ flowchart LR
               (when end
                 (let ((line (string-trim " " (subseq content (+ pos 13) end))))
                   (dolist (d (uiop:split-string line :separator '(#\Space #\Tab)))
-                    (unless (string= d "")
+                    (unless (string= d "
                       (push d dependencies))))
                 (setf pos end)))))
     (values id (reverse dependencies))))
@@ -225,7 +225,7 @@ reader check during early boot before the validator skill is loaded."
                   (list :status :error :reason (format nil "~a" c)))))))
     (if (eq (getf result :status) :success)
         (values t nil)
-        (values nil (or (getf result :reason) "Lisp Validator rejected code.")))))
+        (values nil (or (getf result :reason) "Lisp Validator rejected code.))))
 
 (defun extract-tangle-target (line)
   "Extracts the value of the :tangle header from an org src block line.
@@ -262,7 +262,7 @@ Only loads blocks that specify a .lisp tangle target, ignoring tests and example
                (lines (uiop:split-string content :separator '(#\Newline)))
                (in-lisp-block nil)
                (collect-this-block nil)
-               (lisp-code "")
+               (lisp-code "
                (pkg-name (intern (string-upcase (format nil "OPENCORTEX.SKILLS.~a" skill-base-name)) :keyword)))
           
           (dolist (line lines)
@@ -347,7 +347,7 @@ Only loads blocks that specify a .lisp tangle target, ignoring tests and example
 
 (defun initialize-all-skills ()
   "Scans the directory defined by SKILLS_DIR and hot-loads skills using topological order."
-  (let* ((env-path (uiop:getenv "SKILLS_DIR"))
+  (let* ((env-path (uiop:getenv "SKILLS_DIR)
          (skills-dir-str (or env-path (namestring (merge-pathnames "notes/" (user-homedir-pathname)))))
          (resolved-path (context-resolve-path skills-dir-str))
          (skills-dir (if resolved-path (uiop:ensure-directory-pathname resolved-path) nil)))
@@ -357,16 +357,16 @@ Only loads blocks that specify a .lisp tangle target, ignoring tests and example
       (return-from initialize-all-skills nil))
 
     (let ((sorted-files (topological-sort-skills skills-dir)))
-      (let* ((mandatory-env (uiop:getenv "MANDATORY_SKILLS"))
+      (let* ((mandatory-env (uiop:getenv "MANDATORY_SKILLS)
              (mandatory-skills (if mandatory-env 
                                    (mapcar (lambda (s) (string-trim '(#\Space #\" #\') s)) 
                                            (uiop:split-string mandatory-env :separator '( #\,)))
-                                   '("org-skill-policy" "org-skill-bouncer"))))
+                                   '("org-skill-policy" "org-skill-bouncer)))
         (dolist (req mandatory-skills)
           (unless (member req sorted-files :key #'pathname-name :test #'string-equal)
             (error "BOOT FAILURE: Mandatory skill '~a' not found in skills directory: ~a" req (uiop:native-namestring skills-dir))))
       
-        (harness-log "==================================================")
+        (harness-log "==================================================
         (harness-log " LOADER: Initializing ~a skills..." (length sorted-files))
       
         (dolist (file sorted-files)
@@ -385,7 +385,7 @@ Only loads blocks that specify a .lisp tangle target, ignoring tests and example
                      (if (eq (skill-entry-status v) :ready) (incf ready) (incf failed)))
                    *skill-catalog*)
           (harness-log " LOADER: Boot Complete. [Ready: ~a] [Failed: ~a]" ready failed)
-          (harness-log "==================================================")
+          (harness-log "==================================================
           (values ready failed))))))
 #+end_src
 
@@ -397,9 +397,9 @@ Only loads blocks that specify a .lisp tangle target, ignoring tests and example
 You can call tools by returning a Lisp plist: (:target :tool :action :call :tool <name> :args (...))
 
 EXAMPLES:
-(:target :tool :action :call :tool \"eval\" :args (:code \"(+ 1 1)\"))
-(:target :tool :action :call :tool \"grep-search\" :args (:pattern \"autonomousty\"))
-(:target :tool :action :call :tool \"shell\" :args (:cmd \"ls -la\"))
+(:target :tool :action :call :tool \"eval\" :args (:code \"(+ 1 1)\)
+(:target :tool :action :call :tool \"grep-search\" :args (:pattern \"autonomousty\)
+(:target :tool :action :call :tool \"shell\" :args (:cmd \"ls -la\)
 
 ---
 " )))
@@ -419,13 +419,13 @@ EXAMPLES:
 *** The Eval Tool (Internal Inspection)
 #+begin_src lisp
 ** Cognitive Tool Registration
-#+begin_src lisp :tangle (expand-file-name "skills.lisp" (expand-file-name ""))
+#+begin_src lisp :tangle skills.lisp" )
 ;; Cognitive tools are registered in *cognitive-tools* (defined in package.lisp)
 ;; using the def-cognitive-tool macro.
 #+end_src
 
 (def-cognitive-tool :eval "Evaluates raw Common Lisp code in the harness image. Use this for complex calculations or internal state inspection."
-  ((:code :type :string :description "The Lisp code to evaluate"))
+  ((:code :type :string :description "The Lisp code to evaluate)
   :guard (lambda (args context)
            (declare (ignore context))
            (let ((code (getf args :code)))
@@ -443,11 +443,11 @@ EXAMPLES:
 *** The Grep Tool (File Discovery)
 #+begin_src lisp
 (def-cognitive-tool :grep-search "Searches for a pattern in the project files."
-  ((:pattern :type :string :description "The regex pattern to search for")
-   (:dir :type :string :description "Directory to search in (default is project root)"))
+  ((:pattern :type :string :description "The regex pattern to search for
+   (:dir :type :string :description "Directory to search in (default is project root))
   :body (lambda (args)
           (let ((pattern (getf args :pattern))
-                (dir (or (getf args :dir) (getenv "MEMEX_DIR"))))
+                (dir (or (getf args :dir) (getenv "MEMEX_DIR)))
             (uiop:run-program (list "grep" "-r" "-n" "--exclude-dir=node_modules" pattern dir) 
                               :output :string :ignore-error-status t))))
 #+end_src
@@ -455,7 +455,7 @@ EXAMPLES:
 *** The Shell Tool (Machine Actuation)
 #+begin_src lisp
 (def-cognitive-tool :shell "Executes a shell command on the local machine. Use this for file operations, system checks, or running tests."
-  ((:cmd :type :string :description "The full bash command to execute"))
+  ((:cmd :type :string :description "The full bash command to execute)
   :guard (lambda (args context)
            (declare (ignore context))
            (let ((cmd (getf args :cmd)))
@@ -470,22 +470,22 @@ EXAMPLES:
 *** The Reload-Skill Tool (Hot Reload)
 #+begin_src lisp
 (def-cognitive-tool :reload-skill "Reloads a skill from its Org-mode source file, recompiling into the live image without restarting the daemon."
-  ((:skill :type :string :description "The skill name (e.g., \"org-skill-policy\") or full path to the .org file"))
+  ((:skill :type :string :description "The skill name (e.g., \"org-skill-policy\ or full path to the .org file)
   :guard (lambda (args context)
            (declare (ignore context))
            (let ((skill (getf args :skill)))
              (or (uiop:file-exists-p skill)
-                 (let ((skills-dir (or (ignore-errors (uiop:getenv "SKILLS_DIR"))
+                 (let ((skills-dir (or (ignore-errors (uiop:getenv "SKILLS_DIR)
                                        (namestring (merge-pathnames "notes/" (user-homedir-pathname))))))
                    (uiop:file-exists-p (merge-pathnames (format nil "~a.org" skill) skills-dir))))))
   :body (lambda (args)
           (let ((skill (getf args :skill)))
             (snapshot-memory)
-            (let ((skills-dir (or (ignore-errors (uiop:getenv "SKILLS_DIR"))
+            (let ((skills-dir (or (ignore-errors (uiop:getenv "SKILLS_DIR)
                                   (namestring (merge-pathnames "notes/" (user-homedir-pathname)))))
                  (resolved-path (context-resolve-path skills-dir))
-                 (skills-dir-actual (if (ignore-errors (uiop:getenv "SKILLS_DIR"))
-                                        (uiop:ensure-directory-pathname (context-resolve-path (uiop:getenv "SKILLS_DIR")))
+                 (skills-dir-actual (if (ignore-errors (uiop:getenv "SKILLS_DIR)
+                                        (uiop:ensure-directory-pathname (context-resolve-path (uiop:getenv "SKILLS_DIR))
                                         (uiop:ensure-directory-pathname (user-homedir-pathname)))))
               (let ((file (if (uiop:file-exists-p skill)
                              (uiop:ensure-pathname skill)
@@ -506,11 +506,11 @@ EXAMPLES:
 *** The File Read Tool (V 0.2.0 File I/O)
 #+begin_src lisp
 (def-cognitive-tool :read-file "Reads the contents of a file as a string."
-  ((:file :type :string :description "The path to the file to read"))
+  ((:file :type :string :description "The path to the file to read)
   :guard (lambda (args context)
            (declare (ignore context))
            (let* ((file (getf args :file))
-                  (memex-root (or (getenv "MEMEX_DIR") "/home/user/memex"))
+                  (memex-root (or (getenv "MEMEX_DIR "/home/user/memex)
                   (abs-path (namestring (uiop:ensure-absolute-pathname file (uiop:getcwd)))))
              (and (str:starts-with-p memex-root abs-path)
                   (not (search ".." abs-path)))))
@@ -525,13 +525,13 @@ EXAMPLES:
 *** The File Write Tool (V 0.2.0 File I/O)
 #+begin_src lisp
 (def-cognitive-tool :write-file "Writes content to a file, creating it if it doesn't exist."
-  ((:file :type :string :description "The path to the file to write")
-   (:content :type :string :description "The content to write")
-   (:append :type :string :description "\"t\" to append instead of overwriting (optional)"))
+  ((:file :type :string :description "The path to the file to write
+   (:content :type :string :description "The content to write
+   (:append :type :string :description "\"t\" to append instead of overwriting (optional))
   :guard (lambda (args context)
            (declare (ignore context))
            (let* ((file (getf args :file))
-                  (memex-root (or (getenv "MEMEX_DIR") "/home/user/memex"))
+                  (memex-root (or (getenv "MEMEX_DIR "/home/user/memex)
                   (abs-path (namestring (uiop:ensure-absolute-pathname file (uiop:getcwd)))))
              (and (str:starts-with-p memex-root abs-path)
                   (not (search ".." abs-path))
@@ -539,7 +539,7 @@ EXAMPLES:
   :body (lambda (args)
           (let ((file (getf args :file))
                 (content (getf args :content))
-                (append-p (string-equal (getf args :append) "t")))
+                (append-p (string-equal (getf args :append) "t))
             (handler-case
                 (progn
                   (snapshot-memory)
@@ -549,7 +549,7 @@ EXAMPLES:
                                       :if-does-not-exist :create)
                     (write-string content out))
                   (format nil "OK: ~a written to ~a" 
-                          (if append-p "content appended" "file written")
+                          (if append-p "content appended" "file written
                           file))
               (error (c)
                 (format nil "ERROR writing ~a: ~a" file c))))))
@@ -558,13 +558,13 @@ EXAMPLES:
 *** The String Replace Tool (V 0.2.0 File I/O)
 #+begin_src lisp
 (def-cognitive-tool :replace-string "Replaces occurrences of old-string with new-string in a file."
-  ((:file :type :string :description "The path to the file")
-   (:old :type :string :description "The substring to find and replace")
-   (:new :type :string :description "The replacement string"))
+  ((:file :type :string :description "The path to the file
+   (:old :type :string :description "The substring to find and replace
+   (:new :type :string :description "The replacement string)
   :guard (lambda (args context)
            (declare (ignore context))
            (let* ((file (getf args :file))
-                  (memex-root (or (getenv "MEMEX_DIR") "/home/user/memex"))
+                  (memex-root (or (getenv "MEMEX_DIR "/home/user/memex)
                   (abs-path (namestring (uiop:ensure-absolute-pathname file (uiop:getcwd)))))
              (and (str:starts-with-p memex-root abs-path)
                   (not (search ".." abs-path))
@@ -589,22 +589,22 @@ EXAMPLES:
 
 * Test Suite
 
-#+begin_src lisp :tangle (expand-file-name "boot-sequence-tests.lisp" (concat (concat (or (uiop:getenv "INSTALL_DIR") ".") "/harness") "/tests"))
+#+begin_src lisp :tangle boot-sequence-tests.lisp" (concat (concat (or (uiop:getenv "INSTALL_DIR ". "/harness "/tests)
 (defpackage :opencortex-boot-tests
   (:use :cl :fiveam :opencortex)
   (:export #:boot-suite))
 
 (in-package :opencortex-boot-tests)
 
-(def-suite boot-suite :description "Verification of the Skill Engine loader")
+(def-suite boot-suite :description "Verification of the Skill Engine loader
 
 (in-suite boot-suite)
 
 (test test-parse-skill-metadata
   "Verify extraction of ID and DEPENDS_ON from Org headers."
-  (let ((tmp-file "/tmp/org-skill-test-metadata.org"))
+  (let ((tmp-file "/tmp/org-skill-test-metadata.org)
     (with-open-file (out tmp-file :direction :output :if-exists :supersede)
-      (format out ":PROPERTIES:~%:ID: test-id~%:END:~%#+DEPENDS_ON: dep1 dep2~%"))
+      (format out ":PROPERTIES:~%:ID: test-id~%:END:~%#+DEPENDS_ON: dep1 dep2~%)
     (unwind-protect
          (multiple-value-bind (id deps) (opencortex::parse-skill-metadata tmp-file)
            (is (equal "test-id" id))
@@ -614,12 +614,12 @@ EXAMPLES:
 
 (test test-topological-sort-basic
   "Verify that skills are ordered by dependency."
-  (let ((tmp-dir "/tmp/opencortex-boot-test/"))
+  (let ((tmp-dir "/tmp/opencortex-boot-test/)
     (uiop:ensure-all-directories-exist (list tmp-dir))
     (with-open-file (out (merge-pathnames "org-skill-a.org" tmp-dir) :direction :output :if-exists :supersede)
-      (format out "#+DEPENDS_ON: skill-b-id~%"))
+      (format out "#+DEPENDS_ON: skill-b-id~%)
     (with-open-file (out (merge-pathnames "org-skill-b.org" tmp-dir) :direction :output :if-exists :supersede)
-      (format out ":PROPERTIES:~%:ID: skill-b-id~%:END:~%"))
+      (format out ":PROPERTIES:~%:ID: skill-b-id~%:END:~%)
     (unwind-protect
          (let ((sorted (opencortex::topological-sort-skills tmp-dir)))
            (let ((pos-a (position "org-skill-a" sorted :key #'pathname-name :test #'string-equal))
@@ -629,9 +629,9 @@ EXAMPLES:
 
 (test test-skill-jailing
   "Verify that skills are loaded into their own packages."
-  (let ((tmp-skill "/tmp/org-skill-jail-test.org"))
+  (let ((tmp-skill "/tmp/org-skill-jail-test.org)
     (with-open-file (out tmp-skill :direction :output :if-exists :supersede)
-      (format out ":PROPERTIES:~%:ID: jail-test-id~%:END:~%#+TITLE: Jail Test Skill~%#+begin_src lisp :tangle jail-test.lisp~%(defskill :org-skill-jail-test :priority 1 :trigger (lambda (ctx) nil) :deterministic (lambda (a c) a))~%#+end_src~%"))
+      (format out ":PROPERTIES:~%:ID: jail-test-id~%:END:~%#+TITLE: Jail Test Skill~%#+begin_src lisp :tangle jail-test.lisp~%(defskill :org-skill-jail-test :priority 1 :trigger (lambda (ctx) nil) :deterministic (lambda (a c) a))~%#+end_src~%)
     (unwind-protect
          (progn
            (opencortex::load-skill-from-org tmp-skill)
@@ -643,13 +643,13 @@ EXAMPLES:
   (let* ((tool (gethash "read-file" opencortex::*cognitive-tools*))
          (guard (opencortex::cognitive-tool-guard tool)))
     ;; Set a dummy MEMEX_DIR for the test
-    (setf (getenv "MEMEX_DIR") "/home/user/memex")
+    (setf (getenv "MEMEX_DIR "/home/user/memex
     
     ;; Valid internal paths should return true
-    (is (not (null (funcall guard '(:file "/home/user/memex/safe.txt") nil))))
-    (is (not (null (funcall guard '(:file "/home/user/memex/projects/safe.txt") nil))))
+    (is (not (null (funcall guard '(:file "/home/user/memex/safe.txt nil))))
+    (is (not (null (funcall guard '(:file "/home/user/memex/projects/safe.txt nil))))
     
     ;; Path traversal escape should return false
-    (is (null (funcall guard '(:file "/home/user/memex/../.bashrc") nil)))
-    (is (null (funcall guard '(:file "/home/user/memex/projects/../../etc/passwd") nil)))))
+    (is (null (funcall guard '(:file "/home/user/memex/../.bashrc nil)))
+    (is (null (funcall guard '(:file "/home/user/memex/projects/../../etc/passwd nil)))))
 #+end_src
