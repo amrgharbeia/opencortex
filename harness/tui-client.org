@@ -1,4 +1,4 @@
-#+PROPERTY: header-args:lisp :tangle (expand-file-name "tui-client.lisp" (or (identity (getenv "INSTALL_DIR")) "."))
+#+PROPERTY: header-args:lisp :tangle (concat (uiop:getenv "INSTALL_DIR") "/tui-client.lisp")
 :PROPERTIES:
 :ID:       tui-client-spec
 :CREATED:  [2026-04-17 Fri 11:00]
@@ -22,26 +22,26 @@ A simple MVP console is insufficient for a Lisp Machine. To reach v0.2.0, the TU
 * Phase B: Protocol (Success Criteria)
 
 ** Test Suite Context
-#+begin_src lisp :tangle (expand-file-name "tui-tests.lisp" (concat (or (identity (getenv "INSTALL_DIR")) ".") "/tests"))
+#+begin_src lisp :tangle ((concat (uiop:getenv "INSTALL_DIR") "/tests/tui-tests.lisp"))
 (defpackage :opencortex-tui-tests
   (:use :cl :fiveam :opencortex)
   (:export #:tui-suite))
 #+end_src
 
-#+begin_src lisp :tangle (expand-file-name "tui-tests.lisp" (concat (or (identity (getenv "INSTALL_DIR")) ".") "/tests"))
+#+begin_src lisp :tangle ((concat (uiop:getenv "INSTALL_DIR") "/tests/tui-tests.lisp"))
 (in-package :opencortex-tui-tests)
 #+end_src
 
-#+begin_src lisp :tangle (expand-file-name "tui-tests.lisp" (concat (or (identity (getenv "INSTALL_DIR")) ".") "/tests"))
+#+begin_src lisp :tangle ((concat (uiop:getenv "INSTALL_DIR") "/tests/tui-tests.lisp"))
 (def-suite tui-suite :description "Verification of the TUI parsing and styling logic")
 #+end_src
 
-#+begin_src lisp :tangle (expand-file-name "tui-tests.lisp" (concat (or (identity (getenv "INSTALL_DIR")) ".") "/tests"))
+#+begin_src lisp :tangle ((concat (uiop:getenv "INSTALL_DIR") "/tests/tui-tests.lisp"))
 (in-suite tui-suite)
 #+end_src
 
 ** Command Parsing Tests
-#+begin_src lisp :tangle (expand-file-name "tui-tests.lisp" (concat (or (identity (getenv "INSTALL_DIR")) ".") "/tests"))
+#+begin_src lisp :tangle ((concat (uiop:getenv "INSTALL_DIR") "/tests/tui-tests.lisp"))
 (test test-tui-connection-drop
   "Tier 2 Chaos: Verify that handle-return degrades gracefully when the daemon connection is lost."
   (let ((opencortex.tui::*incoming-msgs* nil)
@@ -57,81 +57,81 @@ A simple MVP console is insufficient for a Lisp Machine. To reach v0.2.0, the TU
 * Phase C: Implementation (Build)
 
 ** Package Context
-#+begin_src lisp :tangle (expand-file-name "tui-client.lisp" (or (identity (getenv "INSTALL_DIR")) "."))
+#+begin_src lisp :tangle (concat (uiop:getenv "INSTALL_DIR") "/tui-client.lisp")
 (in-package :cl-user)
 #+end_src
 
-#+begin_src lisp :tangle (expand-file-name "tui-client.lisp" (or (identity (getenv "INSTALL_DIR")) "."))
+#+begin_src lisp :tangle (concat (uiop:getenv "INSTALL_DIR") "/tui-client.lisp")
 (defpackage :opencortex.tui
   (:use :cl :croatoan)
   (:export :main))
 #+end_src
 
-#+begin_src lisp :tangle (expand-file-name "tui-client.lisp" (or (identity (getenv "INSTALL_DIR")) "."))
+#+begin_src lisp :tangle (concat (uiop:getenv "INSTALL_DIR") "/tui-client.lisp")
 (in-package :opencortex.tui)
 #+end_src
 
 ** Global State
-#+begin_src lisp :tangle (expand-file-name "tui-client.lisp" (or (identity (getenv "INSTALL_DIR")) "."))
+#+begin_src lisp :tangle (concat (uiop:getenv "INSTALL_DIR") "/tui-client.lisp")
 (defvar *daemon-host* "127.0.0.1")
 #+end_src
 
-#+begin_src lisp :tangle (expand-file-name "tui-client.lisp" (or (identity (getenv "INSTALL_DIR")) "."))
+#+begin_src lisp :tangle (concat (uiop:getenv "INSTALL_DIR") "/tui-client.lisp")
 (defvar *daemon-port* 9105)
 #+end_src
 
-#+begin_src lisp :tangle (expand-file-name "tui-client.lisp" (or (identity (getenv "INSTALL_DIR")) "."))
+#+begin_src lisp :tangle (concat (uiop:getenv "INSTALL_DIR") "/tui-client.lisp")
 (defvar *socket* nil)
 #+end_src
 
-#+begin_src lisp :tangle (expand-file-name "tui-client.lisp" (or (identity (getenv "INSTALL_DIR")) "."))
+#+begin_src lisp :tangle (concat (uiop:getenv "INSTALL_DIR") "/tui-client.lisp")
 (defvar *stream* nil)
 #+end_src
 
-#+begin_src lisp :tangle (expand-file-name "tui-client.lisp" (or (identity (getenv "INSTALL_DIR")) "."))
+#+begin_src lisp :tangle (concat (uiop:getenv "INSTALL_DIR") "/tui-client.lisp")
 (defvar *chat-history* (list) "Full chronological log of messages.")
 #+end_src
 
-#+begin_src lisp :tangle (expand-file-name "tui-client.lisp" (or (identity (getenv "INSTALL_DIR")) "."))
+#+begin_src lisp :tangle (concat (uiop:getenv "INSTALL_DIR") "/tui-client.lisp")
 (defvar *scroll-index* 0 "Offset for history rendering.")
 #+end_src
 
-#+begin_src lisp :tangle (expand-file-name "tui-client.lisp" (or (identity (getenv "INSTALL_DIR")) "."))
+#+begin_src lisp :tangle (concat (uiop:getenv "INSTALL_DIR") "/tui-client.lisp")
 (defvar *status-text* "Connecting...")
 #+end_src
 
-#+begin_src lisp :tangle (expand-file-name "tui-client.lisp" (or (identity (getenv "INSTALL_DIR")) "."))
+#+begin_src lisp :tangle (concat (uiop:getenv "INSTALL_DIR") "/tui-client.lisp")
 (defvar *input-buffer* (make-array 0 :element-type 'char :fill-pointer 0 :adjustable t))
 #+end_src
 
-#+begin_src lisp :tangle (expand-file-name "tui-client.lisp" (or (identity (getenv "INSTALL_DIR")) "."))
+#+begin_src lisp :tangle (concat (uiop:getenv "INSTALL_DIR") "/tui-client.lisp")
 (defvar *command-history* (make-array 0 :element-type 't :fill-pointer 0 :adjustable t))
 #+end_src
 
-#+begin_src lisp :tangle (expand-file-name "tui-client.lisp" (or (identity (getenv "INSTALL_DIR")) "."))
+#+begin_src lisp :tangle (concat (uiop:getenv "INSTALL_DIR") "/tui-client.lisp")
 (defvar *history-index* -1)
 #+end_src
 
-#+begin_src lisp :tangle (expand-file-name "tui-client.lisp" (or (identity (getenv "INSTALL_DIR")) "."))
+#+begin_src lisp :tangle (concat (uiop:getenv "INSTALL_DIR") "/tui-client.lisp")
 (defvar *is-running* t)
 #+end_src
 
-#+begin_src lisp :tangle (expand-file-name "tui-client.lisp" (or (identity (getenv "INSTALL_DIR")) "."))
+#+begin_src lisp :tangle (concat (uiop:getenv "INSTALL_DIR") "/tui-client.lisp")
 (defvar *queue-lock* (bt:make-lock))
 #+end_src
 
-#+begin_src lisp :tangle (expand-file-name "tui-client.lisp" (or (identity (getenv "INSTALL_DIR")) "."))
+#+begin_src lisp :tangle (concat (uiop:getenv "INSTALL_DIR") "/tui-client.lisp")
 (defvar *incoming-msgs* nil)
 #+end_src
 
 ** Utilities
-#+begin_src lisp :tangle (expand-file-name "tui-client.lisp" (or (identity (getenv "INSTALL_DIR")) "."))
+#+begin_src lisp :tangle (concat (uiop:getenv "INSTALL_DIR") "/tui-client.lisp")
 (defun enqueue-msg (msg)
   "Thread-safe addition to incoming message queue."
   (bt:with-lock-held (*queue-lock*)
     (setf *incoming-msgs* (append *incoming-msgs* (list msg)))))
 
-#+begin_src lisp :tangle (expand-file-name "tui-client.lisp" (or (identity (getenv "INSTALL_DIR")) "."))
+#+begin_src lisp :tangle (concat (uiop:getenv "INSTALL_DIR") "/tui-client.lisp")
 (defun dequeue-msgs ()
   "Thread-safe retrieval of incoming messages."
   (bt:with-lock-held (*queue-lock*)
@@ -142,7 +142,7 @@ A simple MVP console is insufficient for a Lisp Machine. To reach v0.2.0, the TU
 #+end_src
 
 ** Styling Engine
-#+begin_src lisp :tangle (expand-file-name "tui-client.lisp" (or (identity (getenv "INSTALL_DIR")) "."))
+#+begin_src lisp :tangle (concat (uiop:getenv "INSTALL_DIR") "/tui-client.lisp")
 (defun get-line-style (text)
   "Determines croatoan attributes based on content patterns."
   (cond
@@ -154,7 +154,7 @@ A simple MVP console is insufficient for a Lisp Machine. To reach v0.2.0, the TU
 #+end_src
 
 ** Rendering Orchestrator
-#+begin_src lisp :tangle (expand-file-name "tui-client.lisp" (or (identity (getenv "INSTALL_DIR")) "."))
+#+begin_src lisp :tangle (concat (uiop:getenv "INSTALL_DIR") "/tui-client.lisp")
 (defun render-chat (win)
   "Renders the chat history with scrolling and styling."
   (clear win)
@@ -172,14 +172,14 @@ A simple MVP console is insufficient for a Lisp Machine. To reach v0.2.0, the TU
 #+end_src
 
 ** Input Handling
-#+begin_src lisp :tangle (expand-file-name "tui-client.lisp" (or (identity (getenv "INSTALL_DIR")) "."))
+#+begin_src lisp :tangle (concat (uiop:getenv "INSTALL_DIR") "/tui-client.lisp")
 (defun handle-backspace ()
   "Deletes last character from input buffer."
   (when (> (fill-pointer *input-buffer*) 0)
     (decf (fill-pointer *input-buffer*))))
 #+end_src
 
-#+begin_src lisp :tangle (expand-file-name "tui-client.lisp" (or (identity (getenv "INSTALL_DIR")) "."))
+#+begin_src lisp :tangle (concat (uiop:getenv "INSTALL_DIR") "/tui-client.lisp")
 (defun handle-return (stream)
   "Process input buffer as message or command."
   (let ((cmd (coerce *input-buffer* 'string)))
@@ -200,7 +200,7 @@ A simple MVP console is insufficient for a Lisp Machine. To reach v0.2.0, the TU
 #+end_src
 
 ** Main Entry Point
-#+begin_src lisp :tangle (expand-file-name "tui-client.lisp" (or (identity (getenv "INSTALL_DIR")) "."))
+#+begin_src lisp :tangle (concat (uiop:getenv "INSTALL_DIR") "/tui-client.lisp")
 (defun main ()
   "Initializes ncurses and starts the TUI event loop."
   (handler-case

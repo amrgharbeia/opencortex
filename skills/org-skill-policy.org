@@ -1,4 +1,4 @@
-#+PROPERTY: header-args:lisp :tangle (expand-file-name "org-skill-policy.lisp" (expand-file-name "" (concat (or (identity (getenv "INSTALL_DIR")) ".") "/skills")))
+#+PROPERTY: header-args:lisp :tangle (concat (uiop:getenv "INSTALL_DIR") "/skills/org-skill-policy.lisp" (expand-file-name ""))
 :PROPERTIES:
 :ID:       47425a43-2be0-423c-8509-22592cfe9c9e
 :CREATED:  [2026-04-07 Tue 12:57]
@@ -50,7 +50,7 @@ Every skill executes within its own jailed package namespace, inheriting core ha
 #+end_src
 
 * Global Policy Configuration
-#+begin_src lisp :tangle (expand-file-name "org-skill-policy.lisp" (expand-file-name "" (concat (or (identity (getenv "INSTALL_DIR")) ".") "/skills")))
+#+begin_src lisp :tangle (concat (uiop:getenv "INSTALL_DIR") "/skills/org-skill-policy.lisp" (expand-file-name ""))
 (defvar *policy-invariant-priorities*
   '((:transparency . 500)
     (:autonomy . 400)

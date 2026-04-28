@@ -1,4 +1,4 @@
-#+PROPERTY: header-args:lisp :tangle (expand-file-name "org-skill-llama-backend.lisp" (expand-file-name "" (concat (or (identity (getenv "INSTALL_DIR")) ".") "/skills")))
+#+PROPERTY: header-args:lisp :tangle (concat (uiop:getenv "INSTALL_DIR") "/skills/org-skill-llama-backend.lisp" (expand-file-name ""))
 :PROPERTIES:
 :ID:       llama-backend-skill
 :CREATED:  [2026-04-17 Fri 20:00]

@@ -1,4 +1,4 @@
-#+PROPERTY: header-args:lisp :tangle (expand-file-name "org-skill-tool-permissions.lisp" (expand-file-name "" (concat (or (identity (getenv "INSTALL_DIR")) ".") "/skills")))
+#+PROPERTY: header-args:lisp :tangle (concat (uiop:getenv "INSTALL_DIR") "/skills/org-skill-tool-permissions.lisp" (expand-file-name ""))
 :PROPERTIES:
 :ID:       tool-permissions-skill-001
 :CREATED:   [2026-04-23 Thu]
@@ -135,7 +135,7 @@ Tool permissions and embedding generation via multiple providers.
 These tests verify tool permissions. Run with:
 ~(fiveam:run! 'tool-permissions-suite)~
 
-#+begin_src lisp :tangle (expand-file-name "tool-permissions-tests.lisp" (expand-file-name "" (concat (or (identity (getenv "INSTALL_DIR")) ".") "/skills")))
+#+begin_src lisp :tangle (concat (uiop:getenv "INSTALL_DIR") "/skills/tool-permissions-tests.lisp" (expand-file-name ""))
 (defpackage :opencortex-tool-permissions-tests
   (:use :cl :fiveam :opencortex)
   (:export #:tool-permissions-suite))
