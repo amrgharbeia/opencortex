@@ -24,10 +24,16 @@ The Perceive stage is the "sensory cortex" of OpenCortex. Its job is to take raw
   so they run in separate threads to avoid blocking the main pipeline.
 
   Other sensors (:heartbeat, :interrupt, :buffer-update) are processed
-  synchronously to maintain temporal ordering.
+  synchronously to maintain temporal ordering.")
 
 (defvar *foveal-focus-id* nil
   "The Org ID of the node the user is currently interacting with.
+
+  This enables the reasoning engine to provide contextually relevant
+  responses. When editing a specific note, the agent knows which
+  note you're referring to without needing explicit ID references.
+
+  Updated on :point-update events from Emacs.")
 
   This enables the reasoning engine to provide contextually relevant
   responses. When editing a specific note, the agent knows which
@@ -60,7 +66,7 @@ The Perceive stage is the "sensory cortex" of OpenCortex. Its job is to take raw
 
     ;; Ensure metadata exists
     (unless meta
-      (setf meta (list :SOURCE :SYSTEM :SESSION-ID "internal))
+      (setf meta (list :SOURCE :SYSTEM :SESSION-ID "internal")))
 
     ;; Attach reply stream if provided
     (when stream
