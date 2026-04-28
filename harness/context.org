@@ -34,7 +34,7 @@ The *Context API* (Peripheral Vision) provides the opencortex with the ability t
 #+begin_src lisp
 (defun context-get-active-projects ()
   "Returns headlines tagged as 'project' that are not yet marked DONE."
-  (remove-if (lambda (obj) (equal (getf (org-object-attributes obj) :TODO-STATE) "DONE"))
+  (remove-if (lambda (obj) (equal (getf (org-object-attributes obj) :TODO-STATE) "DONE)
              (context-query-store :tag "project" :type :HEADLINE)))
 #+end_src
 
@@ -84,24 +84,24 @@ The *Context API* (Peripheral Vision) provides the opencortex with the ability t
   "Recursively renders an org-object and its children to an Org string using a Foveal-Peripheral Hybrid model."
   (let* ((id (org-object-id obj))
          (is-foveal (equal id foveal-id))
-         (title (or (getf (org-object-attributes obj) :TITLE) "Untitled"))
+         (title (or (getf (org-object-attributes obj) :TITLE) "Untitled)
          (content (org-object-content obj))
          (children (org-object-children obj))
          (stars (make-string depth :initial-element #\*))
          (obj-vector (org-object-vector obj))
-         (threshold (or semantic-threshold (ignore-errors (read-from-string (uiop:getenv "CONTEXT_SEMANTIC_THRESHOLD"))) 0.75))
+         (threshold (or semantic-threshold (ignore-errors (read-from-string (uiop:getenv "CONTEXT_SEMANTIC_THRESHOLD)) 0.75))
          (similarity (if (and foveal-vector obj-vector (not is-foveal))
                          (cosine-similarity foveal-vector obj-vector)
                          0.0))
          (is-semantically-relevant (>= similarity threshold))
          (should-render (or (<= depth 2) is-foveal is-semantically-relevant))
-         (output ""))
+         (output ")
     
     (when should-render
       (setf output (format nil "~a ~a~%:PROPERTIES:~%:ID: ~a~%" stars title id))
       (when is-semantically-relevant
         (setf output (concatenate 'string output (format nil ":SEMANTIC_SCORE: ~,2f~%" similarity))))
-      (setf output (concatenate 'string output (format nil ":END:~%")))
+      (setf output (concatenate 'string output (format nil ":END:~%))
       
       (when (and content (or is-foveal is-semantically-relevant))
         (setf output (concatenate 'string output content (string #\Newline))))
@@ -143,36 +143,36 @@ The *Context API* (Peripheral Vision) provides the opencortex with the ability t
   (let* ((foveal-id (or (getf signal :foveal-focus) 
                         (ignore-errors (getf (getf signal :payload) :target-id))))
          (projects (context-get-active-projects))
-         (output (format nil "GLOBAL MEMEX AWARENESS (Peripheral Vision):~%")))
+         (output (format nil "GLOBAL MEMEX AWARENESS (Peripheral Vision):~%))
     (if projects
         (dolist (project projects)
           (setf output (concatenate 'string output
                                     (context-render-to-org project :foveal-id foveal-id))))
-        (setf output (concatenate 'string output "No active projects found.~%")))
+        (setf output (concatenate 'string output "No active projects found.~%))
     output))
 #+end_src
 
 * Test Suite
 
-#+begin_src lisp :tangle tests/peripheral-vision-tests.lisp
+#+begin_src lisp :tangle context.lisp
 (defpackage :opencortex-peripheral-vision-tests
   (:use :cl :fiveam :opencortex)
   (:export #:vision-suite))
 (in-package :opencortex-peripheral-vision-tests)
 
-(def-suite vision-suite :description "Verification of Foveal-Peripheral context model.")
+(def-suite vision-suite :description "Verification of Foveal-Peripheral context model.
 (in-suite vision-suite)
 
 (test test-foveal-rendering
   "Verify that the foveal target is rendered with content, while siblings are skeletal."
   (clrhash opencortex::*memory*)
-  (let* ((ast '(:type :HEADLINE :properties (:ID "proj-root" :TITLE "Project" :TAGS "project")
-                :contents ((:type :HEADLINE :properties (:ID "node-foveal" :TITLE "Foveal Node")
+  (let* ((ast '(:type :HEADLINE :properties (:ID "proj-root" :TITLE "Project" :TAGS "project
+                :contents ((:type :HEADLINE :properties (:ID "node-foveal" :TITLE "Foveal Node
                             :raw-content "FOVEAL CONTENT" :contents nil)
-                           (:type :HEADLINE :properties (:ID "node-peripheral" :TITLE "Peripheral Node")
+                           (:type :HEADLINE :properties (:ID "node-peripheral" :TITLE "Peripheral Node
                             :raw-content "PERIPHERAL CONTENT" :contents nil)))))
     (ingest-ast ast)
-    (let ((output (context-assemble-global-awareness (list :foveal-focus "node-foveal"))))
+    (let ((output (context-assemble-global-awareness (list :foveal-focus "node-foveal)))
       (is (search "FOVEAL CONTENT" output))
       (is (search "* Peripheral Node" output))
       (is (not (search "PERIPHERAL CONTENT" output))))))
@@ -180,8 +180,8 @@ The *Context API* (Peripheral Vision) provides the opencortex with the ability t
 (test test-awareness-budget
   "Verify that context-assemble-global-awareness handles multiple projects."
   (clrhash opencortex::*memory*)
-  (ingest-ast '(:type :HEADLINE :properties (:ID "p1" :TITLE "Project 1" :TAGS "project") :contents nil))
-  (ingest-ast '(:type :HEADLINE :properties (:ID "p2" :TITLE "Project 2" :TAGS "project") :contents nil))
+  (ingest-ast '(:type :HEADLINE :properties (:ID "p1" :TITLE "Project 1" :TAGS "project :contents nil))
+  (ingest-ast '(:type :HEADLINE :properties (:ID "p2" :TITLE "Project 2" :TAGS "project :contents nil))
   (let ((output (context-assemble-global-awareness)))
     (is (search "Project 1" output))
     (is (search "Project 2" output))))
