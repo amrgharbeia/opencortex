@@ -17,9 +17,9 @@ The *Diagnostics Skill* (Doctor) provides system-wide health checks and dependen
 #+begin_src lisp
 (defun doctor-check-dependencies ()
   "Verifies that all required external binaries are available."
-  (let ((deps '("sbcl" "emacs" "git" "curl" "nc)
+  (let ((deps '("sbcl" "emacs" "git" "curl" "nc"))
         (all-ok t))
-    (format t "DOCTOR: Checking System Dependencies...~%
+    (format t "DOCTOR: Checking System Dependencies...~%")
     (dolist (dep deps)
       (if (uiop:run-program (list "which" dep) :ignore-error-status t)
           (format t "  [OK] Found ~a~%" dep)
@@ -33,8 +33,8 @@ The *Diagnostics Skill* (Doctor) provides system-wide health checks and dependen
 #+begin_src lisp
 (defun doctor-check-xdg ()
   "Verifies XDG environment variables and directory structure."
-  (format t "DOCTOR: Checking XDG environment...~%
-  (let ((vars '("OC_CONFIG_DIR" "OC_DATA_DIR" "OC_STATE_DIR" "MEMEX_DIR))
+  (format t "DOCTOR: Checking XDG environment...~%")
+  (let ((vars '("OC_CONFIG_DIR" "OC_DATA_DIR" "OC_STATE_DIR" "MEMEX_DIR")))
     (dolist (var vars)
       (let ((val (uiop:getenv var)))
         (if val
@@ -47,15 +47,15 @@ The *Diagnostics Skill* (Doctor) provides system-wide health checks and dependen
 #+begin_src lisp
 (defun doctor-main ()
   "Runs all diagnostic checks."
-  (format t "==================================================~%
-  (format t " OpenCortex System Diagnostic~%
-  (format t "==================================================~%
+  (format t "==================================================~%")
+  (format t " OpenCortex System Diagnostic~%")
+  (format t "==================================================~%")
   (let ((d-ok (doctor-check-dependencies))
         (x-ok (doctor-check-xdg)))
-    (format t "==================================================~%
+    (format t "==================================================~%")
     (if (and d-ok x-ok)
-        (format t " ✓ SYSTEM HEALTHY: Ready for ignition.~%
-        (format t " ✗ SYSTEM UNHEALTHY: Issues detected.~%)))
+        (format t " ✓ SYSTEM HEALTHY: Ready for ignition.~%")
+        (format t " ✗ SYSTEM UNHEALTHY: Issues detected.~%"))))
 #+end_src
 
 ** Skill Registration
