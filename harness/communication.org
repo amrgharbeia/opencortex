@@ -78,7 +78,9 @@ The ~communication.lisp~ module defines the low-level transport and framing logi
 #+end_src
 
 ** Structural Validation
-#+begin_src lisp
+#+begin_src lisp :tangle communication-validator.lisp
+(in-package :opencortex)
+
 (defun validate-communication-protocol-schema (msg)
   "Strict structural validation for incoming protocol messages."
   (unless (listp msg) (error "Message must be a plist"))
@@ -89,7 +91,7 @@ The ~communication.lisp~ module defines the low-level transport and framing logi
 #+end_src
 
 * Test Suite
-#+begin_src lisp :tangle tests/communication-tests.lisp
+#+begin_src lisp :tangle communication-tests.lisp
 (defpackage :opencortex-communication-tests
   (:use :cl :fiveam :opencortex)
   (:export #:communication-protocol-suite))
