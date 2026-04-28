@@ -1,4 +1,3 @@
-#+PROPERTY: header-args:lisp :tangle communication.lisp
 #+TITLE: Communication Protocol (communication.lisp)
 #+AUTHOR: Agent
 #+FILETAGS: :harness:protocol:
@@ -79,7 +78,7 @@ The ~communication.lisp~ module defines the low-level transport and framing logi
 #+end_src
 
 ** Structural Validation
-#+begin_src lisp :tangle communication.lisp
+#+begin_src lisp :tangle communication-validator.lisp
 (in-package :opencortex)
 
 (defun validate-communication-protocol-schema (msg)
@@ -92,13 +91,16 @@ The ~communication.lisp~ module defines the low-level transport and framing logi
 #+end_src
 
 * Test Suite
-#+begin_src lisp :tangle communication.lisp
+#+begin_src lisp :tangle tests/communication-tests.lisp
+(eval-when (:compile-toplevel :load-toplevel :execute)
+  (ql:quickload :fiveam :silent t))
+
 (defpackage :opencortex-communication-tests
   (:use :cl :fiveam :opencortex)
   (:export #:communication-protocol-suite))
 (in-package :opencortex-communication-tests)
 
-(def-suite communication-protocol-suite :description "Communication Protocol Suite
+(def-suite communication-protocol-suite :description "Communication Protocol Suite")
 (in-suite communication-protocol-suite)
 
 (test test-framing
