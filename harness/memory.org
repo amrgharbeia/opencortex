@@ -79,8 +79,8 @@ The `ingest-ast` function is the primary bridge between the external world (Emac
          (id (or (getf props :ID) (format nil "temp-~a" (get-universal-time))))
          (contents (getf ast :contents))
          (raw-content (when (eq type :HEADLINE)
-                        (format nil "~a~%~a" (getf props :TITLE) (or (getf ast :raw-content) ")))
-         (should-embed (and raw-content (equal (getf props :EMBED) "t))
+                        (format nil "~a~%~a" (getf props :TITLE) (or (getf ast :raw-content) ""))))
+         (should-embed (and raw-content (equal (getf props :EMBED) "t")))
          (child-ids nil)
          (child-hashes nil))
     (dolist (child contents)
@@ -129,7 +129,7 @@ Because objects are stored immutably in the `*history-store*`, a snapshot is a l
     (push (list :timestamp (get-universal-time) :data snapshot) *object-store-snapshots*)
     (when (> (length *object-store-snapshots*) 20)
       (setf *object-store-snapshots* (subseq *object-store-snapshots* 0 20)))
-    (harness-log "MEMORY - CoW Memory snapshot created.))
+    (harness-log "MEMORY - CoW Memory snapshot created.")))
 
 (defun rollback-memory (&optional (index 0))
   "Restores the Memory to a previously captured snapshot using immutable history pointers."
@@ -145,12 +145,12 @@ Essential for surviving crashes. Saves the in-memory hash tables to disk and loa
 
 #+begin_src lisp
 (defvar *memory-snapshot-path* nil
-  "Path to the memory snapshot file. Set from MEMORY_SNAPSHOT_PATH env or default.
+  "Path to the memory snapshot file. Set from MEMORY_SNAPSHOT_PATH env or default.")
 
 (defun ensure-memory-snapshot-path ()
   "Initializes the snapshot path from environment or default location."
   (or *memory-snapshot-path*
-      (let ((env-path (uiop:getenv "MEMORY_SNAPSHOT_PATH))
+      (let ((env-path (uiop:getenv "MEMORY_SNAPSHOT_PATH")))
         (setf *memory-snapshot-path*
               (or env-path
                   (namestring (uiop:merge-pathnames* "memory.snap" (user-homedir-pathname))))))))
@@ -160,7 +160,7 @@ Essential for surviving crashes. Saves the in-memory hash tables to disk and loa
 Converts hash tables to alists for proper serialization."
   (let ((path (ensure-memory-snapshot-path)))
     (with-open-file (stream path :direction :output :if-exists :supersede :if-does-not-exist :create)
-      (format stream ";; OpenCortex Memory Snapshot~%
+      (format stream ";; OpenCortex Memory Snapshot~%")
       (format stream ";; Created: ~a~%~%" (get-universal-time))
       (let ((memory-alist nil)
             (history-alist nil))
@@ -198,11 +198,11 @@ Support for vector embeddings via Ollama and semantic search with cosine similar
 
 #+begin_src lisp
 (defvar *embedding-cache* (make-hash-table :test 'equal)
-  "Cache for embeddings to avoid redundant API calls.
+  "Cache for embeddings to avoid redundant API calls.")
 
 (defun get-embedding (text)
   "Generates a vector embedding for the given text via Ollama. Returns nil on failure."
-  (when (or (null text) (string= text ")
+  (when (or (null text) (string= text ""))
     (return-from get-embedding nil))
   (let ((cached (gethash text *embedding-cache*)))
     (when cached (return-from get-embedding cached)))
@@ -293,7 +293,7 @@ Utility functions for AST traversal and path resolution.
 
 * Test Suite
 
-#+begin_src lisp :tangle memory.lisp
+#+begin_src lisp :tangle tests/memory-tests.lisp
 (defpackage :opencortex-memory-tests
   (:use :cl :fiveam :opencortex)
   (:export #:memory-suite))
@@ -301,13 +301,13 @@ Utility functions for AST traversal and path resolution.
 (in-package :opencortex-memory-tests)
 
 (def-suite memory-suite
-  :description "Tests for the Merkle-Tree Memory
+  :description "Tests for the Merkle-Tree Memory")
 
 (in-suite memory-suite)
 
 (test merkle-hash-consistency
   "Verify identical ASTs produce identical Merkle hashes."
-  (let* ((ast1 '(:type :HEADLINE :properties (:ID "test-1" :TITLE "Node 1 :contents nil)))
+  (let* ((ast1 '(:type :HEADLINE :properties (:ID "test-1" :TITLE "Node 1") :contents nil)))
     (clrhash *memory*)
     (let ((id1 (ingest-ast ast1)))
       (let ((hash1 (org-object-hash (lookup-object id1))))
@@ -320,14 +320,14 @@ Utility functions for AST traversal and path resolution.
   "Verify that *history-store* retains old versions."
   (clrhash *memory*)
   (clrhash *history-store*)
-  (let* ((ast-v1 '(:type :HEADLINE :properties (:ID "test-node" :TITLE "Version 1 :contents nil))
+  (let* ((ast-v1 '(:type :HEADLINE :properties (:ID "test-node" :TITLE "Version 1") :contents nil))
          (id-v1 (ingest-ast ast-v1))
          (obj-v1 (lookup-object id-v1))
          (hash-v1 (org-object-hash obj-v1)))
-    (let* ((ast-v2 '(:type :HEADLINE :properties (:ID "test-node" :TITLE "Version 2 :contents nil))
+    (let* ((ast-v2 '(:type :HEADLINE :properties (:ID "test-node" :TITLE "Version 2") :contents nil))
            (id-v2 (ingest-ast ast-v2))
            (hash-v2 (org-object-hash (lookup-object id-v2))))
-      (is (equal (org-object-hash (lookup-object "test-node) hash-v2))
+      (is (equal (org-object-hash (lookup-object "test-node")) hash-v2))
       (is (not (null (gethash hash-v1 *history-store*))))
       (is (not (null (gethash hash-v2 *history-store*)))))))
 
@@ -335,27 +335,27 @@ Utility functions for AST traversal and path resolution.
   "Verify that lightweight snapshots restore previous pointer states."
   (clrhash *memory*)
   (setf *object-store-snapshots* nil)
-  (let* ((ast-v1 '(:type :HEADLINE :properties (:ID "cow-node" :TITLE "State A :contents nil))
+  (let* ((ast-v1 '(:type :HEADLINE :properties (:ID "cow-node" :TITLE "State A") :contents nil))
          (id-v1 (ingest-ast ast-v1))
          (hash-v1 (org-object-hash (lookup-object id-v1))))
     (snapshot-memory)
-    (let* ((ast-v2 '(:type :HEADLINE :properties (:ID "cow-node" :TITLE "State B :contents nil))
+    (let* ((ast-v2 '(:type :HEADLINE :properties (:ID "cow-node" :TITLE "State B") :contents nil))
            (id-v2 (ingest-ast ast-v2))
            (hash-v2 (org-object-hash (lookup-object id-v2))))
-      (is (equal (org-object-hash (lookup-object "cow-node) hash-v2))
+      (is (equal (org-object-hash (lookup-object "cow-node")) hash-v2))
       (rollback-memory 0)
-      (is (equal (org-object-hash (lookup-object "cow-node) hash-v1)))))
+      (is (equal (org-object-hash (lookup-object "cow-node")) hash-v1)))))
 
 (test test-merkle-corruption-rollback
   "Tier 2 Chaos: Verify that Merkle hash corruption triggers a Micro-Rollback."
   (clrhash *memory*)
   (setf *object-store-snapshots* nil)
-  (let* ((ast '(:type :HEADLINE :properties (:ID "node-1" :TITLE "Original :contents nil))
+  (let* ((ast '(:type :HEADLINE :properties (:ID "node-1" :TITLE "Original") :contents nil))
          (id (ingest-ast ast)))
     (snapshot-memory)
     ;; Manually corrupt the hash in the live memory
     (let ((obj (lookup-object id)))
-      (setf (org-object-hash obj) "CORRUPTED-HASH)
+      (setf (org-object-hash obj) "CORRUPTED-HASH"))
     
     ;; Simulate a system integrity check that should fail and rollback
     (let ((obj (lookup-object id)))
