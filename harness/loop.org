@@ -1,4 +1,4 @@
-#+PROPERTY: header-args:lisp :tangle (expand-file-name "loop.lisp" (or (identity (getenv "INSTALL_DIR")) (file-name-directory (buffer-file-name))))
+#+PROPERTY: header-args:lisp :tangle (expand-file-name "loop.lisp" (expand-file-name "harness/" (or (identity (getenv "INSTALL_DIR")) ".")))
 #+TITLE: The Metabolic Loop (loop.lisp)
 #+AUTHOR: Amr
 #+FILETAGS: :harness:loop:

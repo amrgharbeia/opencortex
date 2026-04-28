@@ -1,4 +1,4 @@
-#+PROPERTY: header-args:lisp :tangle (expand-file-name "org-skill-peripheral-vision.lisp" (or (identity (getenv "INSTALL_DIR")) (file-name-directory (buffer-file-name))))
+#+PROPERTY: header-args:lisp :tangle (expand-file-name "org-skill-peripheral-vision.lisp" (expand-file-name "skills/" (or (identity (getenv "INSTALL_DIR")) ".")))
 :PROPERTIES:
 :ID:       org-skill-peripheral-vision
 :CREATED:  [2026-04-12 Sun 14:15]

@@ -1,4 +1,4 @@
-#+PROPERTY: header-args:lisp :tangle (expand-file-name "org-skill-llama-backend.lisp" (or (identity (getenv "INSTALL_DIR")) (file-name-directory (buffer-file-name))))
+#+PROPERTY: header-args:lisp :tangle (expand-file-name "org-skill-llama-backend.lisp" (expand-file-name "skills/" (or (identity (getenv "INSTALL_DIR")) ".")))
 :PROPERTIES:
 :ID:       llama-backend-skill
 :CREATED:  [2026-04-17 Fri 20:00]

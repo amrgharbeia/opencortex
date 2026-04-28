@@ -1,4 +1,4 @@
-#+PROPERTY: header-args:lisp :tangle (expand-file-name "act.lisp" (or (identity (getenv "INSTALL_DIR")) (file-name-directory (buffer-file-name))))
+#+PROPERTY: header-args:lisp :tangle (expand-file-name "act.lisp" (expand-file-name "harness/" (or (identity (getenv "INSTALL_DIR")) ".")))
 #+TITLE: Stage 3: Act (act.lisp)
 #+AUTHOR: Amr
 #+FILETAGS: :harness:act:

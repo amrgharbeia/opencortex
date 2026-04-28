@@ -1,4 +1,4 @@
-#+PROPERTY: header-args:lisp :tangle (expand-file-name "org-skill-llm-gateway.lisp" (or (identity (getenv "INSTALL_DIR")) (file-name-directory (buffer-file-name))))
+#+PROPERTY: header-args:lisp :tangle (expand-file-name "org-skill-llm-gateway.lisp" (expand-file-name "skills/" (or (identity (getenv "INSTALL_DIR")) ".")))
 :PROPERTIES:
 :ID:       llm-gateway-spec
 :CREATED:  [2026-04-10 Thu]
@@ -11,7 +11,7 @@
 The *LLM Gateway* skill provides a unified interface for interacting with multiple Large Language Model providers.
 
 * Test Suite
-#+begin_src lisp :tangle (expand-file-name "llm-gateway-tests.lisp" (or (identity (getenv "INSTALL_DIR")) (file-name-directory (buffer-file-name))))
+#+begin_src lisp :tangle (expand-file-name "llm-gateway-tests.lisp" (expand-file-name "skills/" (or (identity (getenv "INSTALL_DIR")) ".")))
 (defpackage :opencortex-llm-gateway-tests
   (:use :cl :fiveam :opencortex)
   (:export #:llm-gateway-suite))
@@ -41,12 +41,12 @@ The *LLM Gateway* skill provides a unified interface for interacting with multip
 * Implementation
 
 ** Package Context
-#+begin_src lisp :tangle (expand-file-name "org-skill-llm-gateway.lisp" (or (identity (getenv "INSTALL_DIR")) (file-name-directory (buffer-file-name))))
+#+begin_src lisp :tangle (expand-file-name "org-skill-llm-gateway.lisp" (expand-file-name "skills/" (or (identity (getenv "INSTALL_DIR")) ".")))
 (in-package :opencortex)
 #+end_src
 
 ** Skill Metadata
-#+begin_src lisp :tangle (expand-file-name "org-skill-llm-gateway.lisp" (or (identity (getenv "INSTALL_DIR")) (file-name-directory (buffer-file-name))))
+#+begin_src lisp :tangle (expand-file-name "org-skill-llm-gateway.lisp" (expand-file-name "skills/" (or (identity (getenv "INSTALL_DIR")) ".")))
 (defparameter *skill-llm-gateway*
   '(:name "llm-gateway"
     :description "Unified provider-agnostic LLM interface."
@@ -56,7 +56,7 @@ The *LLM Gateway* skill provides a unified interface for interacting with multip
 #+end_src
 
 ** Request Execution
-#+begin_src lisp :tangle (expand-file-name "org-skill-llm-gateway.lisp" (or (identity (getenv "INSTALL_DIR")) (file-name-directory (buffer-file-name))))
+#+begin_src lisp :tangle (expand-file-name "org-skill-llm-gateway.lisp" (expand-file-name "skills/" (or (identity (getenv "INSTALL_DIR")) ".")))
 (defun execute-llm-request (&key prompt system-prompt provider model)
   "Generic executor for all LLM providers."
   (let* ((active-provider (or provider :ollama))
@@ -76,7 +76,7 @@ The *LLM Gateway* skill provides a unified interface for interacting with multip
 #+end_src
 
 ** Cognitive Tools
-#+begin_src lisp :tangle (expand-file-name "org-skill-llm-gateway.lisp" (or (identity (getenv "INSTALL_DIR")) (file-name-directory (buffer-file-name))))
+#+begin_src lisp :tangle (expand-file-name "org-skill-llm-gateway.lisp" (expand-file-name "skills/" (or (identity (getenv "INSTALL_DIR")) ".")))
 (def-cognitive-tool :get-ollama-embedding 
   "Generates vector embeddings via Ollama API."
   ((:text :type :string :description "Text to embed."))
@@ -92,7 +92,7 @@ The *LLM Gateway* skill provides a unified interface for interacting with multip
                 (error (c) (harness-log "OLLAMA EMBED ERROR: ~a" c) nil))))))
 #+end_src
 
-#+begin_src lisp :tangle (expand-file-name "org-skill-llm-gateway.lisp" (or (identity (getenv "INSTALL_DIR")) (file-name-directory (buffer-file-name))))
+#+begin_src lisp :tangle (expand-file-name "org-skill-llm-gateway.lisp" (expand-file-name "skills/" (or (identity (getenv "INSTALL_DIR")) ".")))
 (def-cognitive-tool :ask-llm 
   "Unified interface for interacting with LLM providers."
   ((:prompt :type :string :description "The user prompt")
@@ -107,7 +107,7 @@ The *LLM Gateway* skill provides a unified interface for interacting with multip
 #+end_src
 
 ** Skill Registration
-#+begin_src lisp :tangle (expand-file-name "org-skill-llm-gateway.lisp" (or (identity (getenv "INSTALL_DIR")) (file-name-directory (buffer-file-name))))
+#+begin_src lisp :tangle (expand-file-name "org-skill-llm-gateway.lisp" (expand-file-name "skills/" (or (identity (getenv "INSTALL_DIR")) ".")))
 (defskill :skill-llm-gateway
   :priority 50
   :trigger (lambda (ctx) (declare (ignore ctx)) t)
