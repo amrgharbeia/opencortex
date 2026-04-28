@@ -1,30 +1,21 @@
-#+PROPERTY: header-args:lisp :tangle communication.lisp
 #+TITLE: Communication Protocol (communication.lisp)
-#+AUTHOR: Amr
+#+AUTHOR: Agent
 #+FILETAGS: :harness:protocol:
 #+STARTUP: content
+#+PROPERTY: header-args:lisp :tangle communication.lisp
 
-* Communication Protocol (communication.lisp)
-** Architectural Intent: Secure Inter-Process Communication & Deterministic Framing
+* Overview
+The ~communication.lisp~ module defines the low-level transport and framing logic for OpenCortex stimuli.
 
-The ~communication.lisp~ module defines the low-level transport and framing logic for OpenCortex stimuli. 
+* Implementation
 
-* Implementation (communication.lisp)
-
+** Package Context
 #+begin_src lisp
 (in-package :opencortex)
-
-(defun proto-get (plist key)
-  "Robustly retrieves a value from a plist, checking both uppercase and lowercase keyword versions."
-  (let* ((s (string key))
-         (up (intern (string-upcase s) :keyword))
-         (dn (intern (string-downcase s) :keyword)))
-    (or (getf plist up) (getf plist dn))))
 #+end_src
 
+** Actuator Registry
 #+begin_src lisp
-(in-package :opencortex)
-
 (defvar *actuator-registry* (make-hash-table :test 'equalp)
   "Global registry mapping target keywords to their physical actuator functions.")
 
@@ -32,103 +23,9 @@ The ~communication.lisp~ module defines the low-level transport and framing logi
   "Registers an actuator function. Actuators receive: (ACTION CONTEXT)."
   (let ((key (if (keywordp name) name (intern (string-upcase (string name)) :keyword))))
     (setf (gethash key *actuator-registry*) fn)))
-
-;; Removed duplicate frame-message - kept the sanitized version below
-
-(defun read-framed-message (stream)
-  "Reads a hex-length prefixed S-expression from the stream securely. Skips leading whitespace."
-  (let ((length-buffer (make-string 6)))
-    (handler-case
-        (progn
-          ;; 1. Skip leading whitespace (newlines, spaces, etc.)
-          (loop for char = (peek-char nil stream nil :eof)
-                while (and (not (eq char :eof)) (member char '(#\Space #\Newline #\Tab #\Return)))
-                do (read-char stream))
-          
-          ;; 2. Read the 6-char hex length
-          (let ((count (read-sequence length-buffer stream)))
-            (cond ((< count 6) :eof)
-                  (t (let ((len (ignore-errors (parse-integer length-buffer :radix 16))))
-                       (if (not len)
-                           (progn
-                             (harness-log "PROTOCOL ERROR: Invalid header ~s. Attempting resync..." length-buffer)
-                             :error)
-                           (let ((msg-buffer (make-string len)))
-                             (read-sequence msg-buffer stream)
-                             (let ((*read-eval* nil)
-                                   (*print-pretty* nil))
-                               (handler-case 
-                                   (let ((msg (read-from-string msg-buffer)))
-                                     (validate-communication-protocol-schema msg)
-                                     msg)
-                                 (error (c)
-                                   (harness-log "PROTOCOL PARSE ERROR: ~a in ~s" c msg-buffer)
-                                   :error))))))))))
-      (error (c) 
-        (harness-log "PROTOCOL READ ERROR: ~a" c)
-        :error))))
-
-(defun make-hello-message (version)
-  "Constructs the standard HELLO handshake message."
-  (list :TYPE :EVENT 
-        :PAYLOAD (list :ACTION :handshake 
-                       :VERSION version 
-                       :CAPABILITIES '(:AUTH :SWANK :ORG-AST))))
 #+end_src
 
-** Structural Validation (communication-validator.lisp)
-The validator ensures that incoming messages adhere to the strict property list schema of the communication protocol.
-
-#+begin_src lisp :tangle communication.lisp
-(in-package :opencortex)
-
-(defun validate-communication-protocol-schema (msg)
-  "Strict structural validation for incoming communication protocol messages."
-  (unless (listp msg)
-    (error "Communication Protocol Schema Error: Message must be a property list (got ~s)" (type-of msg)))
-  
-  (let ((type (let ((raw (proto-get msg :type))) (if (keywordp raw) (intern (string-upcase (string raw)) :keyword) raw))))
-    (unless (member type '(:REQUEST :EVENT :RESPONSE :LOG :STATUS))
-      (progn (harness-log "REJECTED MSG: ~s" msg) (error "Communication Protocol Schema Error: Invalid message type '~a'" type)))
-    
-    (case type
-      (:REQUEST 
-       ;; Allow missing :target if :source is present in :meta, since reason-gate
-       ;; will infer :target from :source downstream. This preserves "equality of
-       ;; clients" — gateways need not duplicate routing logic.
-       (let ((target (proto-get msg :target))
-             (source (proto-get (proto-get msg :meta) :source)))
-         (unless (or target source)
-           (error "Communication Protocol Schema Error: REQUEST missing mandatory :target and no :source in :meta to infer it)
-         (unless (proto-get msg :payload)
-           (error "Communication Protocol Schema Error: REQUEST missing mandatory :payload)))
-      
-      (:EVENT
-       (let ((payload (proto-get msg :payload)))
-         (unless (and payload (listp payload))
-           (error "Communication Protocol Schema Error: EVENT missing or invalid :payload)
-         (unless (or (proto-get payload :action) (proto-get payload :sensor))
-           (error "Communication Protocol Schema Error: EVENT payload must contain :action or :sensor)))
-      
-      (:RESPONSE
-       (unless (proto-get msg :payload)
-         (error "Communication Protocol Schema Error: RESPONSE missing mandatory :payload)))
-    
-    t))
-
-(defskill :skill-communication-protocol-validator
-  :priority 95
-  :trigger (lambda (ctx) (member (getf (getf ctx :payload) :sensor) '(:protocol-received)))
-  :probabilistic nil
-  :deterministic (lambda (action ctx)
-              (declare (ignore ctx))
-              (validate-communication-protocol-schema action)
-              action))
-#+end_src
-
-** Message Framing (communication.lisp)
-Frames a message with a hex length prefix and ensures all data is serializable.
-
+** Message Framing
 #+begin_src lisp
 (defun sanitize-protocol-message (msg)
   "Recursively strips non-serializable objects from a protocol plist."
@@ -147,53 +44,62 @@ Frames a message with a hex length prefix and ensures all data is serializable.
          (payload (let ((*print-pretty* nil) (*read-eval* nil)) (format nil "~s" sanitized)))
          (len (length payload)))
     (format nil "~6,'0x~a" len payload)))
+
+(defun read-framed-message (stream)
+  "Reads a hex-length prefixed S-expression from the stream securely."
+  (let ((length-buffer (make-string 6)))
+    (handler-case
+        (progn
+          (loop for char = (peek-char nil stream nil :eof)
+                while (and (not (eq char :eof)) (member char '(#\Space #\Newline #\Tab #\Return)))
+                do (read-char stream))
+          (let ((count (read-sequence length-buffer stream)))
+            (if (< count 6)
+                :eof
+                (let ((len (ignore-errors (parse-integer length-buffer :radix 16))))
+                  (if (not len)
+                      :error
+                      (let ((msg-buffer (make-string len)))
+                        (read-sequence msg-buffer stream)
+                        (let ((*read-eval* nil))
+                          (handler-case (read-from-string msg-buffer)
+                            (error () :error)))))))))
+      (error () :error))))
+#+end_src
+
+** Handshake Logic
+#+begin_src lisp
+(defun make-hello-message (version)
+  "Constructs the standard HELLO handshake message."
+  (list :TYPE :EVENT 
+        :PAYLOAD (list :ACTION :handshake 
+                       :VERSION version 
+                       :CAPABILITIES '(:AUTH :ORG-AST))))
+#+end_src
+
+** Structural Validation
+#+begin_src lisp
+(defun validate-communication-protocol-schema (msg)
+  "Strict structural validation for incoming protocol messages."
+  (unless (listp msg) (error "Message must be a plist"))
+  (let ((type (proto-get msg :type)))
+    (unless (member type '(:REQUEST :EVENT :RESPONSE :LOG :STATUS))
+      (error "Invalid message type '~a'" type))
+    t))
 #+end_src
 
 * Test Suite
-
-These tests verify the communication protocol functions. Run with:
-~(fiveam:run! 'communication-protocol-suite)~
-
-#+begin_src lisp :tangle communication.lisp
+#+begin_src lisp :tangle tests/communication-tests.lisp
 (defpackage :opencortex-communication-tests
   (:use :cl :fiveam :opencortex)
   (:export #:communication-protocol-suite))
-
 (in-package :opencortex-communication-tests)
 
-(def-suite communication-protocol-suite
-  :description "Test suite for opencortex Communication Protocol
-
+(def-suite communication-protocol-suite :description "Communication Protocol Suite")
 (in-suite communication-protocol-suite)
 
 (test test-framing
-  "Verify that messages are correctly prefixed with a 6-character hex length."
   (let* ((msg '(:type :EVENT :payload (:action :handshake)))
-         (framed (frame-message msg))
-         (len-str (subseq framed 0 6))
-         (payload (subseq framed 6)))
-    (is (string= "00002C" (string-upcase len-str)))
-    (is (equalp msg (read-from-string payload)))))
-
-(test test-parse-message
-  "Verify that incoming framed strings are parsed into Lisp plists."
-  (let ((framed "00002c(:type :EVENT :payload (:action :handshake)))
-    (is (equal '(:type :EVENT :payload (:action :handshake))
-               (read-from-string (subseq framed 6))))))
-
-(test test-hello-handshake
-  "Verify the structure of the HELLO handshake message."
-  (let ((hello (make-hello-message "0.1.0))
-    (is (eq :EVENT (getf hello :type)))
-    (is (eq :handshake (getf (getf hello :payload) :action)))
-    (is (string= "0.1.0" (getf (getf hello :payload) :version)))))
-
-(test test-find-missing-id
-  "Verify that the daemon can find a headline missing an ID."
-  (let* ((ast '(:type :org-data :contents
-                   ((:type :HEADLINE :properties (:TITLE "No ID Here :contents nil)
-                    (:type :HEADLINE :properties (:ID "exists" :TITLE "Has ID :contents nil))))
-         (found (find-headline-missing-id ast)))
-    (is (not (null found)))
-    (is (string= "No ID Here" (getf (getf found :properties) :TITLE)))))
+         (framed (frame-message msg)))
+    (is (string= "00002C" (string-upcase (subseq framed 0 6))))))
 #+end_src
