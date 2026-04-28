@@ -49,3 +49,29 @@
       (is (equal (org-object-hash (lookup-object "cow-node")) hash-v2))
       (rollback-memory 0)
       (is (equal (org-object-hash (lookup-object "cow-node")) hash-v1)))))
+
+(test test-merkle-corruption-rollback
+  "Tier 2 Chaos: Verify that Merkle hash corruption triggers a Micro-Rollback."
+  (clrhash *memory*)
+  (setf *object-store-snapshots* nil)
+  (let* ((ast '(:type :HEADLINE :properties (:ID "node-1" :TITLE "Original") :contents nil))
+         (id (ingest-ast ast)))
+    (snapshot-memory)
+    ;; Manually corrupt the hash in the live memory
+    (let ((obj (lookup-object id)))
+      (setf (org-object-hash obj) "CORRUPTED-HASH"))
+    
+    ;; Simulate a system integrity check that should fail and rollback
+    ;; We'll use a manual check here since automatic validation is in the Loop
+    (let ((obj (lookup-object id)))
+      (let ((current-hash (org-object-hash obj))
+            (computed-hash (compute-merkle-hash (org-object-id obj) 
+                                               (org-object-type obj)
+                                               (org-object-attributes obj)
+                                               (org-object-content obj)
+                                               nil)))
+        (unless (string= current-hash computed-hash)
+          (rollback-memory 0))))
+    
+    ;; Verify that the memory was rolled back to the clean snapshot
+    (is (string/= "CORRUPTED-HASH" (org-object-hash (lookup-object id))))))

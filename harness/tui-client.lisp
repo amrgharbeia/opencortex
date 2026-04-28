@@ -79,11 +79,15 @@
     (setf (fill-pointer *input-buffer*) 0)
     (when (> (length cmd) 0)
       (enqueue-msg (format nil "⬆ ~a" cmd))
-      (when (and stream (open-stream-p stream))
-        (format stream "~a" (opencortex:frame-message (list :TYPE :EVENT 
-                                                           :META (list :SOURCE :tui)
-                                                           :PAYLOAD (list :SENSOR :user-input :TEXT cmd))))
-        (finish-output stream)))
+      (handler-case
+          (when (and stream (open-stream-p stream))
+            (format stream "~a" (opencortex:frame-message (list :TYPE :EVENT 
+                                                               :META (list :SOURCE :tui)
+                                                               :PAYLOAD (list :SENSOR :user-input :TEXT cmd))))
+            (finish-output stream))
+        (error (c)
+          (push "ERROR: Connection to daemon lost." *chat-history*)
+          (setf *is-running* nil))))
     (when (string= cmd "/exit") (setf *is-running* nil))
     (when (string= cmd "/clear") (setf *chat-history* nil))))
 

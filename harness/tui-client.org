@@ -42,10 +42,16 @@ A simple MVP console is insufficient for a Lisp Machine. To reach v0.2.0, the TU
 
 ** Command Parsing Tests
 #+begin_src lisp :tangle (expand-file-name "tui-tests.lisp" (concat (or (getenv "INSTALL_DIR") ".") "/tests"))
-(test test-command-parser
-  "Verify that slash-commands are correctly identified."
-  ;; Stub for now
-  (is (null nil)))
+(test test-tui-connection-drop
+  "Tier 2 Chaos: Verify that handle-return degrades gracefully when the daemon connection is lost."
+  (let ((opencortex.tui::*chat-history* nil)
+        (opencortex.tui::*input-buffer* (make-array 5 :element-type 'char :initial-contents "hello" :fill-pointer 5 :adjustable t))
+        ;; Create a closed stream to simulate connection drop
+        (mock-stream (make-string-output-stream)))
+    (close mock-stream)
+    (opencortex.tui::handle-return mock-stream)
+    ;; Check if the error was enqueued to history instead of crashing
+    (is (member "ERROR: Connection to daemon lost." opencortex.tui::*chat-history* :test #'string=))))
 #+end_src
 
 * Phase C: Implementation (Build)
@@ -180,11 +186,15 @@ A simple MVP console is insufficient for a Lisp Machine. To reach v0.2.0, the TU
     (setf (fill-pointer *input-buffer*) 0)
     (when (> (length cmd) 0)
       (enqueue-msg (format nil "⬆ ~a" cmd))
-      (when (and stream (open-stream-p stream))
-        (format stream "~a" (opencortex:frame-message (list :TYPE :EVENT 
-                                                           :META (list :SOURCE :tui)
-                                                           :PAYLOAD (list :SENSOR :user-input :TEXT cmd))))
-        (finish-output stream)))
+      (handler-case
+          (when (and stream (open-stream-p stream))
+            (format stream "~a" (opencortex:frame-message (list :TYPE :EVENT 
+                                                               :META (list :SOURCE :tui)
+                                                               :PAYLOAD (list :SENSOR :user-input :TEXT cmd))))
+            (finish-output stream))
+        (error (c)
+          (push "ERROR: Connection to daemon lost." *chat-history*)
+          (setf *is-running* nil))))
     (when (string= cmd "/exit") (setf *is-running* nil))
     (when (string= cmd "/clear") (setf *chat-history* nil))))
 #+end_src

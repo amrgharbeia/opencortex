@@ -35,7 +35,8 @@
                (:file "tests/diagnostics-tests")
                (:file "tests/config-manager-tests")
                (:file "tests/gateway-manager-tests")
-               (:file "tests/tui-tests")))
+               (:file "tests/tui-tests")
+               (:file "tests/llm-gateway-tests")))
 
 (defsystem :opencortex/tui
   :depends-on (:opencortex :croatoan :usocket :bordeaux-threads)

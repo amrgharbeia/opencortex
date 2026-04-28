@@ -24,7 +24,7 @@
             (is (search ".config/opencortex" (namestring dir)))))
       (if orig-env
           (setf (uiop:getenv "OC_CONFIG_DIR") orig-env)
-          (unsetenv "OC_CONFIG_DIR")))))
+          (setf (uiop:getenv "OC_CONFIG_DIR") nil)))))
 
 (test test-get-oc-config-dir-env-override
   "Verify get-oc-config-dir uses OC_CONFIG_DIR when set."
@@ -36,7 +36,7 @@
             (is (string= "/tmp/test-opencortex-config/" (namestring dir)))))
       (if orig-env
           (setf (uiop:getenv "OC_CONFIG_DIR") orig-env)
-          (unsetenv "OC_CONFIG_DIR")))))
+          (setf (uiop:getenv "OC_CONFIG_DIR") nil)))))
 
 (test test-save-providers-roundtrip
   "Verify save-providers writes and providers can be reloaded."
@@ -54,7 +54,7 @@
       (uiop:delete-directory-tree (uiop:ensure-directory-pathname test-dir) :validate t)
       (if orig-env
           (setf (uiop:getenv "OC_CONFIG_DIR") orig-env)
-          (unsetenv "OC_CONFIG_DIR")))))
+          (setf (uiop:getenv "OC_CONFIG_DIR") nil)))))
 
 (test test-configure-provider-validation
   "Verify configure-provider validates required fields."
