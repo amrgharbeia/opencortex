@@ -1,4 +1,4 @@
-#+PROPERTY: header-args:lisp :tangle (concat (getenv "INSTALL_DIR") "/harness/context.lisp" (expand-file-name ""))
+#+PROPERTY: header-args:lisp :tangle (expand-file-name "harness/context.lisp" (expand-file-name "harness/"))
 #+TITLE: Peripheral Vision (context.lisp)
 #+AUTHOR: Amr
 #+FILETAGS: :harness:context:
@@ -217,7 +217,7 @@ The primary entry point for context generation. This function identifies active 
 Following the Engineering Standards, the peripheral vision extraction and rendering logic must be empirically verified. 
 
 ** Test Suite Context
-#+begin_src lisp :tangle (expand-file-name "peripheral-vision-tests.lisp" (concat (concat (or (getenv "INSTALL_DIR") ".") "/harness") "/tests"))
+#+begin_src lisp :tangle (expand-file-name "harness/peripheral-vision-tests.lisp" (concat (concat (or (getenv "INSTALL_DIR") ".") "/harness") "/tests"))
 (defpackage :opencortex-peripheral-vision-tests
   (:use :cl :fiveam :opencortex)
   (:export #:vision-suite))
@@ -231,7 +231,7 @@ Following the Engineering Standards, the peripheral vision extraction and render
 ** Foveal Rendering Test
 Verify that the foveal target is rendered with content, while siblings are skeletal.
 
-#+begin_src lisp :tangle (expand-file-name "peripheral-vision-tests.lisp" (concat (concat (or (getenv "INSTALL_DIR") ".") "/harness") "/tests"))
+#+begin_src lisp :tangle (expand-file-name "harness/peripheral-vision-tests.lisp" (concat (concat (or (getenv "INSTALL_DIR") ".") "/harness") "/tests"))
 (test test-foveal-rendering
   "Verify that the foveal target is rendered with content, while siblings are skeletal."
   (clrhash opencortex::*memory*)
@@ -251,7 +251,7 @@ Verify that the foveal target is rendered with content, while siblings are skele
 ** Awareness Budget Test
 Verify that context-assemble-global-awareness handles multiple projects correctly.
 
-#+begin_src lisp :tangle (expand-file-name "peripheral-vision-tests.lisp" (concat (concat (or (getenv "INSTALL_DIR") ".") "/harness") "/tests"))
+#+begin_src lisp :tangle (expand-file-name "harness/peripheral-vision-tests.lisp" (concat (concat (or (getenv "INSTALL_DIR") ".") "/harness") "/tests"))
 (test test-awareness-budget
   "Verify that context-assemble-global-awareness handles multiple projects."
   (clrhash opencortex::*memory*)

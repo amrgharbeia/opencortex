@@ -1,4 +1,4 @@
-#+PROPERTY: header-args:lisp :tangle (concat (getenv "INSTALL_DIR") "/harness/communication.lisp" (expand-file-name ""))
+#+PROPERTY: header-args:lisp :tangle (expand-file-name "harness/communication.lisp" (expand-file-name "harness/"))
 #+TITLE: Communication Protocol (communication.lisp)
 #+AUTHOR: Amr
 #+FILETAGS: :harness:protocol:
@@ -79,7 +79,7 @@ The ~communication.lisp~ module defines the low-level transport and framing logi
 ** Structural Validation (communication-validator.lisp)
 The validator ensures that incoming messages adhere to the strict property list schema of the communication protocol.
 
-#+begin_src lisp :tangle (concat (getenv "INSTALL_DIR") "/harness/communication-validator.lisp" (expand-file-name ""))
+#+begin_src lisp :tangle (expand-file-name "harness/communication-validator.lisp" (expand-file-name "harness/"))
 (in-package :opencortex)
 
 (defun validate-communication-protocol-schema (msg)
@@ -154,7 +154,7 @@ Frames a message with a hex length prefix and ensures all data is serializable.
 These tests verify the communication protocol functions. Run with:
 ~(fiveam:run! 'communication-protocol-suite)~
 
-#+begin_src lisp :tangle (expand-file-name "communication-tests.lisp" (concat (concat (or (getenv "INSTALL_DIR") ".") "/harness") "/tests"))
+#+begin_src lisp :tangle (expand-file-name "harness/communication-tests.lisp" (concat (concat (or (getenv "INSTALL_DIR") ".") "/harness") "/tests"))
 (defpackage :opencortex-communication-tests
   (:use :cl :fiveam :opencortex)
   (:export #:communication-protocol-suite))

@@ -22,26 +22,26 @@ A simple MVP console is insufficient for a Lisp Machine. To reach v0.2.0, the TU
 * Phase B: Protocol (Success Criteria)
 
 ** Test Suite Context
-#+begin_src lisp :tangle ((concat (getenv "INSTALL_DIR") "/tests/tui-tests.lisp"))
+#+begin_src lisp :tangle ((expand-file-name "tui-tests.lisp"))
 (defpackage :opencortex-tui-tests
   (:use :cl :fiveam :opencortex)
   (:export #:tui-suite))
 #+end_src
 
-#+begin_src lisp :tangle ((concat (getenv "INSTALL_DIR") "/tests/tui-tests.lisp"))
+#+begin_src lisp :tangle ((expand-file-name "tui-tests.lisp"))
 (in-package :opencortex-tui-tests)
 #+end_src
 
-#+begin_src lisp :tangle ((concat (getenv "INSTALL_DIR") "/tests/tui-tests.lisp"))
+#+begin_src lisp :tangle ((expand-file-name "tui-tests.lisp"))
 (def-suite tui-suite :description "Verification of the TUI parsing and styling logic")
 #+end_src
 
-#+begin_src lisp :tangle ((concat (getenv "INSTALL_DIR") "/tests/tui-tests.lisp"))
+#+begin_src lisp :tangle ((expand-file-name "tui-tests.lisp"))
 (in-suite tui-suite)
 #+end_src
 
 ** Command Parsing Tests
-#+begin_src lisp :tangle ((concat (getenv "INSTALL_DIR") "/tests/tui-tests.lisp"))
+#+begin_src lisp :tangle ((expand-file-name "tui-tests.lisp"))
 (test test-tui-connection-drop
   "Tier 2 Chaos: Verify that handle-return degrades gracefully when the daemon connection is lost."
   (let ((opencortex.tui::*incoming-msgs* nil)
