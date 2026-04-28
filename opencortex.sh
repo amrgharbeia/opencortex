@@ -54,6 +54,7 @@ setup_system() {
     # Tangle the literate source from SCRIPT_DIR to OC_DATA_DIR (The Engine)
     echo -e "${YELLOW}--- Deploying Engine to $OC_DATA_DIR ---${NC}"
     cp "$SCRIPT_DIR/opencortex.asd" "$OC_DATA_DIR/"
+    cp "$SCRIPT_DIR/skills"/*.org "$OC_DATA_DIR/skills/"
 
     cd "$SCRIPT_DIR"
     export INSTALL_DIR="$OC_DATA_DIR"

@@ -20,35 +20,14 @@ The *System Manifest* defines the structural components of the OpenCortex. It se
   :serial t
   :components ((:file "harness/package")
                 (:file "harness/skills")
-                (:file "harness/memory")
                 (:file "harness/communication")
                 (:file "harness/communication-validator")
+                (:file "harness/memory")
+                (:file "harness/context")
                 (:file "harness/perceive")
                 (:file "harness/reason")
                 (:file "harness/act")
-                (:file "harness/context")
-                (:file "harness/loop")
-                (:file "skills/org-skill-diagnostics")
-                (:file "skills/org-skill-config-manager")
-                (:file "skills/org-skill-gateway-manager")
-                (:file "skills/org-skill-policy")
-                (:file "skills/org-skill-bouncer")
-                (:file "skills/org-skill-scribe")
-                (:file "skills/org-skill-gardener")
-                (:file "skills/org-skill-llm-gateway")
-                (:file "skills/org-skill-llama-backend")
-                (:file "skills/org-skill-shell-actuator")
-                (:file "skills/org-skill-emacs-edit")
-                (:file "skills/org-skill-self-edit")
-                (:file "skills/org-skill-self-fix")
-                (:file "skills/org-skill-lisp-utils")
-                (:file "skills/org-skill-literate-programming")
-                (:file "skills/org-skill-protocol-validator")
-                (:file "skills/org-skill-tool-permissions")
-                (:file "skills/org-skill-peripheral-vision")
-                (:file "skills/org-skill-cli-gateway")
-                (:file "skills/org-skill-engineering-standards")
-                (:file "skills/org-skill-credentials-vault")))
+                (:file "harness/loop")))
 #+end_src
 
 ** Test System
@@ -81,23 +60,3 @@ The *System Manifest* defines the structural components of the OpenCortex. It se
   :components ((:file "harness/tui-client")))
 #+end_src
 
-** Test Orchestrator
-#+begin_src lisp :tangle (expand-file-name "run-all-tests.lisp" (concat (or (getenv "INSTALL_DIR") ".") "/harness"))
-(asdf:load-system :opencortex/tests)
-(format t "~%=== Running ALL Test Suites ===~%")
-
-(dolist (suite-spec '(("OPENCORTEX-BOOT-TESTS" "BOOT-SUITE")
-                      ("OPENCORTEX-COMMUNICATION-TESTS" "COMMUNICATION-PROTOCOL-SUITE")
-                      ("OPENCORTEX-PIPELINE-ACT-TESTS" "PIPELINE-ACT-SUITE")
-                      ("OPENCORTEX-MEMORY-TESTS" "MEMORY-SUITE")
-                      ("OPENCORTEX-ENGINEERING-STANDARDS-TESTS" "ENGINEERING-STANDARDS-SUITE")
-                      ("OPENCORTEX-DIAGNOSTICS-TESTS" "DIAGNOSTICS-SUITE")
-                      ("OPENCORTEX-GATEWAY-MANAGER-TESTS" "GATEWAY-SUITE")))
-  (let ((pkg (find-package (first suite-spec))))
-    (when pkg
-      (let ((suite-sym (find-symbol (second suite-spec) pkg)))
-        (when suite-sym
-          (fiveam:run! suite-sym))))))
-
-(format t "~%=== ALL TESTS COMPLETE ===~%")
-#+end_src
