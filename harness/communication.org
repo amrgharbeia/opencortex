@@ -1,4 +1,4 @@
-#+PROPERTY: header-args:lisp :tangle (expand-file-name "harness/communication.lisp" (expand-file-name "harness/"))
+#+PROPERTY: header-args:lisp :tangle communication.lisp
 #+TITLE: Communication Protocol (communication.lisp)
 #+AUTHOR: Amr
 #+FILETAGS: :harness:protocol:
@@ -26,7 +26,7 @@ The ~communication.lisp~ module defines the low-level transport and framing logi
 (in-package :opencortex)
 
 (defvar *actuator-registry* (make-hash-table :test 'equalp)
-  "Global registry mapping target keywords to their physical actuator functions.")
+  "Global registry mapping target keywords to their physical actuator functions.
 
 (defun register-actuator (name fn) 
   "Registers an actuator function. Actuators receive: (ACTION CONTEXT)."
@@ -79,7 +79,7 @@ The ~communication.lisp~ module defines the low-level transport and framing logi
 ** Structural Validation (communication-validator.lisp)
 The validator ensures that incoming messages adhere to the strict property list schema of the communication protocol.
 
-#+begin_src lisp :tangle (expand-file-name "harness/communication-validator.lisp" (expand-file-name "harness/"))
+#+begin_src lisp :tangle communication-validator.lisp" )
 (in-package :opencortex)
 
 (defun validate-communication-protocol-schema (msg)
@@ -99,20 +99,20 @@ The validator ensures that incoming messages adhere to the strict property list 
        (let ((target (proto-get msg :target))
              (source (proto-get (proto-get msg :meta) :source)))
          (unless (or target source)
-           (error "Communication Protocol Schema Error: REQUEST missing mandatory :target and no :source in :meta to infer it"))
+           (error "Communication Protocol Schema Error: REQUEST missing mandatory :target and no :source in :meta to infer it)
          (unless (proto-get msg :payload)
-           (error "Communication Protocol Schema Error: REQUEST missing mandatory :payload"))))
+           (error "Communication Protocol Schema Error: REQUEST missing mandatory :payload)))
       
       (:EVENT
        (let ((payload (proto-get msg :payload)))
          (unless (and payload (listp payload))
-           (error "Communication Protocol Schema Error: EVENT missing or invalid :payload"))
+           (error "Communication Protocol Schema Error: EVENT missing or invalid :payload)
          (unless (or (proto-get payload :action) (proto-get payload :sensor))
-           (error "Communication Protocol Schema Error: EVENT payload must contain :action or :sensor"))))
+           (error "Communication Protocol Schema Error: EVENT payload must contain :action or :sensor)))
       
       (:RESPONSE
        (unless (proto-get msg :payload)
-         (error "Communication Protocol Schema Error: RESPONSE missing mandatory :payload"))))
+         (error "Communication Protocol Schema Error: RESPONSE missing mandatory :payload)))
     
     t))
 
@@ -154,7 +154,7 @@ Frames a message with a hex length prefix and ensures all data is serializable.
 These tests verify the communication protocol functions. Run with:
 ~(fiveam:run! 'communication-protocol-suite)~
 
-#+begin_src lisp :tangle (expand-file-name "harness/communication-tests.lisp" (concat (concat (or (getenv "INSTALL_DIR") ".") "/harness") "/tests"))
+#+begin_src lisp :tangle communication-tests.lisp" (concat (concat (or (getenv "INSTALL_DIR ". "/harness "/tests)
 (defpackage :opencortex-communication-tests
   (:use :cl :fiveam :opencortex)
   (:export #:communication-protocol-suite))
@@ -162,7 +162,7 @@ These tests verify the communication protocol functions. Run with:
 (in-package :opencortex-communication-tests)
 
 (def-suite communication-protocol-suite
-  :description "Test suite for opencortex Communication Protocol")
+  :description "Test suite for opencortex Communication Protocol
 
 (in-suite communication-protocol-suite)
 
@@ -177,13 +177,13 @@ These tests verify the communication protocol functions. Run with:
 
 (test test-parse-message
   "Verify that incoming framed strings are parsed into Lisp plists."
-  (let ((framed "00002c(:type :EVENT :payload (:action :handshake))"))
+  (let ((framed "00002c(:type :EVENT :payload (:action :handshake)))
     (is (equal '(:type :EVENT :payload (:action :handshake))
                (read-from-string (subseq framed 6))))))
 
 (test test-hello-handshake
   "Verify the structure of the HELLO handshake message."
-  (let ((hello (make-hello-message "0.1.0")))
+  (let ((hello (make-hello-message "0.1.0))
     (is (eq :EVENT (getf hello :type)))
     (is (eq :handshake (getf (getf hello :payload) :action)))
     (is (string= "0.1.0" (getf (getf hello :payload) :version)))))
@@ -191,8 +191,8 @@ These tests verify the communication protocol functions. Run with:
 (test test-find-missing-id
   "Verify that the daemon can find a headline missing an ID."
   (let* ((ast '(:type :org-data :contents
-                   ((:type :HEADLINE :properties (:TITLE "No ID Here") :contents nil)
-                    (:type :HEADLINE :properties (:ID "exists" :TITLE "Has ID") :contents nil))))
+                   ((:type :HEADLINE :properties (:TITLE "No ID Here :contents nil)
+                    (:type :HEADLINE :properties (:ID "exists" :TITLE "Has ID :contents nil))))
          (found (find-headline-missing-id ast)))
     (is (not (null found)))
     (is (string= "No ID Here" (getf (getf found :properties) :TITLE)))))
