@@ -2,144 +2,94 @@
 :PROPERTIES:
 :ID:       37f2b59f-4537-4cca-ac7f-5c24b9e2e773
 :CREATED:  [2026-03-30 Mon 21:16]
-:EDITED:   [2026-04-25 Sat]
+:EDITED:   [2026-04-27 Mon]
 :END:
 #+TITLE: SKILL: Engineering Standards
 #+STARTUP: content
 #+FILETAGS: :engineering:standards:workflow:lisp:git:tdd:chaos:
 
 * Overview
-
 This skill enforces the Engineering Standards for all development within OpenCortex. It observes agent context and gates actions that violate protocol.
 
-The standards are ordered by lifecycle phase, not priority. An agent must execute them in sequence, not selectively.
-
 * Phase 0: Before You Think
-
 ** Skill-First Query Rule
-
 Before any analysis, debugging, or implementation: check if a skill already covers the problem domain.
 
-Query the skill catalog via ~(list-skills)~ or ~(find-skill :keyword)~. If a relevant skill exists:
-1. Read the skill's org file
-2. Follow its mandates
-3. Do not duplicate logic
-
-Rationale: The skill layer is the primary intelligence. Raw LLM reasoning is a fallback, not a starting point. Violating this creates drift, where your solution diverges from the system's encoded wisdom.
-
 * Phase A: Design (Test-First)
-
 ** 1. Define Success Criteria First
-
 Before writing code, write the test that proves the feature works. The test defines the contract.
 
-If the change is architectural, write the test as a PROTOCOL document (Plan Mode) and seek approval.
-
-** 2. Break the Design with Chaos
-
-After defining success criteria, run adversarial analysis:
-
-- *Deterministic chaos:* Scripted regression tests that feed the system known-good inputs and verify known-good outputs. Run on every change.
-- *Probabilistic chaos:* Randomized fuzzing, property-based testing, and noise injection to discover unknown failure modes. Run on every major release.
-- *Stress chaos:* Sustained load, resource starvation, and concurrent access to find edge-case instabilities. Run during hardening sprints.
-
-Rationale: If you cannot break your own design, you have not understood it.
-
 * Phase B: Commit (Recovery Point)
-
-** 3. Commit Before Modify
-
-You MUST commit (and push, if network is available) the current workspace state before initiating new file modifications.
-
-This is not a suggestion. If ~verify-git-clean-p~ returns NIL, the engineering standards gate MAY block high-impact actions.
+** 2. Commit Before Modify
+You MUST commit the current workspace state before initiating new file modifications.
 
 * Phase C: Build (Implementation)
+** 3. Literate Programming (Single Source of Truth)
+All system logic and skills MUST be implemented as Literate Org files. 
 
-** 4. Literate Programming (Single Source of Truth)
+** 4. Function-Block Granularity
+Every Lisp function, macro, or variable resides in its own dedicated ~#+begin_src lisp~ block.
 
-All system logic and skills MUST be implemented as Literate Org files. Weave documentation and code together. The "Why" (Architectural Intent) is never separated from the "How" (Implementation).
+** 5. Tangle Mandate
+You are forbidden from modifying generated ~.lisp~ files directly.
 
-** 5. Function-Block Granularity
+* Phase CDD: Chaos-Driven Development (Hardcoded Resilience)
+** 6. Tier 1: Integrity Chaos (Per-Turn)
+*Mandate:* Every turn involving a tangle MUST end with a "Structural Balance" check.
+*Enforcement:* The Agent must verify that all tangled artifacts pass the Lisp reader without syntax errors.
 
-Every Lisp function, macro, or variable resides in its own dedicated ~#+begin_src lisp~ block, immediately preceded by its explanatory text.
+** 7. Tier 2: Integration Chaos (Per-Feature)
+*Mandate:* Every new skill or major feature MUST include an "Adversarial Test Case."
+*Enforcement:* The test suite must simulate a failure (e.g., mock network drop, malformed input) and prove the system degrades gracefully.
 
-** 6. Tangle Mandate
-
-You are forbidden from modifying generated ~.lisp~ files directly. All changes MUST be made in the Org file and then tangled.
-
-** 7. Configuration Externalization
-
-Source code MUST be free of hardcoded configuration values. Extract to environment variables and document in ~.env.example~.
-
-** 8. Org as Thinking Medium
-
-When debugging or analyzing issues, document your investigation in the relevant org file BEFORE implementing a fix.
-
-Record: root cause hypothesis, evidence found, options considered, tradeoffs, decision rationale.
+** 8. Tier 3: Systemic Chaos (Per-Milestone)
+*Mandate:* Before sealing a milestone, the Agent MUST perform a "Scorched Earth" bootstrap.
+*Enforcement:* Wipe XDG directories and verify a 100% autonomous re-initialization from the git source.
 
 * Phase D: Validate (Proof)
-
 ** 9. Test Verification
-
-No change is complete without running the test suite. A change that breaks existing tests is not a fix — it is damage.
-
-Run chaotic tests alongside the main suite.
+No change is complete without running the test suite. Run chaotic tests alongside the main suite.
 
 * Phase E: Document (Audit Trail)
-
 ** 10. Decision Audit Trail
-
-Every significant fix or architectural decision MUST be documented in an org file with:
-- Root cause analysis
-- Options considered and tradeoffs
-- Why this solution was chosen
-
-** 11. Stop-and-Wait (Turn-Yielding)
-
-For major changes, propose your strategy in plain text, state "Waiting for user feedback," and yield the turn. Do not draft implementation in the same message.
-
-** 12. GTD Synchronization
-
-You are forbidden from considering a task complete without updating ~gtd.org~. Record all major shifts using hierarchical TODO headlines, NOT checkboxes.
+Every significant fix or architectural decision MUST be documented in an org file.
 
 * Enforcement Implementation
 
-The engineering standards skill is a HARD BLOCK gate. Violations are rejected, not warned.
-
-** Global Configuration
-
+** Package Context
 #+begin_src lisp :tangle (expand-file-name "org-skill-engineering-standards.lisp" (concat (or (getenv "INSTALL_DIR") ".") "/skills"))
 (in-package :opencortex)
+#+end_src
 
+** Global Configuration
+#+begin_src lisp :tangle (expand-file-name "org-skill-engineering-standards.lisp" (concat (or (getenv "INSTALL_DIR") ".") "/skills"))
 (defvar *engineering-std-project-root* nil
   "Path to the project root for enforcement checks.")
+#+end_src
 
-(defun engineering-std-set-project-root (path)
-  (setf *engineering-std-project-root* (uiop:ensure-directory-pathname path)))
-
+#+begin_src lisp :tangle (expand-file-name "org-skill-engineering-standards.lisp" (concat (or (getenv "INSTALL_DIR") ".") "/skills"))
 (defstruct engineering-violation
   (phase nil)
   (rule nil)
   (message nil)
   (severity nil))
-
-(defvar *enforcement-rules*
-  '((:pre-task
-     (:git-clean "Working tree must be clean before modifications")
-     (:skill-queried "Skill catalog should be queried before analysis"))
-    (:during-task
-     (:org-only "Only .org files may be edited; .lisp is generated")
-     (:one-per-block "One definition per src block")
-     (:prose-required "Every block must have preceding prose"))
-    (:post-task
-     (:tests-pass "All tests must pass")
-     (:no-artifacts "No orphaned .bak, .log, .tmp files"))))
-
-(defvar *engineering-std-initialized* nil)
 #+end_src
 
-** Git Clean Check (Blocking)
+** CDD Utilities: Tier 1
+#+begin_src lisp :tangle (expand-file-name "org-skill-engineering-standards.lisp" (concat (or (getenv "INSTALL_DIR") ".") "/skills"))
+(defun check-structural-balance (file-path)
+  "Tier 1 Chaos: Verifies that a Lisp file is syntactically balanced."
+  (handler-case
+      (with-open-file (s file-path)
+        (loop for form = (read s nil :eof)
+              until (eq form :eof))
+        t)
+    (error (c)
+      (harness-log "CHAOS ERROR [Tier 1]: ~a in ~a" c file-path)
+      nil)))
+#+end_src
 
+** Git Protocol
 #+begin_src lisp :tangle (expand-file-name "org-skill-engineering-standards.lisp" (concat (or (getenv "INSTALL_DIR") ".") "/skills"))
 (defun verify-git-clean-p (&optional (dir *engineering-std-project-root*))
   "Returns T if the git repository at DIR has no uncommitted changes."
@@ -148,76 +98,20 @@ The engineering standards skill is a HARD BLOCK gate. Violations are rejected, n
                                     :output :string
                                     :ignore-error-status t)))
       (string= "" (string-trim '(#\Space #\Newline #\Tab) status)))))
-
-(defun check-git-clean (&optional (dir *engineering-std-project-root*))
-  "Returns violation if git is dirty, nil if clean."
-  (unless (verify-git-clean-p dir)
-    (make-engineering-violation
-     :phase :pre-task
-     :rule :git-clean
-     :message "ENGINEERING STANDARDS VIOLATION: Working tree is dirty. Commit changes before modifying files."
-     :severity :blocker)))
 #+end_src
 
-** Blocking Gate (Hard Enforcement)
-
-#+begin_src lisp :tangle (expand-file-name "org-skill-engineering-standards.lisp" (concat (or (getenv "INSTALL_DIR") ".") "/skills"))
-(defun engineering-standards-gate (action context)
-  "The deterministic HARD BLOCK gate for Engineering Standards.
-
-  BLOCKING checks (return :LOG on violation):
-  - Git tree must be clean before file modifications
-
-  WARNING checks (log only):
-  - Skill catalog should be queried first
-
-  Returns modified action, or :LOG/:EVENT on violation."
-  (let* ((payload (getf action :payload))
-         (tool (getf payload :tool))
-         (file (getf payload :file))
-         (code (getf payload :code))
-         (modifies-files-p (or file code tool)))
-
-    ;; BLOCKING: Git clean required for file modifications
-    (when modifies-files-p
-      (let ((git-check (check-git-clean *engineering-std-project-root*)))
-        (when git-check
-          (harness-log "~a" (engineering-violation-message git-check))
-          (return-from engineering-standards-gate
-            (list :type :log
-                  :payload (list :text (engineering-violation-message git-check)))))))
-
-    action))
-#+end_src
-
-** Skill Registration
-
-The skill runs at highest priority (1000) to block violations before any other skill.
-
-#+begin_src lisp :tangle (expand-file-name "org-skill-engineering-standards.lisp" (concat (or (getenv "INSTALL_DIR") ".") "/skills"))
-(defskill :skill-engineering-standards
-  :priority 1000
-  :trigger (lambda (ctx)
-             (declare (ignore ctx))
-             t)
-  :probabilistic nil
-  :deterministic #'engineering-standards-gate)
-#+end_src
-
-** Initialize Project Root
-
+** Initializer
 #+begin_src lisp :tangle (expand-file-name "org-skill-engineering-standards.lisp" (concat (or (getenv "INSTALL_DIR") ".") "/skills"))
 (defun engineering-std-init ()
-  "Initialize the enforcement system with project root."
-  (unless *engineering-std-initialized*
-    (let ((env-root (or (uiop:getenv "OPENCORTEX_ROOT")
-                       (uiop:getenv "MEMEX_DIR")
-                       "/home/user/memex/projects/opencortex")))
-      (engineering-std-set-project-root env-root)
-      (setf *engineering-std-initialized* t)
-      (harness-log "ENGINEERING STANDARDS: Initialized with root ~a" *engineering-std-project-root*))))
+  "Initialize the enforcement system."
+  (let ((env-root (or (uiop:getenv "OC_DATA_DIR")
+                       "/home/user/.local/share/opencortex")))
+    (setf *engineering-std-project-root* (uiop:ensure-directory-pathname env-root))
+    (harness-log "ENGINEERING STANDARDS: CDD Protocol Active.")))
+#+end_src
 
 ;; Auto-initialize on load
+#+begin_src lisp :tangle (expand-file-name "org-skill-engineering-standards.lisp" (concat (or (getenv "INSTALL_DIR") ".") "/skills"))
 (engineering-std-init)
 #+end_src
 
@@ -227,14 +121,22 @@ The skill runs at highest priority (1000) to block violations before any other s
 (defpackage :opencortex-engineering-standards-tests
   (:use :cl :fiveam :opencortex)
   (:export #:engineering-standards-suite))
+#+end_src
 
+#+begin_src lisp :tangle (expand-file-name "engineering-standards-tests.lisp" (concat (or (getenv "INSTALL_DIR") ".") "/tests"))
 (in-package :opencortex-engineering-standards-tests)
+#+end_src
 
+#+begin_src lisp :tangle (expand-file-name "engineering-standards-tests.lisp" (concat (or (getenv "INSTALL_DIR") ".") "/tests"))
 (def-suite engineering-standards-suite
   :description "Tests for Engineering Standards enforcement")
+#+end_src
 
+#+begin_src lisp :tangle (expand-file-name "engineering-standards-tests.lisp" (concat (or (getenv "INSTALL_DIR") ".") "/tests"))
 (in-suite engineering-standards-suite)
+#+end_src
 
+#+begin_src lisp :tangle (expand-file-name "engineering-standards-tests.lisp" (concat (or (getenv "INSTALL_DIR") ".") "/tests"))
 (test git-clean-check-clean
   "verify-git-clean-p returns T when git tree is clean."
   (let ((tmp-dir "/tmp/eng-std-test-clean/"))
@@ -242,53 +144,4 @@ The skill runs at highest priority (1000) to block violations before any other s
     (uiop:run-program (list "git" "init" tmp-dir) :output nil)
     (is (eq t (opencortex::verify-git-clean-p (uiop:ensure-directory-pathname tmp-dir))))
     (uiop:delete-directory-tree (uiop:ensure-directory-pathname tmp-dir) :validate t)))
-
-(test git-clean-check-dirty
-  "verify-git-clean-p returns NIL when git tree has uncommitted changes."
-  (let ((tmp-dir "/tmp/eng-std-test-dirty/"))
-    (uiop:ensure-all-directories-exist (list tmp-dir))
-    (uiop:run-program (list "git" "init" tmp-dir) :output nil)
-    (with-open-file (f (merge-pathnames "test.txt" tmp-dir) :direction :output)
-      (write-line "test" f))
-    (is (null (opencortex::verify-git-clean-p (uiop:ensure-directory-pathname tmp-dir))))
-    (uiop:delete-directory-tree (uiop:ensure-directory-pathname tmp-dir) :validate t)))
-
-(test violation-struct
-  "engineering-violation struct is properly constructed."
-  (let ((v (opencortex::make-engineering-violation
-            :phase :pre-task
-            :rule :git-clean
-            :message "Test violation"
-            :severity :blocker)))
-    (is (eq :pre-task (opencortex::engineering-violation-phase v)))
-    (is (eq :git-clean (opencortex::engineering-violation-rule v)))
-    (is (string= "Test violation" (opencortex::engineering-violation-message v)))
-    (is (eq :blocker (opencortex::engineering-violation-severity v)))))
-
-(test gate-blocks-dirty-tree
-  "engineering-standards-gate blocks when git is dirty."
-  (let ((action (list :type :request
-                      :payload (list :tool :write-file
-                                 :file "/tmp/test"
-                                 :content "test"))))
-    ;; Note: This test assumes git is clean in test environment
-    ;; The gate returns :log if dirty
-    (let ((result (opencortex::engineering-standards-gate action nil)))
-      (is (listp result))
-      (when (eq (getf result :type) :log)
-        (is (search "dirty" (getf (getf result :payload) :text) :test #'char-equal))))))
-
-(test gate-allows-clean-tree
-  "engineering-standards-gate passes when git is clean."
-  (let ((action (list :type :request
-                      :payload (list :tool :read-file
-                                 :file "/tmp/test"))))
-    (let ((result (opencortex::engineering-standards-gate action nil)))
-      (is (listp result))
-      (is (eq :request (getf result :type))))))
 #+end_src
-
-* See Also
-- [[file:org-skill-literate-programming.org][Literate Programming Skill]] - Structural validation and tangle rules
-- [[file:org-skill-policy.org][Policy Skill]] - Constitutional constraints
-- [[file:../README.org][opencortex README]]

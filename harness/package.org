@@ -293,8 +293,8 @@ Centralized logging function. It simultaneously writes to standard output and th
   (fiveam:run! 'OPENCORTEX-LITERATE-PROGRAMMING-TESTS::LITERATE-PROGRAMMING-SUITE))
 
 ;; Communication tests
-(when (find-package :OPENCORTEX-TESTS)
-  (fiveam:run! 'OPENCORTEX-TESTS::COMMUNICATION-PROTOCOL-SUITE))
+(when (find-package :OPENCORTEX-COMMUNICATION-TESTS)
+  (fiveam:run! 'OPENCORTEX-COMMUNICATION-TESTS::COMMUNICATION-PROTOCOL-SUITE))
 
 ;; Pipeline tests
 (when (find-package :OPENCORTEX-PIPELINE-TESTS)

@@ -1,153 +1,81 @@
 #+PROPERTY: header-args:lisp :tangle (expand-file-name "org-skill-llm-gateway.lisp" (concat (or (getenv "INSTALL_DIR") ".") "/skills"))
 :PROPERTIES:
-:ID:       llm-gateway-skill
-:CREATED:  [2026-04-09 Thu]
-:EDITED:   [2026-04-19 Sun]
+:ID:       llm-gateway-spec
+:CREATED:  [2026-04-10 Thu]
 :END:
-#+TITLE: SKILL: Unified LLM Gateway (Universal Literate Note)
+#+TITLE: Skill: LLM Gateway
 #+STARTUP: content
-#+FILETAGS: :llm:gateway:infrastructure:autonomy:
-#+DEPENDS_ON: org-skill-credentials-vault
+#+FILETAGS: :skill:llm:gateway:
 
 * Overview
-The *Unified LLM Gateway* is the single sensory and reasoning interface for all neural backends. It consolidates the previously fragmented provider skills into a high-integrity dispatch layer, standardizing credential management, error handling, and payload formatting.
+The *LLM Gateway* skill provides a unified interface for interacting with multiple Large Language Model providers.
 
-* Phase B: Blueprint (PROTOCOL)
+* Implementation
 
-** 1. Architectural Intent
-The gateway utilizes a functional dispatch pattern. A single entry point, `execute-llm-request`, resolves the provider-specific nuances (URLs, headers, JSON structures) while exposing a uniform interface to the harness.
+** Package Context
+#+begin_src lisp :tangle (expand-file-name "org-skill-llm-gateway.lisp" (concat (or (getenv "INSTALL_DIR") ".") "/skills"))
+(in-package :opencortex)
+#+end_src
 
-* Phase D: Build (Implementation)
+** Skill Metadata
+#+begin_src lisp :tangle (expand-file-name "org-skill-llm-gateway.lisp" (concat (or (getenv "INSTALL_DIR") ".") "/skills"))
+(defparameter *skill-llm-gateway*
+  '(:name "llm-gateway"
+    :description "Unified provider-agnostic LLM interface."
+    :capabilities (:ask-llm :get-embedding)
+    :type :probabilistic)
+  "Skill metadata for the LLM Gateway.")
+#+end_src
 
-** Implementation
-#+begin_src lisp
-
-(defun get-nested (alist &rest keys)
-  "Recursively extracts nested values from an alist, handling both objects and arrays."
-  (let ((val alist))
-    (dolist (k keys)
-      ;; Descend into arrays (cl-json style: ((key . val)) or ( ( (key . val) ) ))
-      (loop while (and (listp val) (listp (car val)) (not (keywordp (caar val))))
-            do (setf val (car val)))
-      (let ((pair (or (assoc k val)
-                      (assoc (intern (string-upcase (string k)) :keyword) val)
-                      (assoc (intern (string-downcase (string k)) :keyword) val))))
-        (if pair
-            (setf val (cdr pair))
-            (return-from get-nested nil))))
-    val))
-
-(defun execute-llm-request (prompt system-prompt &key provider model)
-  "Unified entry point for all LLM providers. Respects the global cascade."
-  (let* ((active-provider (or provider (car opencortex::*provider-cascade*) :openrouter))
-         (api-key (vault-get-secret active-provider :type :api-key))
-         (full-prompt (format nil "~a~%~%Prompt: ~a" system-prompt prompt)))
-
-    (harness-log "PROBABILISTIC ENGINE: Requesting ~a (Model: ~s)" 
-                active-provider (or model "default"))
-
-    ;; If the specifically requested provider has no key, try falling back to the cascade
-    (when (or (null api-key) (string= api-key ""))
-       (harness-log "GATEWAY: Provider ~a has no key. Cascade fallback would trigger here." active-provider)
-       (return-from execute-llm-request (list :status :error :message "API Key missing.")))
-
+** Request Execution
+#+begin_src lisp :tangle (expand-file-name "org-skill-llm-gateway.lisp" (concat (or (getenv "INSTALL_DIR") ".") "/skills"))
+(defun execute-llm-request (&key prompt system-prompt provider model)
+  "Generic executor for all LLM providers."
+  (let* ((active-provider (or provider :ollama))
+         (api-key (uiop:getenv (format nil "~:@(~a_API_KEY~)" active-provider)))
+         (full-prompt (if system-prompt (format nil "~a~%~%~a" system-prompt prompt) prompt)))
     (case active-provider
-      (:gemini-web
-       (let ((res (uiop:symbol-call :opencortex.skills.org-skill-web-research :ask-gemini-web full-prompt)))
-         (if res (list :status :success :content res) (list :status :error :message "Web Research Failure"))))
-      
       (:ollama
        (let* ((host (or (uiop:getenv "OLLAMA_HOST") "localhost:11434"))
               (url (format nil "http://~a/api/generate" host))
               (body (cl-json:encode-json-to-string `((model . ,(or model "llama3")) (prompt . ,full-prompt) (stream . :false)))))
          (handler-case 
-             (progn
-               (harness-log "LLM DEBUG: Requesting Ollama...")
-               (let* ((response (dex:post url :headers '(("Content-Type" . "application/json")) :content body :connect-timeout 5 :read-timeout 60))
-                      (json (cl-json:decode-json-from-string response)))
-                 (list :status :success :content (cdr (assoc :response json)))))
+             (let* ((response (dex:post url :headers '(("Content-Type" . "application/json")) :content body))
+                    (json (cl-json:decode-json-from-string response)))
+               (list :status :success :content (cdr (assoc :response json))))
            (error (c) (list :status :error :message (format nil "Ollama Failure: ~a" c))))))
+      (t (list :status :error :message "Provider not implemented")))))
+#+end_src
 
-      (t ;; Cloud Providers (Anthropic, Gemini API, Groq, OpenAI, OpenRouter)
-       (let* ((endpoint (case active-provider
-                          (:anthropic "https://api.anthropic.com/v1/messages")
-                          (:gemini-api (format nil "https://generativelanguage.googleapis.com/v1/models/~a:generateContent" (or model "gemini-1.5-flash-latest")))
-                          (:groq "https://api.groq.com/openai/v1/chat/completions")
-                          (:openai "https://api.openai.com/v1/chat/completions")
-                          (:openrouter "https://openrouter.ai/api/v1/chat/completions")))
-              (headers (case active-provider
-                         (:anthropic `(("Content-Type" . "application/json") ("x-api-key" . ,api-key) ("anthropic-version" . "2023-06-01")))
-                         (:gemini-api `(("Content-Type" . "application/json") ("x-goog-api-key" . ,api-key)))
-                         (:openrouter `(("Content-Type" . "application/json") ("Authorization" . ,(format nil "Bearer ~a" api-key)) 
-                                        ("HTTP-Referer" . "https://github.com/amr/opencortex") ("X-Title" . "opencortex Autonomous Kernel")))
-                         (t `(("Content-Type" . "application/json") ("Authorization" . ,(format nil "Bearer ~a" api-key))))))
-              (body (case active-provider
-                      (:anthropic (cl-json:encode-json-to-string `((model . ,(or model "claude-3-5-sonnet-20240620")) (max_tokens . 4096) (system . ,system-prompt) (messages . (( (role . "user") (content . ,prompt) ))))))
-                      (:gemini-api (cl-json:encode-json-to-string `((contents . (((parts . (((text . ,full-prompt))))))))))
-                      (t (cl-json:encode-json-to-string `((model . ,(or model (case active-provider (:groq "llama-3.3-70b-versatile") (t "google/gemini-2.0-flash-001"))))
-                                                         (messages . (( (role . "system") (content . ,system-prompt) ) ( (role . "user") (content . ,prompt) )))))))))
-         (handler-case 
-             (progn
-               (harness-log "LLM DEBUG: Requesting ~a..." active-provider)
-               (let* ((response (dex:post endpoint :headers headers :content body :connect-timeout 10 :read-timeout 30))
-                      (json (cl-json:decode-json-from-string response)))
-                 (let ((content (case active-provider
-                                  (:anthropic (get-nested json :content :text))
-                                  (:gemini-api (get-nested json :candidates :parts :text))
-                                  (t (get-nested json :choices :message :content)))))
-                   (if content
-                       (list :status :success :content content)
-                       (list :status :error :message (format nil "Failed to parse ~a response structure." active-provider))))))
-           (error (c) (list :status :error :message (format nil "LLM Gateway Failure (~a): ~a" active-provider c)))))))))
+** Cognitive Tools
+#+begin_src lisp :tangle (expand-file-name "org-skill-llm-gateway.lisp" (concat (or (getenv "INSTALL_DIR") ".") "/skills"))
+(def-cognitive-tool :get-ollama-embedding (text)
+  (let* ((host (or (uiop:getenv "OLLAMA_HOST") "localhost:11434"))
+         (url (format nil "http://~a/api/embeddings" host))
+         (body (cl-json:encode-json-to-string `((model . "nomic-embed-text") (prompt . ,text)))))
+    (handler-case
+        (let* ((response (dex:post url :headers '(("Content-Type" . "application/json")) :content body))
+               (json (cl-json:decode-json-from-string response)))
+          (cdr (assoc :embedding json)))
+      (error (c) (harness-log "OLLAMA EMBED ERROR: ~a" c) nil))))
+#+end_src
 
-;; Initialize Cascade
-(let* ((env-cascade (uiop:getenv "PROVIDER_CASCADE"))
-       (default-list '(:openrouter :openai :anthropic :groq :gemini-api :ollama))
-       (final-list (if (and env-cascade (not (string= env-cascade "")))
-                       (mapcar (lambda (s) (intern (string-upcase (string-trim '(#\Space) s)) :keyword))
-                               (uiop:split-string env-cascade :separator '(#\,)))
-                       default-list)))
-  (setf opencortex::*provider-cascade* final-list)
-  (opencortex:harness-log "PROBABILISTIC: Neural Cascade Initialized -> ~a" final-list))
+#+begin_src lisp :tangle (expand-file-name "org-skill-llm-gateway.lisp" (concat (or (getenv "INSTALL_DIR") ".") "/skills"))
+(def-cognitive-tool :ask-llm (prompt system-prompt provider model)
+  (execute-llm-request :prompt prompt 
+                       :system-prompt system-prompt 
+                       :provider provider 
+                       :model model))
+#+end_src
 
-;; Register Providers
-(dolist (p '(:anthropic :gemini-api :gemini-web :groq :ollama :openrouter :openai))
-  (opencortex:register-probabilistic-backend p (lambda (prompt system-prompt &key model)
-                                        (execute-llm-request prompt system-prompt :provider p :model model))))
-
-(def-cognitive-tool :get-ollama-embedding
-  "Generates vector embeddings via Ollama API for semantic search."
-  ((text :type :string :description "Text to embed."))
-  :body (lambda (args)
-          (let* ((text (getf args :text))
-                 (host (or (uiop:getenv "OLLAMA_HOST") "localhost:11434"))
-                 (url (format nil "http://~a/api/embeddings" host))
-                 (model (or (uiop:getenv "OLLAMA_EMBEDDING_MODEL") "nomic-embed-text"))
-                 (body (cl-json:encode-json-to-string `((model . ,model) (prompt . ,text)))))
-            (handler-case
-                (let* ((response (dex:post url :headers '(("Content-Type" . "application/json")) :content body :connect-timeout 5 :read-timeout 30))
-                       (json (cl-json:decode-json-from-string response)))
-                  (let ((embedding (cdr (assoc :embedding json))))
-                    (if embedding
-                        (list :status :success :vector embedding)
-                        (list :status :error :message "No embedding in response"))))
-              (error (c) (list :status :error :message (format nil "Ollama Embedding Failure: ~a" c)))))))
-
-(def-cognitive-tool :ask-llm 
-  "Queries an LLM provider via the unified gateway."
-  ((:prompt :type :string :description "The user prompt.")
-   (:system-prompt :type :string :description "The system instructions.")
-   (:provider :type :keyword :description "Optional specific provider.")
-   (:model :type :string :description "Optional specific model ID."))
-  :body (lambda (args)
-          (execute-llm-request (getf args :prompt) 
-                               (or (getf args :system-prompt) "You are a helpful assistant.")
-                               :provider (getf args :provider)
-                               :model (getf args :model))))
-
+** Skill Registration
+#+begin_src lisp :tangle (expand-file-name "org-skill-llm-gateway.lisp" (concat (or (getenv "INSTALL_DIR") ".") "/skills"))
 (defskill :skill-llm-gateway
-  :priority 150
-  :trigger (lambda (context) (declare (ignore context)) nil)
-  :probabilistic (lambda (context) (declare (ignore context)) nil)
-  :deterministic (lambda (action context) (declare (ignore context)) action))
+  :priority 50
+  :trigger (lambda (ctx) (declare (ignore ctx)) t)
+  :probabilistic (lambda (ctx) 
+                  (let ((input (getf ctx :user-input)))
+                    (when input
+                      (execute-llm-request :prompt input))))
+  :deterministic (lambda (action ctx) (declare (ignore ctx)) action))
 #+end_src

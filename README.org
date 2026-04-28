@@ -4,57 +4,92 @@
 
 * Meet OpenCortex
 
-**OpenCortex is an AI that lives inside your own text files.**
+Most AI assistants are just chatbots. You ask a question, they answer, they forget you exist. They trap your conversations in proprietary web apps and silo your data.
 
-It is a sovereign neurosymbolic AI agent and 100-year Memex, built on a minimalist Lisp kernel. It organizes your life, executes tasks, and gardens your knowledge base—all while maintaining 100% data ownership in plain-text Org-mode files.
+*OpenCortex is different. It is an AI that lives inside your own text files.*
 
-* The v0.2.0 Experience: Standard & Sovereign
+It runs locally on your machine. It reads your notes, organizes your life, executes tasks, and gardens your knowledge base—all while keeping your data in plain text files you own completely.
 
-With the **v0.2.0 (Interactive Refinement)** milestone, OpenCortex has reached a production-grade foundation:
+* Why OpenCortex Exists
 
-- **Minimalist Kernel:** A purified Lisp harness targeting only core I/O and memory.
-- **Sovereign Skills:** High-level capabilities (Diagnostics, Config, LLMs) are now modular skills.
-- **POSIX/XDG Compliance:** Full alignment with Linux standards (~/.config, ~/.local/share).
-- **Professional TUI:** A native Lisp interface with semantic highlighting and history scrolling.
+The current generation of AI agents have a fundamental flaw: they prioritize quick demos over long-term reliability and user sovereignty.
+
+The biggest problem is data ownership. Most agents bury your memories in opaque databases. If you want to see your own data, you have to ask the AI to fetch it. If the app shuts down, your data is gone.
+
+OpenCortex solves this with total plain-text transparency. Your entire life is a folder of text files. OpenCortex manages them the same way you do—with any text editor. No database to migrate, no schema to update, no lock-in.
+
+* What Makes OpenCortex Different
+
+Most AI agents are Python applications that happened to call an LLM. OpenCortex is different. It is built in pure Common Lisp—top to bottom, no wrapper, no translation layer.
+
+The kernel is Lisp. The skills are Lisp. The memory system is Lisp. The TUI is Lisp. One language from the hardware to the agent's thoughts.
+
+Python agents need a second language for configuration (YAML), a third for memory (JSON or SQLite), and a fourth for deployment (Docker). OpenCortex needs SBCL. That's it.
+
+This is not nostalgia for the 1980s. Lisp has two properties that matter for an autonomous agent.
+
+First, code is data. In Lisp, the agent can read its own code the same way it reads a text file. It can parse its skills, understand their structure, and modify them at runtime. Python's AST is a foreign object—the agent can inspect it, but not treat it as something it owns.
+
+Second, stability. The Common Lisp specification has been stable for decades. Your code does not break because a library changed its API. Dependencies do not rot. A Lisp program from 1995 still runs today.
+
+Your data lives in Org-mode files. Not a database. Not JSON. Not a vector store. Just plain text that you can read in any editor, search with grep, and back up any way you want.
+
+This matters because every other agent makes your data dependent on their app. Their database schema defines what you can store. Their migration scripts decide whether your data survives an upgrade. OpenCortex has no schema. Your memory is a folder of text files. It survives app updates, platform switches, and decades of use.
+
+The agent fixes itself. When it encounters an error, it can modify its own code, apply surgical fixes, and learn from the outcome to improve and grow. Skills hot-reload at runtime, so you can extend the system without restarting. And if something goes wrong during a complex operation, it snaps back to a known-good state.
+
+* Three Problems Every Agent Ignores
+
+Every other AI assistant has three fundamental flaws that OpenCortex addresses.
+
+The first is the data silo. Most agents bury your memories in opaque databases. If you want to see your own data, you have to ask the AI to fetch it. If the app shuts down, your data is gone. OpenCortex stores everything in plain text files that you own. No migration needed, no schema to update, no lock-in.
+
+The second is the hallucination problem. Most agents pipe AI-generated text directly into your terminal. If the model hallucinates, it can delete your files or break your system. OpenCortex splits its brain into two parts. The creative brain (the LLM) suggests actions. The strict guard (deterministic logic) intercepts every proposal before it touches a file or runs a command. If the AI hallucinates, the guard blocks it.
+
+The third is cloud dependency. Most assistants rely entirely on big tech APIs. When your internet drops, or the service goes down, your assistant dies. Worse, your private notes are constantly sent to third-party servers. OpenCortex runs on your own hardware using free, open-source models. Your private data never leaves your laptop. Cloud models are optional—used only when you explicitly allow them for complex tasks.
 
 * Quick Start
 
-To begin your journey with OpenCortex, you need a Common Lisp environment (SBCL).
+You need SBCL (Steel Bank Common Lisp) installed.
 
 #+begin_src bash
-# 1. Clone the repository
-git clone https://ssh://git@10.10.10.201:2222/amr/opencortex.git ~/memex/projects/opencortex
+# Clone the repository
+git clone https://github.com/amrgharbeia/opencortex.git ~/memex/projects/opencortex
 
-# 2. Run the Modular Setup Wizard
+# Run the Setup Wizard
 cd ~/memex/projects/opencortex
 ./opencortex.sh setup
 
-# 3. Verify your System Health
+# Verify System Health
 opencortex doctor
 
-# 4. Enter the Brain
+# Enter the Brain
 opencortex tui
 #+end_src
 
 * The Onboarding Trifecta
 
-1. **`opencortex setup`**: Guided Lisp-based configuration for multiple LLM providers (Ollama, Groq, OpenRouter, etc.).
-2. **`opencortex link <platform> <token>`**: Securely connect external chat gateways like Telegram.
-3. **`opencortex doctor`**: Real-time diagnostic report of your system health and environment.
+`opencortex setup` guides you through configuring LLM providers. Tell it how to talk to Ollama, Groq, OpenRouter, or your own endpoint.
 
-* Project Documentation
+`opencortex link <platform> <token>` connects external chat gateways. Talk to your agent from Telegram while it works on your files.
 
-OpenCortex is built using **Literate Programming**. The documentation is the code.
-
-- **[[file:USER_MANUAL.org][User Manual]]**: Detailed guide on configuration, XDG paths, and commands.
-- **[[file:docs/ROADMAP.org][The Evolutionary Roadmap]]**: Long-term vision and milestone progress.
-- **[[file:docs/CONTRIBUTING.org][Contributing]]**: Learn how to implement new sovereign skills.
+`opencortex doctor` shows you what's working, what's broken, and what needs attention.
 
 * Architecture
 
-- **Harness (Kernel):** TCP Bridge, Merkle-Memory, Literate Loader.
-- **Skills (Userland):** Diagnostics, Configuration, LLM Gateway, Shell Actuation.
-- **Interface:** Native Croatoan TUI and socket-based CLI.
+OpenCortex has three layers.
+
+The Harness is the kernel. It runs the [[file:harness/loop.org][metabolic loop]]—Perceive → Reason → Act—each signal moving through normalization, LLM reasoning, skill verification, and action execution. Depth limits prevent infinite loops. The [[file:harness/memory.org][memory system]] persists to plain-text Org-mode files with snapshot and rollback on errors.
+
+The Skills are userland—thin harness, fat skills. Modular skills load at runtime. Diagnostics, Configuration, LLM Gateway, Shell Actuation, Emacs Editing, Self-Edit, Self-Fix, Credentials Vault, Tool Permissions, Protocol Validator, and more. Each is an independent Org-mode module. Add new skills without touching the kernel.
+
+The Interface is what you use to talk to the agent. A native Lisp [[file:harness/tui-client.org][TUI]] with semantic highlighting and history. A [[file:harness/communication.org][TCP socket server]] for CLI interaction. External channels via the gateway—Telegram and beyond.
+
+* Project Documentation
+
+OpenCortex practices what it preaches—the documentation lives in the code.
+
+The [[file:USER_MANUAL.org][User Manual]] covers setup, configuration, and commands. The [[file:docs/ROADMAP.org][Evolutionary Roadmap]] shows our plan for reaching state-of-the-art capabilities. The [[file:docs/CONTRIBUTING.org][Contributing]] guide teaches you how to add new skills.
 
 * License
 
