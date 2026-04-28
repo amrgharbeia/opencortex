@@ -18,7 +18,7 @@ The ~communication.lisp~ module defines the low-level transport and framing logi
 ** Actuator Registry
 #+begin_src lisp
 (defvar *actuator-registry* (make-hash-table :test 'equalp)
-  "Global registry mapping target keywords to their physical actuator functions.
+  "Global registry mapping target keywords to their physical actuator functions.")
 
 (defun register-actuator (name fn) 
   "Registers an actuator function. Actuators receive: (ACTION CONTEXT)."
