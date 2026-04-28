@@ -46,17 +46,17 @@ The probabilistic engine is responsible for all neural/LLM operations. It mainta
 
 #+begin_src lisp
 (defvar *probabilistic-backends* (make-hash-table :test 'equal)
-  "Registry mapping provider keywords (:openrouter, :ollama) to their calling functions.
+  "Registry mapping provider keywords (:openrouter, :ollama) to their calling functions.")
 
 (defvar *provider-cascade* nil
-  "Ordered list of provider keywords to try. First available provider wins.
+  "Ordered list of provider keywords to try. First available provider wins.")
 
 (defvar *model-selector-fn* nil
   "Optional function that selects a specific model for each provider.
-  Signature: (funcall fn provider context) => model-name-string
+  Signature: (funcall fn provider context) => model-name-string")
 
 (defvar *consensus-enabled-p* nil
-  "When T, run multiple providers and compare results for critical decisions.
+  "When T, run multiple providers and compare results for critical decisions.")
 #+end_src
 
 ** register-probabilistic-backend: Backend Registration
@@ -68,8 +68,8 @@ The probabilistic engine is responsible for all neural/LLM operations. It mainta
   NAME is a keyword like :openrouter or :ollama.
   FN is a function with signature: (funcall fn prompt system-prompt &key model)
      returning either:
-     - (list :status :success :content \"response text\
-     - (list :status :error :message \"error description\
+     - (list :status :success :content \"response text\")
+     - (list :status :error :message \"error description\")
      - a simple string on success
 
   Example registration:
@@ -82,7 +82,7 @@ The probabilistic engine is responsible for all neural/LLM operations. It mainta
 
 #+begin_src lisp
 (defun probabilistic-call (prompt &key
-                                (system-prompt "You are the Probabilistic engine.
+                                (system-prompt "You are the Probabilistic engine.")
                                 (cascade nil)
                                 (context nil))
   "Dispatch a neural request through the provider cascade.
