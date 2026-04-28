@@ -24,11 +24,14 @@ The *LLM Gateway* skill provides a unified interface for interacting with multip
 (test test-llm-gateway-timeout
   "Tier 2 Chaos: Verify that LLM Gateway handles connection failures gracefully."
   ;; Point to a non-existent port to force a connection error
-  (let ((uiop:*environment* (copy-list uiop:*environment*)))
-    (setf (uiop:getenv "OLLAMA_HOST") "localhost:1")
-    (let ((result (opencortex::execute-llm-request :prompt "hello" :provider :ollama)))
-      (is (eq (getf result :status) :error))
-      (is (uiop:string-prefix-p "Ollama Failure" (getf result :message))))))
+  (let ((old-host (uiop:getenv "OLLAMA_HOST")))
+    (unwind-protect
+         (progn
+           (setf (uiop:getenv "OLLAMA_HOST") "localhost:1")
+           (let ((result (opencortex::execute-llm-request :prompt "hello" :provider :ollama)))
+             (is (eq (getf result :status) :error))
+             (is (uiop:string-prefix-p "Ollama Failure" (getf result :message)))))
+      (setf (uiop:getenv "OLLAMA_HOST") old-host))))
 #+end_src
 
 * Implementation
