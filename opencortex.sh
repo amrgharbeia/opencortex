@@ -58,6 +58,7 @@ setup_system() {
     # Tangle the literate source from SCRIPT_DIR to OC_DATA_DIR (The Engine)
     echo -e "${YELLOW}--- Deploying Engine to $OC_DATA_DIR ---${NC}"
     cp "$SCRIPT_DIR/opencortex.asd" "$OC_DATA_DIR/"
+    cp "$SCRIPT_DIR/harness"/*.org "$OC_DATA_DIR/harness/"
     cp "$SCRIPT_DIR/skills"/*.org "$OC_DATA_DIR/skills/"
 
     cd "$SCRIPT_DIR"
@@ -73,7 +74,6 @@ setup_system() {
             emacs -Q --batch --eval "(require 'org)" --eval "(org-babel-tangle-file \"$f\")" >/dev/null 2>&1 || true
         fi
     done
-
     # Create the bin shim
     echo -e "${YELLOW}--- Creating Bin Shim in $OC_BIN_DIR/opencortex ---${NC}"
     ln -sf "$SCRIPT_DIR/opencortex.sh" "$OC_BIN_DIR/opencortex"
