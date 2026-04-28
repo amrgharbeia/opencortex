@@ -55,13 +55,15 @@ setup_system() {
         rm quicklisp.lisp
     fi
 
-    # Tangle the literate source from SCRIPT_DIR to OC_DATA_DIR (The Engine)
+    # Tangle the literate source from OC_DATA_DIR to OC_DATA_DIR (The Engine)
     echo -e "${YELLOW}--- Deploying Engine to $OC_DATA_DIR ---${NC}"
     cp "$SCRIPT_DIR/opencortex.asd" "$OC_DATA_DIR/"
     cp "$SCRIPT_DIR/harness"/*.org "$OC_DATA_DIR/harness/"
     cp "$SCRIPT_DIR/skills"/*.org "$OC_DATA_DIR/skills/"
 
-    cd "$SCRIPT_DIR"
+    # WE MUST TANGLE FROM OC_DATA_DIR so the relative paths in the .org files 
+    # (like ../opencortex.asd) resolve correctly relative to the DEPLOYMENT.
+    cd "$OC_DATA_DIR"
     export INSTALL_DIR="$OC_DATA_DIR"
 
     # Critical: Tangle manifest first to establish system structure
@@ -77,7 +79,8 @@ setup_system() {
             emacs -Q --batch --eval "(require 'org)" --eval "(org-babel-tangle-file \"$f\")" >/dev/null 2>&1 || true
         fi
     done
-    # Create the bin shim
+
+    cd "$SCRIPT_DIR"    # Create the bin shim
     echo -e "${YELLOW}--- Creating Bin Shim in $OC_BIN_DIR/opencortex ---${NC}"
     ln -sf "$SCRIPT_DIR/opencortex.sh" "$OC_BIN_DIR/opencortex"
 
