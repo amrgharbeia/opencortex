@@ -38,6 +38,32 @@ In a traditional AI wrapper, the user manually edits a config file to add a bot 
   (let ((opencortex::*gateways* nil))
     (opencortex:skill-gateway-register :telegram '(:status :unverified))
     (is (getf (getf opencortex::*gateways* :telegram) :status))))
+
+(test test-gateway-multiple-platforms
+  "Verify that multiple gateways can be registered simultaneously."
+  (let ((opencortex::*gateways* nil))
+    (opencortex:skill-gateway-register :telegram '(:status :verified :token "abc123"))
+    (opencortex:skill-gateway-register :signal '(:status :unverified))
+    (is (eq (getf (getf opencortex::*gateways* :telegram) :status) :verified))
+    (is (eq (getf (getf opencortex::*gateways* :signal) :status) :unverified))))
+
+(test test-save-gateways-roundtrip
+  "Verify save-gateways persists and gateways can be verified."
+  (let ((opencortex::*gateways* nil)
+        (test-dir "/tmp/test-opencortex-gw/")
+        (orig-env (uiop:getenv "OC_CONFIG_DIR")))
+    (unwind-protect
+        (progn
+          (setf (uiop:getenv "OC_CONFIG_DIR") test-dir)
+          (opencortex:skill-gateway-register :telegram '(:status :verified :chat-id 12345))
+          (opencortex:save-gateways)
+          (let ((loaded-gw (uiop:read-file-string (merge-pathnames "gateways.lisp" (uiop:ensure-directory-pathname test-dir)))))
+            (is (search "telegram" loaded-gw))
+            (is (search "12345" loaded-gw))))
+      (uiop:delete-directory-tree (uiop:ensure-directory-pathname test-dir) :validate t)
+      (if orig-env
+          (setf (uiop:getenv "OC_CONFIG_DIR") orig-env)
+          (unsetenv "OC_CONFIG_DIR")))))
 #+end_src
 
 * Phase C: Implementation (Build)
