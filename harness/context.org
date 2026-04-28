@@ -100,7 +100,7 @@ Reads the raw literate Org source of a specific skill. This is a foundational ca
 (defun context-get-skill-source (skill-name)
   "Reads the raw literate source of a specific skill for inspection."
   (let* ((filename (format nil "~a.org" skill-name))
-         (skills-dir-str (or (getenv "SKILLS_DIR (namestring (merge-pathnames "notes/" (user-homedir-pathname)))))
+         (skills-dir-str (or (uiop:getenv "SKILLS_DIR") (namestring (merge-pathnames "notes/" (user-homedir-pathname)))))
          (skills-dir (uiop:ensure-directory-pathname (context-resolve-path skills-dir-str)))
          (full-path (merge-pathnames filename skills-dir)))
     (if (uiop:file-exists-p full-path) (uiop:read-file-string full-path) nil)))
@@ -112,7 +112,7 @@ Retrieves the most recent entries from the harness's internal circular log buffe
 #+begin_src lisp
 (defun context-get-system-logs (&optional limit)
   "Retrieves the most recent lines from the harness's internal log."
-  (let ((log-limit (or limit (ignore-errors (parse-integer (getenv "CONTEXT_LOG_LIMIT)) 20)))
+  (let ((log-limit (or limit (ignore-errors (parse-integer (uiop:getenv "CONTEXT_LOG_LIMIT"))) 20)))
     (bt:with-lock-held (*logs-lock*)
       (let ((count (min log-limit (length *system-logs*)))) 
         (subseq *system-logs* 0 count)))))
