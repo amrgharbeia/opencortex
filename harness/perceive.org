@@ -70,7 +70,7 @@ Other sensors (heartbeats, interrupts) are processed synchronously to maintain o
   so they run in separate threads to avoid blocking the main pipeline.
 
   Other sensors (:heartbeat, :interrupt, :buffer-update) are processed
-  synchronously to maintain temporal ordering.
+  synchronously to maintain temporal ordering.")
 #+end_src
 
 ** Foveal Focus State
@@ -83,7 +83,7 @@ Other sensors (heartbeats, interrupts) are processed synchronously to maintain o
   responses. When editing a specific note, the agent knows which
   note you're referring to without needing explicit ID references.
 
-  Updated on :point-update events from Emacs.
+  Updated on :point-update events from Emacs.")
 #+end_src
 
 * Stimulus Injection
@@ -113,7 +113,7 @@ Other sensors (heartbeats, interrupts) are processed synchronously to maintain o
 
     ;; Ensure metadata exists
     (unless meta
-      (setf meta (list :SOURCE :SYSTEM :SESSION-ID "internal))
+      (setf meta (list :SOURCE :SYSTEM :SESSION-ID "internal")))
 
     ;; Attach reply stream if provided
     (when stream
