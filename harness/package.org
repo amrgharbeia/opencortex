@@ -1,15 +1,15 @@
-#+PROPERTY: header-args:lisp :tangle (concat (identity (getenv "INSTALL_DIR")) "/harness/package.lisp")
 #+TITLE: System Interface (package.lisp)
-#+AUTHOR: Amr
+#+AUTHOR: Agent
 #+FILETAGS: :harness:interface:
 #+STARTUP: content
+#+PROPERTY: header-args:lisp :tangle package.lisp
 
-* System Interface (package.lisp)
+* Overview
+The ~package.lisp~ file defines the public API of the ~opencortex~ harness.
 
-The ~package.lisp~ file defines the public API of the ~opencortex~ harness. It serves as the primary membrane between the deterministic core modules and the dynamic world of skills and actuators.
+* Implementation
 
 ** Public API Export
-
 #+begin_src lisp
 (defpackage :opencortex
   (:use :cl)
@@ -47,10 +47,6 @@ The ~package.lisp~ file defines the public API of the ~opencortex~ harness. It s
    #:skill-gateway-register
    #:skill-gateway-link
    #:gateway-manager-main
-
-   ;; --- Diagnostic Doctor ---
-   #:doctor-run-all
-   #:doctor-main
 
    ;; --- Memory (CLOSOS) ---
    #:ingest-ast
@@ -196,52 +192,27 @@ The ~package.lisp~ file defines the public API of the ~opencortex~ harness. It s
    #:find-headline-missing-id))
 #+end_src
 
-* Package Implementation
-
+** Package Implementation
 #+begin_src lisp
 (in-package :opencortex)
-#+end_src
 
-** Robust Plist Accessor
-
-#+begin_src lisp
 (defun proto-get (plist key)
   "Robustly retrieves a value from a plist, checking both uppercase and lowercase keyword versions."
   (let* ((s (string key))
          (up (intern (string-upcase s) :keyword))
          (dn (intern (string-downcase s) :keyword)))
     (or (getf plist up) (getf plist dn))))
-#+end_src
 
-** Harness Logging State
-
-The harness maintains a thread-safe circular log buffer to provide context for debugging and neural reasoning.
-
-#+begin_src lisp
 (defvar *system-logs* nil)
 (defvar *logs-lock* (bordeaux-threads:make-lock "harness-logs-lock"))
 (defvar *max-log-history* 100)
-#+end_src
 
-** Skills Registry
-
-#+begin_src lisp
 (defvar *skills-registry* (make-hash-table :test 'equal)
   "Global registry of all loaded skills.")
-#+end_src
 
-** Skill Telemetry State
-
-#+begin_src lisp
 (defvar *skill-telemetry* (make-hash-table :test 'equal))
 (defvar *telemetry-lock* (bordeaux-threads:make-lock "harness-telemetry-lock"))
-#+end_src
 
-** Telemetry Implementation
-
-The system tracks the performance and reliability of individual skills.
-
-#+begin_src lisp
 (defun harness-track-telemetry (skill-name duration status)
   "Updates performance metrics for a specific skill. Status should be :success or :rejected."
   (when skill-name
@@ -251,13 +222,7 @@ The system tracks the performance and reliability of individual skills.
         (incf (getf entry :total-time) duration)
         (when (eq status :rejected) (incf (getf entry :failures)))
         (setf (gethash skill-name *skill-telemetry*) entry)))))
-#+end_src
 
-** Cognitive Tool Registry
-
-The Tool Registry allows the agent to interact with the physical world. Every tool must define a guard (for security) and a body (for execution).
-
-#+begin_src lisp
 (defvar *cognitive-tools* (make-hash-table :test 'equal))
 
 (defstruct cognitive-tool
@@ -275,13 +240,7 @@ The Tool Registry allows the agent to interact with the physical world. Every to
                               :parameters ',parameters
                               :guard ,guard
                               :body ,body)))
-#+end_src
 
-** Harness Logging Implementation
-
-Centralized logging function. It simultaneously writes to standard output and the in-memory circular buffer.
-
-#+begin_src lisp
 (defun harness-log (msg &rest args)
   "Centralized logging for the harness."
   (let ((formatted-msg (apply #'format nil msg args)))
@@ -292,5 +251,3 @@ Centralized logging function. It simultaneously writes to standard output and th
     (format t "~a~%" formatted-msg)
     (finish-output)))
 #+end_src
-
-
