@@ -63,7 +63,7 @@ The *System Manifest* defines the structural components of the OpenCortex.
 #+end_src
 
 ** Test Orchestrator
-#+begin_src lisp :tangle harness/run-all-tests.lisp
+#+begin_src lisp :tangle run-all-tests.lisp
 (load (merge-pathnames "quicklisp/setup.lisp" (user-homedir-pathname)))
 
 (let ((oc-dir (or (uiop:getenv "OC_DATA_DIR") 
