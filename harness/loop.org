@@ -1,4 +1,3 @@
-#+PROPERTY: header-args:lisp :tangle loop.lisp
 #+TITLE: The Metabolic Loop (loop.lisp)
 #+AUTHOR: Agent
 #+FILETAGS: :harness:loop:
@@ -18,13 +17,13 @@ The Metabolic Loop is the fundamental rhythm of OpenCortex: the continuous proce
 ** Global Variables (Thread-Safe)
 #+begin_src lisp
 (defvar *interrupt-flag* nil
-  "Atomic flag set by signal handlers to trigger graceful shutdown.
+  "Atomic flag set by signal handlers to trigger graceful shutdown.")
 
-(defvar *interrupt-lock* (bt:make-lock "harness-interrupt-lock
-  "Mutex protecting *interrupt-flag* access.
+(defvar *interrupt-lock* (bt:make-lock "harness-interrupt-lock")
+  "Mutex protecting *interrupt-flag* access.")
 
 (defvar *heartbeat-thread* nil
-  "Handle to the heartbeat thread.
+  "Handle to the heartbeat thread.")
 #+end_src
 
 ** Core Engine (process-signal)
@@ -36,11 +35,11 @@ The Metabolic Loop is the fundamental rhythm of OpenCortex: the continuous proce
       (let ((depth (getf current-signal :depth 0))
             (meta (getf current-signal :meta)))
         (when (> depth 10)
-          (harness-log "METABOLISM ERROR: Max recursion depth reached.
+          (harness-log "METABOLISM ERROR: Max recursion depth reached.")
           (return nil))
 
         (when (bt:with-lock-held (*interrupt-lock*) *interrupt-flag*)
-          (harness-log "METABOLISM: Interrupted by shutdown signal.
+          (harness-log "METABOLISM: Interrupted by shutdown signal.")
           (return nil))
 
         (handler-case
@@ -57,7 +56,7 @@ The Metabolic Loop is the fundamental rhythm of OpenCortex: the continuous proce
             (let ((sensor (ignore-errors (getf (getf current-signal :payload) :sensor))))
               (harness-log "METABOLISM CRASH [~a]: ~a" (or sensor :unknown) c)
               (unless (member sensor '(:loop-error :tool-error :syntax-error))
-                (harness-log "CRITICAL ERROR: Initiating Micro-Rollback.
+                (harness-log "CRITICAL ERROR: Initiating Micro-Rollback.")
                 (rollback-memory 0))
               (if (or (> depth 2) (member sensor '(:loop-error :tool-error)))
                   (setf current-signal nil)
@@ -73,8 +72,8 @@ The Metabolic Loop is the fundamental rhythm of OpenCortex: the continuous proce
 
 (defun start-heartbeat ()
   "Starts the background heartbeat thread."
-  (let ((interval (or (ignore-errors (parse-integer (uiop:getenv "HEARTBEAT_INTERVAL)) 60))
-        (auto-save (or (ignore-errors (parse-integer (uiop:getenv "MEMORY_AUTO_SAVE_INTERVAL)) *auto-save-interval*)))
+  (let ((interval (or (ignore-errors (parse-integer (uiop:getenv "HEARTBEAT_INTERVAL"))) 60))
+        (auto-save (or (ignore-errors (parse-integer (uiop:getenv "MEMORY_AUTO_SAVE_INTERVAL"))) *auto-save-interval*)))
     (setf *auto-save-interval* auto-save)
     (setf *heartbeat-save-counter* 0)
 
@@ -89,7 +88,7 @@ The Metabolic Loop is the fundamental rhythm of OpenCortex: the continuous proce
                  (save-memory-to-disk))
                (inject-stimulus
                  (list :type :EVENT :payload (list :sensor :heartbeat :unix-time (get-universal-time))))))
-           :name "opencortex-heartbeat)))
+           :name "opencortex-heartbeat"))))
 #+end_src
 
 ** Shutdown Flag
@@ -101,7 +100,7 @@ The Metabolic Loop is the fundamental rhythm of OpenCortex: the continuous proce
 #+begin_src lisp
 (defun main ()
   "Entry point for OpenCortex. Initializes the system and enters idle loop."
-  (let* ((home (uiop:getenv "HOME)
+  (let* ((home (uiop:getenv "HOME"))
          (env-file (uiop:merge-pathnames* ".local/share/opencortex/.env" (uiop:ensure-directory-pathname home))))
     (when (uiop:file-exists-p env-file)
       (cl-dotenv:load-env env-file)))
@@ -115,28 +114,31 @@ The Metabolic Loop is the fundamental rhythm of OpenCortex: the continuous proce
   (sb-sys:enable-interrupt sb-unix:sigint
                            (lambda (sig code scp)
                              (declare (ignore sig code scp))
-                             (harness-log "SHUTDOWN: SIGINT received. Saving memory...
+                             (harness-log "SHUTDOWN: SIGINT received. Saving memory...")
                              (when *shutdown-save-enabled* (save-memory-to-disk))
                              (uiop:quit 0)))
 
-  (let ((sleep-interval (or (ignore-errors (parse-integer (uiop:getenv "DAEMON_SLEEP_INTERVAL)) 3600)))
+  (let ((sleep-interval (or (ignore-errors (parse-integer (uiop:getenv "DAEMON_SLEEP_INTERVAL"))) 3600)))
     (loop
       (when (bt:with-lock-held (*interrupt-lock*) *interrupt-flag*)
-        (harness-log "SHUTDOWN: Interrupt flag set. Saving memory...
+        (harness-log "SHUTDOWN: Interrupt flag set. Saving memory...")
         (when *shutdown-save-enabled* (save-memory-to-disk))
         (return))
       (sleep sleep-interval))))
 #+end_src
 
 * Test Suite
-#+begin_src lisp :tangle loop.lisp
+#+begin_src lisp :tangle tests/immune-system-tests.lisp
+(eval-when (:compile-toplevel :load-toplevel :execute)
+  (ql:quickload :fiveam :silent t))
+
 (defpackage :opencortex-immune-system-tests
   (:use :cl :fiveam :opencortex)
   (:export #:immune-suite))
 
 (in-package :opencortex-immune-system-tests)
 
-(def-suite immune-suite :description "Verification of the Immune System (Core Error Hooks)
+(def-suite immune-suite :description "Verification of the Immune System (Core Error Hooks)")
 (in-suite immune-suite)
 
 (test loop-error-injection
@@ -145,7 +147,7 @@ The Metabolic Loop is the fundamental rhythm of OpenCortex: the continuous proce
   (opencortex:defskill :evil-skill
     :priority 100
     :trigger (lambda (ctx) (eq (getf (getf ctx :payload) :sensor) :user-input))
-    :probabilistic (lambda (ctx) (declare (ignore ctx)) (error "CRITICAL BRAIN FAILURE)
+    :probabilistic (lambda (ctx) (declare (ignore ctx)) (error "CRITICAL BRAIN FAILURE"))
     :deterministic nil)
   (opencortex:process-signal '(:type :EVENT :payload (:sensor :user-input)))
   (let ((logs (opencortex:context-get-system-logs 20)))
