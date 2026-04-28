@@ -1,8 +1,9 @@
+#+PROPERTY: header-args:lisp :tangle context.lisp
 #+TITLE: Context API (context.lisp)
 #+AUTHOR: Agent
 #+FILETAGS: :harness:context:
 #+STARTUP: content
-#+PROPERTY: header-args:lisp :tangle context.lisp
+#+PROPERTY: header-args:lisp :tangle package.lisp
 
 * Overview
 The *Context API* (Peripheral Vision) provides the opencortex with the ability to selectively prune and present its memory to the LLM. It implements a **Foveal-Peripheral model**, where the current task is shown in high detail (foveal), while the broader Memex structure is shown as a skeletal outline (peripheral).
@@ -34,7 +35,7 @@ The *Context API* (Peripheral Vision) provides the opencortex with the ability t
 #+begin_src lisp
 (defun context-get-active-projects ()
   "Returns headlines tagged as 'project' that are not yet marked DONE."
-  (remove-if (lambda (obj) (equal (getf (org-object-attributes obj) :TODO-STATE) "DONE"))
+  (remove-if (lambda (obj) (equal (getf (org-object-attributes obj) :TODO-STATE) "DONE)
              (context-query-store :tag "project" :type :HEADLINE)))
 #+end_src
 
@@ -62,7 +63,7 @@ The *Context API* (Peripheral Vision) provides the opencortex with the ability t
 (defun context-get-skill-source (skill-name)
   "Reads the raw literate source of a specific skill for inspection."
   (let* ((filename (format nil "~a.org" skill-name))
-         (skills-dir-str (or (uiop:getenv "SKILLS_DIR") (namestring (merge-pathnames "notes/" (user-homedir-pathname)))))
+         (skills-dir-str (or (uiop:getenv "SKILLS_DIR (namestring (merge-pathnames "notes/" (user-homedir-pathname)))))
          (skills-dir (uiop:ensure-directory-pathname (context-resolve-path skills-dir-str)))
          (full-path (merge-pathnames filename skills-dir)))
     (if (uiop:file-exists-p full-path) (uiop:read-file-string full-path) nil)))
@@ -72,7 +73,7 @@ The *Context API* (Peripheral Vision) provides the opencortex with the ability t
 #+begin_src lisp
 (defun context-get-system-logs (&optional limit)
   "Retrieves the most recent lines from the harness's internal log."
-  (let ((log-limit (or limit (ignore-errors (parse-integer (uiop:getenv "CONTEXT_LOG_LIMIT"))) 20)))
+  (let ((log-limit (or limit (ignore-errors (parse-integer (uiop:getenv "CONTEXT_LOG_LIMIT)) 20)))
     (bt:with-lock-held (*logs-lock*)
       (let ((count (min log-limit (length *system-logs*)))) 
         (subseq *system-logs* 0 count)))))
@@ -154,7 +155,7 @@ The *Context API* (Peripheral Vision) provides the opencortex with the ability t
 
 * Test Suite
 
-#+begin_src lisp :tangle context.lisp
+#+begin_src lisp :tangle package.lisp
 (defpackage :opencortex-peripheral-vision-tests
   (:use :cl :fiveam :opencortex)
   (:export #:vision-suite))

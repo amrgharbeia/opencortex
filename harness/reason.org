@@ -1,8 +1,9 @@
+#+PROPERTY: header-args:lisp :tangle reason.lisp
 #+TITLE: Stage 2: Reason (reason.lisp)
 #+AUTHOR: Agent
 #+FILETAGS: :harness:reason:
 #+STARTUP: content
-#+PROPERTY: header-args:lisp :tangle reason.lisp
+#+PROPERTY: header-args:lisp :tangle package.lisp
 
 * Overview
 The Reason stage implements the core Innovation of OpenCortex: the separation of probabilistic reasoning (neural/LLM) from deterministic verification (logic/safety).
@@ -17,16 +18,16 @@ The Reason stage implements the core Innovation of OpenCortex: the separation of
 ** Probabilistic Engine Configuration
 #+begin_src lisp
 (defvar *probabilistic-backends* (make-hash-table :test 'equal)
-  "Registry mapping provider keywords (:openrouter, :ollama) to their calling functions.")
+  "Registry mapping provider keywords (:openrouter, :ollama) to their calling functions.
 
 (defvar *provider-cascade* nil
-  "Ordered list of provider keywords to try. First available provider wins.")
+  "Ordered list of provider keywords to try. First available provider wins.
 
 (defvar *model-selector-fn* nil
-  "Optional function that selects a specific model for each provider.")
+  "Optional function that selects a specific model for each provider.
 
 (defvar *consensus-enabled-p* nil
-  "When T, run multiple providers and compare results for critical decisions.")
+  "When T, run multiple providers and compare results for critical decisions.
 #+end_src
 
 ** Backend Registration (register-probabilistic-backend)
@@ -39,7 +40,7 @@ The Reason stage implements the core Innovation of OpenCortex: the separation of
 ** Cascade Dispatch (probabilistic-call)
 #+begin_src lisp
 (defun probabilistic-call (prompt &key
-                                (system-prompt "You are the Probabilistic engine.")
+                                (system-prompt "You are the Probabilistic engine.
                                 (cascade nil)
                                 (context nil))
   "Dispatch a neural request through the provider cascade."
@@ -61,7 +62,7 @@ The Reason stage implements the core Innovation of OpenCortex: the separation of
                        (harness-log "PROBABILISTIC: Backend ~a failed: ~a"
                                    backend (getf result :message))))))))
         (list :type :LOG
-              :payload (list :text "Neural Cascade Failure: All providers exhausted.")))))
+              :payload (list :text "Neural Cascade Failure: All providers exhausted.))))
 #+end_src
 
 ** Cognitive Proposal Generation (Think)
@@ -70,9 +71,9 @@ The Reason stage implements the core Innovation of OpenCortex: the separation of
   "Strip markdown formatting from LLM output."
   (if (and text (stringp text))
       (let ((cleaned text))
-        (setf cleaned (cl-ppcre:regex-replace-all "^```[a-z]*\\n" cleaned ""))
-        (setf cleaned (cl-ppcre:regex-replace-all "\\n```$" cleaned ""))
-        (setf cleaned (cl-ppcre:regex-replace-all "```" cleaned ""))
+        (setf cleaned (cl-ppcre:regex-replace-all "^```[a-z]*\\n" cleaned 
+        (setf cleaned (cl-ppcre:regex-replace-all "\\n```$" cleaned 
+        (setf cleaned (cl-ppcre:regex-replace-all "```" cleaned 
         (string-trim '(#\Space #\Newline #\Tab) cleaned))
       text))
 
@@ -91,16 +92,16 @@ The Reason stage implements the core Innovation of OpenCortex: the separation of
          (tool-belt (generate-tool-belt-prompt))
          (global-context (context-assemble-global-awareness))
          (system-logs (context-get-system-logs))
-         (assistant-name (or (uiop:getenv "MEMEX_ASSISTANT") "Agent"))
+         (assistant-name (or (uiop:getenv "MEMEX_ASSISTANT "Agent)
          (rejection-trace (proto-get (proto-get context :payload) :rejection-trace))
          (prompt-generator (when active-skill (skill-probabilistic-prompt active-skill)))
          (raw-prompt (if prompt-generator
                          (funcall prompt-generator context)
                          (let ((p (proto-get (proto-get context :payload) :text)))
-                           (if (and p (stringp p)) p "Maintain metabolic stasis."))))
+                           (if (and p (stringp p)) p "Maintain metabolic stasis.)))
          (reflection-feedback (if rejection-trace
                                   (format nil "~%~%PREVIOUS PROPOSAL REJECTED: ~a" rejection-trace)
-                                  ""))
+                                  
          (system-prompt (format nil "IDENTITY: ~a~a~%~%TOOLS:~%~a~%~%CONTEXT:~%~a~%~%LOGS:~%~a" 
                                assistant-name reflection-feedback tool-belt global-context system-logs)))
     (let* ((thought (probabilistic-call raw-prompt :system-prompt system-prompt :context context))
@@ -112,7 +113,7 @@ The Reason stage implements the core Innovation of OpenCortex: the separation of
                     (normalize-plist-keywords parsed)
                     (list :TYPE :REQUEST :PAYLOAD (list :ACTION :MESSAGE :TEXT cleaned))))
             (error () (list :TYPE :REQUEST :PAYLOAD (list :ACTION :MESSAGE :TEXT cleaned))))
-          (list :TYPE :REQUEST :PAYLOAD (list :ACTION :MESSAGE :TEXT (or cleaned "No response")))))))
+          (list :TYPE :REQUEST :PAYLOAD (list :ACTION :MESSAGE :TEXT (or cleaned "No response))))))
 #+end_src
 
 ** Deterministic Engine (Verification)
@@ -175,14 +176,14 @@ The Reason stage implements the core Innovation of OpenCortex: the separation of
 #+end_src
 
 * Test Suite
-#+begin_src lisp :tangle tests/pipeline-reason-tests.lisp
+#+begin_src lisp :tangle package.lisp
 (defpackage :opencortex-pipeline-reason-tests
   (:use :cl :fiveam :opencortex)
   (:export #:pipeline-reason-suite))
 
 (in-package :opencortex-pipeline-reason-tests)
 
-(def-suite pipeline-reason-suite :description "Test suite for Reason pipeline")
+(def-suite pipeline-reason-suite :description "Test suite for Reason pipeline
 (in-suite pipeline-reason-suite)
 
 (test test-decide-gate-safety
@@ -194,9 +195,9 @@ The Reason stage implements the core Innovation of OpenCortex: the separation of
     :deterministic (lambda (action ctx)
                     (declare (ignore ctx))
                     (if (search "rm -rf" (format nil "~s" action))
-                        (list :type :LOG :payload (list :text "Rejected"))
+                        (list :type :LOG :payload (list :text "Rejected)
                         action)))
-  (let* ((candidate '(:type :REQUEST :payload (:action :shell :cmd "rm -rf /")))
+  (let* ((candidate '(:type :REQUEST :payload (:action :shell :cmd "rm -rf /))
          (signal '(:type :EVENT :payload (:sensor :user-input)))
          (result (deterministic-verify candidate signal)))
     (is (eq :LOG (getf result :type)))))

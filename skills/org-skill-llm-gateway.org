@@ -7,7 +7,7 @@
 The *LLM Gateway* skill provides a unified interface for interacting with multiple Large Language Model providers.
 
 * Test Suite
-#+begin_src lisp :tangle tests/llm-gateway-tests.lisp
+#+begin_src lisp :tangle org-skill-llm-gateway.lisp
 (defpackage :opencortex-llm-gateway-tests
   (:use :cl :opencortex)
   (:export #:llm-gateway-suite))
@@ -17,25 +17,25 @@ The *LLM Gateway* skill provides a unified interface for interacting with multip
 (eval-when (:compile-toplevel :load-toplevel :execute)
   (ql:quickload :fiveam))
 
-(fiveam:def-suite llm-gateway-suite :description "Tests for the LLM Gateway skill")
+(fiveam:def-suite llm-gateway-suite :description "Tests for the LLM Gateway skill
 (fiveam:in-suite llm-gateway-suite)
 
 (fiveam:test test-llm-gateway-timeout
   "Tier 2 Chaos: Verify that LLM Gateway handles connection failures gracefully."
-  (let ((old-host (uiop:getenv "OLLAMA_HOST")))
+  (let ((old-host (uiop:getenv "OLLAMA_HOST))
     (unwind-protect
          (progn
-           (setf (uiop:getenv "OLLAMA_HOST") "localhost:1")
+           (setf (uiop:getenv "OLLAMA_HOST "localhost:1
            (let ((fn (or (find-symbol "EXECUTE-LLM-REQUEST" :opencortex.skills.org-skill-llm-gateway)
                          (find-symbol "EXECUTE-LLM-REQUEST" :opencortex))))
              (if fn
                  (let ((result (funcall fn :prompt "hello" :provider :ollama)))
                    (fiveam:is (eq (getf result :status) :error))
                    (fiveam:is (uiop:string-prefix-p "Ollama Failure" (getf result :message))))
-                 (fiveam:fail "Could not find EXECUTE-LLM-REQUEST symbol"))))
+                 (fiveam:fail "Could not find EXECUTE-LLM-REQUEST symbol)))
       (if old-host
-          (setf (uiop:getenv "OLLAMA_HOST") old-host)
-          (sb-posix:unsetenv "OLLAMA_HOST")))))
+          (setf (uiop:getenv "OLLAMA_HOST old-host)
+          (sb-posix:unsetenv "OLLAMA_HOST))))
 #+end_src
 
 * Implementation

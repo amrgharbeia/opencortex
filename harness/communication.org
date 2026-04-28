@@ -1,8 +1,9 @@
+#+PROPERTY: header-args:lisp :tangle communication.lisp
 #+TITLE: Communication Protocol (communication.lisp)
 #+AUTHOR: Agent
 #+FILETAGS: :harness:protocol:
 #+STARTUP: content
-#+PROPERTY: header-args:lisp :tangle communication.lisp
+#+PROPERTY: header-args:lisp :tangle package.lisp
 
 * Overview
 The ~communication.lisp~ module defines the low-level transport and framing logic for OpenCortex stimuli.
@@ -17,7 +18,7 @@ The ~communication.lisp~ module defines the low-level transport and framing logi
 ** Actuator Registry
 #+begin_src lisp
 (defvar *actuator-registry* (make-hash-table :test 'equalp)
-  "Global registry mapping target keywords to their physical actuator functions.")
+  "Global registry mapping target keywords to their physical actuator functions.
 
 (defun register-actuator (name fn) 
   "Registers an actuator function. Actuators receive: (ACTION CONTEXT)."
@@ -78,12 +79,12 @@ The ~communication.lisp~ module defines the low-level transport and framing logi
 #+end_src
 
 ** Structural Validation
-#+begin_src lisp :tangle communication-validator.lisp
+#+begin_src lisp :tangle package.lisp
 (in-package :opencortex)
 
 (defun validate-communication-protocol-schema (msg)
   "Strict structural validation for incoming protocol messages."
-  (unless (listp msg) (error "Message must be a plist"))
+  (unless (listp msg) (error "Message must be a plist)
   (let ((type (proto-get msg :type)))
     (unless (member type '(:REQUEST :EVENT :RESPONSE :LOG :STATUS))
       (error "Invalid message type '~a'" type))
@@ -91,13 +92,13 @@ The ~communication.lisp~ module defines the low-level transport and framing logi
 #+end_src
 
 * Test Suite
-#+begin_src lisp :tangle communication-tests.lisp
+#+begin_src lisp :tangle package.lisp
 (defpackage :opencortex-communication-tests
   (:use :cl :fiveam :opencortex)
   (:export #:communication-protocol-suite))
 (in-package :opencortex-communication-tests)
 
-(def-suite communication-protocol-suite :description "Communication Protocol Suite")
+(def-suite communication-protocol-suite :description "Communication Protocol Suite
 (in-suite communication-protocol-suite)
 
 (test test-framing

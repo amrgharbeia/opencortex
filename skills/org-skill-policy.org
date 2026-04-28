@@ -23,10 +23,10 @@ The *Policy Skill* is the constitutional layer of OpenCortex. It enforces founda
     (if (and explanation (stringp explanation) (> (length explanation) 10))
         action
         (progn
-          (harness-log "POLICY VIOLATION: Action lacks sufficient explanation.")
+          (harness-log "POLICY VIOLATION: Action lacks sufficient explanation.
           (list :type :LOG
                 :payload (list :level :warn
-                              :text "Action blocked: Missing or insufficient :explanation. Please justify your reasoning."))))))
+                              :text "Action blocked: Missing or insufficient :explanation. Please justify your reasoning.)))))
 #+end_src
 
 ** Skill Registration

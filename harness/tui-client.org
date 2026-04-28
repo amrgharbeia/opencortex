@@ -1,3 +1,4 @@
+#+PROPERTY: header-args:lisp :tangle tui-client.lisp
 #+TITLE: OpenCortex TUI Client (Standalone)
 #+STARTUP: content
 #+FILETAGS: :tui:ux:client:
@@ -7,7 +8,7 @@
 The OpenCortex TUI Client is a standalone Common Lisp application built on **Croatoan**.
 
 * Test Suite
-#+begin_src lisp :tangle tests/tui-tests.lisp
+#+begin_src lisp :tangle tui-client.lisp
 (defpackage :opencortex-tui-tests
   (:use :cl :opencortex)
   (:export #:tui-suite))
@@ -17,7 +18,7 @@ The OpenCortex TUI Client is a standalone Common Lisp application built on **Cro
 (eval-when (:compile-toplevel :load-toplevel :execute)
   (ql:quickload :fiveam))
 
-(fiveam:def-suite tui-suite :description "Verification of the TUI parsing and styling logic")
+(fiveam:def-suite tui-suite :description "Verification of the TUI parsing and styling logic
 (fiveam:in-suite tui-suite)
 
 (fiveam:test test-tui-connection-drop
@@ -45,7 +46,7 @@ The OpenCortex TUI Client is a standalone Common Lisp application built on **Cro
 
 ** Global State
 #+begin_src lisp
-(defvar *daemon-host* "127.0.0.1")
+(defvar *daemon-host* "127.0.0.1
 (defvar *daemon-port* 9105)
 (defvar *socket* nil)
 (defvar *stream* nil)
@@ -115,10 +116,10 @@ The OpenCortex TUI Client is a standalone Common Lisp application built on **Cro
             (finish-output stream))
         (error (c)
           (declare (ignore c))
-          (enqueue-msg "ERROR: Connection to daemon lost.")
+          (enqueue-msg "ERROR: Connection to daemon lost.
           (setf *is-running* nil))))
-    (when (string= cmd "/exit") (setf *is-running* nil))
-    (when (string= cmd "/clear") (setf *chat-history* nil))))
+    (when (string= cmd "/exit (setf *is-running* nil))
+    (when (string= cmd "/clear (setf *chat-history* nil))))
 #+end_src
 
 ** Main Entry Point

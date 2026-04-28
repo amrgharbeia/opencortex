@@ -1,8 +1,9 @@
+#+PROPERTY: header-args:lisp :tangle act.lisp
 #+TITLE: Stage 3: Act (act.lisp)
 #+AUTHOR: Agent
 #+FILETAGS: :harness:act:
 #+STARTUP: content
-#+PROPERTY: header-args:lisp :tangle act.lisp
+#+PROPERTY: header-args:lisp :tangle package.lisp
 
 * Overview
 The Act stage is where cognition meets reality. After the Probabilistic engine proposes and the Deterministic engine verifies, Act executes the approved action.
@@ -17,15 +18,15 @@ The Act stage is where cognition meets reality. After the Probabilistic engine p
 ** Actuator Configuration
 #+begin_src lisp
 (defvar *default-actuator* :cli
-  "The actuator used when no explicit target is specified.")
+  "The actuator used when no explicit target is specified.
 
 (defvar *silent-actuators* '(:cli :system-message :emacs)
-  "List of actuators that don't generate tool-output feedback.")
+  "List of actuators that don't generate tool-output feedback.
 
 (defun initialize-actuators ()
   "Register core actuators and load configuration."
-  (let ((def (uiop:getenv "DEFAULT_ACTUATOR"))
-        (silent (uiop:getenv "SILENT_ACTUATORS")))
+  (let ((def (uiop:getenv "DEFAULT_ACTUATOR)
+        (silent (uiop:getenv "SILENT_ACTUATORS))
     (when def
       (setf *default-actuator* (intern (string-upcase def) :keyword)))
     (when silent
@@ -139,7 +140,7 @@ The Act stage is where cognition meets reality. After the Probabilistic engine p
              (verified (deterministic-verify approved signal)))
         (if (and (listp verified) (member (getf verified :type) '(:LOG :EVENT)) (not (member original-type '(:LOG :EVENT))))
             (progn
-              (harness-log "ACT BLOCKED: Action failed last-mile deterministic check.")
+              (harness-log "ACT BLOCKED: Action failed last-mile deterministic check.
               (setf (getf signal :approved-action) nil)
               (setf feedback verified))
             (progn
@@ -165,20 +166,20 @@ The Act stage is where cognition meets reality. After the Probabilistic engine p
 #+end_src
 
 * Test Suite
-#+begin_src lisp :tangle tests/pipeline-act-tests.lisp
+#+begin_src lisp :tangle package.lisp
 (defpackage :opencortex-pipeline-act-tests
   (:use :cl :fiveam :opencortex)
   (:export #:pipeline-act-suite))
 
 (in-package :opencortex-pipeline-act-tests)
 
-(def-suite pipeline-act-suite :description "Test suite for Act pipeline")
+(def-suite pipeline-act-suite :description "Test suite for Act pipeline
 (in-suite pipeline-act-suite)
 
 (test test-act-gate-basic
   "Verify that act-gate proceeds normally when no skill intercepts."
   (clrhash opencortex::*skills-registry*)
-  (let* ((signal (list :type :EVENT :status nil :depth 0 :approved-action '(:target :cli :payload (:text "Hello"))))
+  (let* ((signal (list :type :EVENT :status nil :depth 0 :approved-action '(:target :cli :payload (:text "Hello)))
          (result (act-gate signal)))
     (is (eq :acted (getf signal :status)))
     (is (null result))))

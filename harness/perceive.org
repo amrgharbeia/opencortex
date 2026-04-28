@@ -1,8 +1,9 @@
+#+PROPERTY: header-args:lisp :tangle perceive.lisp
 #+TITLE: Stage 1: Perceive (perceive.lisp)
 #+AUTHOR: Agent
 #+FILETAGS: :harness:perceive:
 #+STARTUP: content
-#+PROPERTY: header-args:lisp :tangle perceive.lisp
+#+PROPERTY: header-args:lisp :tangle package.lisp
 
 * Overview
 The Perceive stage is the "sensory cortex" of OpenCortex. Its job is to take raw stimuli from the outside world and transform them into standardized Signals that the rest of the pipeline can process.
@@ -23,7 +24,7 @@ The Perceive stage is the "sensory cortex" of OpenCortex. Its job is to take raw
   so they run in separate threads to avoid blocking the main pipeline.
 
   Other sensors (:heartbeat, :interrupt, :buffer-update) are processed
-  synchronously to maintain temporal ordering.")
+  synchronously to maintain temporal ordering.
 
 (defvar *foveal-focus-id* nil
   "The Org ID of the node the user is currently interacting with.
@@ -32,7 +33,7 @@ The Perceive stage is the "sensory cortex" of OpenCortex. Its job is to take raw
   responses. When editing a specific note, the agent knows which
   note you're referring to without needing explicit ID references.
 
-  Updated on :point-update events from Emacs.")
+  Updated on :point-update events from Emacs.
 #+end_src
 
 ** Stimulus Injection (inject-stimulus)
@@ -59,7 +60,7 @@ The Perceive stage is the "sensory cortex" of OpenCortex. Its job is to take raw
 
     ;; Ensure metadata exists
     (unless meta
-      (setf meta (list :SOURCE :SYSTEM :SESSION-ID "internal")))
+      (setf meta (list :SOURCE :SYSTEM :SESSION-ID "internal))
 
     ;; Attach reply stream if provided
     (when stream
@@ -74,7 +75,7 @@ The Perceive stage is the "sensory cortex" of OpenCortex. Its job is to take raw
          (lambda ()
            (restart-case (process-signal raw-message)
              (skip-event () nil)))
-         :name "opencortex-async-task")
+         :name "opencortex-async-task
         
         ;; Sync: process in main thread with recovery
         (restart-case
@@ -83,7 +84,7 @@ The Perceive stage is the "sensory cortex" of OpenCortex. Its job is to take raw
                                     (invoke-restart 'skip-event))))
               (process-signal raw-message))
           (skip-event ()
-            (harness-log "SYSTEM RECOVERY: Stimulus dropped."))))))
+            (harness-log "SYSTEM RECOVERY: Stimulus dropped.)))))
 #+end_src
 
 ** Perceive Gate (perceive-gate)
@@ -107,7 +108,7 @@ The Perceive stage is the "sensory cortex" of OpenCortex. Its job is to take raw
 
     ;; Log the incoming signal for debugging
     (harness-log "GATE [Perceive]: ~a (~a) [Source: ~s]"
-                 type (or sensor "no-sensor") (getf meta :source))
+                 type (or sensor "no-sensor (getf meta :source))
 
     ;; Handle EVENT type sensors
     (cond ((eq type :EVENT)
@@ -147,20 +148,20 @@ The Perceive stage is the "sensory cortex" of OpenCortex. Its job is to take raw
 
 * Test Suite
 
-#+begin_src lisp :tangle tests/pipeline-perceive-tests.lisp
+#+begin_src lisp :tangle package.lisp
 (defpackage :opencortex-pipeline-perceive-tests
   (:use :cl :fiveam :opencortex)
   (:export #:pipeline-perceive-suite))
 
 (in-package :opencortex-pipeline-perceive-tests)
 
-(def-suite pipeline-perceive-suite :description "Test suite for Perceive pipeline")
+(def-suite pipeline-perceive-suite :description "Test suite for Perceive pipeline
 (in-suite pipeline-perceive-suite)
 
 (test test-perceive-gate
   "Perceive gate should update the object store and normalize signal."
   (clrhash opencortex::*memory*)
-  (let* ((signal (list :type :EVENT :payload (list :sensor :buffer-update :ast (list :type :HEADLINE :properties (list :ID "test-node" :TITLE "Test") :contents nil))))
+  (let* ((signal (list :type :EVENT :payload (list :sensor :buffer-update :ast (list :type :HEADLINE :properties (list :ID "test-node" :TITLE "Test :contents nil))))
          (result (perceive-gate signal)))
     (is (eq :perceived (getf result :status)))
     (is (not (null (gethash "test-node" opencortex::*memory*))))))

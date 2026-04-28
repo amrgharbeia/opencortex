@@ -19,73 +19,73 @@ The *System Manifest* defines the structural components of the OpenCortex.
   :description "The Probabilistic-Deterministic Lisp Machine"
   :depends-on (:usocket :bordeaux-threads :dexador :uiop :cl-dotenv :cl-ppcre :hunchentoot :ironclad :str :cl-json :uuid)
   :serial t
-  :components ((:file "harness/package")
-               (:file "harness/skills")
-               (:file "harness/communication")
-               (:file "harness/communication-validator")
-               (:file "harness/memory")
-               (:file "harness/context")
-               (:file "harness/perceive")
-               (:file "harness/reason")
-               (:file "harness/act")
-               (:file "harness/loop")))
+  :components ((:file "harness/package
+               (:file "harness/skills
+               (:file "harness/communication
+               (:file "harness/communication-validator
+               (:file "harness/memory
+               (:file "harness/context
+               (:file "harness/perceive
+               (:file "harness/reason
+               (:file "harness/act
+               (:file "harness/loop))
 #+end_src
 
 ** Test System
 #+begin_src lisp
 (defsystem :opencortex/tests
   :depends-on (:opencortex :fiveam)
-  :components ((:file "tests/pipeline-act-tests")
-               (:file "tests/boot-sequence-tests")
-               (:file "tests/immune-system-tests")
-               (:file "tests/memory-tests")
-               (:file "tests/pipeline-perceive-tests")
-               (:file "tests/pipeline-reason-tests")
-               (:file "tests/peripheral-vision-tests")
-               (:file "tests/emacs-edit-tests")
-               (:file "tests/engineering-standards-tests")
-               (:file "tests/lisp-utils-tests")
-               (:file "tests/literate-programming-tests")
-               (:file "tests/self-edit-tests")
-               (:file "tests/tool-permissions-tests")
-               (:file "tests/diagnostics-tests")
-               (:file "tests/config-manager-tests")
-               (:file "tests/gateway-manager-tests")
-               (:file "tests/tui-tests")
-               (:file "tests/llm-gateway-tests")))
+  :components ((:file "tests/pipeline-act-tests
+               (:file "tests/boot-sequence-tests
+               (:file "tests/immune-system-tests
+               (:file "tests/memory-tests
+               (:file "tests/pipeline-perceive-tests
+               (:file "tests/pipeline-reason-tests
+               (:file "tests/peripheral-vision-tests
+               (:file "tests/emacs-edit-tests
+               (:file "tests/engineering-standards-tests
+               (:file "tests/lisp-utils-tests
+               (:file "tests/literate-programming-tests
+               (:file "tests/self-edit-tests
+               (:file "tests/tool-permissions-tests
+               (:file "tests/diagnostics-tests
+               (:file "tests/config-manager-tests
+               (:file "tests/gateway-manager-tests
+               (:file "tests/tui-tests
+               (:file "tests/llm-gateway-tests))
 #+end_src
 
 ** TUI System
 #+begin_src lisp
 (defsystem :opencortex/tui
   :depends-on (:opencortex :croatoan :usocket :bordeaux-threads)
-  :components ((:file "harness/tui-client")))
+  :components ((:file "harness/tui-client))
 #+end_src
 
 ** Test Orchestrator
 #+begin_src lisp :tangle run-all-tests.lisp
 (load (merge-pathnames "quicklisp/setup.lisp" (user-homedir-pathname)))
 
-(let ((oc-dir (or (uiop:getenv "OC_DATA_DIR") 
-                  (namestring (truename "./")))))
+(let ((oc-dir (or (uiop:getenv "OC_DATA_DIR 
+                  (namestring (truename "./))))
   (push (uiop:ensure-directory-pathname oc-dir) asdf:*central-registry*))
 
 (ql:quickload '(:fiveam :opencortex :opencortex/tui :opencortex/tests) :silent t)
 
-(format t "~%=== Initializing Skills BEFORE loading tests ===~%")
+(format t "~%=== Initializing Skills BEFORE loading tests ===~%
 (opencortex:initialize-all-skills)
 
-(format t "~%=== Running ALL Test Suites ===~%")
+(format t "~%=== Running ALL Test Suites ===~%
 
-(dolist (suite-spec '(("OPENCORTEX-BOOT-TESTS" "BOOT-SUITE")
-                      ("OPENCORTEX-COMMUNICATION-TESTS" "COMMUNICATION-PROTOCOL-SUITE")
-                      ("OPENCORTEX-PIPELINE-ACT-TESTS" "PIPELINE-ACT-SUITE")
-                      ("OPENCORTEX-MEMORY-TESTS" "MEMORY-SUITE")
-                      ("OPENCORTEX-ENGINEERING-STANDARDS-TESTS" "ENGINEERING-STANDARDS-SUITE")
-                      ("OPENCORTEX-DIAGNOSTICS-TESTS" "DIAGNOSTICS-SUITE")
-                      ("OPENCORTEX-GATEWAY-MANAGER-TESTS" "GATEWAY-SUITE")
-                      ("OPENCORTEX-TUI-TESTS" "TUI-SUITE")
-                      ("OPENCORTEX-LLM-GATEWAY-TESTS" "LLM-GATEWAY-SUITE")))
+(dolist (suite-spec '(("OPENCORTEX-BOOT-TESTS" "BOOT-SUITE
+                      ("OPENCORTEX-COMMUNICATION-TESTS" "COMMUNICATION-PROTOCOL-SUITE
+                      ("OPENCORTEX-PIPELINE-ACT-TESTS" "PIPELINE-ACT-SUITE
+                      ("OPENCORTEX-MEMORY-TESTS" "MEMORY-SUITE
+                      ("OPENCORTEX-ENGINEERING-STANDARDS-TESTS" "ENGINEERING-STANDARDS-SUITE
+                      ("OPENCORTEX-DIAGNOSTICS-TESTS" "DIAGNOSTICS-SUITE
+                      ("OPENCORTEX-GATEWAY-MANAGER-TESTS" "GATEWAY-SUITE
+                      ("OPENCORTEX-TUI-TESTS" "TUI-SUITE
+                      ("OPENCORTEX-LLM-GATEWAY-TESTS" "LLM-GATEWAY-SUITE))
   (let ((pkg (find-package (first suite-spec))))
     (when pkg
       (let ((suite-sym (find-symbol (second suite-spec) pkg)))
@@ -93,5 +93,5 @@ The *System Manifest* defines the structural components of the OpenCortex.
           (format t "~&--- Suite: ~A ---~%" (first suite-spec))
           (fiveam:run! suite-sym))))))
 
-(format t "~%=== ALL TESTS COMPLETE ===~%")
+(format t "~%=== ALL TESTS COMPLETE ===~%
 #+end_src

@@ -17,14 +17,14 @@ The *Config Manager* skill provides the OpenCortex Agent with the capability to 
 #+begin_src lisp
 (defun get-oc-config-dir ()
   "Returns the absolute path to the opencortex config directory."
-  (let ((xdg (uiop:getenv "OC_CONFIG_DIR")))
-    (if (and xdg (string/= xdg ""))
+  (let ((xdg (uiop:getenv "OC_CONFIG_DIR))
+    (if (and xdg (string/= xdg 
         (uiop:ensure-directory-pathname xdg)
         (uiop:ensure-directory-pathname (merge-pathnames ".config/opencortex/" (user-homedir-pathname))))))
 
 (defun save-providers ()
   "Stubs for saving provider configuration."
-  (harness-log "CONFIG: Providers saved."))
+  (harness-log "CONFIG: Providers saved.)
 
 (defun configure-provider (id)
   "Stubs for configuring a provider."
@@ -32,7 +32,7 @@ The *Config Manager* skill provides the OpenCortex Agent with the capability to 
 
 (defun run-setup-wizard ()
   "Interactive setup wizard for OpenCortex."
-  (format t "--- OpenCortex Setup Wizard ---~%")
+  (format t "--- OpenCortex Setup Wizard ---~%
   (save-providers)
   (doctor-main))
 #+end_src

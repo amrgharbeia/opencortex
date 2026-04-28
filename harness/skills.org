@@ -1,8 +1,9 @@
+#+PROPERTY: header-args:lisp :tangle skills.lisp
 #+TITLE: The Skill Engine (skills.lisp)
 #+AUTHOR: Agent
 #+FILETAGS: :harness:skills:
 #+STARTUP: content
-#+PROPERTY: header-args:lisp :tangle skills.lisp
+#+PROPERTY: header-args:lisp :tangle package.lisp
 
 * Overview
 The ~opencortex~ Skill Engine enables **Late-Binding Intelligence**, allowing the system to discover and integrate new cognitive capabilities at runtime.
@@ -27,12 +28,12 @@ The ~opencortex~ Skill Engine enables **Late-Binding Intelligence**, allowing th
               (incf dot (* x y)) (incf n1 (* x x)) (incf n2 (* y y))))
           (if (or (zerop n1) (zerop n2)) 0.0 (/ dot (sqrt (* n1 n2))))))))
 
-(defun VAULT-MASK-STRING (s) (declare (ignore s)) "[MASKED]")
+(defun VAULT-MASK-STRING (s) (declare (ignore s)) "[MASKED]
 (defvar *VAULT-MEMORY* (make-hash-table :test 'equal))
 
 (defstruct skill name priority dependencies trigger-fn probabilistic-prompt deterministic-fn)
 (defvar *skill-catalog* (make-hash-table :test 'equal)
-  "A stateful tracking table for all skill files discovered in the environment.")
+  "A stateful tracking table for all skill files discovered in the environment.
 
 (defstruct skill-entry filename (status :discovered) error-log (load-time 0))
 
@@ -86,7 +87,7 @@ The ~opencortex~ Skill Engine enables **Late-Binding Intelligence**, allowing th
               (when end
                 (let ((line (string-trim " " (subseq content (+ pos 13) end))))
                   (dolist (d (uiop:split-string line :separator '(#\Space #\Tab)))
-                    (unless (string= d "") (push d dependencies))))
+                    (unless (string= d " (push d dependencies))))
                 (setf pos end)))))
     (values id (reverse dependencies))))
 #+end_src
@@ -95,7 +96,7 @@ The ~opencortex~ Skill Engine enables **Late-Binding Intelligence**, allowing th
 #+begin_src lisp
 (defun topological-sort-skills (skills-dir)
   "Returns a list of skill filepaths sorted by dependency."
-  (let ((files (uiop:directory-files skills-dir "org-skill-*.org"))
+  (let ((files (uiop:directory-files skills-dir "org-skill-*.org)
         (adj (make-hash-table :test 'equal))
         (name-to-file (make-hash-table :test 'equal))
         (id-to-file (make-hash-table :test 'equal))
@@ -123,7 +124,7 @@ The ~opencortex~ Skill Engine enables **Late-Binding Intelligence**, allowing th
                        (when dep-file
                          (let ((dep-filename (pathname-name dep-file)))
                            (if (gethash (string-downcase dep-filename) stack)
-                               (error "Circular dependency detected")
+                               (error "Circular dependency detected
                                (visit dep-file))))))
                    (setf (gethash node-key stack) nil)
                    (setf (gethash node-key visited) t)
@@ -162,7 +163,7 @@ The ~opencortex~ Skill Engine enables **Late-Binding Intelligence**, allowing th
     (handler-case
         (let* ((content (uiop:read-file-string filepath))
                (lines (uiop:split-string content :separator '(#\Newline)))
-               (in-lisp-block nil) (collect-this-block nil) (lisp-code "")
+               (in-lisp-block nil) (collect-this-block nil) (lisp-code "
                (pkg-name (intern (string-upcase (format nil "OPENCORTEX.SKILLS.~a" skill-base-name)) :keyword)))
           (dolist (line lines)
             (let ((clean-line (string-trim '(#\Space #\Tab #\Return) line)))
@@ -196,12 +197,12 @@ The ~opencortex~ Skill Engine enables **Late-Binding Intelligence**, allowing th
 #+begin_src lisp
 (defun initialize-all-skills ()
   "Initializes all skills from SKILLS_DIR."
-  (let* ((env-path (uiop:getenv "SKILLS_DIR"))
+  (let* ((env-path (uiop:getenv "SKILLS_DIR)
          (skills-dir (uiop:ensure-directory-pathname (or env-path (namestring (merge-pathnames "notes/" (user-homedir-pathname)))))))
     (unless (uiop:directory-exists-p skills-dir) (return-from initialize-all-skills nil))
     (let ((sorted-files (topological-sort-skills skills-dir)))
       (harness-log "LOADER: Initializing ~a skills..." (length sorted-files))
       (dolist (file sorted-files)
         (load-skill-from-org file))
-      (harness-log "LOADER: Boot Complete."))))
+      (harness-log "LOADER: Boot Complete.)))
 #+end_src

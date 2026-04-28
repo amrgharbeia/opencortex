@@ -20,7 +20,7 @@ The *Peripheral Vision* skill enhances the context engine with high-level summar
   (let ((obj (lookup-object obj-id)))
     (if obj
         (format nil "Node: ~a (~a)" (getf (org-object-attributes obj) :TITLE) obj-id)
-        "[Unknown Node]")))
+        "[Unknown Node]))
 #+end_src
 
 ** Skill Registration

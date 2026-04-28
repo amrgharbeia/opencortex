@@ -17,7 +17,7 @@ The *Engineering Standards Skill* enforces technical invariants, including the *
 #+begin_src lisp
 (defun verify-git-clean-p (dir)
   "Checks if a directory has uncommitted changes."
-  (let ((status (uiop:run-program (list "git" "-C" (namestring dir) "status" "--porcelain")
+  (let ((status (uiop:run-program (list "git" "-C" (namestring dir) "status" "--porcelain
                                  :output :string
                                  :ignore-error-status t)))
     (string= "" (string-trim '(#\Space #\Newline #\Tab) status))))

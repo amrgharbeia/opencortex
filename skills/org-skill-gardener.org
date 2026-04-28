@@ -17,11 +17,11 @@ The *Gardener Skill* performs periodic maintenance on the Memex knowledge graph.
 #+begin_src lisp
 (defun gardener-prune-orphans ()
   "Identifies and handles orphaned objects in memory."
-  (harness-log "GARDENER: Pruning orphans..."))
+  (harness-log "GARDENER: Pruning orphans...)
 
 (defun gardener-verify-merkle-integrity ()
   "Validates the hashes of all objects in memory."
-  (harness-log "GARDENER: Verifying Merkle integrity..."))
+  (harness-log "GARDENER: Verifying Merkle integrity...)
 #+end_src
 
 ** Skill Registration

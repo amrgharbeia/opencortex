@@ -17,7 +17,7 @@ The *Homoiconic Memory* skill provides the capability to treat system memory as 
 #+begin_src lisp
 (defun memory-self-inspect ()
   "Allows the system to inspect its own memory state."
-  (harness-log "MEMORY: Self-inspection triggered."))
+  (harness-log "MEMORY: Self-inspection triggered.)
 #+end_src
 
 ** Skill Registration
