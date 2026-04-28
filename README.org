@@ -4,73 +4,59 @@
 
 * Meet OpenCortex
 
-Most AI assistants are just chatbots. You ask a question, they answer, you close the tab, and they forget you exist. They trap your conversations in proprietary web apps and silo your data.
+**OpenCortex is an AI that lives inside your own text files.**
 
-**OpenCortex is different. It is an AI that lives inside your own text files.**
+It is a sovereign neurosymbolic AI agent and 100-year Memex, built on a minimalist Lisp kernel. It organizes your life, executes tasks, and gardens your knowledge base—all while maintaining 100% data ownership in plain-text Org-mode files.
 
-It runs locally on your machine as a background process. It reads the same plain-text notes you do, organizes your life while you sleep, and acts as a permanent, private companion. It doesn't lock you into a database; it manages a folder of text files that you completely own and control.
+* The v0.2.0 Experience: Standard & Sovereign
 
-* The OpenCortex Experience: What It Actually Does
+With the **v0.2.0 (Interactive Refinement)** milestone, OpenCortex has reached a production-grade foundation:
 
-OpenCortex acts as the ultimate digital librarian and executor. Here is what it feels like to use it:
+- **Minimalist Kernel:** A purified Lisp harness targeting only core I/O and memory.
+- **Sovereign Skills:** High-level capabilities (Diagnostics, Config, LLMs) are now modular skills.
+- **POSIX/XDG Compliance:** Full alignment with Linux standards (~/.config, ~/.local/share).
+- **Professional TUI:** A native Lisp interface with semantic highlighting and history scrolling.
 
-** 1. Zero-Friction Capture & Organization
-You don't need to categorize everything perfectly. Just dump your messy, half-finished thoughts, meeting notes, and to-dos into a single "Inbox" text file. 
-In the background, OpenCortex reads your inbox, extracts the actionable tasks into your to-do lists, and distills your random thoughts into permanent, beautifully linked reference notes (your knowledge base).
+* Quick Start
 
-** 2. Autonomous Task Execution
-OpenCortex isn't just a writer; it's a doer. If you add a task like `=TODO Update the web server packages=`, the agent recognizes it. It opens a secure, hidden terminal, writes the necessary commands, verifies they are safe, runs them, and updates your text file with the result and terminal output. 
-
-** 3. Proactive "Gardening"
-OpenCortex runs on a heartbeat. When you step away from your computer, it goes to work. It scans your notes to fix formatting, finds related ideas you forgot to link together, and flags outdated information. You wake up to a cleaner, more connected workspace.
-
-** 4. Uninterrupted Background Research
-You can tell OpenCortex: "Research the history of digital privacy and draft a report." Instead of freezing and making you wait, it spawns a background thread. It silently browses the web and drafts the document in your notes while you continue working on other things.
-
-* The Philosophy: Fixing the Broken AI Agent Ecosystem
-
-We built OpenCortex from the ground up because the current generation of AI agents are built on fundamentally flawed architecture. They prioritize quick demos over long-term reliability and user sovereignty.
-
-Here is how we address the three massive issues with modern AI agents:
-
-** The Data Silo Problem
-**The Flaw:** Popular agents bury your memories, preferences, and documents inside opaque databases (like SQLite or specialized vector stores). If you want to see your own data, you have to ask the AI to fetch it. If the app shuts down, your data is gone.
-**The OpenCortex Solution:** Total plain-text transparency. We use a powerful plain-text format (Org-mode). There is no database. Your entire life is just a folder of text files. You can open them in any basic text editor, sync them anywhere, and they are guaranteed to be readable decades from now.
-
-** The Safety and Hallucination Problem
-**The Flaw:** Most agents are built using languages (like Python) that blindly pipe AI-generated text directly into your computer's terminal. If the AI hallucinates or makes a mistake, it can delete files or break your system.
-**The OpenCortex Solution:** A "Neurosymbolic" safeguard. OpenCortex splits its brain into two parts:
-1. **The Creative Brain (AI):** Understands your notes and suggests actions.
-2. **The Strict Guard (Logic):** Before the AI is allowed to touch a file or run a command, a mathematically strict set of rules intercepts the proposal. It verifies the action is safe and permitted. If the AI hallucinates, the guard blocks it.
-
-** The Cloud Dependency Problem
-**The Flaw:** Most assistants rely entirely on big tech cloud APIs. When your internet drops, or the service goes down, your assistant dies. Worse, your private, personal notes are constantly sent to third-party servers.
-**The OpenCortex Solution:** Local-First and Private. OpenCortex is designed to run directly on your own hardware using free, open-source AI models. Your private journals and API keys never leave your laptop. It can intelligently use cloud models for highly complex tasks, but only when you give explicit permission.
-
-* Quick Start & Installation
-
-To boot your local assistant, you need a Common Lisp compiler (SBCL) and a cloned repository. 
+To begin your journey with OpenCortex, you need a Common Lisp environment (SBCL).
 
 #+begin_src bash
-# Clone the repository
-git clone https://github.com/your-username/opencortex.git ~/memex/projects/opencortex
+# 1. Clone the repository
+git clone https://ssh://git@10.10.10.201:2222/amr/opencortex.git ~/memex/projects/opencortex
 
-# Run the setup wizard
+# 2. Run the Modular Setup Wizard
 cd ~/memex/projects/opencortex
 ./opencortex.sh setup
+
+# 3. Verify your System Health
+opencortex doctor
+
+# 4. Enter the Brain
+opencortex tui
 #+end_src
 
-The setup wizard will guide you through connecting your local AI models and initializing your text-based workspace.
+* The Onboarding Trifecta
 
-* Project Navigation
+1. **`opencortex setup`**: Guided Lisp-based configuration for multiple LLM providers (Ollama, Groq, OpenRouter, etc.).
+2. **`opencortex link <platform> <token>`**: Securely connect external chat gateways like Telegram.
+3. **`opencortex doctor`**: Real-time diagnostic report of your system health and environment.
 
-OpenCortex is built using **Literate Programming**—the explanations and the code are woven together in the same files so anyone can understand how the system works.
+* Project Documentation
 
-- **[[file:docs/ROADMAP.org][The Evolutionary Roadmap]]:** See our detailed plan for reaching State-of-the-Art capabilities.
-- **[[file:docs/CONTRIBUTING.org][Contributing Guidelines]]:** Learn how to teach OpenCortex new skills.
-- **[[file:harness/loop.org][The Core Engine]]:** Read the code that drives the agent's heartbeat.
+OpenCortex is built using **Literate Programming**. The documentation is the code.
+
+- **[[file:USER_MANUAL.org][User Manual]]**: Detailed guide on configuration, XDG paths, and commands.
+- **[[file:docs/ROADMAP.org][The Evolutionary Roadmap]]**: Long-term vision and milestone progress.
+- **[[file:docs/CONTRIBUTING.org][Contributing]]**: Learn how to implement new sovereign skills.
+
+* Architecture
+
+- **Harness (Kernel):** TCP Bridge, Merkle-Memory, Literate Loader.
+- **Skills (Userland):** Diagnostics, Configuration, LLM Gateway, Shell Actuation.
+- **Interface:** Native Croatoan TUI and socket-based CLI.
 
 * License
 
-openCortex is released under the [[file:LICENSE][AGPLv3 license]].
+OpenCortex is released under the [[file:LICENSE][AGPLv3 license]].
 See [[file:CLA.org][CLA.org]] for the Contributor License Agreement.

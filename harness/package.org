@@ -43,6 +43,11 @@ The ~package.lisp~ file defines the public API of the ~opencortex~ harness. It s
    #:system-ready-p
    #:run-setup-wizard
 
+   ;; --- Gateway Manager Skill ---
+   #:skill-gateway-register
+   #:skill-gateway-link
+   #:gateway-manager-main
+
    ;; --- Diagnostic Doctor ---
    #:doctor-run-all
    #:doctor-main

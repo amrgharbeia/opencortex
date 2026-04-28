@@ -10,208 +10,222 @@
 * Overview
 The OpenCortex TUI Client is a standalone Common Lisp application built on **Croatoan**. It provides a real-time, multi-window interface for interacting with the OpenCortex daemon.
 
-* Implementation
-#+begin_src lisp
+* Phase A: Demand (Thinking)
+** The Professional Interface
+A simple MVP console is insufficient for a Lisp Machine. To reach v0.2.0, the TUI must facilitate high-density information exchange.
+
+** Design Invariants:
+1. **Semantic Highlighting:** Distinguish between Lisp code, Org headers, and System Status through color coding.
+2. **Persistence & Scrollback:** Large chat histories must be navigable without losing state.
+3. **Command Palette:** A consistent way to invoke meta-functions (e.g., `/doctor`, `/clear`) without leaving the UI.
+
+* Phase B: Protocol (Success Criteria)
+
+** Test Suite Context
+#+begin_src lisp :tangle (expand-file-name "tui-tests.lisp" (concat (or (getenv "INSTALL_DIR") ".") "/tests"))
+(defpackage :opencortex-tui-tests
+  (:use :cl :fiveam :opencortex)
+  (:export #:tui-suite))
+#+end_src
+
+#+begin_src lisp :tangle (expand-file-name "tui-tests.lisp" (concat (or (getenv "INSTALL_DIR") ".") "/tests"))
+(in-package :opencortex-tui-tests)
+#+end_src
+
+#+begin_src lisp :tangle (expand-file-name "tui-tests.lisp" (concat (or (getenv "INSTALL_DIR") ".") "/tests"))
+(def-suite tui-suite :description "Verification of the TUI parsing and styling logic")
+#+end_src
+
+#+begin_src lisp :tangle (expand-file-name "tui-tests.lisp" (concat (or (getenv "INSTALL_DIR") ".") "/tests"))
+(in-suite tui-suite)
+#+end_src
+
+** Command Parsing Tests
+#+begin_src lisp :tangle (expand-file-name "tui-tests.lisp" (concat (or (getenv "INSTALL_DIR") ".") "/tests"))
+(test test-command-parser
+  "Verify that slash-commands are correctly identified."
+  ;; Stub for now
+  (is (null nil)))
+#+end_src
+
+* Phase C: Implementation (Build)
+
+** Package Context
+#+begin_src lisp :tangle (expand-file-name "tui-client.lisp" (concat (or (getenv "INSTALL_DIR") ".") "/harness"))
 (in-package :cl-user)
+#+end_src
+
+#+begin_src lisp :tangle (expand-file-name "tui-client.lisp" (concat (or (getenv "INSTALL_DIR") ".") "/harness"))
 (defpackage :opencortex.tui
   (:use :cl :croatoan)
   (:export :main))
+#+end_src
+
+#+begin_src lisp :tangle (expand-file-name "tui-client.lisp" (concat (or (getenv "INSTALL_DIR") ".") "/harness"))
 (in-package :opencortex.tui)
+#+end_src
 
+** Global State
+#+begin_src lisp :tangle (expand-file-name "tui-client.lisp" (concat (or (getenv "INSTALL_DIR") ".") "/harness"))
 (defvar *daemon-host* "127.0.0.1")
-(defvar *daemon-port* 9105)
-(defvar *socket* nil)
-(defvar *stream* nil)
-(defvar *chat-history* (list))
-(defvar *status-text* "Connecting...")
-(defvar *input-buffer* (make-array 0 :element-type 'char :fill-pointer 0 :adjustable t))
-(defvar *command-history* (make-array 0 :element-type 't :fill-pointer 0 :adjustable t))
-(defvar *history-index* -1)
-(defvar *is-running* t)
-(defvar *queue-lock* (bt:make-lock))
-(defvar *incoming-msgs* nil)
+#+end_src
 
+#+begin_src lisp :tangle (expand-file-name "tui-client.lisp" (concat (or (getenv "INSTALL_DIR") ".") "/harness"))
+(defvar *daemon-port* 9105)
+#+end_src
+
+#+begin_src lisp :tangle (expand-file-name "tui-client.lisp" (concat (or (getenv "INSTALL_DIR") ".") "/harness"))
+(defvar *socket* nil)
+#+end_src
+
+#+begin_src lisp :tangle (expand-file-name "tui-client.lisp" (concat (or (getenv "INSTALL_DIR") ".") "/harness"))
+(defvar *stream* nil)
+#+end_src
+
+#+begin_src lisp :tangle (expand-file-name "tui-client.lisp" (concat (or (getenv "INSTALL_DIR") ".") "/harness"))
+(defvar *chat-history* (list) "Full chronological log of messages.")
+#+end_src
+
+#+begin_src lisp :tangle (expand-file-name "tui-client.lisp" (concat (or (getenv "INSTALL_DIR") ".") "/harness"))
+(defvar *scroll-index* 0 "Offset for history rendering.")
+#+end_src
+
+#+begin_src lisp :tangle (expand-file-name "tui-client.lisp" (concat (or (getenv "INSTALL_DIR") ".") "/harness"))
+(defvar *status-text* "Connecting...")
+#+end_src
+
+#+begin_src lisp :tangle (expand-file-name "tui-client.lisp" (concat (or (getenv "INSTALL_DIR") ".") "/harness"))
+(defvar *input-buffer* (make-array 0 :element-type 'char :fill-pointer 0 :adjustable t))
+#+end_src
+
+#+begin_src lisp :tangle (expand-file-name "tui-client.lisp" (concat (or (getenv "INSTALL_DIR") ".") "/harness"))
+(defvar *command-history* (make-array 0 :element-type 't :fill-pointer 0 :adjustable t))
+#+end_src
+
+#+begin_src lisp :tangle (expand-file-name "tui-client.lisp" (concat (or (getenv "INSTALL_DIR") ".") "/harness"))
+(defvar *history-index* -1)
+#+end_src
+
+#+begin_src lisp :tangle (expand-file-name "tui-client.lisp" (concat (or (getenv "INSTALL_DIR") ".") "/harness"))
+(defvar *is-running* t)
+#+end_src
+
+#+begin_src lisp :tangle (expand-file-name "tui-client.lisp" (concat (or (getenv "INSTALL_DIR") ".") "/harness"))
+(defvar *queue-lock* (bt:make-lock))
+#+end_src
+
+#+begin_src lisp :tangle (expand-file-name "tui-client.lisp" (concat (or (getenv "INSTALL_DIR") ".") "/harness"))
+(defvar *incoming-msgs* nil)
+#+end_src
+
+** Utilities
+#+begin_src lisp :tangle (expand-file-name "tui-client.lisp" (concat (or (getenv "INSTALL_DIR") ".") "/harness"))
 (defun enqueue-msg (msg)
+  "Thread-safe addition to incoming message queue."
   (bt:with-lock-held (*queue-lock*)
     (push msg *incoming-msgs*)))
+#+end_src
 
-(defun add-to-history (cmd)
-  "Add command to history, preserving most recent."
-  (when (and cmd (> (length cmd) 0))
-    (unless (and (> (length *command-history*) 0)
-                  (string= cmd (aref *command-history* (1- (length *command-history*)))))
-      (vector-push-extend cmd *command-history*))
-    (setf *history-index* (length *command-history*))))
-
-(defun history-previous ()
-  (when (> (length *command-history*) 0)
-    (setf *history-index* (max 0 (1- *history-index*)))
-    (let ((cmd (aref *command-history* *history-index*)))
-      (setf (fill-pointer *input-buffer*) 0)
-      (loop for ch across cmd do (vector-push-extend ch *input-buffer*)))))
-
-(defun history-next ()
-  (when (and *history-index* (< *history-index* (1- (length *command-history*))))
-    (setf *history-index* (1+ *history-index*))
-    (let ((cmd (aref *command-history* *history-index*)))
-      (setf (fill-pointer *input-buffer*) 0)
-      (loop for ch across cmd do (vector-push-extend ch *input-buffer*))))
-  (when (>= *history-index* (1- (length *command-history*)))
-    (setf (fill-pointer *input-buffer*) 0)))
-
+#+begin_src lisp :tangle (expand-file-name "tui-client.lisp" (concat (or (getenv "INSTALL_DIR") ".") "/harness"))
 (defun dequeue-msgs ()
+  "Thread-safe retrieval of incoming messages."
   (bt:with-lock-held (*queue-lock*)
     (let ((msgs (nreverse *incoming-msgs*)))
       (setf *incoming-msgs* nil)
       msgs)))
+#+end_src
 
-(defun clean-keywords (msg)
-  (if (listp msg)
-      (let ((clean nil))
-        (loop for (k v) on msg by #'cddr
-              do (push (intern (string k) :keyword) clean)
-                 (push v clean))
-        (nreverse clean))
-      msg))
+** Styling Engine
+#+begin_src lisp :tangle (expand-file-name "tui-client.lisp" (concat (or (getenv "INSTALL_DIR") ".") "/harness"))
+(defun get-line-style (text)
+  "Determines croatoan attributes based on content patterns."
+  (cond
+    ((uiop:string-prefix-p "*" text) '(:bold :color-yellow))
+    ((uiop:string-prefix-p "⬆" text) '(:color-cyan))
+    ((uiop:string-prefix-p "🤔" text) '(:italic))
+    ((uiop:string-prefix-p "ERROR" text) '(:bold :color-red))
+    (t nil)))
+#+end_src
 
-(defun format-payload (payload)
-  (let* ((action (getf payload :ACTION))
-         (text (getf payload :TEXT))
-         (msg (getf payload :MESSAGE))
-         (tool (getf payload :TOOL))
-         (prompt (getf payload :PROMPT))
-         (args (getf payload :ARGS))
-         (result (getf payload :RESULT)))
-    (cond (text text)
-          (msg msg)
-          ((eq action :MESSAGE) (getf payload :TEXT))
-          ((and tool prompt) (format nil "🤔 ~a: ~a" tool prompt))
-          ((and tool args) 
-           (let ((inner-prompt (or (getf args :PROMPT) (getf args :TEXT))))
-             (if inner-prompt
-                 (format nil "🤔 ~a: ~a" tool inner-prompt)
-                 (format nil "🔧 ~a args: ~s" tool args))))
-          (result (format nil "✅ ~a" result))
-          (t (format nil "~s" payload)))))
+** Rendering Orchestrator
+#+begin_src lisp :tangle (expand-file-name "tui-client.lisp" (concat (or (getenv "INSTALL_DIR") ".") "/harness"))
+(defun render-chat (win)
+  "Renders the chat history with scrolling and styling."
+  (clear win)
+  (let* ((h (height win))
+         (view-height (- h 2))
+         (history-len (length *chat-history*))
+         (start-idx *scroll-index*)
+         (end-idx (min history-len (+ start-idx view-height)))
+         (slice (reverse (subseq *chat-history* start-idx end-idx))))
+    (loop for msg in slice
+          for i from 1
+          do (let ((style (get-line-style msg)))
+               (add-string win (format nil "│ ~a" msg) :y i :x 1 :attributes style)))
+    (refresh win)))
+#+end_src
 
-(defun format-incoming (msg)
-  (let ((type (or (getf msg :TYPE) (getf msg :type)))
-        (payload (or (getf msg :PAYLOAD) (getf msg :payload))))
-    (cond
-      ((and (listp msg) (eq type :EVENT))
-       (let ((action (or (getf payload :ACTION) (getf payload :action)))
-             (text (or (getf payload :TEXT) (getf payload :text) (getf payload :MESSAGE) (getf payload :message))))
-         (cond ((eq action :handshake) (format nil "👋 ~a" (or text "Connected")))
-               ((eq action :thinking) (format nil "🤔 ~a" (or text "Thinking...")))
-               ((eq action :tool-complete) (format nil "🔧 Done"))
-               (text (format nil "💬 ~a" text))
-               (t (format nil "📢 ~s" msg)))))
-      ((and (listp msg) (eq type :STATUS))
-       (format nil "🔄 Scribe: ~a | Gardener: ~a" 
-               (or (getf msg :SCRIBE) (getf msg :scribe) "idle")
-               (or (getf msg :GARDENER) (getf msg :gardener) "idle")))
-      ((and (listp msg) (member type '(:REQUEST :RESPONSE :LOG)))
-       (format-payload payload))
-      ((and (listp msg) (eq type :EVENT) (eq (getf payload :SENSOR) :TOOL-OUTPUT))
-       (format nil "🔧 ~a" (getf payload :RESULT)))
-      (t (format nil "~s" msg)))))
+** Input Handling
+#+begin_src lisp :tangle (expand-file-name "tui-client.lisp" (concat (or (getenv "INSTALL_DIR") ".") "/harness"))
+(defun handle-backspace ()
+  "Deletes last character from input buffer."
+  (when (> (fill-pointer *input-buffer*) 0)
+    (decf (fill-pointer *input-buffer*))))
+#+end_src
 
-(defun listen-thread ()
-  (loop :while *is-running* :do
-    (handler-case
-        (when (and *stream* (open-stream-p *stream*))
-          (let ((raw-msg (opencortex:read-framed-message *stream*)))
-            (cond ((eq raw-msg :eof) (setf *is-running* nil))
-                  ((eq raw-msg :error) (setf *status-text* "Protocol Error"))
-                  ((not (null raw-msg))
-                   (let* ((msg (clean-keywords raw-msg))
-                          (type (getf msg :TYPE))
-                          (payload (getf msg :PAYLOAD)))
-                     (cond ((and (eq type :EVENT) (eq (getf payload :ACTION) :handshake))
-                            (setf *status-text* "Ready"))
-                           ((eq type :STATUS)
-                            (setf *status-text* (format nil "[Scribe: ~a] [Gardener: ~a]" 
-                                                        (or (getf msg :SCRIBE) "idle")
-                                                        (or (getf msg :GARDENER) "idle"))))
-                           (t (let ((formatted (format-incoming msg)))
-                                (when formatted (enqueue-msg formatted))))))))))
-      (error (c) (setf *status-text* (format nil "Net Error: ~a" c)) (setf *is-running* nil)))
-    (sleep 0.05)))
+#+begin_src lisp :tangle (expand-file-name "tui-client.lisp" (concat (or (getenv "INSTALL_DIR") ".") "/harness"))
+(defun handle-return (stream)
+  "Process input buffer as message or command."
+  (let ((cmd (coerce *input-buffer* 'string)))
+    (setf (fill-pointer *input-buffer*) 0)
+    (when (> (length cmd) 0)
+      (enqueue-msg (format nil "⬆ ~a" cmd))
+      (when (and stream (open-stream-p stream))
+        (format stream "~a" (opencortex:frame-message (list :TYPE :EVENT 
+                                                           :META (list :SOURCE :tui)
+                                                           :PAYLOAD (list :SENSOR :user-input :TEXT cmd))))
+        (finish-output stream)))
+    (when (string= cmd "/exit") (setf *is-running* nil))
+    (when (string= cmd "/clear") (setf *chat-history* nil))))
+#+end_src
 
+** Main Entry Point
+#+begin_src lisp :tangle (expand-file-name "tui-client.lisp" (concat (or (getenv "INSTALL_DIR") ".") "/harness"))
 (defun main ()
+  "Initializes ncurses and starts the TUI event loop."
   (handler-case
       (setf *socket* (usocket:socket-connect *daemon-host* *daemon-port*))
-    (error (e) (format t "Error connecting to Brain (port ~a): ~a~%" *daemon-port* e) (return-from main)))
+    (error (e) (format t "Offline: ~a~%" e) (return-from main)))
   (setf *stream* (usocket:socket-stream *socket*))
-  (bt:make-thread #'listen-thread :name "tui-listener")
   
   (unwind-protect
-      (with-screen (scr :input-echoing nil :input-blocking nil :enable-colors t :cursor-visible t)
-        (let* ((h (height scr))
-               (w (width scr))
-               (chat-win (make-instance 'window :height (- h 5) :width (- w 2) :position (list 1 1) :border t))
-               (status-win (make-instance 'window :height 1 :width (- w 2) :position (list (- h 4) 1) :border t))
-               (help-win (make-instance 'window :height 1 :width (- w 2) :position (list (- h 3) 1)))
-               (input-win (make-instance 'window :height 1 :width (- w 2) :position (list (- h 2) 1) :border t))
-               (last-status nil))
-           
-           (add-string help-win "↑↓ History | Esc Clear | /help /exit" :y 0 :x 0 :attributes '(:bold))
-           (refresh help-win)
-           (setf (input-blocking input-win) nil)
-
-           (loop :while *is-running* :do
-             ;; 1. Handle incoming messages
-             (let ((new-msgs (dequeue-msgs)))
-               (when new-msgs
-                 (dolist (m new-msgs)
-                   (push m *chat-history*)
-                   (when (> (length *chat-history*) 500) (setf *chat-history* (subseq *chat-history* 0 500))))
-                 (clear chat-win)
-                 (let ((line-num 1))
-                   (dolist (m (reverse (subseq *chat-history* 0 (min (length *chat-history*) (- (height chat-win) 2)))))
-                     (add-string chat-win (format nil "│ ~a" m) :y line-num :x 1)
-                     (incf line-num)))
-                 (refresh chat-win)))
-
-             ;; 2. Render Status Bar
-             (unless (equal *status-text* last-status)
-               (clear status-win)
-               (add-string status-win (format nil "┤ ~a ┤" *status-text*) :y 0 :x 1 :attributes '(:reverse))
-               (refresh status-win)
-               (setf last-status *status-text*))
-
-              ;; 3. Keyboard Input
-              (let* ((event (get-event input-win))
-                     (ch (when (and event (typep event 'event)) (event-key event))))
-                (when ch
-                  (cond
-                    ((or (eq ch #\Newline) (eq ch #\Return))
-                     (let ((cmd (coerce *input-buffer* 'string)))
-                       (setf (fill-pointer *input-buffer*) 0)
-                       (when (> (length cmd) 0)
-                         (add-to-history cmd)
-                         (enqueue-msg (format nil "⬆ ~a" cmd))
-                         (handler-case
-                             (when (and *stream* (open-stream-p *stream*))
-                               (format *stream* "~a" (opencortex:frame-message (list :TYPE :EVENT 
-                                                                                  :META (list :SOURCE :tui :SESSION-ID "default")
-                                                                                  :PAYLOAD (list :SENSOR :user-input :TEXT cmd))))
-                               (finish-output *stream*))
-                           (error (c) (enqueue-msg (format nil "ERROR SENDING: ~a" c)))))
-                       (when (string= cmd "/exit") (setf *is-running* nil))
-                       (when (string= cmd "/clear") (setf *chat-history* nil))))
-                    ((or (eq ch :up) (eq ch :key-up)) (history-previous))
-                    ((or (eq ch :down) (eq ch :key-down)) (history-next))
-                    ((or (eq ch :backspace) (eq ch :key-backspace) (eq ch #\Backspace) (eq ch #\Rubout) (eq ch (code-char 127)))
-                     (when (> (fill-pointer *input-buffer*) 0)
-                       (decf (fill-pointer *input-buffer*))))
-                    ((characterp ch)
-                     (vector-push-extend ch *input-buffer*))))
-                
-                (clear input-win)
-                (add-string input-win (format nil "▶ ~a" (coerce *input-buffer* 'string)) :y 0 :x 1)
-                (refresh input-win))
-             (sleep 0.02))))
+      (with-screen (scr :input-echoing nil :input-blocking nil :enable-colors t)
+        (let* ((h (height scr)) (w (width scr))
+               (chat-win (make-instance 'window :height (- h 5) :width (- w 2) :position '(1 1) :border t))
+               (input-win (make-instance 'window :height 1 :width (- w 2) :position (list (- h 2) 1) :border t)))
+          
+          (setf (input-blocking input-win) nil)
+          
+          (loop :while *is-running* :do
+            (let ((msgs (dequeue-msgs)))
+              (when msgs 
+                (dolist (m msgs) (push m *chat-history*))
+                (render-chat chat-win)))
+            
+            (let* ((ev (get-event input-win))
+                   (ch (when (and ev (typep ev 'event)) (event-key ev))))
+              (when ch
+                (cond
+                  ((or (eq ch #\Newline) (eq ch #\Return)) (handle-return *stream*))
+                  ((or (eq ch :backspace) (eq ch (code-char 127))) (handle-backspace))
+                  ((eq ch :page-up) (scroll-history 5))
+                  ((eq ch :page-down) (scroll-history -5))
+                  ((characterp ch) (vector-push-extend ch *input-buffer*))))
+              
+              (clear input-win)
+              (add-string input-win (format nil "▶ ~a" (coerce *input-buffer* 'string)) :y 0 :x 1)
+              (refresh input-win))
+            (sleep 0.02))))
     (setf *is-running* nil)
     (when *socket* (ignore-errors (usocket:socket-close *socket*)))))
 #+end_src

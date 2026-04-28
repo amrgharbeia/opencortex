@@ -1,0 +1,140 @@
+#+TITLE: Skill: Config Manager (org-skill-config-manager.org)
+#+AUTHOR: Agent
+#+FILETAGS: :skill:setup:config:
+#+STARTUP: content
+
+* Overview
+The *Config Manager* skill provides the OpenCortex Agent with the capability to manage its own internal settings and LLM provider registry.
+
+* Phase A: Demand (Thinking)
+** The Configuration Invariant
+A sovereign system must be able to re-configure its own connections. By moving the Setup Wizard and Provider Registry to a skill, we enable the Agent to "self-configure" or assist the user in adding new backends like Ollama or Groq without needing to reboot the kernel.
+
+** Hybrid Security Standard
+Secrets are appended to `~/.config/opencortex/.env`, while structural metadata is stored in `~/.config/opencortex/providers.lisp`.
+
+* Phase B: Protocol (Success Criteria)
+
+** Test Suite Context
+#+begin_src lisp :tangle (expand-file-name "config-manager-tests.lisp" (concat (or (getenv "INSTALL_DIR") ".") "/tests"))
+(defpackage :opencortex-config-manager-tests
+  (:use :cl :fiveam :opencortex)
+  (:export #:config-suite))
+#+end_src
+
+#+begin_src lisp :tangle (expand-file-name "config-manager-tests.lisp" (concat (or (getenv "INSTALL_DIR") ".") "/tests"))
+(in-package :opencortex-config-manager-tests)
+#+end_src
+
+#+begin_src lisp :tangle (expand-file-name "config-manager-tests.lisp" (concat (or (getenv "INSTALL_DIR") ".") "/tests"))
+(def-suite config-suite :description "Verification of the Config Manager skill")
+#+end_src
+
+#+begin_src lisp :tangle (expand-file-name "config-manager-tests.lisp" (concat (or (getenv "INSTALL_DIR") ".") "/tests"))
+(in-suite config-suite)
+#+end_src
+
+** Registry Tests
+#+begin_src lisp :tangle (expand-file-name "config-manager-tests.lisp" (concat (or (getenv "INSTALL_DIR") ".") "/tests"))
+(test test-provider-registration
+  "Verify that multiple providers can be registered and saved."
+  (let ((opencortex::*providers* nil))
+    (opencortex:register-provider :ollama '(:url "http://localhost:11434"))
+    (is (equal "http://localhost:11434" (getf (getf opencortex::*providers* :ollama) :url)))))
+#+end_src
+
+* Phase C: Implementation (Build)
+
+** Package Context
+#+begin_src lisp :tangle (expand-file-name "org-skill-config-manager.lisp" (concat (or (getenv "INSTALL_DIR") ".") "/skills"))
+(in-package :opencortex)
+#+end_src
+
+** Skill Metadata
+#+begin_src lisp :tangle (expand-file-name "org-skill-config-manager.lisp" (concat (or (getenv "INSTALL_DIR") ".") "/skills"))
+(defparameter *skill-config-manager*
+  '(:name "config-manager"
+    :description "Manages system settings and LLM provider configurations."
+    :capabilities (:configure-provider :run-setup-wizard)
+    :type :deterministic)
+  "Skill metadata for the Config Manager.")
+#+end_src
+
+** Provider Templates
+#+begin_src lisp :tangle (expand-file-name "org-skill-config-manager.lisp" (concat (or (getenv "INSTALL_DIR") ".") "/skills"))
+(defvar *provider-templates*
+  '((:ollama . (:name "Ollama (Local)" :fields ((:url :label "URL") (:model :label "Model")) :default-url "http://localhost:11434" :default-model "llama3"))
+    (:openrouter . (:name "OpenRouter" :fields ((:key :label "API Key" :secret t) (:model :label "Model")) :default-model "anthropic/claude-3-opus-20240229"))
+    (:openai . (:name "OpenAI" :fields ((:key :label "API Key" :secret t) (:model :label "Model")) :default-model "gpt-4-turbo"))
+    (:groq . (:name "Groq" :fields ((:key :label "API Key" :secret t) (:model :label "Model")) :default-model "mixtral-8x7b-32768"))
+    (:gemini . (:name "Google Gemini" :fields ((:key :label "API Key" :secret t) (:model :label "Model")) :default-model "gemini-1.5-pro"))
+    (:anthropic . (:name "Anthropic" :fields ((:key :label "API Key" :secret t) (:model :label "Model")) :default-model "claude-3-5-sonnet-20240620")))
+  "Templates for supported LLM providers.")
+#+end_src
+
+** Registry Persistence
+#+begin_src lisp :tangle (expand-file-name "org-skill-config-manager.lisp" (concat (or (getenv "INSTALL_DIR") ".") "/skills"))
+(defvar *providers* nil "Global registry of configured LLM providers.")
+#+end_src
+
+#+begin_src lisp :tangle (expand-file-name "org-skill-config-manager.lisp" (concat (or (getenv "INSTALL_DIR") ".") "/skills"))
+(defun save-providers ()
+  "Persist provider configuration to XDG config directory."
+  (let ((path (merge-pathnames "providers.lisp" (get-oc-config-dir))))
+    (ensure-directories-exist path)
+    (with-open-file (s path :direction :output :if-exists :supersede)
+      (format s ";;; OpenCortex Provider Metadata~%~s~%" *providers*))))
+#+end_src
+
+** Registry API
+#+begin_src lisp :tangle (expand-file-name "org-skill-config-manager.lisp" (concat (or (getenv "INSTALL_DIR") ".") "/skills"))
+(defun register-provider (id config)
+  "Update the global provider registry."
+  (setf (getf *providers* id) config))
+#+end_src
+
+** Setup Wizard Implementation
+#+begin_src lisp :tangle (expand-file-name "org-skill-config-manager.lisp" (concat (or (getenv "INSTALL_DIR") ".") "/skills"))
+(defun configure-provider (id)
+  "Guided configuration for a specific LLM provider template."
+  (let* ((template (cdr (assoc id *provider-templates*)))
+         (fields (getf template :fields))
+         (config nil))
+    (format t "~%--- Configuring ~a ---~%" (getf template :name))
+    (dolist (field-spec fields)
+      (let* ((field (first field-spec))
+             (label (getf (rest field-spec) :label))
+             (is-secret (getf (rest field-spec) :secret))
+             (default-key (intern (format nil "DEFAULT-~a" field) :keyword))
+             (default (getf template default-key))
+             (val (prompt-for label default)))
+        (if is-secret
+            (save-secret id field val)
+            (setf (getf config field) val))))
+    (register-provider id config)
+    (format t "✓ ~a metadata registered.~%" (getf template :name))))
+#+end_src
+
+#+begin_src lisp :tangle (expand-file-name "org-skill-config-manager.lisp" (concat (or (getenv "INSTALL_DIR") ".") "/skills"))
+(defun run-setup-wizard ()
+  "Entry point for the interactive OpenCortex Lisp Setup Wizard."
+  (format t "=== OpenCortex: Advanced Setup Wizard ===~%")
+  (let ((user (prompt-for "Your Name" "User"))
+        (agent (prompt-for "Agent Name" "OpenCortex")))
+    (format t "Welcome, ~a. I am ~a.~%" user agent))
+  (format t "~%Available Providers:~%")
+  (loop for (id . data) in *provider-templates* do (format t "  ~a: ~a~%" id (getf data :name)))
+  (format t "~%Enter provider IDs to configure (comma separated, or 'all'): ")
+  (finish-output)
+  (let* ((input (read-line))
+         (ids (if (string= input "all")
+                  (mapcar #'car *provider-templates*)
+                  (mapcar (lambda (s) (intern (string-upcase (string-trim " " s)) :keyword))
+                          (uiop:split-string input :separator ",")))))
+    (dolist (id ids)
+      (when (assoc id *provider-templates*)
+        (configure-provider id))))
+  (save-providers)
+  (format t "~%Setup complete. Running diagnostics...~%")
+  (doctor-run-all))
+#+end_src

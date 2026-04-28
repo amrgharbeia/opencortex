@@ -86,6 +86,12 @@ COMMAND=$1
 shift || true
 
 case "$COMMAND" in
+    link)
+        PLATFORM=$1
+        TOKEN=$2
+        exec sbcl --non-interactive              --eval '(load (merge-pathnames "quicklisp/setup.lisp" (user-homedir-pathname)))'              --eval "(push (truename \"$OC_DATA_DIR/\") asdf:*central-registry*)"              --eval '(ql:quickload :opencortex)'              --eval "(opencortex:gateway-manager-main \"$PLATFORM\" \"$TOKEN\")"
+        ;;
+
     doctor)
         export SKILLS_DIR="${OC_DATA_DIR}/skills"
         [ -z "$MEMEX_DIR" ] && export MEMEX_DIR="$HOME/memex"
@@ -117,7 +123,7 @@ case "$COMMAND" in
         ;;
 
     *)
-        echo "Available commands: setup, doctor, boot, tui"
+        echo "Available commands: setup, link, doctor, boot, tui"
         exit 1
         ;;
 esac

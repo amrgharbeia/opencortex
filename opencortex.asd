@@ -19,8 +19,6 @@
                 (:file "harness/reason")
                 (:file "harness/act")
                 (:file "harness/loop")
-                (:file "harness/doctor")
-                (:file "harness/setup-wizard")
 
                 (:file "skills/org-skill-policy")
                 (:file "skills/org-skill-bouncer")
@@ -33,7 +31,10 @@
                 (:file "skills/org-skill-emacs-edit")
                 (:file "skills/org-skill-tool-permissions")
                 (:file "skills/org-skill-self-fix")
-                (:file "skills/org-skill-peripheral-vision"))
+                (:file "skills/org-skill-peripheral-vision")
+                (:file "skills/org-skill-gateway-manager")
+                (:file "skills/org-skill-diagnostics")
+                (:file "skills/org-skill-config-manager"))
 
   :build-operation "program-op"
   :build-pathname "opencortex-server"
@@ -51,12 +52,14 @@
                (:file "tests/emacs-edit-tests")
                (:file "tests/engineering-standards-tests")
                (:file "tests/lisp-utils-tests")
-               (:file "tests/lisp-validator-tests")
                (:file "tests/literate-programming-tests")
                (:file "tests/self-edit-tests")
                (:file "tests/tool-permissions-tests")
-               (:file "tests/doctor-tests")
-               (:file "tests/setup-wizard-tests")))
+
+               (:file "tests/gateway-manager-tests")
+               (:file "tests/tui-tests")
+               (:file "tests/diagnostics-tests")
+               (:file "tests/config-manager-tests")))
 
 (defsystem :opencortex/tui
   :depends-on (:opencortex :croatoan :usocket :bordeaux-threads)

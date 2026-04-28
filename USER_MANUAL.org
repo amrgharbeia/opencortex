@@ -1,0 +1,60 @@
+#+TITLE: OpenCortex User Manual
+#+AUTHOR: Agent
+#+STARTUP: content
+#+FILETAGS: :docs:manual:
+
+* Introduction
+Welcome to the OpenCortex User Manual. This guide provides the operational knowledge required to manage your sovereign Lisp Machine and its neural skills.
+
+* System Architecture
+OpenCortex follows a "Purified Kernel" model. The core harness handles essential I/O, while all high-level logic resides in sovereign skills.
+
+** XDG Directory Standard
+To ensure POSIX compliance, OpenCortex stores its files in standard Linux locations:
+
+| Type | Path | Purpose |
+| :--- | :--- | :--- |
+| **Config** | `~/.config/opencortex/` | User settings, `.env` secrets, and provider registry. |
+| **Data** | `~/.local/share/opencortex/` | Tangled Lisp artifacts and the compiled engine. |
+| **State** | `~/.local/state/opencortex/` | Brain snapshots, logs, and Merkle-memory. |
+| **Bin** | `~/.local/bin/opencortex` | The global CLI shim. |
+
+* Command Reference
+
+** `opencortex setup`
+The interactive configuration wizard. Use this to:
+- Define your identity and the Agent's name.
+- Register LLM providers (Ollama, Groq, Anthropic, etc.).
+- The wizard automatically splits sensitive tokens into `~/.config/opencortex/.env`.
+
+** `opencortex link <platform> <token>`
+Connects OpenCortex to external communication gateways.
+- **Example:** `opencortex link telegram <my_bot_token>`
+- Performs real-time API verification before saving.
+
+** `opencortex doctor`
+Your primary diagnostic tool. Run this if the system feels sluggish or fails to boot. It verifies:
+- External dependencies (sbcl, git, socat).
+- XDG directory existence and permissions.
+- LLM connectivity.
+
+** `opencortex tui`
+Launches the native Lisp Terminal User Interface.
+- **Highlighting:** Semantic color-coding for Lisp and Org syntax.
+- **Scrolling:** Use `PgUp`/`PgDn` to navigate history.
+- **Exit:** Type `/exit` or `Ctrl+C` to close.
+
+* Configuration Strategy
+OpenCortex uses a **Hybrid Storage** model for maximum security and flexibility.
+
+** 1. Secrets (`.env`)
+Found in `~/.config/opencortex/.env`. This file stores raw API tokens. It is never automatically read by the Lisp structural parser to prevent accidental leakage into logs.
+
+** 2. Metadata (`providers.lisp`)
+Found in `~/.config/opencortex/providers.lisp`. This stores non-sensitive configuration like model names, base URLs, and user preferences as native Lisp S-expressions.
+
+* Troubleshooting
+If `opencortex doctor` reports a `FAIL`:
+1. Check that your `PATH` includes `/usr/bin` and `/usr/local/bin`.
+2. Ensure `sbcl` is installed.
+3. If LLM connectivity fails, verify your API key in `~/.config/opencortex/.env`.
