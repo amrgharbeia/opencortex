@@ -1,119 +1,64 @@
-#+PROPERTY: header-args:lisp :tangle (concat (identity (getenv "INSTALL_DIR")) "/skills/org-skill-llm-gateway.lisp")" )
-:PROPERTIES:
-:ID:       llm-gateway-spec
-:CREATED:  [2026-04-10 Thu]
-:END:
-#+TITLE: Skill: LLM Gateway
-#+STARTUP: content
+#+TITLE: SKILL: LLM Gateway (org-skill-llm-gateway.org)
+#+AUTHOR: Agent
 #+FILETAGS: :skill:llm:gateway:
+#+PROPERTY: header-args:lisp :tangle org-skill-llm-gateway.lisp
 
 * Overview
 The *LLM Gateway* skill provides a unified interface for interacting with multiple Large Language Model providers.
 
 * Test Suite
-#+begin_src lisp :tangle (concat (identity (getenv "INSTALL_DIR")) "/tests/llm-gateway-tests.lisp")" )
+#+begin_src lisp :tangle tests/llm-gateway-tests.lisp
 (defpackage :opencortex-llm-gateway-tests
   (:use :cl :fiveam :opencortex)
   (:export #:llm-gateway-suite))
 
 (in-package :opencortex-llm-gateway-tests)
 
-(def-suite llm-gateway-suite :description "Tests for the LLM Gateway skill
+(def-suite llm-gateway-suite :description "Tests for the LLM Gateway skill")
 (in-suite llm-gateway-suite)
 
 (test test-llm-gateway-timeout
   "Tier 2 Chaos: Verify that LLM Gateway handles connection failures gracefully."
-  ;; Point to a non-existent port to force a connection error
-  (let ((old-host (getenv "OLLAMA_HOST))
+  (let ((old-host (uiop:getenv "OLLAMA_HOST")))
     (unwind-protect
          (progn
-           (setf (getenv "OLLAMA_HOST "localhost:1
+           (setf (uiop:getenv "OLLAMA_HOST") "localhost:1")
            (let ((fn (or (find-symbol "EXECUTE-LLM-REQUEST" :opencortex.skills.org-skill-llm-gateway)
                          (find-symbol "EXECUTE-LLM-REQUEST" :opencortex))))
              (if fn
                  (let ((result (funcall fn :prompt "hello" :provider :ollama)))
                    (is (eq (getf result :status) :error))
                    (is (uiop:string-prefix-p "Ollama Failure" (getf result :message))))
-                 (fail "Could not find EXECUTE-LLM-REQUEST symbol)))
-      (setf (getenv "OLLAMA_HOST old-host))))
+                 (fail "Could not find EXECUTE-LLM-REQUEST symbol"))))
+      (if old-host
+          (setf (uiop:getenv "OLLAMA_HOST") old-host)
+          (sb-posix:unsetenv "OLLAMA_HOST")))))
 #+end_src
 
 * Implementation
 
 ** Package Context
-#+begin_src lisp :tangle (concat (identity (getenv "INSTALL_DIR")) "/skills/org-skill-llm-gateway.lisp")" )
+#+begin_src lisp
 (in-package :opencortex)
 #+end_src
 
-** Skill Metadata
-#+begin_src lisp :tangle (concat (identity (getenv "INSTALL_DIR")) "/skills/org-skill-llm-gateway.lisp")" )
-(defparameter *skill-llm-gateway*
-  '(:name "llm-gateway"
-    :description "Unified provider-agnostic LLM interface."
-    :capabilities (:ask-llm :get-embedding)
-    :type :probabilistic)
-  "Skill metadata for the LLM Gateway.
-#+end_src
-
-** Request Execution
-#+begin_src lisp :tangle (concat (identity (getenv "INSTALL_DIR")) "/skills/org-skill-llm-gateway.lisp")" )
-(defun execute-llm-request (&key prompt system-prompt provider model)
-  "Generic executor for all LLM providers."
-  (let* ((active-provider (or provider :ollama))
-         (api-key (getenv (format nil "~:@(~a_API_KEY~)" active-provider)))
-         (full-prompt (if system-prompt (format nil "~a~%~%~a" system-prompt prompt) prompt)))
-    (case active-provider
-      (:ollama
-       (let* ((host (or (getenv "OLLAMA_HOST "localhost:11434)
-              (url (format nil "http://~a/api/generate" host))
-              (body (cl-json:encode-json-to-string `((model . ,(or model "llama3) (prompt . ,full-prompt) (stream . :false)))))
-         (handler-case 
-             (let* ((response (dex:post url :headers '(("Content-Type" . "application/json) :content body))
-                    (json (cl-json:decode-json-from-string response)))
-               (list :status :success :content (cdr (assoc :response json))))
-           (error (c) (list :status :error :message (format nil "Ollama Failure: ~a" c))))))
-      (t (list :status :error :message "Provider not implemented))))
-#+end_src
-
-** Cognitive Tools
-#+begin_src lisp :tangle (concat (identity (getenv "INSTALL_DIR")) "/skills/org-skill-llm-gateway.lisp")" )
-(def-cognitive-tool :get-ollama-embedding 
-  "Generates vector embeddings via Ollama API."
-  ((:text :type :string :description "Text to embed.)
-  :body (lambda (args)
-          (let ((text (getf args :text)))
-            (let* ((host (or (getenv "OLLAMA_HOST "localhost:11434)
-                   (url (format nil "http://~a/api/embeddings" host))
-                   (body (cl-json:encode-json-to-string `((model . "nomic-embed-text (prompt . ,text)))))
-              (handler-case
-                  (let* ((response (dex:post url :headers '(("Content-Type" . "application/json) :content body))
-                         (json (cl-json:decode-json-from-string response)))
-                    (cdr (assoc :embedding json)))
-                (error (c) (harness-log "OLLAMA EMBED ERROR: ~a" c) nil))))))
-#+end_src
-
-#+begin_src lisp :tangle (concat (identity (getenv "INSTALL_DIR")) "/skills/org-skill-llm-gateway.lisp")" )
-(def-cognitive-tool :ask-llm 
-  "Unified interface for interacting with LLM providers."
-  ((:prompt :type :string :description "The user prompt
-   (:system-prompt :type :string :description "The system prompt (optional)
-   (:provider :type :keyword :description "The provider (e.g., :ollama, :openai)
-   (:model :type :string :description "The model name)
-  :body (lambda (args)
-          (execute-llm-request :prompt (getf args :prompt)
-                               :system-prompt (getf args :system-prompt)
-                               :provider (getf args :provider)
-                               :model (getf args :model))))
+** Request Execution (execute-llm-request)
+#+begin_src lisp
+(defun execute-llm-request (&key prompt system-prompt (provider :ollama) model)
+  "Central dispatcher for LLM requests."
+  (let ((backend (gethash provider *probabilistic-backends*)))
+    (if backend
+        (handler-case
+            (funcall backend prompt system-prompt :model model)
+          (error (c)
+            (list :status :error :message (format nil "~a Failure: ~a" provider c))))
+        (list :status :error :message (format nil "Provider ~a not registered" provider)))))
 #+end_src
 
 ** Skill Registration
-#+begin_src lisp :tangle (concat (identity (getenv "INSTALL_DIR")) "/skills/org-skill-llm-gateway.lisp")" )
+#+begin_src lisp
 (defskill :skill-llm-gateway
-  :priority 50
-  :trigger (lambda (ctx) (declare (ignore ctx)) t)
-  :probabilistic (lambda (ctx) 
-                  (let ((input (getf ctx :user-input)))
-                    (when input
-                      (execute-llm-request :prompt input))))
+  :priority 100
+  :trigger (lambda (ctx) (getf ctx :user-input))
   :deterministic (lambda (action ctx) (declare (ignore ctx)) action))
 #+end_src

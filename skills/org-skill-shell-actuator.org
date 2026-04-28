@@ -1,74 +1,38 @@
-#+PROPERTY: header-args:lisp :tangle (concat (identity (getenv "INSTALL_DIR")) "/skills/org-skill-shell-actuator.lisp")" )
-:PROPERTIES:
-:ID:       shell-actuator-skill
-:CREATED:  [2026-04-12 Sun]
-:END:
-#+TITLE: SKILL: Shell Actuator (Secure Host Interaction)
-#+STARTUP: content
-#+FILETAGS: :actuator:shell:system:autonomy:
+#+TITLE: SKILL: Shell Actuator (org-skill-shell-actuator.org)
+#+AUTHOR: Agent
+#+FILETAGS: :skill:actuator:shell:
+#+PROPERTY: header-args:lisp :tangle org-skill-shell-actuator.lisp
 
 * Overview
-The *Shell Actuator* provides a controlled interface for the OpenCortex to execute commands on the host operating system.
+The *Shell Actuator* provides the agent with the capability to execute bash commands.
 
 * Implementation
 
-#+begin_src lisp :tangle (concat (identity (getenv "INSTALL_DIR")) "/skills/org-skill-shell-actuator.lisp")" )
+** Package Context
+#+begin_src lisp
 (in-package :opencortex)
+#+end_src
 
-(defparameter *allowed-commands* '("ls" "git" "rg" "grep" "date" "echo" "cat" "node" "python3" "sbcl)
+** Shell Execution (shell-execute)
+#+begin_src lisp
+(defun shell-execute (action context)
+  "Executes a bash command and returns the output."
+  (declare (ignore context))
+  (let* ((payload (getf action :payload))
+         (cmd (getf payload :cmd)))
+    (harness-log "ACT [Shell]: ~a" cmd)
+    (multiple-value-bind (out err code)
+        (uiop:run-program (list "bash" "-c" cmd) :output :string :error-output :string :ignore-error-status t)
+      (if (= code 0)
+          out
+          (format nil "ERROR [~a]: ~a" code err)))))
+#+end_src
 
-(defparameter *shell-metacharacters* '(#\; #\& #\| #\> #\< #\$ #\` #\\ #\!))
-
-(defun shell-command-safe-p (cmd-string)
-  "Returns T if the command string contains no dangerous metacharacters."
-  (not (some (lambda (char) (find char cmd-string)) *shell-metacharacters*)))
-
-(defun execute-shell-safely (action context)
-  (let* ((payload (getf action :PAYLOAD))
-         (cmd-string (getf payload :cmd))
-         (executable (car (uiop:split-string (string-trim " " cmd-string) :separator '(#\Space)))))
-    
-    (cond
-      ((not (shell-command-safe-p cmd-string))
-       (opencortex:inject-stimulus 
-        `(:TYPE :EVENT :PAYLOAD (:SENSOR :shell-response :cmd ,cmd-string :stdout "" :stderr "ERROR - Security Violation: Dangerous metacharacters detected." :exit-code 1))
-        :stream (getf context :reply-stream)))
-      
-      ((not (member executable *allowed-commands* :test #'string=))
-       (opencortex:inject-stimulus 
-        `(:TYPE :EVENT :PAYLOAD (:SENSOR :shell-response :cmd ,cmd-string :stdout "" :stderr "ERROR - Command not in security whitelist." :exit-code 1))
-        :stream (getf context :reply-stream)))
-      
-      (t
-       (multiple-value-bind (stdout stderr exit-code)
-           (uiop:run-program cmd-string :output :string :error-output :string :ignore-error-status t)
-         (opencortex:inject-stimulus 
-          `(:TYPE :EVENT :PAYLOAD (:SENSOR :shell-response :cmd ,cmd-string :stdout ,(or stdout " :stderr ,(or stderr " :exit-code ,exit-code))
-          :stream (getf context :reply-stream)))))))
-
-(defun trigger-skill-shell-actuator (context)
-  (let ((type (getf context :TYPE))
-        (payload (getf context :PAYLOAD)))
-    (and (eq type :EVENT)
-         (eq (getf payload :SENSOR) :shell-response))))
-
-(defun probabilistic-skill-shell-actuator (context)
-  (let* ((p (getf context :PAYLOAD))
-         (cmd (getf p :cmd))
-         (stdout (getf p :stdout))
-         (stderr (getf p :stderr))
-         (exit-code (getf p :exit-code)))
-    (format nil "SHELL COMMAND RESULT:
-Command: ~a
-Exit Code: ~a
-STDOUT: ~a
-STDERR: ~a" cmd exit-code stdout stderr)))
-
-(opencortex:register-actuator :shell #'execute-shell-safely)
+** Skill Registration
+#+begin_src lisp
+(register-actuator :shell #'shell-execute)
 
 (defskill :skill-shell-actuator
-  :priority 80
-  :trigger #'trigger-skill-shell-actuator
-  :probabilistic #'probabilistic-skill-shell-actuator
-  :deterministic (lambda (action context) (declare (ignore context)) action))
+  :priority 50
+  :trigger (lambda (ctx) (declare (ignore ctx)) nil))
 #+end_src

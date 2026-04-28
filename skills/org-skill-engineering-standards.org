@@ -1,147 +1,31 @@
-#+PROPERTY: header-args:lisp :tangle (concat (identity (getenv "INSTALL_DIR")) "/skills/org-skill-engineering-standards.lisp")" )
-:PROPERTIES:
-:ID:       37f2b59f-4537-4cca-ac7f-5c24b9e2e773
-:CREATED:  [2026-03-30 Mon 21:16]
-:EDITED:   [2026-04-27 Mon]
-:END:
-#+TITLE: SKILL: Engineering Standards
-#+STARTUP: content
-#+FILETAGS: :engineering:standards:workflow:lisp:git:tdd:chaos:
+#+TITLE: SKILL: Engineering Standards (org-skill-engineering-standards.org)
+#+AUTHOR: Agent
+#+FILETAGS: :system:engineering:chaos:
+#+PROPERTY: header-args:lisp :tangle org-skill-engineering-standards.lisp
 
 * Overview
-This skill enforces the Engineering Standards for all development within OpenCortex. It observes agent context and gates actions that violate protocol.
+The *Engineering Standards Skill* enforces technical invariants, including the **Commit-Before-Modify** rule and **Chaos-Driven Development**.
 
-* Phase 0: Before You Think
-** Skill-First Query Rule
-Before any analysis, debugging, or implementation: check if a skill already covers the problem domain.
-
-* Phase A: Design (Test-First)
-** 1. Define Success Criteria First
-Before writing code, write the test that proves the feature works. The test defines the contract.
-
-* Phase B: Commit (Recovery Point)
-** 2. Commit Before Modify
-You MUST commit the current workspace state before initiating new file modifications.
-
-* Phase C: Build (Implementation)
-** 3. Literate Programming (Single Source of Truth)
-All system logic and skills MUST be implemented as Literate Org files. 
-
-** 4. Function-Block Granularity
-Every Lisp function, macro, or variable resides in its own dedicated ~#+begin_src lisp~ block.
-
-** 5. Tangle Mandate
-You are forbidden from modifying generated ~.lisp~ files directly.
-
-* Phase CDD: Chaos-Driven Development (Hardcoded Resilience)
-** 6. Tier 1: Integrity Chaos (Per-Turn)
-*Mandate:* Every turn involving a tangle MUST end with a "Structural Balance" check.
-*Enforcement:* The Agent must verify that all tangled artifacts pass the Lisp reader without syntax errors.
-
-** 7. Tier 2: Integration Chaos (Per-Feature)
-*Mandate:* Every new skill or major feature MUST include an "Adversarial Test Case."
-*Enforcement:* The test suite must simulate a failure (e.g., mock network drop, malformed input) and prove the system degrades gracefully.
-
-** 8. Tier 3: Systemic Chaos (Per-Milestone)
-*Mandate:* Before sealing a milestone, the Agent MUST perform a "Scorched Earth" bootstrap.
-*Enforcement:* Wipe XDG directories and verify a 100% autonomous re-initialization from the git source.
-
-* Phase D: Validate (Proof)
-** 9. Test Verification
-No change is complete without running the test suite. Run chaotic tests alongside the main suite.
-
-* Phase E: Document (Audit Trail)
-** 10. Decision Audit Trail
-Every significant fix or architectural decision MUST be documented in an org file.
-
-* Enforcement Implementation
+* Implementation
 
 ** Package Context
-#+begin_src lisp :tangle (concat (identity (getenv "INSTALL_DIR")) "/skills/org-skill-engineering-standards.lisp")" )
+#+begin_src lisp
 (in-package :opencortex)
 #+end_src
 
-** Global Configuration
-#+begin_src lisp :tangle (concat (identity (getenv "INSTALL_DIR")) "/skills/org-skill-engineering-standards.lisp")" )
-(defvar *engineering-std-project-root* nil
-  "Path to the project root for enforcement checks.
+** Standards Enforcement
+#+begin_src lisp
+(defun verify-git-clean-p (dir)
+  "Checks if a directory has uncommitted changes."
+  (let ((status (uiop:run-program (list "git" "-C" (namestring dir) "status" "--porcelain")
+                                 :output :string
+                                 :ignore-error-status t)))
+    (string= "" (string-trim '(#\Space #\Newline #\Tab) status))))
 #+end_src
 
-#+begin_src lisp :tangle (concat (identity (getenv "INSTALL_DIR")) "/skills/org-skill-engineering-standards.lisp")" )
-(defstruct engineering-violation
-  (phase nil)
-  (rule nil)
-  (message nil)
-  (severity nil))
-#+end_src
-
-** CDD Utilities: Tier 1
-#+begin_src lisp :tangle (concat (identity (getenv "INSTALL_DIR")) "/skills/org-skill-engineering-standards.lisp")" )
-(defun check-structural-balance (file-path)
-  "Tier 1 Chaos: Verifies that a Lisp file is syntactically balanced."
-  (handler-case
-      (with-open-file (s file-path)
-        (loop for form = (read s nil :eof)
-              until (eq form :eof))
-        t)
-    (error (c)
-      (harness-log "CHAOS ERROR [Tier 1]: ~a in ~a" c file-path)
-      nil)))
-#+end_src
-
-** Git Protocol
-#+begin_src lisp :tangle (concat (identity (getenv "INSTALL_DIR")) "/skills/org-skill-engineering-standards.lisp")" )
-(defun verify-git-clean-p (&optional (dir *engineering-std-project-root*))
-  "Returns T if the git repository at DIR has no uncommitted changes."
-  (when dir
-    (let ((status (uiop:run-program (list "git" "-C" (namestring dir) "status" "--porcelain
-                                    :output :string
-                                    :ignore-error-status t)))
-      (string= "" (string-trim '(#\Space #\Newline #\Tab) status)))))
-#+end_src
-
-** Initializer
-#+begin_src lisp :tangle (concat (identity (getenv "INSTALL_DIR")) "/skills/org-skill-engineering-standards.lisp")" )
-(defun engineering-std-init ()
-  "Initialize the enforcement system."
-  (let ((env-root (or (getenv "OC_DATA_DIR
-                       "/home/user/.local/share/opencortex))
-    (setf *engineering-std-project-root* (uiop:ensure-directory-pathname env-root))
-    (harness-log "ENGINEERING STANDARDS: CDD Protocol Active.))
-#+end_src
-
-;; Auto-initialize on load
-#+begin_src lisp :tangle (concat (identity (getenv "INSTALL_DIR")) "/skills/org-skill-engineering-standards.lisp")" )
-(engineering-std-init)
-#+end_src
-
-* Test Suite
-
-#+begin_src lisp :tangle (concat (identity (getenv "INSTALL_DIR")) "/tests/engineering-standards-tests.lisp")" )
-(defpackage :opencortex-engineering-standards-tests
-  (:use :cl :fiveam :opencortex)
-  (:export #:engineering-standards-suite))
-#+end_src
-
-#+begin_src lisp :tangle (concat (identity (getenv "INSTALL_DIR")) "/tests/engineering-standards-tests.lisp")" )
-(in-package :opencortex-engineering-standards-tests)
-#+end_src
-
-#+begin_src lisp :tangle (concat (identity (getenv "INSTALL_DIR")) "/tests/engineering-standards-tests.lisp")" )
-(def-suite engineering-standards-suite
-  :description "Tests for Engineering Standards enforcement
-#+end_src
-
-#+begin_src lisp :tangle (concat (identity (getenv "INSTALL_DIR")) "/tests/engineering-standards-tests.lisp")" )
-(in-suite engineering-standards-suite)
-#+end_src
-
-#+begin_src lisp :tangle (concat (identity (getenv "INSTALL_DIR")) "/tests/engineering-standards-tests.lisp")" )
-(test git-clean-check-clean
-  "verify-git-clean-p returns T when git tree is clean."
-  (let ((tmp-dir "/tmp/eng-std-test-clean/)
-    (uiop:ensure-all-directories-exist (list tmp-dir))
-    (uiop:run-program (list "git" "init" tmp-dir) :output nil)
-    (is (eq t (opencortex::verify-git-clean-p (uiop:ensure-directory-pathname tmp-dir))))
-    (uiop:delete-directory-tree (uiop:ensure-directory-pathname tmp-dir) :validate t)))
+** Skill Registration
+#+begin_src lisp
+(defskill :skill-engineering-standards
+  :priority 100
+  :trigger (lambda (ctx) (declare (ignore ctx)) nil))
 #+end_src

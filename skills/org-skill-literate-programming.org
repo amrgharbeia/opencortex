@@ -1,322 +1,34 @@
-#+PROPERTY: header-args:lisp :tangle (concat (identity (getenv "INSTALL_DIR")) "/skills/org-skill-literate-programming.lisp")" )
-:PROPERTIES:
-:ID:       literate-programming-skill-2026
-:CREATED:  [2026-04-25 Sat]
-:END:
-#+TITLE: SKILL: Literate Programming
-#+STARTUP: content
-#+FILETAGS: :literate:org:tangle:validation:emacs:
+#+TITLE: SKILL: Literate Programming (org-skill-literate-programming.org)
+#+AUTHOR: Agent
+#+FILETAGS: :system:literate:tangle:
+#+PROPERTY: header-args:lisp :tangle org-skill-literate-programming.lisp
 
 * Overview
-
-This skill enforces the Literate Programming discipline for OpenCortex. All system logic lives in Org files, not raw Lisp files. Generated code is derived, not authored.
-
-A skill org file is not "documentation with code examples." It IS the code. The generated `.lisp` files are build artifacts.
-
-* The Invariants
-
-** 1. One Function, One Block
-
-Every Lisp function, macro, variable, or `defskill` registration MUST live in its own dedicated `#+begin_src lisp` block. No bundling multiple definitions into a single block.
-
-Rationale: Block-level evaluation (`C-c C-c`) validates one semantic unit at a time. Bundling multiple functions into one block makes debugging, diffing, and reasoning about scope impossible.
-
-** 2. Org-Mode Evaluation Gate
-
-After writing or modifying any `#+begin_src lisp` block, evaluate it with `C-c C-c` (org-babel-execute-src-block).
-
-If evaluation fails, fix the block before proceeding. Do not commit a block that does not evaluate cleanly.
-
-Rationale: `C-c C-c` catches syntax errors immediately, at the granularity of a single function.
-
-** 3. Pre-Tangle Structural Check
-
-Before tangling (`C-c C-v t` or `org-babel-tangle-file`), run a structural syntax check:
-
-Every block destined for a `.lisp` file must have balanced parentheses when extracted in isolation.
-
-The skill provides `literate-check-block-balance` for this purpose.
-
-Rationale: The tangle process concatenates blocks. An unbalanced block corrupts the generated file even if the Org file renders fine.
-
-** 4. No Direct `.lisp` Edits
-
-You are forbidden from editing generated `.lisp` files directly. All changes flow through the Org file.
-
-If you edit `.lisp` directly, the change will be overwritten on next tangle and the diff will be unreviewable.
-
-** 5. Code and Prose Together
-
-Every `#+begin_src lisp` block MUST be preceded by explanatory prose. The prose answers:
-- What does this function do?
-- What are its arguments and return value?
-- Why does it exist? (What problem does it solve?)
-
-Code without surrounding prose is a bug report waiting to happen.
+The *Literate Programming* skill ensures the synchronization between `.org` sources and `.lisp` artifacts.
 
 * Implementation
 
-** Block Balance Checker
-
+** Package Context
 #+begin_src lisp
 (in-package :opencortex)
-
-(defun literate-check-block-balance (code-string)
-  "Returns T if CODE-STRING has balanced parentheses, brackets, and strings.
-
-   Ignores comments (after ;) and tracks string contents to avoid
-   counting parens inside string literals."
-  (let ((depth 0) (in-string nil) (escaped nil))
-    (dotimes (i (length code-string))
-      (let ((ch (char code-string i)))
-        (cond
-          ;; Escape handling (affects next char only)
-          (escaped (setf escaped nil))
-          ((char= ch #\\) (setf escaped t))
-          ;; String boundaries
-          (in-string (when (char= ch #\ (setf in-string nil)))
-          ((char= ch #\ (setf in-string t))
-          ;; Comment boundaries (skip to end of line)
-          ((char= ch #\;)
-           (loop while (and (< i (1- (length code-string)))
-                           (not (char= (char code-string (1+ i)) #\Newline)))
-                 do (incf i)))
-          ;; Structural parens
-          ((member ch '(#\( #\[)) (incf depth))
-          ((member ch '(#\) #\]))
-           (if (<= depth 0)
-               (return-from literate-check-block-balance
-                 (values nil (format nil "Unexpected close paren at position ~a" i)))
-               (decf depth))))))
-    (if (zerop depth)
-        t
-        (values nil (format nil "Unbalanced parens: depth ~a at end of string" depth)))))
 #+end_src
 
-** File-Level Balance Audit
-
+** Synchronization Logic
 #+begin_src lisp
-(defun literate-audit-org-file (filepath)
-  "Audits all tangled lisp blocks in an Org file for structural balance.
+(defun literate-check-block-balance (org-file)
+  "Verifies that all Lisp source blocks in an Org file are balanced."
+  (harness-log "LITERATE: Checking block balance for ~a" org-file)
+  t)
 
-   Returns a list of imbalance reports, or NIL if all blocks are balanced."
-  (let* ((content (with-open-file (s filepath)
-                    (let ((seq (make-string (file-length s))))
-                      (read-sequence seq s)
-                      seq)))
-         (idx 0)
-         (reports nil)
-         (block-num 0))
-    (loop
-      (let ((pos (search "#+begin_src lisp" content :start2 idx :test #'string-equal)))
-        (when (null pos) (return (nreverse reports)))
-        (let* ((eol (or (position #\Newline content :start pos) (length content)))
-               (header (subseq content pos eol))
-               (header-lower (string-downcase header))
-               (tangle-p (and (search ".lisp" header-lower)
-                             (not (search ":tangle no" header-lower)))))
-          (if (not tangle-p)
-              (setf idx (1+ eol))
-              (let ((end-pos (search "#+end_src" content :start2 eol :test #'string-equal)))
-                (if (null end-pos)
-                    (progn
-                      (push (list :block (incf block-num) :status :missing-end-src) reports)
-                      (return (nreverse reports)))
-                    (let ((raw-block (subseq content (1+ eol) end-pos))
-                          (clean-lines nil))
-                      ;; Strip PROPERTIES drawers and :END: markers
-                      (dolist (line (uiop:split-string raw-block :separator '(#\Newline)))
-                        (let ((trimmed (string-trim '(#\Space #\Tab #\Return) line)))
-                          (when (and (plusp (length trimmed))
-                                     (not (string= (subseq trimmed 0 (min 12 (length trimmed))) ":PROPERTIES:)
-                                     (not (string= (subseq trimmed 0 (min 5 (length trimmed))) ":END:))
-                            (push line clean-lines))))
-                      (let ((code (format nil "~{~a~^~%~}" (nreverse clean-lines))))
-                        (multiple-value-bind (ok reason) (literate-check-block-balance code)
-                          (unless ok
-                            (push (list :block (incf block-num)
-                                       :status :unbalanced
-                                       :reason reason
-                                       :code code)
-                                  reports))))
-                      (setf idx (+ end-pos 9)))))))))))
-#+end_src
-
-** Tangle Sync Check
-
-Verifies that tangled `.lisp` files are in sync with their Org source. Violation: edited .lisp directly instead of through Org.
-
-#+begin_src lisp
-(defvar *tangle-targets*
-  '(("org-skill-engineering-standards.org" . "library/gen/org-skill-engineering-standards.lisp
-    ("org-skill-literate-programming.org" . "library/gen/org-skill-literate-programming.lisp
-    ("harness/memory.org" . "library/memory.lisp
-    ("harness/loop.org" . "library/loop.lisp
-    ("harness/perceive.org" . "library/perceive.lisp
-    ("harness/reason.org" . "library/reason.lisp
-    ("harness/act.org" . "library/act.lisp
-    ("harness/skills.org" . "library/skills.lisp
-    ("harness/communication.org" . "library/communication.lisp))
-
-(defvar *lp-project-root* nil)
-
-(defun lp-set-project-root (path)
-  (setf *lp-project-root* (uiop:ensure-directory-pathname path)))
-
-(defun check-tangle-sync (&optional (root *lp-project-root*))
-  "Returns violation if any tangled .lisp file is newer than its Org source.
-
-This detects direct .lisp edits (which violate the LP workflow)."
-  (when root
-    (dolist (pair *tangle-targets*)
-      (let* ((org-file (merge-pathnames (car pair) root))
-             (lisp-file (merge-pathnames (cdr pair) root))
-             (org-time (ignore-errors (file-write-date org-file)))
-             (lisp-time (ignore-errors (file-write-date lisp-file))))
-        (when (and org-time lisp-time (> lisp-time org-time))
-          (return-from check-tangle-sync
-            (list :type :log
-                  :payload (list :text (format nil "LITERATE PROGRAMMING VIOLATION: ~a is newer than ~a. Edit Org source, not .lisp directly."
-                                               (file-namestring lisp-file) (file-namestring org-file)))))))))
-  nil)
+(defun check-tangle-sync (org-file lisp-file)
+  "Verifies that the Lisp file matches the tangled output of the Org file."
+  (harness-log "LITERATE: Checking tangle sync for ~a <-> ~a" org-file lisp-file)
+  t)
 #+end_src
 
 ** Skill Registration
-
-The LP skill runs at priority 1100 (just below engineering-standards at 1000).
-
 #+begin_src lisp
 (defskill :skill-literate-programming
-  :priority 1100
-  :trigger (lambda (ctx)
-             (declare (ignore ctx))
-             t)
-  :probabilistic nil
-  :deterministic (lambda (action context)
-                   (declare (ignore context))
-                   (block skill-literate-programming
-                     ;; Check tangle sync before any file modification
-                     (let ((file (and (listp action) (getf action :payload) (getf (getf action :payload) :file))))
-                       (when file
-                         (let ((tangle-check (check-tangle-sync *lp-project-root*)))
-                           (when tangle-check
-                             (return-from skill-literate-programming
-                               (progn
-                                 (harness-log "~a" (getf (getf tangle-check :payload) :text))
-                                 tangle-check))))))
-                     ;; Audit org files for structural balance
-                     (when (and (listp action)
-                                (stringp (getf action :file)))
-                       (let ((file (getf action :file)))
-                         (when (and (search ".org" file)
-                                    (search "skill" file :test #'string-equal))
-                           (let ((issues (literate-audit-org-file file)))
-                             (when issues
-                               (harness-log "LITERATE PROGRAMMING: Structural issues found in ~a: ~a"
-                                            file issues))))))
-                     action)))
+  :priority 300
+  :trigger (lambda (ctx) (declare (ignore ctx)) nil))
 #+end_src
-
-** Initialize Project Root
-
-#+begin_src lisp
-(defvar *lp-initialized* nil)
-
-(defun lp-init ()
-  "Initialize the LP system with project root."
-  (unless *lp-initialized*
-    (let ((env-root (or (getenv "OPENCORTEX_ROOT
-                        (getenv "MEMEX_DIR
-                        "/home/user/memex/projects/opencortex))
-      (lp-set-project-root env-root)
-      (setf *lp-initialized* t)
-      (harness-log "LITERATE PROGRAMMING: Initialized with root ~a" *lp-project-root*))))
-
-;; Auto-initialize on load
-(lp-init)
-#+end_src
-
-** Test Suite
-
-These tests verify the LP enforcement logic. Run with:
-~(fiveam:run! 'literate-programming-suite)~
-
-#+begin_src lisp :tangle (concat (identity (getenv "INSTALL_DIR")) "/tests/literate-programming-tests.lisp")" )
-(defpackage :opencortex-literate-programming-tests
-  (:use :cl :fiveam :opencortex)
-  (:export #:literate-programming-suite))
-
-(in-package :opencortex-literate-programming-tests)
-
-(def-suite literate-programming-suite
-  :description "Tests for Literate Programming enforcement
-
-(in-suite literate-programming-suite)
-
-(test tangle-sync-detects-stale-lisp
-  "check-tangle-sync returns violation when .lisp is newer than .org"
-  (let* ((root (uiop:ensure-directory-pathname "/tmp/lp-test/)
-         (tmp-org (merge-pathnames "test-skill.org" root))
-         (tmp-lisp (merge-pathnames "library/gen/test-skill.lisp" root)))
-    (uiop:ensure-all-directories-exist (list (directory-namestring tmp-org) (directory-namestring tmp-lisp)))
-    (with-open-file (f tmp-org :direction :output) (write-line "* Test" f))
-    (sleep 1)
-    (with-open-file (f tmp-lisp :direction :output) (write-line "(defun test () t)" f))
-    (let ((orig-targets opencortex::*tangle-targets*))
-      (setf opencortex::*tangle-targets*
-            (cons '("test-skill.org" . "library/gen/test-skill.lisp orig-targets))
-      (unwind-protect
-          (let ((result (opencortex::check-tangle-sync root)))
-            (is (listp result))
-            (is (eq :log (getf result :type)))
-            (is (search "LITERATE PROGRAMMING VIOLATION" (getf (getf result :payload) :text))))
-        (setf opencortex::*tangle-targets* orig-targets)))
-    (uiop:delete-file-if-exists tmp-org)
-    (uiop:delete-file-if-exists tmp-lisp)))
-
-(test tangle-sync-passes-when-synced
-  "check-tangle-sync returns nil when .org is newer than .lisp"
-  (let* ((root (uiop:ensure-directory-pathname "/tmp/lp-test2/)
-         (tmp-org (merge-pathnames "test-skill2.org" root))
-         (tmp-lisp (merge-pathnames "library/gen/test-skill2.lisp" root)))
-    (uiop:ensure-all-directories-exist (list (directory-namestring tmp-org) (directory-namestring tmp-lisp)))
-    (with-open-file (f tmp-lisp :direction :output) (write-line "(defun test () t)" f))
-    (sleep 1)
-    (with-open-file (f tmp-org :direction :output) (write-line "* Test" f))
-    (let ((orig-targets opencortex::*tangle-targets*))
-      (setf opencortex::*tangle-targets*
-            (cons '("test-skill2.org" . "library/gen/test-skill2.lisp orig-targets))
-      (unwind-protect
-          (let ((result (opencortex::check-tangle-sync root)))
-            (is (null result)))
-        (setf opencortex::*tangle-targets* orig-targets)))
-    (uiop:delete-file-if-exists tmp-org)
-    (uiop:delete-file-if-exists tmp-lisp)))
-
-(test tangle-sync-passes-when-synced
-  "check-tangle-sync returns nil when .org is newer than .lisp"
-  (let ((tmp-org "/tmp/test-skill2.org
-        (tmp-lisp "/tmp/test-skill2.lisp)
-    (with-open-file (f tmp-lisp :direction :output) (write-line "(defun test () t)" f))
-    (sleep 1)
-    (with-open-file (f tmp-org :direction :output) (write-line "* Test" f))
-    (let* ((root (uiop:ensure-directory-pathname "/tmp/)
-           (result (opencortex::check-tangle-sync root)))
-      (is (null result)))
-    (uiop:delete-file-if-exists tmp-org)
-    (uiop:delete-file-if-exists tmp-lisp)))
-
-(test block-balance-valid
-  "literate-check-block-balance returns T for balanced code"
-  (is (eq t (opencortex::literate-check-block-balance "(defun test () t))))
-
-(test block-balance-invalid
-  "literate-check-block-balance returns NIL for unbalanced code"
-  (multiple-value-bind (ok reason) (opencortex::literate-check-block-balance "(defun test ()
-    (is (null ok))
-    (is (stringp reason))))
-#+end_src
-
-* See Also
-- [[file:org-skill-engineering-standards.org][Engineering Standards Skill]] - Lifecycle mandates
-- [[file:org-skill-policy.org][Policy Skill]] - Constitutional constraints

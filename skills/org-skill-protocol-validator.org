@@ -1,97 +1,34 @@
-#+PROPERTY: header-args:lisp :tangle (concat (identity (getenv "INSTALL_DIR")) "/skills/org-skill-protocol-validator.lisp")" )
-:PROPERTIES:
-:ID:       org-skill-communication-protocol-validator
-:CREATED:  [2026-04-12 Sun 14:35]
-:END:
-#+TITLE: SKILL: Communication Protocol Schema Validator (Universal Literate Note)
-#+STARTUP: content
-#+FILETAGS: :protocol:communication-protocol:security:validation:autonomy:
+#+TITLE: SKILL: Protocol Validator (org-skill-protocol-validator.org)
+#+AUTHOR: Agent
+#+FILETAGS: :system:protocol:validation:
+#+PROPERTY: header-args:lisp :tangle org-skill-protocol-validator.lisp
 
 * Overview
-The *Communication Protocol Schema Validator* skill provides deep structural validation for all messages entering the opencortex kernel. It ensures that every property list adheres to a strict schema, preventing malformed data from causing harness-level errors.
+The *Protocol Validator* skill enforces strict schema compliance for all internal and external communication.
 
-* Phase A: Demand (PRD)
-:PROPERTIES:
-:STATUS: SIGNED
-:END:
+* Implementation
 
-** 1. Purpose
-Enforce a formal grammar for the OpenCortex Control Protocol (communication protocol).
-
-** 2. User Needs
-- *Type Safety:* Ensure mandatory keys (e.g., `:type`, `:payload`) are present.
-- *Range Validation:* Check that enum values (e.g., `:REQUEST`, `:EVENT`) are valid.
-- *Structural Integrity:* Validate nested payloads based on the message type.
-
-** 3. Success Criteria
-- [ ] Block any message that does not contain a valid `:type`.
-- [ ] Block `:REQUEST` messages that lack a `:target`.
-- [ ] Block `:EVENT` messages that lack a `:payload` with an `:action` or `:sensor`.
-
-* Phase B: Blueprint (PROTOCOL)
-:PROPERTIES:
-:STATUS: SIGNED
-:END:
-
-** 1. Architectural Intent
-Decouple protocol parsing (framing/unframing) from semantic validation.
-
-** 2. Semantic Interfaces
-
-#+begin_src lisp
-(defun validate-communication-protocol-schema (msg)
-  "Returns T if the message is valid, NIL (and signals error) otherwise.
-#+end_src
-
-* Phase D: Build (Implementation)
-
-** Schema Enforcement
+** Package Context
 #+begin_src lisp
 (in-package :opencortex)
-
-(defun validate-communication-protocol-schema (msg)
-  "Strict structural validation for incoming communication protocol messages."
-  (unless (listp msg)
-    (error "Communication Protocol Schema Error: Message must be a property list (got ~s)" (type-of msg)))
-  
-  (let ((type (let ((raw (proto-get msg :type))) (if (keywordp raw) (intern (string-upcase (string raw)) :keyword) raw))))
-    (unless (member type '(:REQUEST :EVENT :RESPONSE :LOG :STATUS :CHAT))
-      (progn (harness-log "REJECTED MSG: ~s" msg) (error "Communication Protocol Schema Error: Invalid message type '~a'" type)))
-    
-    (case type
-      (:REQUEST 
-       ;; Allow missing :target if :source is present in :meta, since reason-gate
-       ;; will infer :target from :source downstream. This preserves "equality of
-       ;; clients" — gateways need not duplicate routing logic.
-       (let ((target (proto-get msg :target))
-             (source (proto-get (proto-get msg :meta) :source)))
-         (unless (or target source)
-           (error "Communication Protocol Schema Error: REQUEST missing mandatory :target and no :source in :meta to infer it)
-         (unless (proto-get msg :payload)
-           (error "Communication Protocol Schema Error: REQUEST missing mandatory :payload)))
-      
-      (:EVENT
-       (let ((payload (proto-get msg :payload)))
-         (unless (and payload (listp payload))
-           (error "Communication Protocol Schema Error: EVENT missing or invalid :payload)
-         (unless (or (proto-get payload :action) (proto-get payload :sensor))
-           (error "Communication Protocol Schema Error: EVENT payload must contain :action or :sensor)))
-      
-      (:RESPONSE
-       (unless (proto-get msg :payload)
-         (error "Communication Protocol Schema Error: RESPONSE missing mandatory :payload)))
-    
-    t))
 #+end_src
 
-* Registration
+** Validation Logic
 #+begin_src lisp
-(defskill :skill-communication-protocol-validator
+(defun protocol-validate (msg)
+  "Enforces structural schema compliance on protocol messages."
+  (validate-communication-protocol-schema msg))
+#+end_src
+
+** Skill Registration
+#+begin_src lisp
+(defskill :skill-protocol-validator
   :priority 95
-  :trigger (lambda (ctx) (member (getf (getf ctx :payload) :sensor) '(:protocol-received)))
-  :probabilistic nil
+  :trigger (lambda (ctx) (declare (ignore ctx)) t)
   :deterministic (lambda (action ctx)
-              (declare (ignore ctx))
-              (validate-communication-protocol-schema action)
-              action))
+                   (declare (ignore ctx))
+                   (handler-case
+                       (progn (protocol-validate action) action)
+                     (error (c)
+                       (list :type :LOG :payload (list :level :error :text (format nil "Protocol Violation: ~a" c)))))))
 #+end_src

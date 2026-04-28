@@ -1,65 +1,42 @@
-#+PROPERTY: header-args:lisp :tangle (concat (identity (getenv "INSTALL_DIR")) "/skills/org-skill-llama-backend.lisp")" )
-:PROPERTIES:
-:ID:       llama-backend-skill
-:CREATED:  [2026-04-17 Fri 20:00]
-:END:
-#+TITLE: SKILL: Llama.cpp Neuro-Backend (Sovereign Inference)
-#+STARTUP: content
-#+FILETAGS: :llm:backend:llama:sovereignty:
+#+TITLE: SKILL: Llama Backend (org-skill-llama-backend.org)
+#+AUTHOR: Agent
+#+FILETAGS: :skill:llm:backend:ollama:
+#+PROPERTY: header-args:lisp :tangle org-skill-llama-backend.lisp
 
 * Overview
-The *Llama.cpp Backend* allows the OpenCortex to use local, air-gapped inference. It connects to a `llama.cpp` server (typically running on the local network) and registers itself as a provider in the kernel's probabilistic cascade.
+The *Llama Backend* skill provides the actual implementation for calling local models via Ollama.
 
-* Phase B: Blueprint (PROTOCOL)
-** 1. Architectural Intent
-This skill acts as a proxy between the OpenCortex kernel and the Lisp-agnostic `llama.cpp` REST API. It implements the standard backend signature required by `register-probabilistic-backend`.
-
-** 2. Semantic Interfaces
-- Endpoint: `(getenv "LLAMACPP_ENDPOINT` (e.g., "http://10.10.10.x:8080
-- Method: `POST /completion`
-- Response: JSON (parsed into Lisp)
-
-* Phase D: Build (Implementation)
+* Implementation
 
 ** Package Context
 #+begin_src lisp
 (in-package :opencortex)
 #+end_src
 
-** The Inference Engine (llama-inference)
+** Ollama API Call (ollama-call)
 #+begin_src lisp
-(defun llama-inference (prompt system-prompt &key (model "local-model)
-  "Sends a completion request to the local llama.cpp server."
-  (let ((endpoint (getenv "LLAMACPP_ENDPOINT))
-    (unless endpoint
-      (harness-log "LLAMA ERROR: LLAMACPP_ENDPOINT not set in environment.
-      (return-from llama-inference (list :error "LLAMACPP_ENDPOINT_MISSING))
-
+(defun ollama-call (prompt system-prompt &key (model "llama3"))
+  "Sends a request to the local Ollama API."
+  (let* ((host (or (uiop:getenv "OLLAMA_HOST") "localhost:11434"))
+         (url (format nil "http://~a/api/generate" host))
+         (payload (cl-json:encode-json-to-string 
+                   `((model . ,model)
+                     (prompt . ,prompt)
+                     (system . ,system-prompt)
+                     (stream . nil)))))
     (handler-case
-        (let* ((full-prompt (format nil "System: ~a~%User: ~a~%Assistant:" system-prompt prompt))
-               (payload (cl-json:encode-json-to-string 
-                         `((:prompt . ,full-prompt)
-                           (:n_predict . 1024)
-                           (:stop . ("User:" "System:))))
-               (response (dex:post (format nil "~a/completion" endpoint)
-                                   :content payload
-                                   :headers '(("Content-Type" . "application/json)))
-               (data (cl-json:decode-json-from-string response)))
-          (cdr (assoc :content data)))
+        (let ((response (dex:post url :content payload :headers '(("Content-Type" . "application/json")))))
+          (let ((data (cl-json:decode-json-from-string response)))
+            (list :status :success :content (getf data :response))))
       (error (c)
-        (harness-log "LLAMA ERROR: Connection failed -> ~a" c)
-        (list :error (format nil "~a" c))))))
+        (list :status :error :message (format nil "Ollama Failure: ~a" c))))))
 #+end_src
 
-** Registration
+** Skill Registration
 #+begin_src lisp
-(progn
-  (register-probabilistic-backend :llama #'llama-inference)
-  (harness-log "LLAMA: Local backend registered and active.)
+(register-probabilistic-backend :ollama #'ollama-call)
 
 (defskill :skill-llama-backend
   :priority 50
-  :trigger (lambda (ctx) (declare (ignore ctx)) nil) ; Pure infrastructure skill
-  :probabilistic nil
-  :deterministic (lambda (action ctx) (declare (ignore ctx)) action))
+  :trigger (lambda (ctx) (declare (ignore ctx)) nil))
 #+end_src
