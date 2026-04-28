@@ -1,50 +1,20 @@
-#+PROPERTY: header-args:lisp :tangle (concat (identity (getenv "INSTALL_DIR")) "/harness/context.lisp")" )
-#+TITLE: Peripheral Vision (context.lisp)
-#+AUTHOR: Amr
+#+TITLE: Context API (context.lisp)
+#+AUTHOR: Agent
 #+FILETAGS: :harness:context:
 #+STARTUP: content
+#+PROPERTY: header-args:lisp :tangle context.lisp
 
-* Peripheral Vision (context.lisp)
-** Architectural Intent: Context Optimization & The Foveal-Peripheral Hybrid
+* Overview
+The *Context API* (Peripheral Vision) provides the opencortex with the ability to selectively prune and present its memory to the LLM. It implements a **Foveal-Peripheral model**, where the current task is shown in high detail (foveal), while the broader Memex structure is shown as a skeletal outline (peripheral).
 
-A common failure mode for Large Language Models (LLMs) is the "Lost in the Middle" phenomenon, where the model's reasoning accuracy degrades as its context window becomes saturated with irrelevant data. Naive approaches to context management—such as simple character-count truncation or sliding windows—often sever the structural relationships that define an Org-mode Memex.
-
-The ~opencortex~ harness implements a deterministic, tree-aware solution: the **Foveal-Peripheral Hybrid Model**.
-
-*** 1. The Foveal Focus (High Resolution)
-When the harness prepares a prompt for the Probabilistic Engine, it identifies a "Foveal Focus"—typically the specific Org headline or task the user is currently interacting with. This node, along with its immediate children and semantically relevant neighbors, is rendered at "High Resolution," meaning its full body text, properties, and metadata are included in the prompt.
-
-*** 2. The Peripheral Vision (Low Resolution)
-To maintain global awareness without bloating the context window, the rest of the Memex is rendered at "Low Resolution." The harness recursively walks the Memory and generates a skeletal outline consisting only of titles and IDs. This gives the LLM a "mental map" of the entire system, allowing it to reference other projects or skills without needing to see their full content until they are explicitly brought into focus.
-
-*** 3. Deterministic Tree-Walking
-By leveraging Common Lisp's strengths in recursive tree manipulation, the harness can surgically prune the AST before it ever reaches the LLM. This ensures that the structural hierarchy of the Memex is preserved perfectly, even when the content is compressed.
-
-** The Context Pipeline
-#+begin_src mermaid
-flowchart TD
-    Store[(Memory)] --> Filter[Context Query Filter]
-    Filter --> Identification{Identify Foveal ID}
-    Identification --> Foveal[Render Focus: Full Content]
-    Identification --> Peripheral[Render Outline: Titles Only]
-    Foveal --> Assembly[Assemble Global Awareness String]
-    Peripheral --> Assembly
-    Assembly --> LLM[Probabilistic Engine Proposal]
-#+end_src
-
-* Context Assembly (context.lisp)
-The ~context.lisp~ module provides the deterministic functional layer for querying the Memory and transforming its internal pointers into the precise context strings required for neural reasoning.
+* Implementation
 
 ** Package Context
-We begin by ensuring we are executing within the correct isolated package namespace.
-
 #+begin_src lisp
 (in-package :opencortex)
 #+end_src
 
-** Querying the Store (context-query-store)
-A generalized filter for the Memory. This function allows skills to perform high-level semantic sweeps of the Memex based on tags, TODO states, or Org element types. It returns a list of ~org-object~ structures.
-
+** Memory Query (context-query-store)
 #+begin_src lisp
 (defun context-query-store (&key tag todo-state type)
   "Filters the Memory based on tags, todo states, or types."
@@ -61,18 +31,14 @@ A generalized filter for the Memory. This function allows skills to perform high
 #+end_src
 
 ** Active Projects (context-get-active-projects)
-Identifies headlines tagged with ~project~ that have not yet reached a terminal ~DONE~ state. This provides the primary high-level structure for the agent's global awareness.
-
 #+begin_src lisp
 (defun context-get-active-projects ()
   "Returns headlines tagged as 'project' that are not yet marked DONE."
-  (remove-if (lambda (obj) (equal (getf (org-object-attributes obj) :TODO-STATE) "DONE)
+  (remove-if (lambda (obj) (equal (getf (org-object-attributes obj) :TODO-STATE) "DONE"))
              (context-query-store :tag "project" :type :HEADLINE)))
 #+end_src
 
 ** Completed Tasks (context-get-recent-completed-tasks)
-Retrieves a list of tasks that have reached the terminal ~DONE~ state. This is useful for providing the agent with historical context or for generating summaries of recent work.
-
 #+begin_src lisp
 (defun context-get-recent-completed-tasks () 
   "Retrieves recently finished tasks from the store."
@@ -80,8 +46,6 @@ Retrieves a list of tasks that have reached the terminal ~DONE~ state. This is u
 #+end_src
 
 ** Capability Discovery (context-list-all-skills)
-Provides a sorted list of all currently loaded skills. In a "Self-Writing" environment, the agent must be able to discover and understand its own capabilities. This function provides the metadata necessary for the agent to decide which skill to trigger or how to resolve dependencies.
-
 #+begin_src lisp
 (defun context-list-all-skills ()
   "Provides a sorted overview of currently loaded system capabilities."
@@ -94,8 +58,6 @@ Provides a sorted list of all currently loaded skills. In a "Self-Writing" envir
 #+end_src
 
 ** Skill Inspection (context-get-skill-source)
-Reads the raw literate Org source of a specific skill. This is a foundational capability for an agent expected to eventually "self-write" or perform its own maintenance. By reading the literate source, the agent can understand the *intent* behind a skill's logic before proposing a modification. We use the `SKILLS_DIR` environment variable to locate the source files.
-
 #+begin_src lisp
 (defun context-get-skill-source (skill-name)
   "Reads the raw literate source of a specific skill for inspection."
@@ -107,8 +69,6 @@ Reads the raw literate Org source of a specific skill. This is a foundational ca
 #+end_src
 
 ** Harness Logs (context-get-system-logs)
-Retrieves the most recent entries from the harness's internal circular log buffer. This allows the Probabilistic Engine to see recent errors or successful dispatches, enabling it to course-correct or explain failures to the user. The log limit is externalized to `CONTEXT_LOG_LIMIT`.
-
 #+begin_src lisp
 (defun context-get-system-logs (&optional limit)
   "Retrieves the most recent lines from the harness's internal log."
@@ -119,52 +79,36 @@ Retrieves the most recent entries from the harness's internal circular log buffe
 #+end_src
 
 ** AST to Org Rendering (context-render-to-org)
-This is the core engine of the Foveal-Peripheral model. It recursively transforms the internal ~org-object~ graph back into an Org-mode string. 
-
-It implements the following deterministic logic:
-1.  **Depth 1 & 2:** Always rendered (High-level mental map).
-2.  **Foveal Node:** Rendered with full body content.
-3.  **Semantic Neighbors:** Rendered with full content if their similarity score exceeds the threshold.
-4.  **Peripheral Nodes:** Rendered as skeletal headlines (titles and IDs only).
-
-The semantic threshold is externalized to `CONTEXT_SEMANTIC_THRESHOLD`.
-
 #+begin_src lisp
 (defun context-render-to-org (obj &key (depth 1) (foveal-id nil) semantic-threshold (foveal-vector nil))
   "Recursively renders an org-object and its children to an Org string using a Foveal-Peripheral Hybrid model."
   (let* ((id (org-object-id obj))
          (is-foveal (equal id foveal-id))
-         (title (or (getf (org-object-attributes obj) :TITLE) "Untitled)
+         (title (or (getf (org-object-attributes obj) :TITLE) "Untitled"))
          (content (org-object-content obj))
          (children (org-object-children obj))
          (stars (make-string depth :initial-element #\*))
          (obj-vector (org-object-vector obj))
-         (threshold (or semantic-threshold (ignore-errors (read-from-string (getenv "CONTEXT_SEMANTIC_THRESHOLD)) 0.75))
+         (threshold (or semantic-threshold (ignore-errors (read-from-string (uiop:getenv "CONTEXT_SEMANTIC_THRESHOLD"))) 0.75))
          (similarity (if (and foveal-vector obj-vector (not is-foveal))
                          (cosine-similarity foveal-vector obj-vector)
                          0.0))
          (is-semantically-relevant (>= similarity threshold))
-         ;; We always render depth 1 and 2 (Projects and main tasks).
-         ;; We always render the foveal node and its immediate children.
-         ;; We render deeper nodes ONLY if they are semantically relevant.
          (should-render (or (<= depth 2) is-foveal is-semantically-relevant))
-         (output 
+         (output ""))
     
     (when should-render
       (setf output (format nil "~a ~a~%:PROPERTIES:~%:ID: ~a~%" stars title id))
       (when is-semantically-relevant
         (setf output (concatenate 'string output (format nil ":SEMANTIC_SCORE: ~,2f~%" similarity))))
-      (setf output (concatenate 'string output (format nil ":END:~%))
+      (setf output (concatenate 'string output (format nil ":END:~%")))
       
-      ;; Only include full body content if this is the Foveal focus or highly relevant
       (when (and content (or is-foveal is-semantically-relevant))
         (setf output (concatenate 'string output content (string #\Newline))))
       
-      ;; Recursively render children
       (dolist (child-id children)
         (let ((child-obj (lookup-object child-id)))
           (when child-obj
-            ;; If the current node is Foveal, its children should be rendered (depth effectively resets)
             (let ((next-foveal (if is-foveal child-id foveal-id)))
               (setf output (concatenate 'string output 
                                         (context-render-to-org child-obj 
@@ -176,8 +120,6 @@ The semantic threshold is externalized to `CONTEXT_SEMANTIC_THRESHOLD`.
 #+end_src
 
 ** Path Resolution (context-resolve-path)
-A utility function that expands environment variables (like ~$HOME~ or ~$MEMEX_ROOT~) within path strings. This ensures that the agent can interact with files across different machine configurations without hardcoding absolute paths. This version is more robust, supporting multiple environment variables throughout the string.
-
 #+begin_src lisp
 (defun context-resolve-path (path-string)
   "Expands environment variables and strips literal quotes from a path string."
@@ -187,7 +129,7 @@ A utility function that expands environment variables (like ~$HOME~ or ~$MEMEX_R
     (if (and (stringp path) (search "$" path))
         (let ((result path))
           (ppcre:do-register-groups (var-name) ("\\$([A-Za-z0-9_]+)" path)
-            (let ((var-val (getenv var-name)))
+            (let ((var-val (uiop:getenv var-name)))
               (when var-val
                 (setf result (ppcre:regex-replace (format nil "\\$~a" var-name) result var-val)))))
           result)
@@ -195,68 +137,51 @@ A utility function that expands environment variables (like ~$HOME~ or ~$MEMEX_R
 #+end_src
 
 ** Global Awareness (context-assemble-global-awareness)
-The primary entry point for context generation. This function identifies active projects and the current user focus (captured during the Perceive stage), then invokes the recursive renderer to assemble the pruned Org-mode skeletal outline sent to the LLM.
-
 #+begin_src lisp
 (defun context-assemble-global-awareness (&optional signal)
   "Produces a high-level skeletal outline of the current Memory for the LLM."
   (let* ((foveal-id (or (getf signal :foveal-focus) 
                         (ignore-errors (getf (getf signal :payload) :target-id))))
          (projects (context-get-active-projects))
-         (output "GLOBAL MEMEX AWARENESS (Peripheral Vision):
-)
+         (output (format nil "GLOBAL MEMEX AWARENESS (Peripheral Vision):~%")))
     (if projects
         (dolist (project projects)
           (setf output (concatenate 'string output
                                     (context-render-to-org project :foveal-id foveal-id))))
-        (setf output (concatenate 'string output "No active projects found.~%))
+        (setf output (concatenate 'string output "No active projects found.~%")))
     output))
 #+end_src
 
-* Phase E: Chaos (Verification)
-Following the Engineering Standards, the peripheral vision extraction and rendering logic must be empirically verified. 
+* Test Suite
 
-** Test Suite Context
-#+begin_src lisp :tangle peripheral-vision-tests.lisp" (concat (concat (or (getenv "INSTALL_DIR ". "/harness "/tests)
+#+begin_src lisp :tangle tests/peripheral-vision-tests.lisp
 (defpackage :opencortex-peripheral-vision-tests
   (:use :cl :fiveam :opencortex)
   (:export #:vision-suite))
 (in-package :opencortex-peripheral-vision-tests)
 
-(def-suite vision-suite
-  :description "Verification of Foveal-Peripheral context model.
+(def-suite vision-suite :description "Verification of Foveal-Peripheral context model.")
 (in-suite vision-suite)
-#+end_src
 
-** Foveal Rendering Test
-Verify that the foveal target is rendered with content, while siblings are skeletal.
-
-#+begin_src lisp :tangle peripheral-vision-tests.lisp" (concat (concat (or (getenv "INSTALL_DIR ". "/harness "/tests)
 (test test-foveal-rendering
   "Verify that the foveal target is rendered with content, while siblings are skeletal."
   (clrhash opencortex::*memory*)
-  (let* ((ast '(:type :HEADLINE :properties (:ID "proj-root" :TITLE "Project" :TAGS "project
-                :contents ((:type :HEADLINE :properties (:ID "node-foveal" :TITLE "Foveal Node
+  (let* ((ast '(:type :HEADLINE :properties (:ID "proj-root" :TITLE "Project" :TAGS "project")
+                :contents ((:type :HEADLINE :properties (:ID "node-foveal" :TITLE "Foveal Node")
                             :raw-content "FOVEAL CONTENT" :contents nil)
-                           (:type :HEADLINE :properties (:ID "node-peripheral" :TITLE "Peripheral Node
+                           (:type :HEADLINE :properties (:ID "node-peripheral" :TITLE "Peripheral Node")
                             :raw-content "PERIPHERAL CONTENT" :contents nil)))))
     (ingest-ast ast)
-    ;; Test both foveal focus in signal top-level and in payload (legacy)
-    (let ((output (context-assemble-global-awareness (list :foveal-focus "node-foveal)))
+    (let ((output (context-assemble-global-awareness (list :foveal-focus "node-foveal"))))
       (is (search "FOVEAL CONTENT" output))
       (is (search "* Peripheral Node" output))
       (is (not (search "PERIPHERAL CONTENT" output))))))
-#+end_src
 
-** Awareness Budget Test
-Verify that context-assemble-global-awareness handles multiple projects correctly.
-
-#+begin_src lisp :tangle peripheral-vision-tests.lisp" (concat (concat (or (getenv "INSTALL_DIR ". "/harness "/tests)
 (test test-awareness-budget
   "Verify that context-assemble-global-awareness handles multiple projects."
   (clrhash opencortex::*memory*)
-  (ingest-ast '(:type :HEADLINE :properties (:ID "p1" :TITLE "Project 1" :TAGS "project :contents nil))
-  (ingest-ast '(:type :HEADLINE :properties (:ID "p2" :TITLE "Project 2" :TAGS "project :contents nil))
+  (ingest-ast '(:type :HEADLINE :properties (:ID "p1" :TITLE "Project 1" :TAGS "project") :contents nil))
+  (ingest-ast '(:type :HEADLINE :properties (:ID "p2" :TITLE "Project 2" :TAGS "project") :contents nil))
   (let ((output (context-assemble-global-awareness)))
     (is (search "Project 1" output))
     (is (search "Project 2" output))))
