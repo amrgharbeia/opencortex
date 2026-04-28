@@ -145,17 +145,9 @@ The ~package.lisp~ file defines the public API of the ~opencortex~ harness.
    #:lisp-utils-register
 
    ;; --- Config Manager & Diagnostics Skill ---
-   #:register-provider
-   #:save-providers
-   #:configure-provider
-   #:run-setup-wizard
    #:get-oc-config-dir
    #:prompt-for
    #:save-secret
-   #:doctor-check-dependencies
-   #:doctor-check-xdg
-   #:doctor-check-llm
-   #:doctor-run-all
 
    ;; --- Tool Permissions Skill ---
    #:get-tool-permission
