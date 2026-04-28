@@ -157,9 +157,8 @@ flowchart LR
               (when end
                 (let ((line (string-trim " " (subseq content (+ pos 13) end))))
                   (dolist (d (uiop:split-string line :separator '(#\Space #\Tab)))
-                    (unless (string= d "
-                      (push d dependencies))))
-                (setf pos end)))))
+                    (unless (string= d "")
+                      (push d dependencies))))                (setf pos end)))))
     (values id (reverse dependencies))))
 #+end_src
 
@@ -357,11 +356,11 @@ Only loads blocks that specify a .lisp tangle target, ignoring tests and example
       (return-from initialize-all-skills nil))
 
     (let ((sorted-files (topological-sort-skills skills-dir)))
-      (let* ((mandatory-env (uiop:getenv "MANDATORY_SKILLS)
+      (let* ((mandatory-env (uiop:getenv "MANDATORY_SKILLS"))
              (mandatory-skills (if mandatory-env 
                                    (mapcar (lambda (s) (string-trim '(#\Space #\" #\') s)) 
                                            (uiop:split-string mandatory-env :separator '( #\,)))
-                                   '("org-skill-policy" "org-skill-bouncer)))
+                                   '("org-skill-policy" "org-skill-bouncer"))))
         (dolist (req mandatory-skills)
           (unless (member req sorted-files :key #'pathname-name :test #'string-equal)
             (error "BOOT FAILURE: Mandatory skill '~a' not found in skills directory: ~a" req (uiop:native-namestring skills-dir))))
@@ -614,12 +613,12 @@ EXAMPLES:
 
 (test test-topological-sort-basic
   "Verify that skills are ordered by dependency."
-  (let ((tmp-dir "/tmp/opencortex-boot-test/)
+  (let ((tmp-dir "/tmp/opencortex-boot-test/"))
     (uiop:ensure-all-directories-exist (list tmp-dir))
     (with-open-file (out (merge-pathnames "org-skill-a.org" tmp-dir) :direction :output :if-exists :supersede)
-      (format out "#+DEPENDS_ON: skill-b-id~%)
+      (format out "#+DEPENDS_ON: skill-b-id~%"))
     (with-open-file (out (merge-pathnames "org-skill-b.org" tmp-dir) :direction :output :if-exists :supersede)
-      (format out ":PROPERTIES:~%:ID: skill-b-id~%:END:~%)
+      (format out ":PROPERTIES:~%:ID: skill-b-id~%:END:~%"))
     (unwind-protect
          (let ((sorted (opencortex::topological-sort-skills tmp-dir)))
            (let ((pos-a (position "org-skill-a" sorted :key #'pathname-name :test #'string-equal))
