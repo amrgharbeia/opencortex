@@ -3,7 +3,7 @@
 #+AUTHOR: Agent
 #+FILETAGS: :harness:reason:
 #+STARTUP: content
-#+PROPERTY: header-args:lisp :tangle package.lisp
+#+PROPERTY: header-args:lisp :tangle reason.lisp
 
 * Overview
 The Reason stage implements the core Innovation of OpenCortex: the separation of probabilistic reasoning (neural/LLM) from deterministic verification (logic/safety).
@@ -176,7 +176,7 @@ The Reason stage implements the core Innovation of OpenCortex: the separation of
 #+end_src
 
 * Test Suite
-#+begin_src lisp :tangle package.lisp
+#+begin_src lisp :tangle reason.lisp
 (defpackage :opencortex-pipeline-reason-tests
   (:use :cl :fiveam :opencortex)
   (:export #:pipeline-reason-suite))

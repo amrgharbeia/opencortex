@@ -1,5 +1,5 @@
 #+PROPERTY: header-args:lisp :tangle memory.lisp
-#+PROPERTY: header-args:lisp :tangle package.lisp
+#+PROPERTY: header-args:lisp :tangle memory.lisp
 #+TITLE: The System Memory (memory.lisp)
 #+AUTHOR: Amr
 #+FILETAGS: :harness:memory:
@@ -294,7 +294,7 @@ Utility functions for AST traversal and path resolution.
 
 * Test Suite
 
-#+begin_src lisp :tangle package.lisp
+#+begin_src lisp :tangle memory.lisp
 (defpackage :opencortex-memory-tests
   (:use :cl :fiveam :opencortex)
   (:export #:memory-suite))

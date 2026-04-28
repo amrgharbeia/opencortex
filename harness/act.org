@@ -3,7 +3,7 @@
 #+AUTHOR: Agent
 #+FILETAGS: :harness:act:
 #+STARTUP: content
-#+PROPERTY: header-args:lisp :tangle package.lisp
+#+PROPERTY: header-args:lisp :tangle act.lisp
 
 * Overview
 The Act stage is where cognition meets reality. After the Probabilistic engine proposes and the Deterministic engine verifies, Act executes the approved action.
@@ -166,7 +166,7 @@ The Act stage is where cognition meets reality. After the Probabilistic engine p
 #+end_src
 
 * Test Suite
-#+begin_src lisp :tangle package.lisp
+#+begin_src lisp :tangle act.lisp
 (defpackage :opencortex-pipeline-act-tests
   (:use :cl :fiveam :opencortex)
   (:export #:pipeline-act-suite))

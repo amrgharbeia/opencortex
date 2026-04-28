@@ -3,7 +3,7 @@
 #+AUTHOR: Agent
 #+FILETAGS: :harness:protocol:
 #+STARTUP: content
-#+PROPERTY: header-args:lisp :tangle package.lisp
+#+PROPERTY: header-args:lisp :tangle communication.lisp
 
 * Overview
 The ~communication.lisp~ module defines the low-level transport and framing logic for OpenCortex stimuli.
@@ -79,7 +79,7 @@ The ~communication.lisp~ module defines the low-level transport and framing logi
 #+end_src
 
 ** Structural Validation
-#+begin_src lisp :tangle package.lisp
+#+begin_src lisp :tangle communication.lisp
 (in-package :opencortex)
 
 (defun validate-communication-protocol-schema (msg)
@@ -92,7 +92,7 @@ The ~communication.lisp~ module defines the low-level transport and framing logi
 #+end_src
 
 * Test Suite
-#+begin_src lisp :tangle package.lisp
+#+begin_src lisp :tangle communication.lisp
 (defpackage :opencortex-communication-tests
   (:use :cl :fiveam :opencortex)
   (:export #:communication-protocol-suite))

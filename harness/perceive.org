@@ -3,7 +3,7 @@
 #+AUTHOR: Agent
 #+FILETAGS: :harness:perceive:
 #+STARTUP: content
-#+PROPERTY: header-args:lisp :tangle package.lisp
+#+PROPERTY: header-args:lisp :tangle perceive.lisp
 
 * Overview
 The Perceive stage is the "sensory cortex" of OpenCortex. Its job is to take raw stimuli from the outside world and transform them into standardized Signals that the rest of the pipeline can process.
@@ -148,7 +148,7 @@ The Perceive stage is the "sensory cortex" of OpenCortex. Its job is to take raw
 
 * Test Suite
 
-#+begin_src lisp :tangle package.lisp
+#+begin_src lisp :tangle perceive.lisp
 (defpackage :opencortex-pipeline-perceive-tests
   (:use :cl :fiveam :opencortex)
   (:export #:pipeline-perceive-suite))

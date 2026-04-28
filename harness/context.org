@@ -3,7 +3,7 @@
 #+AUTHOR: Agent
 #+FILETAGS: :harness:context:
 #+STARTUP: content
-#+PROPERTY: header-args:lisp :tangle package.lisp
+#+PROPERTY: header-args:lisp :tangle context.lisp
 
 * Overview
 The *Context API* (Peripheral Vision) provides the opencortex with the ability to selectively prune and present its memory to the LLM. It implements a **Foveal-Peripheral model**, where the current task is shown in high detail (foveal), while the broader Memex structure is shown as a skeletal outline (peripheral).
@@ -155,7 +155,7 @@ The *Context API* (Peripheral Vision) provides the opencortex with the ability t
 
 * Test Suite
 
-#+begin_src lisp :tangle package.lisp
+#+begin_src lisp :tangle context.lisp
 (defpackage :opencortex-peripheral-vision-tests
   (:use :cl :fiveam :opencortex)
   (:export #:vision-suite))

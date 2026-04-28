@@ -3,7 +3,7 @@
 #+AUTHOR: Agent
 #+FILETAGS: :harness:loop:
 #+STARTUP: content
-#+PROPERTY: header-args:lisp :tangle package.lisp
+#+PROPERTY: header-args:lisp :tangle loop.lisp
 
 * Overview
 The Metabolic Loop is the fundamental rhythm of OpenCortex: the continuous processing of signals from perception through cognition to action.
@@ -129,7 +129,7 @@ The Metabolic Loop is the fundamental rhythm of OpenCortex: the continuous proce
 #+end_src
 
 * Test Suite
-#+begin_src lisp :tangle package.lisp
+#+begin_src lisp :tangle loop.lisp
 (defpackage :opencortex-immune-system-tests
   (:use :cl :fiveam :opencortex)
   (:export #:immune-suite))
