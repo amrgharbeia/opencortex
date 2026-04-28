@@ -66,18 +66,18 @@ Common Lisp's `uiop:getenv` is strictly typed in SBCL. The Doctor must ensure th
 * Phase C: Implementation (Build)
 
 ** Package Context
-#+begin_src lisp :tangle (expand-file-name "doctor.lisp" (concat (or (identity (getenv "INSTALL_DIR")) ".") "/harness"))
+#+begin_src lisp :tangle (expand-file-name "doctor.lisp" (or (identity (getenv "INSTALL_DIR")) (file-name-directory (buffer-file-name))))
 (in-package :opencortex)
 #+end_src
 
 ** Global Configuration
-#+begin_src lisp :tangle (expand-file-name "doctor.lisp" (concat (or (identity (getenv "INSTALL_DIR")) ".") "/harness"))
+#+begin_src lisp :tangle (expand-file-name "doctor.lisp" (or (identity (getenv "INSTALL_DIR")) (file-name-directory (buffer-file-name))))
 (defvar *doctor-required-binaries* '("sbcl" "emacs" "git" "socat" "nc")
   "List of external binaries required for full system operation.")
 #+end_src
 
 ** Dependency Verification
-#+begin_src lisp :tangle (expand-file-name "doctor.lisp" (concat (or (identity (getenv "INSTALL_DIR")) ".") "/harness"))
+#+begin_src lisp :tangle (expand-file-name "doctor.lisp" (or (identity (getenv "INSTALL_DIR")) (file-name-directory (buffer-file-name))))
 (defun doctor-check-dependencies ()
   "Verifies that required external binaries are available in the PATH via a shell probe."
   (let ((all-ok t))
@@ -95,7 +95,7 @@ Common Lisp's `uiop:getenv` is strictly typed in SBCL. The Doctor must ensure th
 #+end_src
 
 ** Environment & XDG Validation
-#+begin_src lisp :tangle (expand-file-name "doctor.lisp" (concat (or (identity (getenv "INSTALL_DIR")) ".") "/harness"))
+#+begin_src lisp :tangle (expand-file-name "doctor.lisp" (or (identity (getenv "INSTALL_DIR")) (file-name-directory (buffer-file-name))))
 (defun doctor-check-env ()
   "Validates XDG directories and environment configuration against the POSIX standard."
   (harness-log "DOCTOR: Checking XDG environment...")
@@ -124,7 +124,7 @@ Common Lisp's `uiop:getenv` is strictly typed in SBCL. The Doctor must ensure th
 #+end_src
 
 ** LLM Connectivity
-#+begin_src lisp :tangle (expand-file-name "doctor.lisp" (concat (or (identity (getenv "INSTALL_DIR")) ".") "/harness"))
+#+begin_src lisp :tangle (expand-file-name "doctor.lisp" (or (identity (getenv "INSTALL_DIR")) (file-name-directory (buffer-file-name))))
 (defun doctor-check-llm ()
   "Tests connectivity to primary LLM providers. Non-critical fallback allowed."
   (harness-log "DOCTOR: Checking LLM connectivity...")
@@ -139,7 +139,7 @@ Common Lisp's `uiop:getenv` is strictly typed in SBCL. The Doctor must ensure th
 #+end_src
 
 ** Orchestration
-#+begin_src lisp :tangle (expand-file-name "doctor.lisp" (concat (or (identity (getenv "INSTALL_DIR")) ".") "/harness"))
+#+begin_src lisp :tangle (expand-file-name "doctor.lisp" (or (identity (getenv "INSTALL_DIR")) (file-name-directory (buffer-file-name))))
 (defun doctor-run-all ()
   "Executes the full diagnostic suite and returns T if system is healthy."
   (harness-log "==================================================")
@@ -159,7 +159,7 @@ Common Lisp's `uiop:getenv` is strictly typed in SBCL. The Doctor must ensure th
 #+end_src
 
 ** CLI Entry Point
-#+begin_src lisp :tangle (expand-file-name "doctor.lisp" (concat (or (identity (getenv "INSTALL_DIR")) ".") "/harness"))
+#+begin_src lisp :tangle (expand-file-name "doctor.lisp" (or (identity (getenv "INSTALL_DIR")) (file-name-directory (buffer-file-name))))
 (defun doctor-main ()
   "Entry point for the 'doctor' CLI command."
   (if (doctor-run-all)

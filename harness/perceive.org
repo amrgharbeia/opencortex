@@ -1,4 +1,4 @@
-#+PROPERTY: header-args:lisp :tangle (expand-file-name "perceive.lisp" (concat (or (identity (getenv "INSTALL_DIR")) ".") "/harness"))
+#+PROPERTY: header-args:lisp :tangle (expand-file-name "perceive.lisp" (or (identity (getenv "INSTALL_DIR")) (file-name-directory (buffer-file-name))))
 #+TITLE: Stage 1: Perceive (perceive.lisp)
 #+AUTHOR: Amr
 #+FILETAGS: :harness:perceive:

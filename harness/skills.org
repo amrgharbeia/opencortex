@@ -1,4 +1,4 @@
-#+PROPERTY: header-args:lisp :tangle (expand-file-name "skills.lisp" (concat (or (identity (getenv "INSTALL_DIR")) ".") "/harness"))
+#+PROPERTY: header-args:lisp :tangle (expand-file-name "skills.lisp" (or (identity (getenv "INSTALL_DIR")) (file-name-directory (buffer-file-name))))
 #+TITLE: The Skill Engine (skills.lisp)
 #+AUTHOR: Amr
 #+FILETAGS: :harness:skills:
@@ -419,7 +419,7 @@ EXAMPLES:
 *** The Eval Tool (Internal Inspection)
 #+begin_src lisp
 ** Cognitive Tool Registration
-#+begin_src lisp :tangle (expand-file-name "skills.lisp" (concat (or (identity (getenv "INSTALL_DIR")) ".") "/harness"))
+#+begin_src lisp :tangle (expand-file-name "skills.lisp" (or (identity (getenv "INSTALL_DIR")) (file-name-directory (buffer-file-name))))
 ;; Cognitive tools are registered in *cognitive-tools* (defined in package.lisp)
 ;; using the def-cognitive-tool macro.
 #+end_src

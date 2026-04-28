@@ -1,4 +1,4 @@
-#+PROPERTY: header-args:lisp :tangle (expand-file-name "context.lisp" (concat (or (identity (getenv "INSTALL_DIR")) ".") "/harness"))
+#+PROPERTY: header-args:lisp :tangle (expand-file-name "context.lisp" (or (identity (getenv "INSTALL_DIR")) (file-name-directory (buffer-file-name))))
 #+TITLE: Peripheral Vision (context.lisp)
 #+AUTHOR: Amr
 #+FILETAGS: :harness:context:

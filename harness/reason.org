@@ -1,4 +1,4 @@
-#+PROPERTY: header-args:lisp :tangle (expand-file-name "reason.lisp" (concat (or (identity (getenv "INSTALL_DIR")) ".") "/harness"))
+#+PROPERTY: header-args:lisp :tangle (expand-file-name "reason.lisp" (or (identity (getenv "INSTALL_DIR")) (file-name-directory (buffer-file-name))))
 #+TITLE: Stage 2: Reason (reason.lisp)
 #+AUTHOR: Amr
 #+FILETAGS: :harness:reason:

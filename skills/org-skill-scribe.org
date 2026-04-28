@@ -1,4 +1,4 @@
-#+PROPERTY: header-args:lisp :tangle (expand-file-name "org-skill-scribe.lisp" (concat (or (identity (getenv "INSTALL_DIR")) ".") "/skills"))
+#+PROPERTY: header-args:lisp :tangle (expand-file-name "org-skill-scribe.lisp" (or (identity (getenv "INSTALL_DIR")) (file-name-directory (buffer-file-name))))
 :PROPERTIES:
 :ID:       scribe-skill
 :CREATED:  [2026-04-13 Mon 18:40]

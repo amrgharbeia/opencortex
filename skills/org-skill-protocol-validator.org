@@ -1,4 +1,4 @@
-#+PROPERTY: header-args:lisp :tangle (expand-file-name "org-skill-protocol-validator.lisp" (concat (or (identity (getenv "INSTALL_DIR")) ".") "/skills"))
+#+PROPERTY: header-args:lisp :tangle (expand-file-name "org-skill-protocol-validator.lisp" (or (identity (getenv "INSTALL_DIR")) (file-name-directory (buffer-file-name))))
 :PROPERTIES:
 :ID:       org-skill-communication-protocol-validator
 :CREATED:  [2026-04-12 Sun 14:35]
