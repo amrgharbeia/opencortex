@@ -320,6 +320,7 @@ Swap compiled skill files without breaking active sockets.
     (let ((result (opencortex::self-edit-parse-location context)))
       (is (search "foo.lisp" (getf result :file)))
       (is (eq 99 (getf result :line))))))
+)
 #+end_src
 
 * See Also
