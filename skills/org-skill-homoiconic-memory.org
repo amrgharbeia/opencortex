@@ -1,4 +1,4 @@
-#+PROPERTY: header-args:lisp :tangle (concat (getenv "INSTALL_DIR") "/skills/org-skill-homoiconic-memory.lisp" (expand-file-name ""))
+#+PROPERTY: header-args:lisp :tangle (concat (identity (getenv "INSTALL_DIR")) "/skills/org-skill-homoiconic-memory.lisp")" )
 :PROPERTIES:
 :ID:       homoiconic-memory-skill
 :CREATED:  [2026-04-10 Fri]
@@ -18,12 +18,12 @@ The *Homoiconic Memory* skill provides the core persistence layer for OpenCortex
 (defun memory-org-to-json (source)
   "Converts Org-mode source to JSON AST."
   (declare (ignore source))
-  "")
+  "
 
 (defun memory-json-to-org (ast)
   "Converts JSON AST back to Org-mode text."
   (declare (ignore ast))
-  "")
+  "
 
 (defun memory-normalize-ast (ast)
   "Recursively ensures ID uniqueness across the AST."

@@ -1,4 +1,4 @@
-#+PROPERTY: header-args:lisp :tangle package.lisp
+#+PROPERTY: header-args:lisp :tangle (concat (identity (getenv "INSTALL_DIR")) "/harness/package.lisp")
 #+TITLE: System Interface (package.lisp)
 #+AUTHOR: Amr
 #+FILETAGS: :harness:interface:

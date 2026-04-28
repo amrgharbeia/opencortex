@@ -1,4 +1,4 @@
-#+PROPERTY: header-args:lisp :tangle (concat (getenv "INSTALL_DIR") "/skills/org-skill-engineering-standards.lisp" (expand-file-name ""))
+#+PROPERTY: header-args:lisp :tangle (concat (identity (getenv "INSTALL_DIR")) "/skills/org-skill-engineering-standards.lisp")" )
 :PROPERTIES:
 :ID:       37f2b59f-4537-4cca-ac7f-5c24b9e2e773
 :CREATED:  [2026-03-30 Mon 21:16]
@@ -57,17 +57,17 @@ Every significant fix or architectural decision MUST be documented in an org fil
 * Enforcement Implementation
 
 ** Package Context
-#+begin_src lisp :tangle (concat (getenv "INSTALL_DIR") "/skills/org-skill-engineering-standards.lisp" (expand-file-name ""))
+#+begin_src lisp :tangle (concat (identity (getenv "INSTALL_DIR")) "/skills/org-skill-engineering-standards.lisp")" )
 (in-package :opencortex)
 #+end_src
 
 ** Global Configuration
-#+begin_src lisp :tangle (concat (getenv "INSTALL_DIR") "/skills/org-skill-engineering-standards.lisp" (expand-file-name ""))
+#+begin_src lisp :tangle (concat (identity (getenv "INSTALL_DIR")) "/skills/org-skill-engineering-standards.lisp")" )
 (defvar *engineering-std-project-root* nil
-  "Path to the project root for enforcement checks.")
+  "Path to the project root for enforcement checks.
 #+end_src
 
-#+begin_src lisp :tangle (concat (getenv "INSTALL_DIR") "/skills/org-skill-engineering-standards.lisp" (expand-file-name ""))
+#+begin_src lisp :tangle (concat (identity (getenv "INSTALL_DIR")) "/skills/org-skill-engineering-standards.lisp")" )
 (defstruct engineering-violation
   (phase nil)
   (rule nil)
@@ -76,7 +76,7 @@ Every significant fix or architectural decision MUST be documented in an org fil
 #+end_src
 
 ** CDD Utilities: Tier 1
-#+begin_src lisp :tangle (concat (getenv "INSTALL_DIR") "/skills/org-skill-engineering-standards.lisp" (expand-file-name ""))
+#+begin_src lisp :tangle (concat (identity (getenv "INSTALL_DIR")) "/skills/org-skill-engineering-standards.lisp")" )
 (defun check-structural-balance (file-path)
   "Tier 1 Chaos: Verifies that a Lisp file is syntactically balanced."
   (handler-case
@@ -90,56 +90,56 @@ Every significant fix or architectural decision MUST be documented in an org fil
 #+end_src
 
 ** Git Protocol
-#+begin_src lisp :tangle (concat (getenv "INSTALL_DIR") "/skills/org-skill-engineering-standards.lisp" (expand-file-name ""))
+#+begin_src lisp :tangle (concat (identity (getenv "INSTALL_DIR")) "/skills/org-skill-engineering-standards.lisp")" )
 (defun verify-git-clean-p (&optional (dir *engineering-std-project-root*))
   "Returns T if the git repository at DIR has no uncommitted changes."
   (when dir
-    (let ((status (uiop:run-program (list "git" "-C" (namestring dir) "status" "--porcelain")
+    (let ((status (uiop:run-program (list "git" "-C" (namestring dir) "status" "--porcelain
                                     :output :string
                                     :ignore-error-status t)))
       (string= "" (string-trim '(#\Space #\Newline #\Tab) status)))))
 #+end_src
 
 ** Initializer
-#+begin_src lisp :tangle (concat (getenv "INSTALL_DIR") "/skills/org-skill-engineering-standards.lisp" (expand-file-name ""))
+#+begin_src lisp :tangle (concat (identity (getenv "INSTALL_DIR")) "/skills/org-skill-engineering-standards.lisp")" )
 (defun engineering-std-init ()
   "Initialize the enforcement system."
-  (let ((env-root (or (getenv "OC_DATA_DIR")
-                       "/home/user/.local/share/opencortex")))
+  (let ((env-root (or (getenv "OC_DATA_DIR
+                       "/home/user/.local/share/opencortex))
     (setf *engineering-std-project-root* (uiop:ensure-directory-pathname env-root))
-    (harness-log "ENGINEERING STANDARDS: CDD Protocol Active.")))
+    (harness-log "ENGINEERING STANDARDS: CDD Protocol Active.))
 #+end_src
 
 ;; Auto-initialize on load
-#+begin_src lisp :tangle (concat (getenv "INSTALL_DIR") "/skills/org-skill-engineering-standards.lisp" (expand-file-name ""))
+#+begin_src lisp :tangle (concat (identity (getenv "INSTALL_DIR")) "/skills/org-skill-engineering-standards.lisp")" )
 (engineering-std-init)
 #+end_src
 
 * Test Suite
 
-#+begin_src lisp :tangle (concat (getenv "INSTALL_DIR") "/skills/engineering-standards-tests.lisp" (expand-file-name ""))
+#+begin_src lisp :tangle (concat (identity (getenv "INSTALL_DIR")) "/tests/engineering-standards-tests.lisp")" )
 (defpackage :opencortex-engineering-standards-tests
   (:use :cl :fiveam :opencortex)
   (:export #:engineering-standards-suite))
 #+end_src
 
-#+begin_src lisp :tangle (concat (getenv "INSTALL_DIR") "/skills/engineering-standards-tests.lisp" (expand-file-name ""))
+#+begin_src lisp :tangle (concat (identity (getenv "INSTALL_DIR")) "/tests/engineering-standards-tests.lisp")" )
 (in-package :opencortex-engineering-standards-tests)
 #+end_src
 
-#+begin_src lisp :tangle (concat (getenv "INSTALL_DIR") "/skills/engineering-standards-tests.lisp" (expand-file-name ""))
+#+begin_src lisp :tangle (concat (identity (getenv "INSTALL_DIR")) "/tests/engineering-standards-tests.lisp")" )
 (def-suite engineering-standards-suite
-  :description "Tests for Engineering Standards enforcement")
+  :description "Tests for Engineering Standards enforcement
 #+end_src
 
-#+begin_src lisp :tangle (concat (getenv "INSTALL_DIR") "/skills/engineering-standards-tests.lisp" (expand-file-name ""))
+#+begin_src lisp :tangle (concat (identity (getenv "INSTALL_DIR")) "/tests/engineering-standards-tests.lisp")" )
 (in-suite engineering-standards-suite)
 #+end_src
 
-#+begin_src lisp :tangle (concat (getenv "INSTALL_DIR") "/skills/engineering-standards-tests.lisp" (expand-file-name ""))
+#+begin_src lisp :tangle (concat (identity (getenv "INSTALL_DIR")) "/tests/engineering-standards-tests.lisp")" )
 (test git-clean-check-clean
   "verify-git-clean-p returns T when git tree is clean."
-  (let ((tmp-dir "/tmp/eng-std-test-clean/"))
+  (let ((tmp-dir "/tmp/eng-std-test-clean/)
     (uiop:ensure-all-directories-exist (list tmp-dir))
     (uiop:run-program (list "git" "init" tmp-dir) :output nil)
     (is (eq t (opencortex::verify-git-clean-p (uiop:ensure-directory-pathname tmp-dir))))

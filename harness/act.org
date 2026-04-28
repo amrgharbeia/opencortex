@@ -1,4 +1,4 @@
-#+PROPERTY: header-args:lisp :tangle (expand-file-name "harness/act.lisp" (expand-file-name "harness/"))
+#+PROPERTY: header-args:lisp :tangle (concat (identity (getenv "INSTALL_DIR")) "/harness/act.lisp")" )
 #+TITLE: Stage 3: Act (act.lisp)
 #+AUTHOR: Amr
 #+FILETAGS: :harness:act:
@@ -47,11 +47,11 @@ Example feedback chain:
 #+begin_src lisp
 (defvar *default-actuator* :cli
   "The actuator used when no explicit target is specified.
-  Override with DEFAULT_ACTUATOR environment variable.")
+  Override with DEFAULT_ACTUATOR environment variable.
 
 (defvar *silent-actuators* '(:cli :system-message :emacs)
   "List of actuators that don't generate tool-output feedback.
-  These typically have their own feedback mechanisms (CLI prints directly, etc.)")
+  These typically have their own feedback mechanisms (CLI prints directly, etc.)
 #+end_src
 
 ** initialize-actuators: System Bootstrap
@@ -70,20 +70,20 @@ Example feedback chain:
   3. :tui - Terminal UI output via reply stream"
 
   ;; Load environment configuration
-  (let ((def (getenv "DEFAULT_ACTUATOR"))
-        (silent (getenv "SILENT_ACTUATORS")))
+  (let ((def (getenv "DEFAULT_ACTUATOR)
+        (silent (getenv "SILENT_ACTUATORS))
 
     ;; Set default actuator
     (when def
       (setf *default-actuator*
-            (intern (string-upcase def) "KEYWORD")))
+            (intern (string-upcase def) "KEYWORD))
 
     ;; Parse silent actuators list
     (when silent
       (setf *silent-actuators*
             (mapcar (lambda (s)
                       (intern (string-upcase (string-trim '(#\Space) s))
-                             "KEYWORD"))
+                             "KEYWORD)
                     (str:split "," silent)))))
 
   ;; Register core harness actuators
@@ -179,7 +179,7 @@ Example feedback chain:
       (:create-skill
        (let* ((filename (getf payload :filename))
               (content (getf payload :content))
-              (skills-dir (merge-pathnames "skills/"
+              (skills-dir (merge-pathnames ""
                                           (asdf:system-source-directory :opencortex)))
               (full-path (merge-pathnames filename skills-dir)))
          (with-open-file (out full-path
@@ -273,7 +273,7 @@ Example feedback chain:
   "Format a tool result for human-readable display.
 
   Tools return either:
-  - A plist: (:status :success :content \"...\") or (:status :error :message \"...\")
+  - A plist: (:status :success :content \"...\ or (:status :error :message \"...\
   - A raw value (string, number, etc.)
 
   This function normalizes both formats into a consistent string presentation."
@@ -336,7 +336,7 @@ Example feedback chain:
 
             ;; Action was blocked by verification
             (progn
-              (harness-log "ACT BLOCKED: Action failed last-mile deterministic check.")
+              (harness-log "ACT BLOCKED: Action failed last-mile deterministic check.
               (setf (getf signal :approved-action) nil)
               (setf approved nil)
               (setf feedback verified))
@@ -393,7 +393,7 @@ Example feedback chain:
 These tests verify the Act pipeline. Run with:
 ~(fiveam:run! 'pipeline-act-suite)~
 
-#+begin_src lisp :tangle (expand-file-name "harness/pipeline-act-tests.lisp" (concat (concat (or (getenv "INSTALL_DIR") ".") "/harness") "/tests"))
+#+begin_src lisp :tangle pipeline-act-tests.lisp" (concat (concat (or (getenv "INSTALL_DIR ". "/harness "/tests)
 (defpackage :opencortex-pipeline-act-tests
   (:use :cl :fiveam :opencortex)
   (:export #:pipeline-act-suite))
@@ -401,14 +401,14 @@ These tests verify the Act pipeline. Run with:
 (in-package :opencortex-pipeline-act-tests)
 
 (def-suite pipeline-act-suite
-  :description "Test suite for Act pipeline")
+  :description "Test suite for Act pipeline
 
 (in-suite pipeline-act-suite)
 
 (test test-act-gate-symbolic-guard-bypass
   "Verify that act-gate proceeds normally when no skill intercepts."
   (clrhash opencortex::*skills-registry*)
-  (let* ((signal (list :type :EVENT :status nil :depth 0 :approved-action '(:target :cli :payload (:text "Hello"))))
+  (let* ((signal (list :type :EVENT :status nil :depth 0 :approved-action '(:target :cli :payload (:text "Hello)))
          (result (opencortex:act-gate signal)))
     (is (eq :acted (getf signal :status)))
     (is (null result))))
@@ -421,8 +421,8 @@ These tests verify the Act pipeline. Run with:
     :trigger (lambda (ctx) (declare (ignore ctx)) t)
     :deterministic (lambda (action ctx)
                      (declare (ignore action ctx))
-                     (list :type :LOG :payload (list :text "BLOCKED BY SYMBOLIC GUARD"))))
-  (let* ((signal (list :type :EVENT :status nil :depth 0 :approved-action '(:target :shell :payload (:cmd "ls"))))
+                     (list :type :LOG :payload (list :text "BLOCKED BY SYMBOLIC GUARD)))
+  (let* ((signal (list :type :EVENT :status nil :depth 0 :approved-action '(:target :shell :payload (:cmd "ls)))
          (result (opencortex:act-gate signal)))
     (is (eq :acted (getf signal :status)))
     (is (not (null result)))

@@ -1,4 +1,4 @@
-#+PROPERTY: header-args:lisp :tangle (concat (getenv "INSTALL_DIR") "/skills/org-skill-emacs-edit.lisp" (expand-file-name ""))
+#+PROPERTY: header-args:lisp :tangle (concat (identity (getenv "INSTALL_DIR")) "/skills/org-skill-emacs-edit.lisp")" )
 :PROPERTIES:
 :ID:       emacs-edit-skill
 :CREATED:  [2026-04-23 Thu]
@@ -91,11 +91,11 @@ Converts AST back to org format, preserving structure.
 INDENT-LEVEL is number of leading asterisks."
   (let* ((level (or indent-level 1))
          (stars (make-string level :initial-element #\*))
-         (title (or (getf (getf ast :properties) :TITLE) ""))
+         (title (or (getf (getf ast :properties) :TITLE) 
          (todo (getf (getf ast :properties) :TODO)))
     (format nil "~a ~a~%~a"
             stars
-            (if todo (format nil "[~a] " (string-upcase todo)) "")
+            (if todo (format nil "[~a] " (string-upcase todo)) "
             title)))
 
 (defun emacs-edit-print-properties (props)
@@ -143,13 +143,13 @@ Preserves structure including #+begin_src blocks."
       
       ;; Code block (preserve exactly)
       ((eq type :src-block)
-       (let ((lang (or (getf ast :language) ""))
-             (code (or (getf ast :value) "")))
+       (let ((lang (or (getf ast :language) 
+             (code (or (getf ast :value) )
           (format nil "#+begin_src ~a~%~a~%#+end_src~%"
                  lang code)))
       
       ;; Unknown - return as-is
-      (t (format nil "")))))
+      (t (format nil )))
 #+end_src
 
 ** Read Operation
@@ -157,7 +157,7 @@ Parse org file to AST.
 
 #+begin_src lisp
 (defvar *org-parser-cache* (make-hash-table :test 'equal)
-  "Cache for parsed org files.")
+  "Cache for parsed org files.
 
 (defun emacs-edit-parse-file (file-path)
   "Parses an org FILE-PATH using existing ingest-ast.
@@ -203,7 +203,7 @@ Returns modified AST."
   (let* ((new-id (emacs-edit-generate-id))
          (new-props (list :ID new-id
                          :TITLE title
-                         :TODO (or todo "TODO")
+                         :TODO (or todo "TODO
                          :CREATED (format nil "[~a]" 
                                         (multiple-value-bind (s mi h d mo y)
                                             (decode-universal-time (get-universal-time))
@@ -327,18 +327,18 @@ Exposes operations to the Probabilistic Engine.
 (def-cognitive-tool :org-read
   "Reads an org-mode file and parses it to structured AST.
 Use this BEFORE modifying org files to understand their structure."
-  ((:file :type :string :description "Path to the org file"))
+  ((:file :type :string :description "Path to the org file)
   :body (lambda (args)
           (let ((file (getf args :file)))
             (if (uiop:file-exists-p file)
                 (emacs-edit-modify file :read)
-                (list :status :error :reason "File not found")))))
+                (list :status :error :reason "File not found))))
 
 (def-cognitive-tool :org-write
   "Writes previously parsed AST back to an org file.
 Use this AFTER modifications to save changes."
-  ((:file :type :string :description "Path to the org file")
-   (:ast :type :list :description "The AST to write"))
+  ((:file :type :string :description "Path to the org file
+   (:ast :type :list :description "The AST to write)
   :body (lambda (args)
           (let ((file (getf args :file))
                 (ast (getf args :ast)))
@@ -347,14 +347,14 @@ Use this AFTER modifications to save changes."
 
 (def-cognitive-tool :org-add-headline
   "Adds a new headline to an org file."
-  ((:file :type :string :description "Path to the org file")
-   (:title :type :string :description "Headline title")
-   (:todo :type :string :description "TODO state (default TODO)")
-   (:properties :type :list :description "Plist of properties"))
+  ((:file :type :string :description "Path to the org file
+   (:title :type :string :description "Headline title
+   (:todo :type :string :description "TODO state (default TODO)
+   (:properties :type :list :description "Plist of properties)
   :body (lambda (args)
           (let ((file (getf args :file))
                 (title (getf args :title))
-                (todo (getf args :todo "TODO"))
+                (todo (getf args :todo "TODO)
                 (properties (getf args :properties)))
             (emacs-edit-modify file :add-headline 
                              :params (list :title title :todo todo :properties properties))
@@ -362,10 +362,10 @@ Use this AFTER modifications to save changes."
 
 (def-cognitive-tool :org-set-property
   "Sets a property on an existing headline (by ID or title)."
-  ((:file :type :string :description "Path to the org file")
-   (:target :type :string :description "Headline ID or title")
-   (:property :type :string :description "Property name")
-   (:value :type :string :description "Property value"))
+  ((:file :type :string :description "Path to the org file
+   (:target :type :string :description "Headline ID or title
+   (:property :type :string :description "Property name
+   (:value :type :string :description "Property value)
   :body (lambda (args)
           (let ((file (getf args :file))
                 (target (getf args :target))
@@ -377,9 +377,9 @@ Use this AFTER modifications to save changes."
 
 (def-cognitive-tool :org-set-todo
   "Sets the TODO state of a headline."
-  ((:file :type :string :description "Path to the org file")
-   (:target :type :string :description "Headline ID or title")
-   (:state :type :string :description "New TODO state (TODO, DONE, etc)"))
+  ((:file :type :string :description "Path to the org file
+   (:target :type :string :description "Headline ID or title
+   (:state :type :string :description "New TODO state (TODO, DONE, etc))
   :body (lambda (args)
           (let ((file (getf args :file))
                 (target (getf args :target))
@@ -390,7 +390,7 @@ Use this AFTER modifications to save changes."
 #+end_src
 
 * Phase E: Chaos (Verification)
-#+begin_src lisp :tangle (concat (getenv "INSTALL_DIR") "/skills/emacs-edit-tests.lisp" (expand-file-name ""))
+#+begin_src lisp :tangle (concat (identity (getenv "INSTALL_DIR")) "/tests/emacs-edit-tests.lisp")" )
 (defpackage :opencortex-emacs-edit-tests
   (:use :cl :fiveam :opencortex)
   (:export #:emacs-edit-suite))
@@ -398,7 +398,7 @@ Use this AFTER modifications to save changes."
 (in-package :opencortex-emacs-edit-tests)
 
 (def-suite emacs-edit-suite
-  :description "Tests for Emacs Edit skill.")
+  :description "Tests for Emacs Edit skill.
 
 (in-suite emacs-edit-suite)
 
@@ -409,22 +409,22 @@ Use this AFTER modifications to save changes."
     (is (not (string= id1 id2))))) ;; Likely unique
 
 (test id-format
-  (let ((formatted (emacs-edit-id-format "abc12345")))
+  (let ((formatted (emacs-edit-id-format "abc12345))
     (is (search "id:" formatted))))
 
 (test property-setter
   (let ((ast (list :type :headline
-                  :properties (list :ID "id:test123" :TITLE "Test")
+                  :properties (list :ID "id:test123" :TITLE "Test
                   :contents nil)))
-    (emacs-edit-set-property ast "id:test123" :STATUS "ACTIVE")
-    (is (string= (getf (getf ast :properties) :STATUS) "ACTIVE"))))
+    (emacs-edit-set-property ast "id:test123" :STATUS "ACTIVE
+    (is (string= (getf (getf ast :properties) :STATUS) "ACTIVE)))
 
 (test todo-setter
   (let ((ast (list :type :headline
-                  :properties (list :ID "id:todo001" :TITLE "Task")
+                  :properties (list :ID "id:todo001" :TITLE "Task
                   :contents nil)))
-    (emacs-edit-set-todo ast "id:todo001" "DONE")
-    (is (string= (getf (getf ast :properties) :TODO) "DONE"))))
+    (emacs-edit-set-todo ast "id:todo001" "DONE
+    (is (string= (getf (getf ast :properties) :TODO) "DONE)))
 #+end_src
 
 * See Also

@@ -13,26 +13,26 @@ In a traditional AI wrapper, the user manually edits a config file to add a bot 
 * Phase B: Protocol (Success Criteria)
 
 ** Test Suite Context
-#+begin_src lisp :tangle (concat (getenv "INSTALL_DIR") "/skills/gateway-manager-tests.lisp" (expand-file-name ""))
+#+begin_src lisp :tangle (concat (identity (getenv "INSTALL_DIR")) "/tests/gateway-manager-tests.lisp")" )
 (defpackage :opencortex-gateway-manager-tests
   (:use :cl :fiveam :opencortex)
   (:export #:gateway-suite))
 #+end_src
 
-#+begin_src lisp :tangle (concat (getenv "INSTALL_DIR") "/skills/gateway-manager-tests.lisp" (expand-file-name ""))
+#+begin_src lisp :tangle (concat (identity (getenv "INSTALL_DIR")) "/tests/gateway-manager-tests.lisp")" )
 (in-package :opencortex-gateway-manager-tests)
 #+end_src
 
-#+begin_src lisp :tangle (concat (getenv "INSTALL_DIR") "/skills/gateway-manager-tests.lisp" (expand-file-name ""))
-(def-suite gateway-suite :description "Verification of the Gateway Manager skill")
+#+begin_src lisp :tangle (concat (identity (getenv "INSTALL_DIR")) "/tests/gateway-manager-tests.lisp")" )
+(def-suite gateway-suite :description "Verification of the Gateway Manager skill
 #+end_src
 
-#+begin_src lisp :tangle (concat (getenv "INSTALL_DIR") "/skills/gateway-manager-tests.lisp" (expand-file-name ""))
+#+begin_src lisp :tangle (concat (identity (getenv "INSTALL_DIR")) "/tests/gateway-manager-tests.lisp")" )
 (in-suite gateway-suite)
 #+end_src
 
 ** Logic Tests
-#+begin_src lisp :tangle (concat (getenv "INSTALL_DIR") "/skills/gateway-manager-tests.lisp" (expand-file-name ""))
+#+begin_src lisp :tangle (concat (identity (getenv "INSTALL_DIR")) "/tests/gateway-manager-tests.lisp")" )
 (test test-gateway-registration
   "Verify that the skill can register a new gateway metadata block."
   (let ((opencortex::*gateways* nil))
@@ -42,7 +42,7 @@ In a traditional AI wrapper, the user manually edits a config file to add a bot 
 (test test-gateway-multiple-platforms
   "Verify that multiple gateways can be registered simultaneously."
   (let ((opencortex::*gateways* nil))
-    (opencortex:skill-gateway-register :telegram '(:status :verified :token "abc123"))
+    (opencortex:skill-gateway-register :telegram '(:status :verified :token "abc123)
     (opencortex:skill-gateway-register :signal '(:status :unverified))
     (is (eq (getf (getf opencortex::*gateways* :telegram) :status) :verified))
     (is (eq (getf (getf opencortex::*gateways* :signal) :status) :unverified))))
@@ -51,27 +51,27 @@ In a traditional AI wrapper, the user manually edits a config file to add a bot 
 * Phase C: Implementation (Build)
 
 ** Package Context
-#+begin_src lisp :tangle (concat (getenv "INSTALL_DIR") "/skills/org-skill-gateway-manager.lisp" (expand-file-name ""))
+#+begin_src lisp :tangle (concat (identity (getenv "INSTALL_DIR")) "/skills/org-skill-gateway-manager.lisp")" )
 (in-package :opencortex)
 #+end_src
 
 ** Capability Definition
-#+begin_src lisp :tangle (concat (getenv "INSTALL_DIR") "/skills/org-skill-gateway-manager.lisp" (expand-file-name ""))
+#+begin_src lisp :tangle (concat (identity (getenv "INSTALL_DIR")) "/skills/org-skill-gateway-manager.lisp")" )
 (defparameter *skill-gateway-manager*
   '(:name "gateway-manager"
     :description "Manages connections to external chat platforms."
     :capabilities (:link-gateway :list-gateways)
     :type :deterministic)
-  "Skill metadata for the Gateway Manager.")
+  "Skill metadata for the Gateway Manager.
 #+end_src
 
 ** Registry Persistence
-#+begin_src lisp :tangle (concat (getenv "INSTALL_DIR") "/skills/org-skill-gateway-manager.lisp" (expand-file-name ""))
-(defvar *gateways* nil "The internal registry of configured gateways.")
+#+begin_src lisp :tangle (concat (identity (getenv "INSTALL_DIR")) "/skills/org-skill-gateway-manager.lisp")" )
+(defvar *gateways* nil "The internal registry of configured gateways.
 #+end_src
 
 ** Persistence Stubs
-#+begin_src lisp :tangle (concat (getenv "INSTALL_DIR") "/skills/org-skill-gateway-manager.lisp" (expand-file-name ""))
+#+begin_src lisp :tangle (concat (identity (getenv "INSTALL_DIR")) "/skills/org-skill-gateway-manager.lisp")" )
 (defun save-gateways ()
   "Persist gateway metadata to XDG Config directory."
   (let ((path (merge-pathnames "gateways.lisp" (get-oc-config-dir))))
@@ -81,14 +81,14 @@ In a traditional AI wrapper, the user manually edits a config file to add a bot 
 #+end_src
 
 ** Registration Logic
-#+begin_src lisp :tangle (concat (getenv "INSTALL_DIR") "/skills/org-skill-gateway-manager.lisp" (expand-file-name ""))
+#+begin_src lisp :tangle (concat (identity (getenv "INSTALL_DIR")) "/skills/org-skill-gateway-manager.lisp")" )
 (defun skill-gateway-register (platform metadata)
   "Internal function to update the gateway registry."
   (setf (getf *gateways* platform) metadata))
 #+end_src
 
 ** Telegram Verification
-#+begin_src lisp :tangle (concat (getenv "INSTALL_DIR") "/skills/org-skill-gateway-manager.lisp" (expand-file-name ""))
+#+begin_src lisp :tangle (concat (identity (getenv "INSTALL_DIR")) "/skills/org-skill-gateway-manager.lisp")" )
 (defun skill-gateway-verify-telegram (token)
   "Verifies a Telegram bot token via the getMe API."
   (let ((url (format nil "https://api.telegram.org/bot~a/getMe" token)))
@@ -98,18 +98,18 @@ In a traditional AI wrapper, the user manually edits a config file to add a bot 
           (if (cdr (assoc :ok data))
               (let ((result (cdr (assoc :result data))))
                 (list :status :verified :username (cdr (assoc :username result))))
-              (list :status :failed :error "Invalid Token")))
+              (list :status :failed :error "Invalid Token))
       (error (c) (list :status :failed :error (format nil "~a" c))))))
 #+end_src
 
 ** Linkage Command
-#+begin_src lisp :tangle (concat (getenv "INSTALL_DIR") "/skills/org-skill-gateway-manager.lisp" (expand-file-name ""))
+#+begin_src lisp :tangle (concat (identity (getenv "INSTALL_DIR")) "/skills/org-skill-gateway-manager.lisp")" )
 (defun skill-gateway-link (platform token)
   "Primary capability to link a new platform. Returns status plist."
   (harness-log "GATEWAY: Attempting to link ~a..." platform)
   (let ((verification (cond 
                         ((eq platform :telegram) (skill-gateway-verify-telegram token))
-                        (t (list :status :verified :info "Platform verification pending implementation")))))
+                        (t (list :status :verified :info "Platform verification pending implementation))))
     (if (eq (getf verification :status) :verified)
         (progn
           (save-secret platform :token token)
@@ -120,7 +120,7 @@ In a traditional AI wrapper, the user manually edits a config file to add a bot 
 #+end_src
 
 ** CLI Main Wrapper
-#+begin_src lisp :tangle (concat (getenv "INSTALL_DIR") "/skills/org-skill-gateway-manager.lisp" (expand-file-name ""))
+#+begin_src lisp :tangle (concat (identity (getenv "INSTALL_DIR")) "/skills/org-skill-gateway-manager.lisp")" )
 (defun gateway-manager-main (platform token)
   "Main entry point for CLI-driven linkage."
   (if (and platform token)
@@ -128,6 +128,6 @@ In a traditional AI wrapper, the user manually edits a config file to add a bot 
         (format t "RESULT: ~s~%" result)
         (uiop:quit 0))
       (progn
-        (format t "Usage: opencortex link <PLATFORM> <TOKEN>~%")
+        (format t "Usage: opencortex link <PLATFORM> <TOKEN>~%
         (uiop:quit 1))))
 #+end_src

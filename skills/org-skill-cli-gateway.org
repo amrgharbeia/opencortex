@@ -1,4 +1,4 @@
-#+PROPERTY: header-args:lisp :tangle (concat (getenv "INSTALL_DIR") "/skills/org-skill-cli-gateway.lisp" (expand-file-name ""))
+#+PROPERTY: header-args:lisp :tangle (concat (identity (getenv "INSTALL_DIR")) "/skills/org-skill-cli-gateway.lisp")" )
 :PROPERTIES:
 :ID:       cli-gateway-skill
 :CREATED:  [2026-04-13 Mon 17:00]
@@ -31,21 +31,21 @@ The *CLI Gateway* is the primary sensory and actuating interface for human inter
               (finish-output stream)
               (format stream "~a" (frame-message '(:TYPE :STATUS :SCRIBE :IDLE :GARDENER :SLEEPING)))
               (finish-output stream))
-            (harness-log "CLI ERROR: No active or open reply stream for signal."))
+            (harness-log "CLI ERROR: No active or open reply stream for signal.)
       (error (c) (harness-log "CLI ACTUATOR ERROR: ~a" c)))))
 
 (defun handle-cli-slash-command (cmd stream)
   (cond
-    ((string= cmd "/exit") (return-from handle-cli-slash-command :exit))
+    ((string= cmd "/exit (return-from handle-cli-slash-command :exit))
     (t (format stream "~a" (frame-message (list :TYPE :REQUEST :PAYLOAD (list :ACTION :MESSAGE :TEXT (format nil "Unknown command: ~a" cmd))))))))
 
 (defun handle-cli-client (stream)
   "Reads framed messages from a CLI client and injects them as stimuli."
-  (harness-log "CLI: Client connected.")
+  (harness-log "CLI: Client connected.
   (handler-case
       (progn
         ;; 1. Send Handshake
-        (format stream "~a" (frame-message (make-hello-message "0.1.0")))
+        (format stream "~a" (frame-message (make-hello-message "0.1.0))
         (finish-output stream)
         (format stream "~a" (frame-message '(:TYPE :STATUS :SCRIBE :IDLE :GARDENER :SLEEPING)))
         (finish-output stream)
@@ -63,11 +63,11 @@ The *CLI Gateway* is the primary sensory and actuating interface for human inter
                            (progn
                              ;; Default meta if missing
                              (unless meta
-                               (setf (getf msg :meta) (list :SOURCE :CLI :SESSION-ID "default")))
+                               (setf (getf msg :meta) (list :SOURCE :CLI :SESSION-ID "default))
                              (harness-log "CLI: Received input -> ~s" msg)
                              (inject-stimulus msg :stream stream)))))))))
     (error (c) (harness-log "CLI CLIENT DISCONNECT: ~a" c)))
-  (harness-log "CLI: Client disconnected."))
+  (harness-log "CLI: Client disconnected.)
 
 (defun start-cli-gateway (&optional (port *cli-port*))
   "Starts the TCP listener for local CLI clients."
@@ -82,9 +82,9 @@ The *CLI Gateway* is the primary sensory and actuating interface for human inter
                     (bt:make-thread (lambda () 
                                       (unwind-protect (handle-cli-client stream)
                                         (usocket:socket-close socket)))
-                                    :name "opencortex-cli-client-handler")))
+                                    :name "opencortex-cli-client-handler))
              (usocket:socket-close *cli-server-socket*)))
-         :name "opencortex-cli-gateway"))
+         :name "opencortex-cli-gateway)
   (harness-log "CLI: Gateway listening on port ~a" port))
 
 (register-actuator :CLI #'execute-cli-action)

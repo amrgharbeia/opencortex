@@ -1,4 +1,4 @@
-#+PROPERTY: header-args:lisp :tangle (expand-file-name "harness/loop.lisp" (expand-file-name "harness/"))
+#+PROPERTY: header-args:lisp :tangle (concat (identity (getenv "INSTALL_DIR")) "/harness/loop.lisp")" )
 #+TITLE: The Metabolic Loop (loop.lisp)
 #+AUTHOR: Amr
 #+FILETAGS: :harness:loop:
@@ -73,14 +73,14 @@ The loop operates in a multi-threaded environment:
 
 (defvar *interrupt-flag* nil
   "Atomic flag set by signal handlers to trigger graceful shutdown.
-  Using a dedicated variable avoids race conditions in interrupt handling.")
+  Using a dedicated variable avoids race conditions in interrupt handling.
 
-(defvar *interrupt-lock* (bt:make-lock "harness-interrupt-lock")
+(defvar *interrupt-lock* (bt:make-lock "harness-interrupt-lock
   "Mutex protecting *interrupt-flag* access.
-  Locking is required because SBCL's interrupt handlers run in uncertain contexts.")
+  Locking is required because SBCL's interrupt handlers run in uncertain contexts.
 
 (defvar *heartbeat-thread* nil
-  "Handle to the heartbeat thread, allowing explicit termination on shutdown.")
+  "Handle to the heartbeat thread, allowing explicit termination on shutdown.
 #+end_src
 
 * The Metabolic Pipeline
@@ -111,12 +111,12 @@ The depth counter prevents infinite recursion—a signal that generates another 
       (let ((depth (getf current-signal :depth 0))
             (meta (getf current-signal :meta)))
         (when (> depth 10)
-          (harness-log "METABOLISM ERROR: Max recursion depth reached.")
+          (harness-log "METABOLISM ERROR: Max recursion depth reached.
           (return nil))
 
         ;; Check for graceful shutdown interrupt
         (when (bt:with-lock-held (*interrupt-lock*) *interrupt-flag*)
-          (harness-log "METABOLISM: Interrupted by shutdown signal.")
+          (harness-log "METABOLISM: Interrupted by shutdown signal.
           (bt:with-lock-held (*interrupt-lock*) (setf *interrupt-flag* nil))
           (return nil))
 
@@ -149,7 +149,7 @@ The depth counter prevents infinite recursion—a signal that generates another 
               ;; Only rollback memory on critical errors, not transient tool failures
               ;; This prevents losing recent context due to a single bad API call
               (unless (member sensor '(:loop-error :tool-error :syntax-error))
-                (harness-log "CRITICAL ERROR: Initiating Micro-Rollback.")
+                (harness-log "CRITICAL ERROR: Initiating Micro-Rollback.
                 (rollback-memory 0))
 
               ;; At deep recursion or known error types, terminate gracefully
@@ -188,10 +188,10 @@ The heartbeat thread ensures the agent remains alive even without external input
 #+begin_src lisp
 (defvar *auto-save-interval* 300
   "Interval in seconds between automatic memory saves.
-  Defaults to 300 seconds (5 minutes). Set via MEMORY_AUTO_SAVE_INTERVAL env var.")
+  Defaults to 300 seconds (5 minutes). Set via MEMORY_AUTO_SAVE_INTERVAL env var.
 
 (defvar *heartbeat-save-counter* 0
-  "Tracks heartbeats since last save, used to calculate auto-save timing.")
+  "Tracks heartbeats since last save, used to calculate auto-save timing.
 #+end_src
 
 ** start-heartbeat: The Pulsing Heart
@@ -210,8 +210,8 @@ The heartbeat thread ensures the agent remains alive even without external input
   - HEARTBEAT_INTERVAL: Seconds between heartbeats (default: 60)
   - MEMORY_AUTO_SAVE_INTERVAL: Seconds between auto-saves (default: 300)"
 
-  (let ((interval (or (ignore-errors (parse-integer (getenv "HEARTBEAT_INTERVAL"))) 60))
-        (auto-save (or (ignore-errors (parse-integer (getenv "MEMORY_AUTO_SAVE_INTERVAL"))) *auto-save-interval*)))
+  (let ((interval (or (ignore-errors (parse-integer (getenv "HEARTBEAT_INTERVAL)) 60))
+        (auto-save (or (ignore-errors (parse-integer (getenv "MEMORY_AUTO_SAVE_INTERVAL)) *auto-save-interval*)))
     (setf *auto-save-interval* auto-save)
     (setf *heartbeat-save-counter* 0)
 
@@ -235,7 +235,7 @@ The heartbeat thread ensures the agent remains alive even without external input
                        :payload (list :sensor :heartbeat
                                     :unix-time (get-universal-time)))))
 
-            :name "opencortex-heartbeat")))))
+            :name "opencortex-heartbeat))))
 #+end_src
 
 * Main Entry Point
@@ -245,7 +245,7 @@ The heartbeat thread ensures the agent remains alive even without external input
 #+begin_src lisp
 (defvar *shutdown-save-enabled* t
   "When T, save memory to disk on graceful shutdown.
-  Disable for testing or when memory persistence is handled externally.")
+  Disable for testing or when memory persistence is handled externally.
 #+end_src
 
 ** main: System Bootstrap and Idle Loop
@@ -275,7 +275,7 @@ The main function orchestrates system startup:
   The idle loop checks for interrupts and saves memory before exit."
 
   ;; Step 1: Load environment variables from standard location
-  (let* ((home (getenv "HOME"))
+  (let* ((home (getenv "HOME)
          (env-file (uiop:merge-pathnames*
                      ".local/share/opencortex/.env"
                      (uiop:ensure-directory-pathname home))))
@@ -298,19 +298,19 @@ The main function orchestrates system startup:
   (sb-sys:enable-interrupt sb-unix:sigint
                            (lambda (sig code scp)
                              (declare (ignore sig code scp))
-                             (harness-log "SHUTDOWN: SIGINT received. Saving memory...")
+                             (harness-log "SHUTDOWN: SIGINT received. Saving memory...
                              (when *shutdown-save-enabled*
                                (save-memory-to-disk))
                              (uiop:quit 0)))
 
   ;; Step 7: Idle loop - sleep in chunks, checking for interrupts
   (let ((sleep-interval (or (ignore-errors
-                              (parse-integer (getenv "DAEMON_SLEEP_INTERVAL")))
+                              (parse-integer (getenv "DAEMON_SLEEP_INTERVAL))
                             3600)))
     (loop
       ;; Check for interrupt before each sleep cycle
       (when (bt:with-lock-held (*interrupt-lock*) *interrupt-flag*)
-        (harness-log "SHUTDOWN: Interrupt flag set. Saving memory...")
+        (harness-log "SHUTDOWN: Interrupt flag set. Saving memory...
         (when *shutdown-save-enabled*
           (save-memory-to-disk))
         (return))
@@ -324,7 +324,7 @@ The main function orchestrates system startup:
 These tests verify the metabolic loop and error recovery. Run with:
 ~(fiveam:run! 'immune-suite)~
 
-#+begin_src lisp :tangle (expand-file-name "harness/immune-system-tests.lisp" (concat (concat (or (getenv "INSTALL_DIR") ".") "/harness") "/tests"))
+#+begin_src lisp :tangle immune-system-tests.lisp" (concat (concat (or (getenv "INSTALL_DIR ". "/harness "/tests)
 (defpackage :opencortex-immune-system-tests
   (:use :cl :fiveam :opencortex)
   (:export #:immune-suite))
@@ -332,7 +332,7 @@ These tests verify the metabolic loop and error recovery. Run with:
 (in-package :opencortex-immune-system-tests)
 
 (def-suite immune-suite
-  :description "Verification of the Immune System (Core Error Hooks)")
+  :description "Verification of the Immune System (Core Error Hooks)
 
 (in-suite immune-suite)
 
@@ -342,9 +342,9 @@ These tests verify the metabolic loop and error recovery. Run with:
   (opencortex:defskill :evil-skill
     :priority 100
     :trigger (lambda (ctx) (eq (getf (getf ctx :payload) :sensor) :user-input))
-    :probabilistic (lambda (ctx) (error "CRITICAL BRAIN FAILURE"))
+    :probabilistic (lambda (ctx) (error "CRITICAL BRAIN FAILURE)
     :deterministic nil)
-  (opencortex:harness-log "CLEAN LOG")
+  (opencortex:harness-log "CLEAN LOG
   (opencortex:process-signal '(:type :EVENT :payload (:sensor :user-input)))
   (let ((logs (opencortex:context-get-system-logs 20)))
     (is (not (null (find-if (lambda (line) (search "CRITICAL BRAIN FAILURE" line)) logs))))))

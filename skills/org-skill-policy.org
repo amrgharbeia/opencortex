@@ -1,4 +1,4 @@
-#+PROPERTY: header-args:lisp :tangle (concat (getenv "INSTALL_DIR") "/skills/org-skill-policy.lisp" (expand-file-name ""))
+#+PROPERTY: header-args:lisp :tangle (concat (identity (getenv "INSTALL_DIR")) "/skills/org-skill-policy.lisp")" )
 :PROPERTIES:
 :ID:       47425a43-2be0-423c-8509-22592cfe9c9e
 :CREATED:  [2026-04-07 Tue 12:57]
@@ -50,7 +50,7 @@ Every skill executes within its own jailed package namespace, inheriting core ha
 #+end_src
 
 * Global Policy Configuration
-#+begin_src lisp :tangle (concat (getenv "INSTALL_DIR") "/skills/org-skill-policy.lisp" (expand-file-name ""))
+#+begin_src lisp :tangle (concat (identity (getenv "INSTALL_DIR")) "/skills/org-skill-policy.lisp")" )
 (defvar *policy-invariant-priorities*
   '((:transparency . 500)
     (:autonomy . 400)
@@ -64,10 +64,10 @@ Higher numbers take precedence.
 When two invariants conflict, the higher priority wins.
 Example: Modularity (250) takes precedence over Mentorship (200),
 meaning a change that would fatten the harness is blocked
-even if it would be educational.")
+even if it would be educational.
 
 (defvar *proprietary-domain-watchlist*
-  '("googleapis.com" "api.openai.com" "anthropic.com" "api.groq.com" "openrouter.ai")
+  '("googleapis.com" "api.openai.com" "anthropic.com" "api.groq.com" "openrouter.ai
   "Domains representing centralized, proprietary control.
 
   Actions targeting these are logged as autonomy debt, not hard-blocked.
@@ -75,17 +75,17 @@ even if it would be educational.")
   is permitted under the strategic mandate for autonomy.
 
   Strategic goal: Replace all proprietary APIs with local alternatives.
-  Tactical reality: Use what's available while building toward that goal.")
+  Tactical reality: Use what's available while building toward that goal.
 
 (defvar *policy-max-skill-size-chars* 50000
   "Maximum recommended size for a skill file tangled from an Org note.
 
   This is a soft limit—the check warns but does not block.
   A large, well-documented skill is acceptable; a small, poorly-documented
-  one that adds unnecessary complexity is not.")
+  one that adds unnecessary complexity is not.
 
 (defvar *modularity-protected-paths*
-  '("harness/" "opencortex.asd")
+  '("harness/" "opencortex.asd
   "Paths that constitute the unbreakable core of the system.
 
   Any action targeting these paths must include a :modularity-justification
@@ -101,7 +101,7 @@ even if it would be educational.")
   - Policy and security
   - LLM integration
   - Domain-specific functionality
-  - New actuators")
+  - New actuators
 
 (defvar *mentorship-required-actions*
   '(:create-skill :eval :modify-file :write-file :replace
@@ -109,13 +109,13 @@ even if it would be educational.")
   "Actions that trigger the Mentorship invariant.
 
   These are high-impact actions that should come with explanations
-  not just for the user, but for future debugging and maintenance.")
+  not just for the user, but for future debugging and maintenance.
 
 (defvar *cloud-only-backends* '(:openrouter :openai :anthropic :groq :gemini-api)
   "Backends requiring internet connection and external infrastructure.
 
   These are acceptable as fallbacks when local inference is unavailable,
-  but should be logged as sustainability debt for tracking purposes.")
+  but should be logged as sustainability debt for tracking purposes.
 #+end_src
 
 
@@ -168,7 +168,7 @@ At the gate:
     (return-from policy-check-transparency
       (list :type :LOG
             :payload (list :level :error
-                           :text "POLICY [Transparency]: Action is not a valid plist. Rejected."))))
+                           :text "POLICY [Transparency]: Action is not a valid plist. Rejected.)))
 
   (let* ((payload (getf action :payload))
          (target (or (getf action :target) (getf action :TARGET)))
@@ -185,7 +185,7 @@ At the gate:
       (return-from policy-check-transparency
         (list :type :LOG
               :payload (list :level :error
-                             :text "POLICY [Transparency]: User-facing action missing :explanation. Blocked."))))
+                             :text "POLICY [Transparency]: User-facing action missing :explanation. Blocked.)))
 
     action))
 #+end_src
@@ -210,12 +210,12 @@ Every action should increase the user's independence from centralized, proprieta
   Returns the first matched domain, or NIL if clean."
 
   (let* ((payload (getf action :payload))
-         (text (or (getf payload :text) (getf payload :TEXT) ""))
+         (text (or (getf payload :text) (getf payload :TEXT) 
          (cmd (or (getf payload :cmd)
                  (getf payload :CMD)
-                 (when (equal (getf payload :tool) "shell")
+                 (when (equal (getf payload :tool) "shell
                    (getf (getf payload :args) :cmd))
-                 ""))
+                 
          (haystack (concatenate 'string text cmd)))
 
     (dolist (domain *proprietary-domain-watchlist* nil)
@@ -379,13 +379,13 @@ The agent's goal is not to "do it for the user," but to "empower the user." Ever
                 (getf payload :tool))))
 
     (when (or (member act *mentorship-required-actions*)
-              (member tool '("shell" "eval" "repair-file")))
+              (member tool '("shell" "eval" "repair-file))
 
       (unless note
         (return-from policy-check-mentorship
           (list :type :LOG
                 :payload (list :level :error
-                               :text "POLICY [Mentorship]: High-impact action missing :mentorship-note. Explain what you are doing and why. Blocked.")))))
+                               :text "POLICY [Mentorship]: High-impact action missing :mentorship-note. Explain what you are doing and why. Blocked.))))
 
   action))
 #+end_src

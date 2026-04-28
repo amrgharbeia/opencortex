@@ -1,4 +1,4 @@
-#+PROPERTY: header-args:lisp :tangle (concat (getenv "INSTALL_DIR") "/skills/org-skill-shell-actuator.lisp" (expand-file-name ""))
+#+PROPERTY: header-args:lisp :tangle (concat (identity (getenv "INSTALL_DIR")) "/skills/org-skill-shell-actuator.lisp")" )
 :PROPERTIES:
 :ID:       shell-actuator-skill
 :CREATED:  [2026-04-12 Sun]
@@ -12,10 +12,10 @@ The *Shell Actuator* provides a controlled interface for the OpenCortex to execu
 
 * Implementation
 
-#+begin_src lisp :tangle (concat (getenv "INSTALL_DIR") "/skills/org-skill-shell-actuator.lisp" (expand-file-name ""))
+#+begin_src lisp :tangle (concat (identity (getenv "INSTALL_DIR")) "/skills/org-skill-shell-actuator.lisp")" )
 (in-package :opencortex)
 
-(defparameter *allowed-commands* '("ls" "git" "rg" "grep" "date" "echo" "cat" "node" "python3" "sbcl"))
+(defparameter *allowed-commands* '("ls" "git" "rg" "grep" "date" "echo" "cat" "node" "python3" "sbcl)
 
 (defparameter *shell-metacharacters* '(#\; #\& #\| #\> #\< #\$ #\` #\\ #\!))
 
@@ -43,7 +43,7 @@ The *Shell Actuator* provides a controlled interface for the OpenCortex to execu
        (multiple-value-bind (stdout stderr exit-code)
            (uiop:run-program cmd-string :output :string :error-output :string :ignore-error-status t)
          (opencortex:inject-stimulus 
-          `(:TYPE :EVENT :PAYLOAD (:SENSOR :shell-response :cmd ,cmd-string :stdout ,(or stdout "") :stderr ,(or stderr "") :exit-code ,exit-code))
+          `(:TYPE :EVENT :PAYLOAD (:SENSOR :shell-response :cmd ,cmd-string :stdout ,(or stdout " :stderr ,(or stderr " :exit-code ,exit-code))
           :stream (getf context :reply-stream)))))))
 
 (defun trigger-skill-shell-actuator (context)

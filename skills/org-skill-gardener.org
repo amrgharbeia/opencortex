@@ -1,4 +1,4 @@
-#+PROPERTY: header-args:lisp :tangle (concat (getenv "INSTALL_DIR") "/skills/org-skill-gardener.lisp" (expand-file-name ""))
+#+PROPERTY: header-args:lisp :tangle (concat (identity (getenv "INSTALL_DIR")) "/skills/org-skill-gardener.lisp")" )
 :PROPERTIES:
 :ID:       gardener-skill
 :CREATED:  [2026-04-13 Mon 18:50]
@@ -47,7 +47,7 @@ We track the last audit time to ensure the Gardener doesn't over-consume resourc
 
 #+begin_src lisp
 (defvar *gardener-last-audit* 0
-  "The universal-time of the last full Memex audit.")
+  "The universal-time of the last full Memex audit.
 #+end_src
 
 ** Audit: Broken Links
@@ -115,7 +115,7 @@ The Gardener's deterministic gate performs the actual analysis and logs the resu
     
     (setf *gardener-last-audit* (get-universal-time))
     ;; Return a log to stop the loop
-    (list :type :LOG :payload (list :text "Gardener audit complete."))))
+    (list :type :LOG :payload (list :text "Gardener audit complete.)))
 #+end_src
 
 ** Skill Registration

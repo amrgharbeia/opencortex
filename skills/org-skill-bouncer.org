@@ -1,4 +1,4 @@
-#+PROPERTY: header-args:lisp :tangle (concat (getenv "INSTALL_DIR") "/skills/org-skill-bouncer.lisp" (expand-file-name ""))
+#+PROPERTY: header-args:lisp :tangle (concat (identity (getenv "INSTALL_DIR")) "/skills/org-skill-bouncer.lisp")" )
 :PROPERTIES:
 :ID:       bouncer-agent-skill
 :CREATED:  [2026-04-11 Sat 15:20]
@@ -22,7 +22,7 @@ Think of Policy as the constitution and Bouncer as the bouncer at the door:
 High-risk actions don't simply pass or fail—they can enter the "Flight Plan" approval workflow:
 
 1. Bouncer intercepts a risky action
-2. Creates an Org node ("Flight Plan") describing the action
+2. Creates an Org node ("Flight Plan describing the action
 3. User manually approves the flight plan in Emacs
 4. Bouncer detects approval on next heartbeat
 5. Action is re-injected with `approved = t` flag, bypassing the gate
@@ -94,11 +94,11 @@ Detects when shell commands try to send data to untrusted network destinations.
 
 #+begin_src lisp
 (defvar *bouncer-network-whitelist*
-  '("api.telegram.org" "matrix.org" "googleapis.com" "openai.com" "anthropic.com")
+  '("api.telegram.org" "matrix.org" "googleapis.com" "openai.com" "anthropic.com
   "Domains that the Bouncer considers safe for outbound connections.
 
   This whitelist should be minimal—only services explicitly configured
-  as gateways. All other outbound connections require approval.")
+  as gateways. All other outbound connections require approval.
 
 (defun bouncer-check-network-exfil (cmd)
   "Detects if CMD attempts to contact an unwhitelisted external host.
@@ -156,7 +156,7 @@ Detects when shell commands try to send data to untrusted network destinations.
          ;; Extract cmd from direct shell or tool-mediated shell call
          (cmd (or (getf payload :cmd)
                  (when (and (eq target :tool)
-                           (equal (getf payload :tool) "shell"))
+                           (equal (getf payload :tool) "shell)
                    (getf (getf payload :args) :cmd))))
          (approved (getf action :approved)))
 
@@ -179,10 +179,10 @@ Detects when shell commands try to send data to untrusted network destinations.
       ;; Shell commands targeting unknown hosts require approval
       ((and (or (eq target :shell)
                (and (eq target :tool)
-                   (equal (getf payload :tool) "shell")))
+                   (equal (getf payload :tool) "shell))
             (bouncer-check-network-exfil cmd))
 
-       (harness-log "SECURITY WARNING: External network call detected. Queuing for approval.")
+       (harness-log "SECURITY WARNING: External network call detected. Queuing for approval.
 
        (list :type :EVENT
              :payload (list :sensor :approval-required
@@ -192,7 +192,7 @@ Detects when shell commands try to send data to untrusted network destinations.
       ;; Shell execution, file repair, and eval require approval
       ((or (member target '(:shell))
           (and (eq target :tool)
-              (member (getf payload :tool) '("shell" "repair-file") :test #'string=))
+              (member (getf payload :tool) '("shell" "repair-file :test #'string=))
           (and (eq target :emacs)
               (eq (getf payload :action) :eval)))
 
@@ -234,7 +234,7 @@ When a flight plan is approved in Emacs, the Bouncer detects it and re-injects t
 
   Returns T if any flight plans were processed."
 
-  (let ((approved-nodes (list-objects-with-attribute :TODO "APPROVED"))
+  (let ((approved-nodes (list-objects-with-attribute :TODO "APPROVED)
         (found-any nil))
 
     (dolist (node approved-nodes)
@@ -259,7 +259,7 @@ When a flight plan is approved in Emacs, the Bouncer detects it and re-injects t
               (inject-stimulus action)
 
               ;; Mark the flight plan as done
-              (setf (getf (org-object-attributes node) :TODO) "DONE")
+              (setf (getf (org-object-attributes node) :TODO) "DONE
 
               (setq found-any t))))))
 
@@ -299,7 +299,7 @@ When the Bouncer intercepts a high-risk action, it creates a flight plan node fo
                           :attributes (list
                                        :TITLE "Flight Plan: High-Risk Action"
                                        :TODO "PLAN"
-                                       :TAGS '("FLIGHT_PLAN")
+                                       :TAGS '("FLIGHT_PLAN
                                        :ACTION (format nil "~s" blocked-action))))))
 #+end_src
 

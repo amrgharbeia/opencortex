@@ -1,4 +1,4 @@
-#+PROPERTY: header-args:lisp :tangle (concat (getenv "INSTALL_DIR") "/skills/org-skill-scribe.lisp" (expand-file-name ""))
+#+PROPERTY: header-args:lisp :tangle (concat (identity (getenv "INSTALL_DIR")) "/skills/org-skill-scribe.lisp")" )
 :PROPERTIES:
 :ID:       scribe-skill
 :CREATED:  [2026-04-13 Mon 18:40]
@@ -37,7 +37,7 @@ The Scribe reacts to the `:heartbeat` sensor. It maintains a state file (`scribe
 
 ** 2. Semantic Interfaces
 - Trigger: `(:sensor :heartbeat)`
-- Action: `(:type :REQUEST :target :system :action :create-note :title "..." :content "..." :source-id "...")`
+- Action: `(:type :REQUEST :target :system :action :create-note :title "..." :content "..." :source-id "...`
 
 * Phase D: Build (Implementation)
 
@@ -51,7 +51,7 @@ We track the last processed universal time to avoid redundant distillation.
 
 #+begin_src lisp
 (defvar *scribe-last-checkpoint* 0
-  "The universal-time of the last successful distillation run.")
+  "The universal-time of the last successful distillation run.
 
 (defun scribe-load-state ()
   "Loads the scribe checkpoint from the state directory."
@@ -98,7 +98,7 @@ The LLM is tasked with identifying atomic concepts within the raw text.
   (let* ((payload (getf context :payload))
          (nodes (scribe-get-distillable-nodes)))
     (if nodes
-        (let ((text-to-process ""))
+        (let ((text-to-process 
           (dolist (node nodes)
             (setf text-to-process (concatenate 'string text-to-process 
                                                (format nil "ID: ~a~%TITLE: ~a~%CONTENT: ~a~%---~%" 
@@ -111,7 +111,7 @@ Extract ATOMIC EVERGREEN NOTES from this text.
 
 RULES:
 1. One note per distinct concept.
-2. Output a list of Lisp plists: ((:title \"...\" :content \"...\" :source-id \"...\") ...)
+2. Output a list of Lisp plists: ((:title \"...\" :content \"...\" :source-id \"...\ ...)
 3. The content should be in Org-mode format.
 4. Keep titles descriptive and snake_case.
 
@@ -132,7 +132,7 @@ The deterministic gate receives the list of proposed notes and writes them to th
       (let* ((title (getf note :title))
              (content (getf note :content))
              (source-id (getf note :source-id))
-             (filename (format nil "~a.org" (string-downcase (cl-ppcre:regex-replace-all " " title "_"))))
+             (filename (format nil "~a.org" (string-downcase (cl-ppcre:regex-replace-all " " title "_)))
              (path (merge-pathnames filename notes-dir)))
         (if (uiop:file-exists-p path)
             (with-open-file (out path :direction :output :if-exists :append)
@@ -154,9 +154,9 @@ The deterministic gate receives the list of proposed notes and writes them to th
       (harness-log "SCRIBE: Committing ~a atomic notes..." (length data))
       (scribe-commit-notes data)
       (scribe-save-state)
-      (harness-log "SCRIBE: Distillation complete.")
+      (harness-log "SCRIBE: Distillation complete.
       ;; Return a log event to stop the loop
-      (list :type :LOG :payload (list :text "Distillation successful.")))))
+      (list :type :LOG :payload (list :text "Distillation successful.))))
 #+end_src
 
 ** Skill Registration

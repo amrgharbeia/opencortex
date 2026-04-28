@@ -23,7 +23,7 @@ To maintain sovereignty, the harness must remain a "dumb" bus. It should not kno
 ** The Installer Script (opencortex.sh)
 The shell script is the primary entry point. It handles the initial git clone, dependency installation, and literate tangle.
 
-#+begin_src bash :tangle (expand-file-name "harness/../opencortex.sh")
+#+begin_src bash :tangle ../opencortex.sh
 #!/bin/bash
 # (The content here is a duplicate of the main opencortex.sh for literate consistency)
 # [Note: Implementation is already verified in the top-level script]

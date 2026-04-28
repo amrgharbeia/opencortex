@@ -1,4 +1,4 @@
-#+PROPERTY: header-args:lisp :tangle (concat (getenv "INSTALL_DIR") "/skills/org-skill-protocol-validator.lisp" (expand-file-name ""))
+#+PROPERTY: header-args:lisp :tangle (concat (identity (getenv "INSTALL_DIR")) "/skills/org-skill-protocol-validator.lisp")" )
 :PROPERTIES:
 :ID:       org-skill-communication-protocol-validator
 :CREATED:  [2026-04-12 Sun 14:35]
@@ -40,7 +40,7 @@ Decouple protocol parsing (framing/unframing) from semantic validation.
 
 #+begin_src lisp
 (defun validate-communication-protocol-schema (msg)
-  "Returns T if the message is valid, NIL (and signals error) otherwise.")
+  "Returns T if the message is valid, NIL (and signals error) otherwise.
 #+end_src
 
 * Phase D: Build (Implementation)
@@ -66,20 +66,20 @@ Decouple protocol parsing (framing/unframing) from semantic validation.
        (let ((target (proto-get msg :target))
              (source (proto-get (proto-get msg :meta) :source)))
          (unless (or target source)
-           (error "Communication Protocol Schema Error: REQUEST missing mandatory :target and no :source in :meta to infer it"))
+           (error "Communication Protocol Schema Error: REQUEST missing mandatory :target and no :source in :meta to infer it)
          (unless (proto-get msg :payload)
-           (error "Communication Protocol Schema Error: REQUEST missing mandatory :payload"))))
+           (error "Communication Protocol Schema Error: REQUEST missing mandatory :payload)))
       
       (:EVENT
        (let ((payload (proto-get msg :payload)))
          (unless (and payload (listp payload))
-           (error "Communication Protocol Schema Error: EVENT missing or invalid :payload"))
+           (error "Communication Protocol Schema Error: EVENT missing or invalid :payload)
          (unless (or (proto-get payload :action) (proto-get payload :sensor))
-           (error "Communication Protocol Schema Error: EVENT payload must contain :action or :sensor"))))
+           (error "Communication Protocol Schema Error: EVENT payload must contain :action or :sensor)))
       
       (:RESPONSE
        (unless (proto-get msg :payload)
-         (error "Communication Protocol Schema Error: RESPONSE missing mandatory :payload"))))
+         (error "Communication Protocol Schema Error: RESPONSE missing mandatory :payload)))
     
     t))
 #+end_src

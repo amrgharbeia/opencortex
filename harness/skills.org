@@ -1,4 +1,4 @@
-#+PROPERTY: header-args:lisp :tangle skills.lisp
+#+PROPERTY: header-args:lisp :tangle (concat (identity (getenv "INSTALL_DIR")) "/harness/skills.lisp")
 #+TITLE: The Skill Engine (skills.lisp)
 #+AUTHOR: Amr
 #+FILETAGS: :harness:skills:

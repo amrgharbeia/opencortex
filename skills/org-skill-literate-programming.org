@@ -1,4 +1,4 @@
-#+PROPERTY: header-args:lisp :tangle (concat (getenv "INSTALL_DIR") "/skills/org-skill-literate-programming.lisp" (expand-file-name ""))
+#+PROPERTY: header-args:lisp :tangle (concat (identity (getenv "INSTALL_DIR")) "/skills/org-skill-literate-programming.lisp")" )
 :PROPERTIES:
 :ID:       literate-programming-skill-2026
 :CREATED:  [2026-04-25 Sat]
@@ -74,8 +74,8 @@ Code without surrounding prose is a bug report waiting to happen.
           (escaped (setf escaped nil))
           ((char= ch #\\) (setf escaped t))
           ;; String boundaries
-          (in-string (when (char= ch #\") (setf in-string nil)))
-          ((char= ch #\") (setf in-string t))
+          (in-string (when (char= ch #\ (setf in-string nil)))
+          ((char= ch #\ (setf in-string t))
           ;; Comment boundaries (skip to end of line)
           ((char= ch #\;)
            (loop while (and (< i (1- (length code-string)))
@@ -128,8 +128,8 @@ Code without surrounding prose is a bug report waiting to happen.
                       (dolist (line (uiop:split-string raw-block :separator '(#\Newline)))
                         (let ((trimmed (string-trim '(#\Space #\Tab #\Return) line)))
                           (when (and (plusp (length trimmed))
-                                     (not (string= (subseq trimmed 0 (min 12 (length trimmed))) ":PROPERTIES:"))
-                                     (not (string= (subseq trimmed 0 (min 5 (length trimmed))) ":END:")))
+                                     (not (string= (subseq trimmed 0 (min 12 (length trimmed))) ":PROPERTIES:)
+                                     (not (string= (subseq trimmed 0 (min 5 (length trimmed))) ":END:))
                             (push line clean-lines))))
                       (let ((code (format nil "~{~a~^~%~}" (nreverse clean-lines))))
                         (multiple-value-bind (ok reason) (literate-check-block-balance code)
@@ -148,15 +148,15 @@ Verifies that tangled `.lisp` files are in sync with their Org source. Violation
 
 #+begin_src lisp
 (defvar *tangle-targets*
-  '(("skills/org-skill-engineering-standards.org" . "library/gen/org-skill-engineering-standards.lisp")
-    ("skills/org-skill-literate-programming.org" . "library/gen/org-skill-literate-programming.lisp")
-    ("harness/memory.org" . "library/memory.lisp")
-    ("harness/loop.org" . "library/loop.lisp")
-    ("harness/perceive.org" . "library/perceive.lisp")
-    ("harness/reason.org" . "library/reason.lisp")
-    ("harness/act.org" . "library/act.lisp")
-    ("harness/skills.org" . "library/skills.lisp")
-    ("harness/communication.org" . "library/communication.lisp")))
+  '(("org-skill-engineering-standards.org" . "library/gen/org-skill-engineering-standards.lisp
+    ("org-skill-literate-programming.org" . "library/gen/org-skill-literate-programming.lisp
+    ("harness/memory.org" . "library/memory.lisp
+    ("harness/loop.org" . "library/loop.lisp
+    ("harness/perceive.org" . "library/perceive.lisp
+    ("harness/reason.org" . "library/reason.lisp
+    ("harness/act.org" . "library/act.lisp
+    ("harness/skills.org" . "library/skills.lisp
+    ("harness/communication.org" . "library/communication.lisp))
 
 (defvar *lp-project-root* nil)
 
@@ -225,9 +225,9 @@ The LP skill runs at priority 1100 (just below engineering-standards at 1000).
 (defun lp-init ()
   "Initialize the LP system with project root."
   (unless *lp-initialized*
-    (let ((env-root (or (getenv "OPENCORTEX_ROOT")
-                        (getenv "MEMEX_DIR")
-                        "/home/user/memex/projects/opencortex")))
+    (let ((env-root (or (getenv "OPENCORTEX_ROOT
+                        (getenv "MEMEX_DIR
+                        "/home/user/memex/projects/opencortex))
       (lp-set-project-root env-root)
       (setf *lp-initialized* t)
       (harness-log "LITERATE PROGRAMMING: Initialized with root ~a" *lp-project-root*))))
@@ -241,7 +241,7 @@ The LP skill runs at priority 1100 (just below engineering-standards at 1000).
 These tests verify the LP enforcement logic. Run with:
 ~(fiveam:run! 'literate-programming-suite)~
 
-#+begin_src lisp :tangle (concat (getenv "INSTALL_DIR") "/skills/literate-programming-tests.lisp" (expand-file-name ""))
+#+begin_src lisp :tangle (concat (identity (getenv "INSTALL_DIR")) "/tests/literate-programming-tests.lisp")" )
 (defpackage :opencortex-literate-programming-tests
   (:use :cl :fiveam :opencortex)
   (:export #:literate-programming-suite))
@@ -249,14 +249,14 @@ These tests verify the LP enforcement logic. Run with:
 (in-package :opencortex-literate-programming-tests)
 
 (def-suite literate-programming-suite
-  :description "Tests for Literate Programming enforcement")
+  :description "Tests for Literate Programming enforcement
 
 (in-suite literate-programming-suite)
 
 (test tangle-sync-detects-stale-lisp
   "check-tangle-sync returns violation when .lisp is newer than .org"
-  (let* ((root (uiop:ensure-directory-pathname "/tmp/lp-test/"))
-         (tmp-org (merge-pathnames "skills/test-skill.org" root))
+  (let* ((root (uiop:ensure-directory-pathname "/tmp/lp-test/)
+         (tmp-org (merge-pathnames "test-skill.org" root))
          (tmp-lisp (merge-pathnames "library/gen/test-skill.lisp" root)))
     (uiop:ensure-all-directories-exist (list (directory-namestring tmp-org) (directory-namestring tmp-lisp)))
     (with-open-file (f tmp-org :direction :output) (write-line "* Test" f))
@@ -264,7 +264,7 @@ These tests verify the LP enforcement logic. Run with:
     (with-open-file (f tmp-lisp :direction :output) (write-line "(defun test () t)" f))
     (let ((orig-targets opencortex::*tangle-targets*))
       (setf opencortex::*tangle-targets*
-            (cons '("skills/test-skill.org" . "library/gen/test-skill.lisp") orig-targets))
+            (cons '("test-skill.org" . "library/gen/test-skill.lisp orig-targets))
       (unwind-protect
           (let ((result (opencortex::check-tangle-sync root)))
             (is (listp result))
@@ -276,8 +276,8 @@ These tests verify the LP enforcement logic. Run with:
 
 (test tangle-sync-passes-when-synced
   "check-tangle-sync returns nil when .org is newer than .lisp"
-  (let* ((root (uiop:ensure-directory-pathname "/tmp/lp-test2/"))
-         (tmp-org (merge-pathnames "skills/test-skill2.org" root))
+  (let* ((root (uiop:ensure-directory-pathname "/tmp/lp-test2/)
+         (tmp-org (merge-pathnames "test-skill2.org" root))
          (tmp-lisp (merge-pathnames "library/gen/test-skill2.lisp" root)))
     (uiop:ensure-all-directories-exist (list (directory-namestring tmp-org) (directory-namestring tmp-lisp)))
     (with-open-file (f tmp-lisp :direction :output) (write-line "(defun test () t)" f))
@@ -285,7 +285,7 @@ These tests verify the LP enforcement logic. Run with:
     (with-open-file (f tmp-org :direction :output) (write-line "* Test" f))
     (let ((orig-targets opencortex::*tangle-targets*))
       (setf opencortex::*tangle-targets*
-            (cons '("skills/test-skill2.org" . "library/gen/test-skill2.lisp") orig-targets))
+            (cons '("test-skill2.org" . "library/gen/test-skill2.lisp orig-targets))
       (unwind-protect
           (let ((result (opencortex::check-tangle-sync root)))
             (is (null result)))
@@ -295,12 +295,12 @@ These tests verify the LP enforcement logic. Run with:
 
 (test tangle-sync-passes-when-synced
   "check-tangle-sync returns nil when .org is newer than .lisp"
-  (let ((tmp-org "/tmp/test-skill2.org")
-        (tmp-lisp "/tmp/test-skill2.lisp"))
+  (let ((tmp-org "/tmp/test-skill2.org
+        (tmp-lisp "/tmp/test-skill2.lisp)
     (with-open-file (f tmp-lisp :direction :output) (write-line "(defun test () t)" f))
     (sleep 1)
     (with-open-file (f tmp-org :direction :output) (write-line "* Test" f))
-    (let* ((root (uiop:ensure-directory-pathname "/tmp/"))
+    (let* ((root (uiop:ensure-directory-pathname "/tmp/)
            (result (opencortex::check-tangle-sync root)))
       (is (null result)))
     (uiop:delete-file-if-exists tmp-org)
@@ -308,11 +308,11 @@ These tests verify the LP enforcement logic. Run with:
 
 (test block-balance-valid
   "literate-check-block-balance returns T for balanced code"
-  (is (eq t (opencortex::literate-check-block-balance "(defun test () t)"))))
+  (is (eq t (opencortex::literate-check-block-balance "(defun test () t))))
 
 (test block-balance-invalid
   "literate-check-block-balance returns NIL for unbalanced code"
-  (multiple-value-bind (ok reason) (opencortex::literate-check-block-balance "(defun test ()")
+  (multiple-value-bind (ok reason) (opencortex::literate-check-block-balance "(defun test ()
     (is (null ok))
     (is (stringp reason))))
 #+end_src

@@ -1,4 +1,4 @@
-#+PROPERTY: header-args:lisp :tangle (concat (getenv "INSTALL_DIR") "/skills/org-skill-tool-permissions.lisp" (expand-file-name ""))
+#+PROPERTY: header-args:lisp :tangle (concat (identity (getenv "INSTALL_DIR")) "/skills/org-skill-tool-permissions.lisp")" )
 :PROPERTIES:
 :ID:       tool-permissions-skill-001
 :CREATED:   [2026-04-23 Thu]
@@ -32,7 +32,7 @@ Tool permissions and embedding generation via multiple providers.
 (in-package :opencortex)
 
 (defvar *tool-permissions* (make-hash-table :test 'equal)
-  "Hash table mapping tool names to :allow/:deny/:ask.")
+  "Hash table mapping tool names to :allow/:deny/:ask.
 
 (defun get-tool-permission (tool-name)
   (let ((key (string-downcase (string tool-name))))
@@ -53,29 +53,29 @@ Tool permissions and embedding generation via multiple providers.
 
 (def-cognitive-tool :get-embedding
   "Generates vector embeddings via Ollama or llama.cpp API."
-  ((:text :type :string :description "Text to embed."))
+  ((:text :type :string :description "Text to embed.)
   :body (lambda (args)
           (let* ((text (getf args :text))
-                 (provider (or (getenv "EMBEDDING_PROVIDER") "ollama"))
-                 (model (or (getenv "EMBEDDING_MODEL") "nomic-embed-text"))
+                 (provider (or (getenv "EMBEDDING_PROVIDER "ollama)
+                 (model (or (getenv "EMBEDDING_MODEL "nomic-embed-text)
                  (embedding nil))
             (cond
-              ((string= provider "ollama")
-               (let* ((host (or (getenv "OLLAMA_HOST") "localhost:11434"))
+              ((string= provider "ollama
+               (let* ((host (or (getenv "OLLAMA_HOST "localhost:11434)
                       (url (format nil "http://~a/api/embeddings" host))
                       (body (cl-json:encode-json-to-string `((model . ,model) (prompt . ,text)))))
                  (handler-case
-                     (let* ((response (dex:post url :headers '(("Content-Type" . "application/json")) :content body :connect-timeout 5 :read-timeout 30))
+                     (let* ((response (dex:post url :headers '(("Content-Type" . "application/json) :content body :connect-timeout 5 :read-timeout 30))
                             (json (cl-json:decode-json-from-string response))
                             (vec (cdr (assoc :embedding json))))
                        (when vec (setf embedding vec)))
                    (error (c) (harness-log "EMBEDDING: Ollama failed: ~a" c)))))
-              ((string= provider "llama.cpp")
-               (let* ((host (or (getenv "LLAMA_HOST") "localhost:8080"))
+              ((string= provider "llama.cpp
+               (let* ((host (or (getenv "LLAMA_HOST "localhost:8080)
                       (url (format nil "http://~a/v1/embeddings" host))
                       (body (cl-json:encode-json-to-string `((model . ,model) (input . ,text)))))
                  (handler-case
-                     (let* ((response (dex:post url :headers '(("Content-Type" . "application/json")) :content body :connect-timeout 5 :read-timeout 30))
+                     (let* ((response (dex:post url :headers '(("Content-Type" . "application/json) :content body :connect-timeout 5 :read-timeout 30))
                             (json (cl-json:decode-json-from-string response))
                             (data (cdr (assoc :data json)))
                             (vec (when data (cdr (assoc :embedding (car data))))))
@@ -83,13 +83,13 @@ Tool permissions and embedding generation via multiple providers.
                    (error (c) (harness-log "EMBEDDING: llama.cpp failed: ~a" c))))))
             (if embedding
                 (list :status :success :vector embedding)
-                (list :status :error :message "Embedding generation failed")))))
+                (list :status :error :message "Embedding generation failed))))
 
 (def-cognitive-tool :tool-permissions
   "View or set tool permission tiers."
-  ((:tool :type :string :description "Tool name")
+  ((:tool :type :string :description "Tool name
    (:action :type :keyword :description "Action: :get, :set, :list" :default :get)
-   (:tier :type :keyword :description "For :set: :allow/:deny/:ask"))
+   (:tier :type :keyword :description "For :set: :allow/:deny/:ask)
   :body (lambda (args)
           (let ((tool (getf args :tool))
                 (action (getf args :action :get))
@@ -101,14 +101,14 @@ Tool permissions and embedding generation via multiple providers.
               (:list (let ((r nil))
                        (maphash (lambda (k v) (push (list :tool k :permission v) r)) *tool-permissions*)
                        (list :status :success :tools r)))
-              (t (list :status :error :message "Invalid action"))))))
+              (t (list :status :error :message "Invalid action)))))
 
 ;; Defaults
 (set-tool-permission :shell :deny)
 (set-tool-permission :delete-file :deny)
 (set-tool-permission :eval :ask)
 (set-tool-permission :write-file :ask)
-(harness-log "TOOL PERMISSIONS: Initialized")
+(harness-log "TOOL PERMISSIONS: Initialized
 
 (defskill :skill-tool-permissions
   :priority 600
@@ -135,7 +135,7 @@ Tool permissions and embedding generation via multiple providers.
 These tests verify tool permissions. Run with:
 ~(fiveam:run! 'tool-permissions-suite)~
 
-#+begin_src lisp :tangle (concat (getenv "INSTALL_DIR") "/skills/tool-permissions-tests.lisp" (expand-file-name ""))
+#+begin_src lisp :tangle (concat (identity (getenv "INSTALL_DIR")) "/tests/tool-permissions-tests.lisp")" )
 (defpackage :opencortex-tool-permissions-tests
   (:use :cl :fiveam :opencortex)
   (:export #:tool-permissions-suite))
@@ -143,18 +143,18 @@ These tests verify tool permissions. Run with:
 (in-package :opencortex-tool-permissions-tests)
 
 (def-suite tool-permissions-suite
-  :description "Tests for Tool Permissions skill")
+  :description "Tests for Tool Permissions skill
 
 (in-suite tool-permissions-suite)
 
 (test default-permission-is-allow
   "Verify default permission is :allow."
-  (is (eq (get-tool-permission "unknown-tool") :allow)))
+  (is (eq (get-tool-permission "unknown-tool :allow)))
 
 (test set-and-get-permission
   "Verify setting and getting permissions."
   (set-tool-permission "test-tool-abc" :deny)
-  (is (eq (get-tool-permission "test-tool-abc") :deny)))
+  (is (eq (get-tool-permission "test-tool-abc :deny)))
 
 (test permission-gate-allow
   "Verify :allow tier passes through."

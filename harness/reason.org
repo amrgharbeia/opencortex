@@ -1,4 +1,4 @@
-#+PROPERTY: header-args:lisp :tangle (expand-file-name "harness/reason.lisp" (expand-file-name "harness/"))
+#+PROPERTY: header-args:lisp :tangle (concat (identity (getenv "INSTALL_DIR")) "/harness/reason.lisp")" )
 #+TITLE: Stage 2: Reason (reason.lisp)
 #+AUTHOR: Amr
 #+FILETAGS: :harness:reason:
@@ -23,7 +23,7 @@ The LLM proposes; the skills verify. This is the "Bouncer Pattern" - the determi
 The Reason stage communicates exclusively through property lists (plists). This design choice reflects the homoiconic nature of Lisp - plists are native data structures that can be read, written, and manipulated by the same code that processes them.
 
 A plist message like:
-: (TYPE :REQUEST TARGET :CLI PAYLOAD (ACTION :MESSAGE TEXT "Hello"))
+: (TYPE :REQUEST TARGET :CLI PAYLOAD (ACTION :MESSAGE TEXT "Hello)
 
 Is simultaneously:
 - Human-readable text
@@ -46,17 +46,17 @@ The probabilistic engine is responsible for all neural/LLM operations. It mainta
 
 #+begin_src lisp
 (defvar *probabilistic-backends* (make-hash-table :test 'equal)
-  "Registry mapping provider keywords (:openrouter, :ollama) to their calling functions.")
+  "Registry mapping provider keywords (:openrouter, :ollama) to their calling functions.
 
 (defvar *provider-cascade* nil
-  "Ordered list of provider keywords to try. First available provider wins.")
+  "Ordered list of provider keywords to try. First available provider wins.
 
 (defvar *model-selector-fn* nil
   "Optional function that selects a specific model for each provider.
-  Signature: (funcall fn provider context) => model-name-string")
+  Signature: (funcall fn provider context) => model-name-string
 
 (defvar *consensus-enabled-p* nil
-  "When T, run multiple providers and compare results for critical decisions.")
+  "When T, run multiple providers and compare results for critical decisions.
 #+end_src
 
 ** register-probabilistic-backend: Backend Registration
@@ -68,8 +68,8 @@ The probabilistic engine is responsible for all neural/LLM operations. It mainta
   NAME is a keyword like :openrouter or :ollama.
   FN is a function with signature: (funcall fn prompt system-prompt &key model)
      returning either:
-     - (list :status :success :content \"response text\")
-     - (list :status :error :message \"error description\")
+     - (list :status :success :content \"response text\
+     - (list :status :error :message \"error description\
      - a simple string on success
 
   Example registration:
@@ -82,7 +82,7 @@ The probabilistic engine is responsible for all neural/LLM operations. It mainta
 
 #+begin_src lisp
 (defun probabilistic-call (prompt &key
-                                (system-prompt "You are the Probabilistic engine.")
+                                (system-prompt "You are the Probabilistic engine.
                                 (cascade nil)
                                 (context nil))
   "Dispatch a neural request through the provider cascade.
@@ -121,7 +121,7 @@ The probabilistic engine is responsible for all neural/LLM operations. It mainta
 
         ;; All providers failed
         (list :type :LOG
-              :payload (list :text "Neural Cascade Failure: All providers exhausted.")))))
+              :payload (list :text "Neural Cascade Failure: All providers exhausted.))))
 #+end_src
 
 * Cognitive Proposal Generation (Think)
@@ -144,9 +144,9 @@ The `think` function is the heart of the probabilistic engine. It constructs a p
 
   (if (and text (stringp text))
       (let ((cleaned text))
-        (setf cleaned (cl-ppcre:regex-replace-all "^```[a-z]*\\n" cleaned ""))
-        (setf cleaned (cl-ppcre:regex-replace-all "\\n```$" cleaned ""))
-        (setf cleaned (cl-ppcre:regex-replace-all "```" cleaned ""))
+        (setf cleaned (cl-ppcre:regex-replace-all "^```[a-z]*\\n" cleaned 
+        (setf cleaned (cl-ppcre:regex-replace-all "\\n```$" cleaned 
+        (setf cleaned (cl-ppcre:regex-replace-all "```" cleaned 
         (string-trim '(#\Space #\Newline #\Tab) cleaned))
       text))
 #+end_src
@@ -164,8 +164,8 @@ The `think` function is the heart of the probabilistic engine. It constructs a p
   making the plist compatible with standard Lisp property accessors.
 
   Example transformation:
-    (TYPE REQUEST PAYLOAD (ACTION MESSAGE TEXT \"Hi\"))
-    => (:TYPE :REQUEST :PAYLOAD (:ACTION :MESSAGE :TEXT \"Hi\"))"
+    (TYPE REQUEST PAYLOAD (ACTION MESSAGE TEXT \"Hi\)
+    => (:TYPE :REQUEST :PAYLOAD (:ACTION :MESSAGE :TEXT \"Hi\)"
 
   (when (listp plist)
     (loop for (k . rest) on plist by #'cddr
@@ -193,14 +193,14 @@ The `think` function is the heart of the probabilistic engine. It constructs a p
   This constraint makes parsing deterministic and prevents rambling.
 
   Returns a plist with structure:
-    (:TYPE :REQUEST :TARGET :CLI :PAYLOAD (:ACTION :MESSAGE :TEXT \"...\"))"
+    (:TYPE :REQUEST :TARGET :CLI :PAYLOAD (:ACTION :MESSAGE :TEXT \"...\)"
 
   ;; Gather context components
   (let* ((active-skill (find-triggered-skill context))
          (tool-belt (generate-tool-belt-prompt))
          (global-context (context-assemble-global-awareness))
          (system-logs (context-get-system-logs))
-         (assistant-name (or (getenv "MEMEX_ASSISTANT") "Agent"))
+         (assistant-name (or (getenv "MEMEX_ASSISTANT "Agent)
          (rejection-trace (proto-get (proto-get context :payload) :rejection-trace)))
 
     ;; Generate prompt from skill or raw text
@@ -212,12 +212,12 @@ The `think` function is the heart of the probabilistic engine. It constructs a p
                            (let ((p (proto-get (proto-get context :payload) :text)))
                              (if (and p (stringp p))
                                  p
-                                 "Maintain metabolic stasis."))))
+                                 "Maintain metabolic stasis.)))
            
            ;; Inject Reflection Loop feedback if a previous proposal was rejected
            (reflection-feedback (if rejection-trace
                                     (format nil "~%~%PREVIOUS PROPOSAL REJECTED:~%Your previous proposal was rejected by the deterministic safety gates.~%Rejection Trace: ~a~%You MUST fix the syntax or logic error described above and try again." rejection-trace)
-                                    ""))
+                                    
 
            (system-prompt (format nil
                                    "IDENTITY: ~a~a
@@ -228,10 +228,10 @@ Your task is to generate exactly ONE valid Lisp plist response.
 MANDATE: Respond with ONE Lisp plist. Never output prose.
 
 IMPORTANT: To reply to the user, you MUST use:
-(:TYPE :REQUEST :PAYLOAD (:ACTION :MESSAGE :TEXT \"<Response Text>\"))
+(:TYPE :REQUEST :PAYLOAD (:ACTION :MESSAGE :TEXT \"<Response Text>\)
 
 To call a tool, you MUST use:
-(:TYPE :REQUEST :TARGET :TOOL :ACTION :CALL :TOOL \"<name>\" :ARGS (:arg1 \"val\"))
+(:TYPE :REQUEST :TARGET :TOOL :ACTION :CALL :TOOL \"<name>\" :ARGS (:arg1 \"val\)
 
 MANDATORY VALIDATION RULE: Before declaring any Lisp code edit complete,
 you MUST call the `:validate-lisp` tool with the proposed code. If the tool
@@ -432,7 +432,7 @@ The deterministic engine runs all registered skills' verification functions. Thi
           (last-rejection nil))
       (loop
         (when (<= retries 0)
-          (harness-log "REASON: Reflection loop exhausted. Final rejection.")
+          (harness-log "REASON: Reflection loop exhausted. Final rejection.
           (setf (getf signal :approved-action) last-rejection)
           (setf (getf signal :status) :reasoned)
           (return signal))
@@ -472,7 +472,7 @@ The deterministic engine runs all registered skills' verification functions. Thi
 These tests verify the Reason (cognitive) pipeline. Run with:
 ~(fiveam:run! 'pipeline-reason-suite)~
 
-#+begin_src lisp :tangle (expand-file-name "harness/pipeline-reason-tests.lisp" (concat (concat (or (getenv "INSTALL_DIR") ".") "/harness") "/tests"))
+#+begin_src lisp :tangle pipeline-reason-tests.lisp" (concat (concat (or (getenv "INSTALL_DIR ". "/harness "/tests)
 (defpackage :opencortex-pipeline-reason-tests
   (:use :cl :fiveam :opencortex)
   (:export #:pipeline-reason-suite))
@@ -480,7 +480,7 @@ These tests verify the Reason (cognitive) pipeline. Run with:
 (in-package :opencortex-pipeline-reason-tests)
 
 (def-suite pipeline-reason-suite
-  :description "Test suite for Reason pipeline")
+  :description "Test suite for Reason pipeline
 
 (in-suite pipeline-reason-suite)
 
@@ -491,10 +491,10 @@ These tests verify the Reason (cognitive) pipeline. Run with:
   (opencortex::defskill :mock-safety
     :priority 50
     :trigger (lambda (ctx) t)
-    :probabilistic (lambda (ctx) "Mock probabilistic")
+    :probabilistic (lambda (ctx) "Mock probabilistic
     :deterministic (lambda (action ctx)
-                (list :type :LOG :payload (list :text "Action rejected by skill heuristics"))))
-  (let* ((candidate (list :type :REQUEST :payload (list :action :eval :code "(shell-command \"rm -rf /\")")))
+                (list :type :LOG :payload (list :text "Action rejected by skill heuristics)))
+  (let* ((candidate (list :type :REQUEST :payload (list :action :eval :code "(shell-command \"rm -rf /\))
          (signal (list :type :EVENT :candidate candidate))
          (result (deterministic-verify candidate signal)))
     (is (eq :LOG (getf result :type)))
