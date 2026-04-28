@@ -23,6 +23,10 @@ export OC_DATA_DIR="${XDG_DATA_HOME:-$HOME/.local/share}/opencortex"
 export OC_STATE_DIR="${XDG_STATE_HOME:-$HOME/.local/state}/opencortex"
 export OC_BIN_DIR="${XDG_BIN_HOME:-$HOME/.local/bin}"
 
+# Dynamic defaults for Skill Engine and Project Root
+export SKILLS_DIR="${SKILLS_DIR:-$OC_DATA_DIR/skills}"
+export MEMEX_DIR="${MEMEX_DIR:-$HOME/memex}"
+
 # Load environment variables from the standard config location
 if [ -f "$OC_CONFIG_DIR/.env" ]; then
     source "$OC_CONFIG_DIR/.env"
@@ -94,8 +98,6 @@ case "$COMMAND" in
         ;;
 
     doctor)
-        export SKILLS_DIR="${OC_DATA_DIR}/skills"
-        [ -z "$MEMEX_DIR" ] && export MEMEX_DIR="$HOME/memex"
         exec sbcl --non-interactive \
              --eval '(load (merge-pathnames "quicklisp/setup.lisp" (user-homedir-pathname)))' \
              --eval "(push (truename \"$OC_DATA_DIR/\") asdf:*central-registry*)" \
