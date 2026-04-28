@@ -1,173 +1,69 @@
-#+PROPERTY: header-args:lisp :tangle (concat (identity (getenv "INSTALL_DIR")) "/skills/org-skill-bouncer.lisp")" )
-:PROPERTIES:
-:ID:       bouncer-agent-skill
-:CREATED:  [2026-04-11 Sat 15:20]
-:EDITED:   [2026-04-22 Wed 16:00]
-:END:
-#+DEPENDS_ON: org-skill-credentials-vault
-#+TITLE: SKILL: Deterministic Engine Bouncer (Authorization Gate)
-#+STARTUP: content
+#+TITLE: SKILL: Bouncer (org-skill-bouncer.org)
+#+AUTHOR: Agent
 #+FILETAGS: :system:bouncer:authorization:autonomy:
+#+PROPERTY: header-args:lisp :tangle org-skill-bouncer.lisp
 
 * Overview
+The *Bouncer Skill* is the physical security layer of OpenCortex. It enforces operational security checks on all proposed actions.
 
-The *Bouncer Skill* is the physical security layer of OpenCortex. While the Policy skill enforces constitutional invariants (transparency, autonomy, modularity), the Bouncer enforces operational security checks.
+* Implementation
 
-Think of Policy as the constitution and Bouncer as the bouncer at the door:
-- **Policy** asks: "Is this action aligned with our values?"
-- **Bouncer** asks: "Is this action safe to execute?"
-
-** The Flight Plan Pattern
-
-High-risk actions don't simply pass or fail—they can enter the "Flight Plan" approval workflow:
-
-1. Bouncer intercepts a risky action
-2. Creates an Org node ("Flight Plan describing the action
-3. User manually approves the flight plan in Emacs
-4. Bouncer detects approval on next heartbeat
-5. Action is re-injected with `approved = t` flag, bypassing the gate
-
-This creates human-in-the-loop oversight for dangerous operations without blocking the system entirely.
-
-** Why a Separate Skill?**
-
-Security and policy are separated for clarity and auditability:
-- Policy decisions can be explained (they reference invariants)
-- Bouncer decisions are technical (they reference threat vectors)
-
-When something is blocked, the logs clearly show which layer blocked it and why.
-
-* Package Context
-
+** Package Context
 #+begin_src lisp
 (in-package :opencortex)
 #+end_src
 
-* Security Vectors
+** Security Configuration
+#+begin_src lisp
+(defvar *bouncer-network-whitelist*
+  '("api.telegram.org" "matrix.org" "googleapis.com" "openai.com" "anthropic.com")
+  "Domains that the Bouncer considers safe for outbound connections.")
+#+end_src
 
-The Bouncer implements the 5-Vector security model:
-
-| Vector | Threat | Response |
-|--------|--------|----------|
-| Secret Exposure | API keys, passwords in output | Hard block |
-| Network Exfiltration | Data sent to unauthorized hosts | Approval required |
-| Shell Execution | Arbitrary command execution | Approval required |
-| File Modification | Writing/deleting files | Soft check |
-| Eval Execution | Arbitrary code evaluation | Approval required |
-
-** Secret Exposure Detection
-
-The vault stores sensitive credentials. This check scans action text for vault secrets to prevent accidental exposure.
-
+** Secret Scanning (bouncer-scan-secrets)
 #+begin_src lisp
 (defun bouncer-scan-secrets (text)
-  "Scans TEXT for known secrets from the vault.
-
-  RETURNS: The name of the matched secret, or NIL if text is clean.
-
-  This prevents the catastrophic failure mode where the agent
-  accidentally echoes an API key in its response or log output.
-
-  The check uses substring matching (not regex) for reliability.
-  Only secrets longer than 5 characters are checked to avoid
-  false positives on common words."
-
+  "Scans TEXT for known secrets from the vault."
   (when (and text (stringp text))
-
     (let ((found-secret nil))
-
       (maphash (lambda (key val)
-                 ;; Only check secrets of meaningful length
                  (when (and val (stringp val) (> (length val) 5))
-                   ;; Search for secret value in action text
                    (when (search val text)
                      (setf found-secret key))))
-
-               opencortex::*vault-memory*)
-
+               *vault-memory*)
       found-secret)))
 #+end_src
 
-** Network Exfiltration Detection
-
-Detects when shell commands try to send data to untrusted network destinations.
-
+** Network Check (bouncer-check-network-exfil)
 #+begin_src lisp
-(defvar *bouncer-network-whitelist*
-  '("api.telegram.org" "matrix.org" "googleapis.com" "openai.com" "anthropic.com
-  "Domains that the Bouncer considers safe for outbound connections.
-
-  This whitelist should be minimal—only services explicitly configured
-  as gateways. All other outbound connections require approval.
-
 (defun bouncer-check-network-exfil (cmd)
-  "Detects if CMD attempts to contact an unwhitelisted external host.
-
-  Returns T if the command targets an unknown external host.
-  Returns NIL if the command is clean or only contacts whitelisted hosts.
-
-  The check looks for HTTP/HTTPS/FTP URLs and extracts the domain.
-  If the domain isn't in *bouncer-network-whitelist*, it's flagged."
-
+  "Detects if CMD attempts to contact an unwhitelisted external host."
   (when (and cmd (stringp cmd))
-
-    ;; Look for URL patterns in the command
-    (when (cl-ppcre:scan "(http|https|ftp)://([\\w\\.-]+)" cmd)
-
-      (multiple-value-bind (match regs)
-          (cl-ppcre:scan-to-strings "(http|https|ftp)://([\\w\\.-]+)" cmd)
-
-        (declare (ignore match))
-
+    (multiple-value-bind (match regs)
+        (cl-ppcre:scan-to-strings "(http|https|ftp)://([\\w\\.-]+)" cmd)
+      (declare (ignore match))
+      (when regs
         (let ((domain (aref regs 1)))
-
-          ;; Check if domain is whitelisted
           (not (some (lambda (safe) (search safe domain))
                     *bouncer-network-whitelist*)))))))
 #+end_src
 
-* Runtime Guard
-
-** bouncer-check: Main Security Gate
-
+** Main Security Gate (bouncer-check)
 #+begin_src lisp
 (defun bouncer-check (action context)
-  "The 5-Vector security gate for high-risk actions.
-
-  Evaluates an action against all security vectors and either:
-  - Returns the action unchanged (pass)
-  - Returns a blocking LOG event (hard block)
-  - Returns an approval-required EVENT (soft block)
-
-  Vector evaluation order:
-  1. Already approved actions pass immediately
-  2. Secret exposure → hard block
-  3. Network exfiltration → approval required
-  4. High-impact targets → approval required
-
-  The context parameter is not used directly but provided for
-  consistency with the skill gate signature."
-
+  "The 5-Vector security gate for high-risk actions."
   (declare (ignore context))
-
-  (let* ((target (getf action :target))
-         (payload (getf action :payload))
-         (text (or (getf payload :text) (getf action :text)))
-         ;; Extract cmd from direct shell or tool-mediated shell call
-         (cmd (or (getf payload :cmd)
-                 (when (and (eq target :tool)
-                           (equal (getf payload :tool) "shell)
-                   (getf (getf payload :args) :cmd))))
-         (approved (getf action :approved)))
+  (let* ((target (proto-get action :target))
+         (payload (proto-get action :payload))
+         (text (or (proto-get payload :text) (proto-get action :text)))
+         (cmd (or (proto-get payload :cmd)
+                 (when (and (eq target :tool) (equal (proto-get payload :tool) "shell"))
+                   (proto-get (proto-get payload :args) :cmd))))
+         (approved (proto-get action :approved)))
 
     (cond
+      (approved action)
 
-      ;; Vector 0: Already approved actions pass through
-      (approved
-       action)
-
-      ;; Vector 1: Secret Exposure (Hard Block)
-      ;; If any vault secret is found in the action text, block immediately
       ((and text (bouncer-scan-secrets text))
        (let ((secret-name (bouncer-scan-secrets text)))
          (harness-log "SECURITY VIOLATION: Blocked potential leak of secret '~a'" secret-name)
@@ -175,208 +71,75 @@ Detects when shell commands try to send data to untrusted network destinations.
                :payload (list :level :error
                               :text (format nil "Action blocked: Potential exposure of '~a'" secret-name)))))
 
-      ;; Vector 2: Network Exfiltration (Soft Block)
-      ;; Shell commands targeting unknown hosts require approval
       ((and (or (eq target :shell)
-               (and (eq target :tool)
-                   (equal (getf payload :tool) "shell))
+               (and (eq target :tool) (equal (proto-get payload :tool) "shell")))
             (bouncer-check-network-exfil cmd))
+       (harness-log "SECURITY WARNING: External network call detected. Queuing for approval.")
+       (list :type :EVENT :payload (list :sensor :approval-required :action action)))
 
-       (harness-log "SECURITY WARNING: External network call detected. Queuing for approval.
-
-       (list :type :EVENT
-             :payload (list :sensor :approval-required
-                           :action action)))
-
-      ;; Vector 3: High-Impact Targets (Soft Block)
-      ;; Shell execution, file repair, and eval require approval
       ((or (member target '(:shell))
-          (and (eq target :tool)
-              (member (getf payload :tool) '("shell" "repair-file :test #'string=))
-          (and (eq target :emacs)
-              (eq (getf payload :action) :eval)))
+          (and (eq target :tool) (member (proto-get payload :tool) '("shell" "repair-file") :test #'string=))
+          (and (eq target :emacs) (eq (proto-get payload :action) :eval)))
+       (harness-log "SECURITY: High-impact action requires approval: ~a" (or (proto-get payload :tool) target))
+       (list :type :EVENT :payload (list :sensor :approval-required :action action)))
 
-       (harness-log "SECURITY: High-impact action requires approval: ~a"
-                   (or (getf payload :tool) target))
-
-       (list :type :EVENT
-             :payload (list :sensor :approval-required
-                           :action action)))
-
-      ;; Vector 4: Default pass
-      (t
-       action))))
+      (t action))))
 #+end_src
 
-* Flight Plan Workflow
-
-** Processing Approvals
-
-When a flight plan is approved in Emacs, the Bouncer detects it and re-injects the action.
-
+** Approval Processing (bouncer-process-approvals)
 #+begin_src lisp
 (defun bouncer-process-approvals ()
-  "Scans the object store for APPROVED flight plans and re-injects them.
-
-  This function is called on every heartbeat, allowing the agent to
-  check for approvals without blocking the main signal pipeline.
-
-  Flight Plan format:
-  - Has TAGS including \"FLIGHT_PLAN\"
-  - Has TODO set to \"APPROVED\"
-  - Has ACTION containing the serialized action plist
-
-  When an approved flight plan is found:
-  1. Deserialize the action from the ACTION attribute
-  2. Mark the action as :approved = t (bypasses security gate)
-  3. Re-inject into the signal pipeline
-  4. Mark the flight plan as DONE
-
-  Returns T if any flight plans were processed."
-
-  (let ((approved-nodes (list-objects-with-attribute :TODO "APPROVED)
+  "Scans for APPROVED flight plans and re-injects them."
+  (let ((approved-nodes (list-objects-with-attribute :TODO "APPROVED"))
         (found-any nil))
-
     (dolist (node approved-nodes)
-
-      (let* ((tags (getf (org-object-attributes node) :TAGS))
-             (action-str (getf (org-object-attributes node) :ACTION)))
-
-        ;; Only process flight plans (not other APPROVED items)
-        (when (and (member "FLIGHT_PLAN" tags :test #'string-equal)
-                  action-str)
-
-          (harness-log "BOUNCER: Found approved flight plan '~a'. Re-injecting..."
-                      (org-object-id node))
-
+      (let* ((attrs (org-object-attributes node))
+             (tags (getf attrs :TAGS))
+             (action-str (getf attrs :ACTION)))
+        (when (and (member "FLIGHT_PLAN" tags :test #'string-equal) action-str)
+          (harness-log "BOUNCER: Found approved flight plan '~a'. Re-injecting..." (org-object-id node))
           (let ((action (ignore-errors (read-from-string action-str))))
             (when action
-
-              ;; Mark as approved to bypass the security gate on re-injection
               (setf (getf action :approved) t)
-
-              ;; Re-inject the action into the signal pipeline
               (inject-stimulus action)
-
-              ;; Mark the flight plan as done
-              (setf (getf (org-object-attributes node) :TODO) "DONE
-
+              (setf (getf (org-object-attributes node) :TODO) "DONE")
               (setq found-any t))))))
-
     found-any))
 #+end_src
 
-** Creating Flight Plans
-
-When the Bouncer intercepts a high-risk action, it creates a flight plan node for manual approval.
-
+** Flight Plan Creation (bouncer-create-flight-plan)
 #+begin_src lisp
 (defun bouncer-create-flight-plan (blocked-action)
-  "Creates an Org node representing a pending flight plan for manual approval.
-
-  BLOCKED-ACTION is the action plist that was intercepted.
-
-  The flight plan node contains:
-  - A title describing the action
-  - TODO set to PLAN (awaiting approval)
-  - TAGS including FLIGHT_PLAN
-  - ACTION attribute containing the serialized action
-
-  The user reviews the flight plan and changes TODO to APPROVED.
-  On the next heartbeat, bouncer-process-approvals will detect
-  the approval and re-inject the action.
-
-  Returns the generated org-id for the flight plan."
-
-    (let ((id (org-id-new)))
-      (harness-log "BOUNCER: Creating flight plan node '~a'..." id)
-
-      ;; Inject a node creation request
-      (list :type :REQUEST
-            :target :emacs
-            :payload (list :action :insert-node
-                          :id id
-                          :attributes (list
-                                       :TITLE "Flight Plan: High-Risk Action"
-                                       :TODO "PLAN"
-                                       :TAGS '("FLIGHT_PLAN
-                                       :ACTION (format nil "~s" blocked-action))))))
+  "Creates a Flight Plan node for manual approval."
+  (let ((id (org-id-new)))
+    (harness-log "BOUNCER: Creating flight plan node '~a'..." id)
+    (list :type :REQUEST :target :emacs
+          :payload (list :action :insert-node :id id
+                        :attributes (list :TITLE "Flight Plan: High-Risk Action"
+                                         :TODO "PLAN" :TAGS '("FLIGHT_PLAN")
+                                         :ACTION (format nil "~s" blocked-action))))))
 #+end_src
 
-* Skill Gate
-
-** Main Gate Function
-
+** Gate Logic (bouncer-deterministic-gate)
 #+begin_src lisp
 (defun bouncer-deterministic-gate (action context)
-  "Main deterministic gate for the Bouncer skill.
-
-  Handles three types of signals:
-  1. :approval-required - Create a flight plan for the blocked action
-  2. :heartbeat - Process any pending approvals
-  3. otherwise - Run security check on the action
-
-  The trigger is always true (bouncer evaluates all actions)
-  because security cannot be selective."
-
+  "Main deterministic gate for the Bouncer skill."
   (let* ((payload (getf context :payload))
          (sensor (getf payload :sensor)))
-
     (case sensor
-
-      ;; Signal type 1: Action was blocked, create flight plan
       (:approval-required
-       (let* ((blocked-action (getf payload :action)))
-         (bouncer-create-flight-plan blocked-action)))
-
-      ;; Signal type 2: Heartbeat, check for approvals
+       (bouncer-create-flight-plan (getf payload :action)))
       (:heartbeat
        (bouncer-process-approvals)
-       ;; After processing approvals, still run the security check
-       (if action
-           (bouncer-check action context)
-           action))
-
-      ;; Signal type 3: Normal action, run security check
+       (if action (bouncer-check action context) action))
       (otherwise
-       (if action
-           (bouncer-check action context)
-           action)))))
+       (if action (bouncer-check action context) action)))))
 #+end_src
 
 ** Skill Registration
-
 #+begin_src lisp
 (defskill :skill-bouncer
   :priority 150
   :trigger (lambda (ctx) (declare (ignore ctx)) t)
-  :probabilistic nil
   :deterministic #'bouncer-deterministic-gate)
 #+end_src
-
-* Quick Reference
-
-** Security Vectors Summary
-
-| Vector | Check | Response |
-|--------|-------|----------|
-| Secret Exposure | `bouncer-scan-secrets` | Hard block |
-| Network Exfil | `bouncer-check-network-exfil` | Approval required |
-| Shell Execution | target = :shell or tool = "shell" | Approval required |
-| Eval Execution | target = :emacs and action = :eval | Approval required |
-| File Repair | tool = "repair-file" | Approval required |
-
-** Flight Plan Lifecycle
-
-1. High-risk action intercepted → `:approval-required` signal
-2. Flight plan node created in Emacs with `TODO: PLAN`
-3. User reviews and sets `TODO: APPROVED`
-4. Next heartbeat detects approval
-5. Action re-injected with `approved = t`
-6. Security gate bypassed, action executes
-7. Flight plan marked `TODO: DONE`
-
-* See Also
-- [[file:org-skill-credentials-vault.org][Credentials Vault]] - Where secrets are stored
-- [[file:org-skill-policy.org][Policy Skill]] - Constitutional constraints
-- [[file:../harness/act.org][Act Stage]] - Where gates are invoked
