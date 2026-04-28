@@ -164,7 +164,7 @@ The Reason stage implements the core Innovation of OpenCortex: the separation of
 #+end_src
 
 * Test Suite
-#+begin_src lisp :tangle tests/pipeline-reason-tests.lisp
+#+begin_src lisp :tangle ../tests/pipeline-reason-tests.lisp
 (eval-when (:compile-toplevel :load-toplevel :execute)
   (ql:quickload :fiveam :silent t))
 

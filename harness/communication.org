@@ -91,7 +91,7 @@ The ~communication.lisp~ module defines the low-level transport and framing logi
 #+end_src
 
 * Test Suite
-#+begin_src lisp :tangle tests/communication-tests.lisp
+#+begin_src lisp :tangle ../tests/communication-tests.lisp
 (eval-when (:compile-toplevel :load-toplevel :execute)
   (ql:quickload :fiveam :silent t))
 

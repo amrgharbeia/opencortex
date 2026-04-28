@@ -7,7 +7,7 @@
 The OpenCortex TUI Client is a standalone Common Lisp application built on **Croatoan**.
 
 * Test Suite
-#+begin_src lisp :tangle tests/tui-tests.lisp
+#+begin_src lisp :tangle ../tests/tui-tests.lisp
 (defpackage :opencortex-tui-tests
   (:use :cl :opencortex)
   (:export #:tui-suite))

@@ -128,7 +128,7 @@ The Metabolic Loop is the fundamental rhythm of OpenCortex: the continuous proce
 #+end_src
 
 * Test Suite
-#+begin_src lisp :tangle tests/immune-system-tests.lisp
+#+begin_src lisp :tangle ../tests/immune-system-tests.lisp
 (eval-when (:compile-toplevel :load-toplevel :execute)
   (ql:quickload :fiveam :silent t))
 

@@ -154,7 +154,7 @@ The *Context API* (Peripheral Vision) provides the opencortex with the ability t
 
 * Test Suite
 
-#+begin_src lisp :tangle tests/peripheral-vision-tests.lisp
+#+begin_src lisp :tangle ../tests/peripheral-vision-tests.lisp
 (eval-when (:compile-toplevel :load-toplevel :execute)
   (ql:quickload :fiveam :silent t))
 

@@ -149,7 +149,7 @@ The Memory module is the cognitive bedrock of the opencortex. It is not a databa
 #+end_src
 
 * Test Suite
-#+begin_src lisp :tangle tests/memory-tests.lisp
+#+begin_src lisp :tangle ../tests/memory-tests.lisp
 (eval-when (:compile-toplevel :load-toplevel :execute)
   (ql:quickload :fiveam :silent t))
 

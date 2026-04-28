@@ -165,7 +165,7 @@ The Act stage is where cognition meets reality. After the Probabilistic engine p
 #+end_src
 
 * Test Suite
-#+begin_src lisp :tangle tests/pipeline-act-tests.lisp
+#+begin_src lisp :tangle ../tests/pipeline-act-tests.lisp
 (eval-when (:compile-toplevel :load-toplevel :execute)
   (ql:quickload :fiveam :silent t))
 
