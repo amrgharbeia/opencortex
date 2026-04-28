@@ -63,5 +63,5 @@ The *LLM Gateway* skill provides a unified interface for interacting with multip
                  (fiveam:fail "Could not find EXECUTE-LLM-REQUEST symbol"))))
       (if old-host
           (setf (uiop:getenv "OLLAMA_HOST") old-host)
-          (uiop:run-program (list "unset" "OLLAMA_HOST") :ignore-error-status t)))))
+          (sb-posix:unsetenv "OLLAMA_HOST")))))
 #+end_src
