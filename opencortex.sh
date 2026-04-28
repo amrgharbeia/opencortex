@@ -61,26 +61,25 @@ setup_system() {
     cp "$SCRIPT_DIR/harness"/*.org "$OC_DATA_DIR/harness/"
     cp "$SCRIPT_DIR/skills"/*.org "$OC_DATA_DIR/skills/"
 
-    # WE MUST TANGLE FROM OC_DATA_DIR so the relative paths in the .org files 
-    # (like ../opencortex.asd) resolve correctly relative to the DEPLOYMENT.
-    cd "$OC_DATA_DIR"
     export INSTALL_DIR="$OC_DATA_DIR"
 
-    # Critical: Tangle manifest first to establish system structure
+    # Critical: Tangle manifest first to establish system structure (into root and harness)
     echo "Tangling harness/manifest.org..."
-    (cd "$OC_DATA_DIR/harness" && emacs -Q --batch --eval "(require 'org)" --eval "(setq org-confirm-babel-evaluate nil)" --eval "(org-babel-tangle-file \"$OC_DATA_DIR/harness/manifest.org\")" >/dev/null 2>&1) || true
+    (cd "$OC_DATA_DIR" && emacs -Q --batch --eval "(require 'org)" --eval "(setq org-confirm-babel-evaluate nil)" --eval "(org-babel-tangle-file \"$OC_DATA_DIR/harness/manifest.org\")" >/dev/null 2>&1) || true
 
-    echo "Tangling harness/tui-client.org..."
-    (cd "$OC_DATA_DIR/harness" && emacs -Q --batch --eval "(require 'org)" --eval "(setq org-confirm-babel-evaluate nil)" --eval "(org-babel-tangle-file \"$OC_DATA_DIR/harness/tui-client.org\")" >/dev/null 2>&1) || true
-
-    for f in harness/*.org skills/*.org; do
-        if [ "$f" != "harness/manifest.org" ] && [ "$f" != "harness/tui-client.org" ]; then
+    # Tangle harness files into harness/
+    for f in harness/*.org; do
+        if [ "$f" != "harness/manifest.org" ]; then
             echo "Tangling $f..."
-            DIR_NAME=$(dirname "$f")
-            (cd "$OC_DATA_DIR/$DIR_NAME" && emacs -Q --batch --eval "(require 'org)" --eval "(setq org-confirm-babel-evaluate nil)" --eval "(org-babel-tangle-file \"$OC_DATA_DIR/$f\")" >/dev/null 2>&1) || true
+            (cd "$OC_DATA_DIR/harness" && emacs -Q --batch --eval "(require 'org)" --eval "(setq org-confirm-babel-evaluate nil)" --eval "(org-babel-tangle-file \"$OC_DATA_DIR/$f\")" >/dev/null 2>&1) || true
         fi
     done
 
+    # Tangle skill files into skills/
+    for f in skills/*.org; do
+        echo "Tangling $f..."
+        (cd "$OC_DATA_DIR/skills" && emacs -Q --batch --eval "(require 'org)" --eval "(setq org-confirm-babel-evaluate nil)" --eval "(org-babel-tangle-file \"$OC_DATA_DIR/$f\")" >/dev/null 2>&1) || true
+    done
     cd "$SCRIPT_DIR"    # Create the bin shim
     echo -e "${YELLOW}--- Creating Bin Shim in $OC_BIN_DIR/opencortex ---${NC}"
     ln -sf "$SCRIPT_DIR/opencortex.sh" "$OC_BIN_DIR/opencortex"
