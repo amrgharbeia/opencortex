@@ -1,3 +1,4 @@
+#+PROPERTY: header-args:lisp :tangle memory.lisp
 #+TITLE: The System Memory (memory.lisp)
 #+AUTHOR: Amr
 #+FILETAGS: :harness:memory:
@@ -31,24 +32,24 @@ flowchart TD
 #+end_src
 
 ** Package Context
-#+begin_src lisp :tangle (expand-file-name "harness/memory.lisp" (expand-file-name "harness/"))
+#+begin_src lisp :tangle memory.lisp" )
 (in-package :opencortex)
 #+end_src
 
 ** The Object Repository
 The `*memory*` is the global hash table that holds every Org element by its unique ID. This is the "live RAM" of the agent's memory.
 
-#+begin_src lisp :tangle (expand-file-name "harness/memory.lisp" (expand-file-name "harness/"))
+#+begin_src lisp :tangle memory.lisp" )
 (defvar *memory* (make-hash-table :test 'equal))
 
 (defvar *history-store* (make-hash-table :test 'equal)
-  "Immutable Merkle-Tree versioning store mapping hashes to objects.")
+  "Immutable Merkle-Tree versioning store mapping hashes to objects.
 #+end_src
 
 ** The Data Structure (org-object)
 Every element in the Memex (headlines, paragraphs, etc.) is represented by an `org-object` structure. It contains both semantic metadata (attributes, content) and structural metadata (parent/child pointers, Merkle hashes).
 
-#+begin_src lisp :tangle (expand-file-name "harness/memory.lisp" (expand-file-name "harness/"))
+#+begin_src lisp :tangle memory.lisp" )
 (defstruct org-object
   id type attributes content vector parent-id children version last-sync hash)
 
@@ -60,7 +61,7 @@ Every element in the Memex (headlines, paragraphs, etc.) is represented by an `o
 ** Merkle Tree Integrity (compute-merkle-hash)
 The `compute-merkle-hash` function ensures the cryptographic integrity of the knowledge graph. A node's hash depends on its own properties and the hashes of all its children. This creates a recursive fingerprint where any change to a single note propagates up to the root hash.
 
-#+begin_src lisp :tangle (expand-file-name "harness/memory.lisp" (expand-file-name "harness/"))
+#+begin_src lisp :tangle memory.lisp" )
 (defun compute-merkle-hash (id type attributes content child-hashes)
   "Computes a SHA-256 Merkle hash for a node based on its core properties and children's hashes."
   (let* ((alist (loop for (k v) on attributes by #'cddr collect (cons k v)))
@@ -68,7 +69,7 @@ The `compute-merkle-hash` function ensures the cryptographic integrity of the kn
          (attr-string (format nil "~s" sorted-alist))
          (children-string (format nil "~{~a~}" child-hashes))
          (data-string (format nil "ID:~a|TYPE:~s|ATTRS:~a|CONTENT:~a|CHILDREN:~a"
-                              id type attr-string (or content "") children-string))
+                              id type attr-string (or content " children-string))
          (digester (ironclad:make-digest :sha256)))
     (ironclad:update-digest digester (ironclad:ascii-string-to-byte-array data-string))
     (ironclad:byte-array-to-hex-string (ironclad:produce-digest digester))))
@@ -77,7 +78,7 @@ The `compute-merkle-hash` function ensures the cryptographic integrity of the kn
 ** Ingesting the AST (ingest-ast)
 The `ingest-ast` function is the primary bridge between the external world (Emacs/JSON) and the internal Lisp machine. It recursively parses an Org-mode Abstract Syntax Tree (AST) into `org-object` structures and registers them in the store.
 
-#+begin_src lisp :tangle (expand-file-name "harness/memory.lisp" (expand-file-name "harness/"))
+#+begin_src lisp :tangle memory.lisp" )
 (defun ingest-ast (ast &optional parent-id)
   "Parses an Org AST into the recursive Lisp Memory with Merkle hashing."
   (let* ((type (getf ast :type))
@@ -85,8 +86,8 @@ The `ingest-ast` function is the primary bridge between the external world (Emac
          (id (or (getf props :ID) (format nil "temp-~a" (get-universal-time))))
          (contents (getf ast :contents))
          (raw-content (when (eq type :HEADLINE)
-                        (format nil "~a~%~a" (getf props :TITLE) (or (cl:getf ast :raw-content) ""))))
-         (should-embed (and raw-content (equal (getf props :EMBED) "t")))
+                        (format nil "~a~%~a" (getf props :TITLE) (or (cl:getf ast :raw-content) ))
+         (should-embed (and raw-content (equal (getf props :EMBED) "t))
          (child-ids nil)
          (child-hashes nil))
     (dolist (child contents)
@@ -116,7 +117,7 @@ The `ingest-ast` function is the primary bridge between the external world (Emac
 ** Memory Snapshots (snapshot-memory)
 Because objects are stored immutably in the `*history-store*`, a snapshot is a lightweight shallow copy of the active `*memory*` pointers. The system maintains a rolling buffer of 20 snapshots, allowing for near-instant, zero-cost rollback.
 
-#+begin_src lisp :tangle (expand-file-name "harness/memory.lisp" (expand-file-name "harness/"))
+#+begin_src lisp :tangle memory.lisp" )
 (defvar *object-store-snapshots* nil)
 
 (defun copy-hash-table (hash-table)
@@ -137,13 +138,13 @@ Because objects are stored immutably in the `*history-store*`, a snapshot is a l
     (push (list :timestamp (get-universal-time) :data snapshot) *object-store-snapshots*)
     (when (> (length *object-store-snapshots*) 20)
       (setf *object-store-snapshots* (subseq *object-store-snapshots* 0 20)))
-    (harness-log "MEMORY - CoW Memory snapshot created.")))
+    (harness-log "MEMORY - CoW Memory snapshot created.))
 #+end_src
 
 ** Memory Rollback (rollback-memory)
 Restores the state of the Memex from one of the previous snapshots.
 
-#+begin_src lisp :tangle (expand-file-name "harness/memory.lisp" (expand-file-name "harness/"))
+#+begin_src lisp :tangle memory.lisp" )
 (defun rollback-memory (&optional (index 0))
   "Restores the Memory to a previously captured snapshot using immutable history pointers."
   (let ((snapshot (nth index *object-store-snapshots*)))
@@ -156,14 +157,14 @@ Restores the state of the Memex from one of the previous snapshots.
 ** Disk Persistence (save-memory / load-memory)
 Essential for surviving crashes. Saves the in-memory hash tables to disk and loads them back on restart.
 
-#+begin_src lisp :tangle (expand-file-name "harness/memory.lisp" (expand-file-name "harness/"))
+#+begin_src lisp :tangle memory.lisp" )
 (defvar *memory-snapshot-path* nil
-  "Path to the memory snapshot file. Set from MEMORY_SNAPSHOT_PATH env or default.")
+  "Path to the memory snapshot file. Set from MEMORY_SNAPSHOT_PATH env or default.
 
 (defun ensure-memory-snapshot-path ()
   "Initializes the snapshot path from environment or default location."
   (or *memory-snapshot-path*
-      (let ((env-path (getenv "MEMORY_SNAPSHOT_PATH")))
+      (let ((env-path (getenv "MEMORY_SNAPSHOT_PATH))
         (setf *memory-snapshot-path*
               (or env-path
                   (uiop:merge-pathnames* "memory.snap" (user-homedir-pathname)))))))
@@ -173,7 +174,7 @@ Essential for surviving crashes. Saves the in-memory hash tables to disk and loa
 Converts hash tables to alists for proper serialization."
   (let ((path (ensure-memory-snapshot-path)))
     (with-open-file (stream path :direction :output :if-exists :supersede :if-does-not-exist :create)
-      (format stream ";; OpenCortex Memory Snapshot~%")
+      (format stream ";; OpenCortex Memory Snapshot~%
       (format stream ";; Created: ~a~%~%" (format nil "~a" (get-universal-time)))
       (let ((memory-alist nil)
             (history-alist nil))
@@ -209,13 +210,13 @@ Reconstitutes alists into hash tables."
 ** Semantic Search (get-embedding, semantic-search)
 Support for vector embeddings via Ollama and semantic search with cosine similarity.
 
-#+begin_src lisp :tangle (expand-file-name "harness/memory.lisp" (expand-file-name "harness/"))
+#+begin_src lisp :tangle memory.lisp" )
 (defvar *embedding-cache* (make-hash-table :test 'equal)
-  "Cache for embeddings to avoid redundant API calls.")
+  "Cache for embeddings to avoid redundant API calls.
 
 (defun get-embedding (text)
   "Generates a vector embedding for the given text via Ollama. Returns nil on failure."
-  (when (or (null text) (string= text ""))
+  (when (or (null text) (string= text 
     (return-from get-embedding nil))
   (let ((cached (gethash text *embedding-cache*)))
     (when cached (return-from get-embedding cached)))
@@ -258,10 +259,10 @@ Returns up to LIMIT objects with similarity >= MIN-SIMILARITY, sorted by similar
 #+end_src
 
 ** Cognitive Tool: Semantic Search
-#+begin_src lisp :tangle (expand-file-name "harness/memory.lisp" (expand-file-name "harness/"))
+#+begin_src lisp :tangle memory.lisp" )
 (def-cognitive-tool :semantic-search
   "Searches memory for objects semantically similar to a query."
-  ((:query :type :string :description "The search query.")
+  ((:query :type :string :description "The search query.
    (:limit :type :integer :description "Maximum results to return." :default 10)
    (:min-similarity :type :number :description "Minimum similarity threshold (0-1)." :default 0.5))
   :body (lambda (args)
@@ -271,14 +272,14 @@ Returns up to LIMIT objects with similarity >= MIN-SIMILARITY, sorted by similar
 #+end_src
 
 ** Cognitive Tool: Generate Embeddings
-#+begin_src lisp :tangle (expand-file-name "harness/memory.lisp" (expand-file-name "harness/"))
+#+begin_src lisp :tangle memory.lisp" )
 (def-cognitive-tool :generate-embeddings
   "Generates vector embeddings for given text via the configured embedding backend (Ollama)."
-  ((:texts :type :list :description "List of text strings to embed."))
+  ((:texts :type :list :description "List of text strings to embed.)
   :body (lambda (args)
           (let ((texts (getf args :texts)))
             (if (not (and texts (listp texts)))
-                (list :status :error :message ":texts must be a list of strings.")
+                (list :status :error :message ":texts must be a list of strings.
                 (let ((results nil) (errors nil))
                   (dolist (text texts)
                     (let ((vec (get-embedding text)))
@@ -294,7 +295,7 @@ Returns up to LIMIT objects with similarity >= MIN-SIMILARITY, sorted by similar
 ** Lookup Utilities
 Basic functions for retrieving objects by ID or type.
 
-#+begin_src lisp :tangle (expand-file-name "harness/memory.lisp" (expand-file-name "harness/"))
+#+begin_src lisp :tangle memory.lisp" )
 (defun org-id-new ()
   "Generates a new UUID string for Org-mode identification."
   (string-downcase (format nil "~a" (uuid:make-v4-uuid))))
@@ -324,7 +325,7 @@ Basic functions for retrieving objects by ID or type.
 ** Structural Helpers
 Utility functions for AST traversal and path resolution.
 
-#+begin_src lisp :tangle (expand-file-name "harness/memory.lisp" (expand-file-name "harness/"))
+#+begin_src lisp :tangle memory.lisp" )
 (defun find-headline-missing-id (ast)
   "Traverses an AST to find headlines that lack an :ID: property."
   (when (listp ast)
@@ -339,7 +340,7 @@ Utility functions for AST traversal and path resolution.
 
 * Test Suite
 
-#+begin_src lisp :tangle (expand-file-name "harness/memory-tests.lisp" (concat (concat (or (getenv "INSTALL_DIR") ".") "/harness") "/tests"))
+#+begin_src lisp :tangle memory-tests.lisp" (concat (concat (or (getenv "INSTALL_DIR ". "/harness "/tests)
 (defpackage :opencortex-memory-tests
   (:use :cl :fiveam :opencortex)
   (:export #:memory-suite))
@@ -347,13 +348,13 @@ Utility functions for AST traversal and path resolution.
 (in-package :opencortex-memory-tests)
 
 (def-suite memory-suite
-  :description "Tests for the Merkle-Tree Memory")
+  :description "Tests for the Merkle-Tree Memory
 
 (in-suite memory-suite)
 
 (test merkle-hash-consistency
   "Verify identical ASTs produce identical Merkle hashes."
-  (let* ((ast1 '(:type :HEADLINE :properties (:ID "test-1" :TITLE "Node 1") :contents nil)))
+  (let* ((ast1 '(:type :HEADLINE :properties (:ID "test-1" :TITLE "Node 1 :contents nil)))
     (clrhash *memory*)
     (let ((id1 (ingest-ast ast1)))
       (let ((hash1 (org-object-hash (lookup-object id1))))
@@ -366,14 +367,14 @@ Utility functions for AST traversal and path resolution.
   "Verify that *history-store* retains old versions."
   (clrhash *memory*)
   (clrhash *history-store*)
-  (let* ((ast-v1 '(:type :HEADLINE :properties (:ID "test-node" :TITLE "Version 1") :contents nil))
+  (let* ((ast-v1 '(:type :HEADLINE :properties (:ID "test-node" :TITLE "Version 1 :contents nil))
          (id-v1 (ingest-ast ast-v1))
          (obj-v1 (lookup-object id-v1))
          (hash-v1 (org-object-hash obj-v1)))
-    (let* ((ast-v2 '(:type :HEADLINE :properties (:ID "test-node" :TITLE "Version 2") :contents nil))
+    (let* ((ast-v2 '(:type :HEADLINE :properties (:ID "test-node" :TITLE "Version 2 :contents nil))
            (id-v2 (ingest-ast ast-v2))
            (hash-v2 (org-object-hash (lookup-object id-v2))))
-      (is (equal (org-object-hash (lookup-object "test-node")) hash-v2))
+      (is (equal (org-object-hash (lookup-object "test-node) hash-v2))
       (is (not (null (gethash hash-v1 *history-store*))))
       (is (not (null (gethash hash-v2 *history-store*)))))))
 
@@ -381,27 +382,27 @@ Utility functions for AST traversal and path resolution.
   "Verify that lightweight snapshots restore previous pointer states."
   (clrhash *memory*)
   (setf *object-store-snapshots* nil)
-  (let* ((ast-v1 '(:type :HEADLINE :properties (:ID "cow-node" :TITLE "State A") :contents nil))
+  (let* ((ast-v1 '(:type :HEADLINE :properties (:ID "cow-node" :TITLE "State A :contents nil))
          (id-v1 (ingest-ast ast-v1))
          (hash-v1 (org-object-hash (lookup-object id-v1))))
     (snapshot-memory)
-    (let* ((ast-v2 '(:type :HEADLINE :properties (:ID "cow-node" :TITLE "State B") :contents nil))
+    (let* ((ast-v2 '(:type :HEADLINE :properties (:ID "cow-node" :TITLE "State B :contents nil))
            (id-v2 (ingest-ast ast-v2))
            (hash-v2 (org-object-hash (lookup-object id-v2))))
-      (is (equal (org-object-hash (lookup-object "cow-node")) hash-v2))
+      (is (equal (org-object-hash (lookup-object "cow-node) hash-v2))
       (rollback-memory 0)
-      (is (equal (org-object-hash (lookup-object "cow-node")) hash-v1)))))
+      (is (equal (org-object-hash (lookup-object "cow-node) hash-v1)))))
 
 (test test-merkle-corruption-rollback
   "Tier 2 Chaos: Verify that Merkle hash corruption triggers a Micro-Rollback."
   (clrhash *memory*)
   (setf *object-store-snapshots* nil)
-  (let* ((ast '(:type :HEADLINE :properties (:ID "node-1" :TITLE "Original") :contents nil))
+  (let* ((ast '(:type :HEADLINE :properties (:ID "node-1" :TITLE "Original :contents nil))
          (id (ingest-ast ast)))
     (snapshot-memory)
     ;; Manually corrupt the hash in the live memory
     (let ((obj (lookup-object id)))
-      (setf (org-object-hash obj) "CORRUPTED-HASH"))
+      (setf (org-object-hash obj) "CORRUPTED-HASH)
     
     ;; Simulate a system integrity check that should fail and rollback
     ;; We'll use a manual check here since automatic validation is in the Loop
