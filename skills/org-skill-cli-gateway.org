@@ -17,7 +17,9 @@ The *CLI Gateway* provides a command-line interface for interacting with the Ope
 #+begin_src lisp
 (defun cli-process-input (text)
   "Processes raw text from the command line."
-  (inject-stimulus (list :type :EVENT :payload (list :sensor :user-input :text text) :meta (list :source :CLI))))
+  (inject-stimulus (list :type :EVENT 
+                         :payload (list :sensor :user-input :text text) 
+                         :meta (list :source :CLI))))
 #+end_src
 
 ** Skill Registration

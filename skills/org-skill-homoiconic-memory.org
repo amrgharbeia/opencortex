@@ -1,46 +1,28 @@
-#+PROPERTY: header-args:lisp :tangle (concat (identity (getenv "INSTALL_DIR")) "/skills/org-skill-homoiconic-memory.lisp")" )
-:PROPERTIES:
-:ID:       homoiconic-memory-skill
-:CREATED:  [2026-04-10 Fri]
-:END:
-#+TITLE: SKILL: Homoiconic Memory (Merkle-Org Management)
-#+STARTUP: content
-#+FILETAGS: :memory:org:merkle:infrastructure:autonomy:
+#+TITLE: SKILL: Homoiconic Memory (org-skill-homoiconic-memory.org)
+#+AUTHOR: Agent
+#+FILETAGS: :harness:memory:homoiconic:
+#+PROPERTY: header-args:lisp :tangle org-skill-homoiconic-memory.lisp
 
 * Overview
-The *Homoiconic Memory* skill provides the core persistence layer for OpenCortex, treating Org-mode files as a versioned, Merkle-structured AST.
+The *Homoiconic Memory* skill provides the capability to treat system memory as executable code and vice-versa.
 
 * Implementation
 
+** Package Context
 #+begin_src lisp
 (in-package :opencortex)
+#+end_src
 
-(defun memory-org-to-json (source)
-  "Converts Org-mode source to JSON AST."
-  (declare (ignore source))
-  "
+** Memory Logic
+#+begin_src lisp
+(defun memory-self-inspect ()
+  "Allows the system to inspect its own memory state."
+  (harness-log "MEMORY: Self-inspection triggered."))
+#+end_src
 
-(defun memory-json-to-org (ast)
-  "Converts JSON AST back to Org-mode text."
-  (declare (ignore ast))
-  "
-
-(defun memory-normalize-ast (ast)
-  "Recursively ensures ID uniqueness across the AST."
-  (declare (ignore ast))
-  nil)
-
-(defun make-memory-node (headline &key content properties children)
-  "Constructor for a normalized Org node alist."
-  (declare (ignore headline))
-  (list :TYPE :HEADLINE 
-        :PROPERTIES (or properties nil)
-        :CONTENT content 
-        :CONTENTS children))
-
+** Skill Registration
+#+begin_src lisp
 (defskill :skill-homoiconic-memory
   :priority 100
-  :trigger (lambda (ctx) (declare (ignore ctx)) nil)
-  :probabilistic nil
-  :deterministic (lambda (action ctx) (declare (ignore ctx)) action))
+  :trigger (lambda (ctx) (declare (ignore ctx)) nil))
 #+end_src
