@@ -104,7 +104,7 @@ setup_system() {
          --eval "(push (truename \"$OC_DATA_DIR/\") asdf:*central-registry*)" \
          --eval '(ql:quickload :opencortex)' \
          --eval '(opencortex:initialize-all-skills)' \
-         --eval '(opencortex:run-setup-wizard)'
+         --eval '(funcall (find-symbol "RUN-SETUP-WIZARD" :opencortex))'
 }
 
 # --- 3. COMMAND ROUTER ---
@@ -116,7 +116,7 @@ case "$COMMAND" in
     link)
         PLATFORM=$1
         TOKEN=$2
-        exec sbcl --non-interactive              --eval '(load (merge-pathnames "quicklisp/setup.lisp" (user-homedir-pathname)))'              --eval "(push (truename \"$OC_DATA_DIR/\") asdf:*central-registry*)"              --eval '(ql:quickload :opencortex)'              --eval "(opencortex:gateway-manager-main \"$PLATFORM\" \"$TOKEN\")"
+        exec sbcl --non-interactive              --eval '(load (merge-pathnames "quicklisp/setup.lisp" (user-homedir-pathname)))'              --eval "(push (truename \"$OC_DATA_DIR/\") asdf:*central-registry*)"              --eval '(ql:quickload :opencortex)'              --eval '(opencortex:initialize-all-skills)'              --eval "(funcall (find-symbol \"GATEWAY-MANAGER-MAIN\" :opencortex) \"$PLATFORM\" \"$TOKEN\")"
         ;;
 
     doctor)
@@ -125,7 +125,7 @@ case "$COMMAND" in
              --eval "(push (truename \"$OC_DATA_DIR/\") asdf:*central-registry*)" \
              --eval '(ql:quickload :opencortex)' \
              --eval '(opencortex:initialize-all-skills)' \
-             --eval '(opencortex:doctor-main)'
+             --eval '(funcall (find-symbol "DOCTOR-MAIN" :opencortex))'
         ;;
 
     setup)
