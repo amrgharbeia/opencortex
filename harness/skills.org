@@ -357,7 +357,7 @@ Only loads blocks that specify a .lisp tangle target, ignoring tests and example
       (return-from initialize-all-skills nil))
 
     (let ((sorted-files (topological-sort-skills skills-dir)))
-      (let* ((mandatory-env (getenv "MANDATORY_SKILLS"))
+      (let* ((mandatory-env (uiop:getenv "MANDATORY_SKILLS"))
              (mandatory-skills (if mandatory-env 
                                    (mapcar (lambda (s) (string-trim '(#\Space #\" #\') s)) 
                                            (uiop:split-string mandatory-env :separator '( #\,)))
@@ -589,7 +589,7 @@ EXAMPLES:
 
 * Test Suite
 
-#+begin_src lisp :tangle (expand-file-name "boot-sequence-tests.lisp" (concat (concat (or (getenv "INSTALL_DIR") ".") "/harness") "/tests"))
+#+begin_src lisp :tangle (expand-file-name "boot-sequence-tests.lisp" (concat (concat (or (uiop:getenv "INSTALL_DIR") ".") "/harness") "/tests"))
 (defpackage :opencortex-boot-tests
   (:use :cl :fiveam :opencortex)
   (:export #:boot-suite))
