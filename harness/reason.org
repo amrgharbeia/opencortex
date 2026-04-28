@@ -1,4 +1,4 @@
-#+PROPERTY: header-args:lisp :tangle (expand-file-name "reason.lisp" (concat (or (getenv "INSTALL_DIR") ".") "/harness"))
+#+PROPERTY: header-args:lisp :tangle (expand-file-name "reason.lisp" (concat (or (uiop:getenv "INSTALL_DIR") ".") "/harness"))
 #+TITLE: Stage 2: Reason (reason.lisp)
 #+AUTHOR: Amr
 #+FILETAGS: :harness:reason:
@@ -472,7 +472,7 @@ The deterministic engine runs all registered skills' verification functions. Thi
 These tests verify the Reason (cognitive) pipeline. Run with:
 ~(fiveam:run! 'pipeline-reason-suite)~
 
-#+begin_src lisp :tangle (expand-file-name "pipeline-reason-tests.lisp" (concat (or (getenv "INSTALL_DIR") ".") "/tests"))
+#+begin_src lisp :tangle (expand-file-name "pipeline-reason-tests.lisp" (concat (or (uiop:getenv "INSTALL_DIR") ".") "/tests"))
 (defpackage :opencortex-pipeline-reason-tests
   (:use :cl :fiveam :opencortex)
   (:export #:pipeline-reason-suite))

@@ -1,4 +1,4 @@
-#+PROPERTY: header-args:lisp :tangle (expand-file-name "skills.lisp" (concat (or (getenv "INSTALL_DIR") ".") "/harness"))
+#+PROPERTY: header-args:lisp :tangle (expand-file-name "skills.lisp" (concat (or (uiop:getenv "INSTALL_DIR") ".") "/harness"))
 #+TITLE: The Skill Engine (skills.lisp)
 #+AUTHOR: Amr
 #+FILETAGS: :harness:skills:
@@ -419,7 +419,7 @@ EXAMPLES:
 *** The Eval Tool (Internal Inspection)
 #+begin_src lisp
 ** Cognitive Tool Registration
-#+begin_src lisp :tangle (expand-file-name "skills.lisp" (concat (or (getenv "INSTALL_DIR") ".") "/harness"))
+#+begin_src lisp :tangle (expand-file-name "skills.lisp" (concat (or (uiop:getenv "INSTALL_DIR") ".") "/harness"))
 ;; Cognitive tools are registered in *cognitive-tools* (defined in package.lisp)
 ;; using the def-cognitive-tool macro.
 #+end_src
@@ -589,7 +589,7 @@ EXAMPLES:
 
 * Test Suite
 
-#+begin_src lisp :tangle (expand-file-name "boot-sequence-tests.lisp" (concat (or (getenv "INSTALL_DIR") ".") "/tests"))
+#+begin_src lisp :tangle (expand-file-name "boot-sequence-tests.lisp" (concat (or (uiop:getenv "INSTALL_DIR") ".") "/tests"))
 (defpackage :opencortex-boot-tests
   (:use :cl :fiveam :opencortex)
   (:export #:boot-suite))

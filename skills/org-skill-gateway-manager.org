@@ -13,26 +13,26 @@ In a traditional AI wrapper, the user manually edits a config file to add a bot 
 * Phase B: Protocol (Success Criteria)
 
 ** Test Suite Context
-#+begin_src lisp :tangle (expand-file-name "gateway-manager-tests.lisp" (concat (or (getenv "INSTALL_DIR") ".") "/tests"))
+#+begin_src lisp :tangle (expand-file-name "gateway-manager-tests.lisp" (concat (or (uiop:getenv "INSTALL_DIR") ".") "/tests"))
 (defpackage :opencortex-gateway-manager-tests
   (:use :cl :fiveam :opencortex)
   (:export #:gateway-suite))
 #+end_src
 
-#+begin_src lisp :tangle (expand-file-name "gateway-manager-tests.lisp" (concat (or (getenv "INSTALL_DIR") ".") "/tests"))
+#+begin_src lisp :tangle (expand-file-name "gateway-manager-tests.lisp" (concat (or (uiop:getenv "INSTALL_DIR") ".") "/tests"))
 (in-package :opencortex-gateway-manager-tests)
 #+end_src
 
-#+begin_src lisp :tangle (expand-file-name "gateway-manager-tests.lisp" (concat (or (getenv "INSTALL_DIR") ".") "/tests"))
+#+begin_src lisp :tangle (expand-file-name "gateway-manager-tests.lisp" (concat (or (uiop:getenv "INSTALL_DIR") ".") "/tests"))
 (def-suite gateway-suite :description "Verification of the Gateway Manager skill")
 #+end_src
 
-#+begin_src lisp :tangle (expand-file-name "gateway-manager-tests.lisp" (concat (or (getenv "INSTALL_DIR") ".") "/tests"))
+#+begin_src lisp :tangle (expand-file-name "gateway-manager-tests.lisp" (concat (or (uiop:getenv "INSTALL_DIR") ".") "/tests"))
 (in-suite gateway-suite)
 #+end_src
 
 ** Logic Tests
-#+begin_src lisp :tangle (expand-file-name "gateway-manager-tests.lisp" (concat (or (getenv "INSTALL_DIR") ".") "/tests"))
+#+begin_src lisp :tangle (expand-file-name "gateway-manager-tests.lisp" (concat (or (uiop:getenv "INSTALL_DIR") ".") "/tests"))
 (test test-gateway-registration
   "Verify that the skill can register a new gateway metadata block."
   (let ((opencortex::*gateways* nil))
@@ -51,12 +51,12 @@ In a traditional AI wrapper, the user manually edits a config file to add a bot 
 * Phase C: Implementation (Build)
 
 ** Package Context
-#+begin_src lisp :tangle (expand-file-name "org-skill-gateway-manager.lisp" (concat (or (getenv "INSTALL_DIR") ".") "/skills"))
+#+begin_src lisp :tangle (expand-file-name "org-skill-gateway-manager.lisp" (concat (or (uiop:getenv "INSTALL_DIR") ".") "/skills"))
 (in-package :opencortex)
 #+end_src
 
 ** Capability Definition
-#+begin_src lisp :tangle (expand-file-name "org-skill-gateway-manager.lisp" (concat (or (getenv "INSTALL_DIR") ".") "/skills"))
+#+begin_src lisp :tangle (expand-file-name "org-skill-gateway-manager.lisp" (concat (or (uiop:getenv "INSTALL_DIR") ".") "/skills"))
 (defparameter *skill-gateway-manager*
   '(:name "gateway-manager"
     :description "Manages connections to external chat platforms."
@@ -66,12 +66,12 @@ In a traditional AI wrapper, the user manually edits a config file to add a bot 
 #+end_src
 
 ** Registry Persistence
-#+begin_src lisp :tangle (expand-file-name "org-skill-gateway-manager.lisp" (concat (or (getenv "INSTALL_DIR") ".") "/skills"))
+#+begin_src lisp :tangle (expand-file-name "org-skill-gateway-manager.lisp" (concat (or (uiop:getenv "INSTALL_DIR") ".") "/skills"))
 (defvar *gateways* nil "The internal registry of configured gateways.")
 #+end_src
 
 ** Persistence Stubs
-#+begin_src lisp :tangle (expand-file-name "org-skill-gateway-manager.lisp" (concat (or (getenv "INSTALL_DIR") ".") "/skills"))
+#+begin_src lisp :tangle (expand-file-name "org-skill-gateway-manager.lisp" (concat (or (uiop:getenv "INSTALL_DIR") ".") "/skills"))
 (defun save-gateways ()
   "Persist gateway metadata to XDG Config directory."
   (let ((path (merge-pathnames "gateways.lisp" (get-oc-config-dir))))
@@ -81,14 +81,14 @@ In a traditional AI wrapper, the user manually edits a config file to add a bot 
 #+end_src
 
 ** Registration Logic
-#+begin_src lisp :tangle (expand-file-name "org-skill-gateway-manager.lisp" (concat (or (getenv "INSTALL_DIR") ".") "/skills"))
+#+begin_src lisp :tangle (expand-file-name "org-skill-gateway-manager.lisp" (concat (or (uiop:getenv "INSTALL_DIR") ".") "/skills"))
 (defun skill-gateway-register (platform metadata)
   "Internal function to update the gateway registry."
   (setf (getf *gateways* platform) metadata))
 #+end_src
 
 ** Telegram Verification
-#+begin_src lisp :tangle (expand-file-name "org-skill-gateway-manager.lisp" (concat (or (getenv "INSTALL_DIR") ".") "/skills"))
+#+begin_src lisp :tangle (expand-file-name "org-skill-gateway-manager.lisp" (concat (or (uiop:getenv "INSTALL_DIR") ".") "/skills"))
 (defun skill-gateway-verify-telegram (token)
   "Verifies a Telegram bot token via the getMe API."
   (let ((url (format nil "https://api.telegram.org/bot~a/getMe" token)))
@@ -103,7 +103,7 @@ In a traditional AI wrapper, the user manually edits a config file to add a bot 
 #+end_src
 
 ** Linkage Command
-#+begin_src lisp :tangle (expand-file-name "org-skill-gateway-manager.lisp" (concat (or (getenv "INSTALL_DIR") ".") "/skills"))
+#+begin_src lisp :tangle (expand-file-name "org-skill-gateway-manager.lisp" (concat (or (uiop:getenv "INSTALL_DIR") ".") "/skills"))
 (defun skill-gateway-link (platform token)
   "Primary capability to link a new platform. Returns status plist."
   (harness-log "GATEWAY: Attempting to link ~a..." platform)
@@ -120,7 +120,7 @@ In a traditional AI wrapper, the user manually edits a config file to add a bot 
 #+end_src
 
 ** CLI Main Wrapper
-#+begin_src lisp :tangle (expand-file-name "org-skill-gateway-manager.lisp" (concat (or (getenv "INSTALL_DIR") ".") "/skills"))
+#+begin_src lisp :tangle (expand-file-name "org-skill-gateway-manager.lisp" (concat (or (uiop:getenv "INSTALL_DIR") ".") "/skills"))
 (defun gateway-manager-main (platform token)
   "Main entry point for CLI-driven linkage."
   (if (and platform token)
