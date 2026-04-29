@@ -31,6 +31,7 @@ The ~opencortex~ Skill Engine enables **Late-Binding Intelligence**, allowing th
 (defvar *VAULT-MEMORY* (make-hash-table :test 'equal))
 
 (defstruct skill name priority dependencies trigger-fn probabilistic-prompt deterministic-fn)
+(defvar *skills-registry* (make-hash-table :test 'equal))
 (defvar *skill-catalog* (make-hash-table :test 'equal)
   "A stateful tracking table for all skill files discovered in the environment.")
 
@@ -227,7 +228,7 @@ The ~opencortex~ Skill Engine enables **Late-Binding Intelligence**, allowing th
 #+end_src
 
 * Test Suite
-#+begin_src lisp :tangle ../tests/boot-sequence-tests.lisp
+#+begin_src lisp :tangle tests/boot-sequence-tests.lisp
 (eval-when (:compile-toplevel :load-toplevel :execute)
   (ql:quickload :fiveam :silent t))
 
