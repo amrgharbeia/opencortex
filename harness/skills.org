@@ -185,6 +185,7 @@ The ~opencortex~ Skill Engine enables **Late-Binding Intelligence**, allowing th
                 (unless (find-package pkg-name)
                   (let ((new-pkg (make-package pkg-name :use '(:cl)))) (use-package :opencortex new-pkg)))
                 (let ((*read-eval* nil) (*package* (find-package pkg-name)))
+                  (harness-log "LOADER: Evaluating code for '~a' in package ~a" skill-base-name (package-name *package*))
                   (eval (read-from-string (format nil "(progn ~a)" lisp-code))))
                 
                 ;; Export symbols back to :OPENCORTEX for discoverability and testing
@@ -193,11 +194,14 @@ The ~opencortex~ Skill Engine enables **Late-Binding Intelligence**, allowing th
                        (short-name (if (uiop:string-prefix-p "ORG-SKILL-" raw-name)
                                        (subseq raw-name 10)
                                        raw-name)))
+                  (harness-log "LOADER: Scanning package ~a for symbols to export..." (package-name (find-package pkg-name)))
                   (do-symbols (sym (find-package pkg-name))
                     (when (eq (symbol-package sym) (find-package pkg-name))
                       (let ((sn (symbol-name sym)))
                         (when (or (uiop:string-prefix-p raw-name sn)
-                                  (uiop:string-prefix-p short-name sn))
+                                  (uiop:string-prefix-p short-name sn)
+                                  (string-equal sn "DOCTOR-MAIN")
+                                  (string-equal sn "RUN-SETUP-WIZARD"))
                           (harness-log "LOADER: Exporting ~a to :OPENCORTEX" sn)
                           ;; Resolve potential name conflicts by uninterning first
                           (let ((existing (find-symbol sn target-pkg)))
