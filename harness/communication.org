@@ -83,6 +83,17 @@ The ~communication.lisp~ module defines the low-level transport and framing logi
               (cond
                 ((eq msg :eof) (return))
                 ((eq msg :error) (return))
+                ((eq (getf msg :type) :health-check)
+                 ;; Handle health check request
+                 (let ((health-msg (list :type :health-response 
+                                          :status (or (and (boundp 'opencortex::*system-health*) 
+                                                          (symbol-value 'opencortex::*system-health*))
+                                                      :unknown)
+                                          :checked-p (or (and (boundp 'opencortex::*health-check-ran*)
+                                                              (symbol-value 'opencortex::*health-check-ran*))
+                                                      nil))))
+                   (format stream "~a" (frame-message health-msg))
+                   (finish-output stream)))
                 (t (inject-stimulus msg :stream stream))))))
       (error (c) (harness-log "CLIENT ERROR: ~a" c)))
     (ignore-errors (usocket:socket-close socket))))

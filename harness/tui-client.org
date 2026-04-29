@@ -38,7 +38,7 @@ The OpenCortex TUI Client is a standalone Common Lisp application built on **Cro
 #+begin_src lisp
 (in-package :cl-user)
 (defpackage :opencortex.tui
-  (:use :cl :croatoan)
+  (:use :cl :croatoan :usocket)
   (:export :main))
 (in-package :opencortex.tui)
 #+end_src
@@ -108,13 +108,18 @@ The OpenCortex TUI Client is a standalone Common Lisp application built on **Cro
     (when (> (length cmd) 0)
       (enqueue-msg (format nil "⬆ ~a" cmd))
       (handler-case
-          (when (and stream (open-stream-p stream))
-            (format stream "~a" (opencortex:frame-message (list :TYPE :EVENT 
-                                                               :META (list :SOURCE :tui)
-                                                               :PAYLOAD (list :SENSOR :user-input :TEXT cmd))))
-            (finish-output stream))
+          (progn
+            (when (and stream (open-stream-p stream))
+              (let* ((msg (list :TYPE :EVENT 
+                               :META (list :SOURCE :tui)
+                               :PAYLOAD (list :SENSOR :user-input :TEXT cmd)))
+                     (payload (format nil "~s" msg))
+                     (len (length payload)))
+                (format stream "~6,'0x~a" len payload)
+                (finish-output stream)))
+            (enqueue-msg "✓ Sent"))
         (error (c)
-          (declare (ignore c))
+          (format t "Send error: ~a~%" c)
           (enqueue-msg "ERROR: Connection to daemon lost.")
           (setf *is-running* nil))))
     (when (string= cmd "/exit") (setf *is-running* nil))

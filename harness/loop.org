@@ -96,6 +96,44 @@ The Metabolic Loop is the fundamental rhythm of OpenCortex: the continuous proce
 (defvar *shutdown-save-enabled* t)
 #+end_src
 
+** Health Status
+#+begin_src lisp
+(defvar *system-health* :unknown
+  "Current system health status: :healthy, :degraded, :unhealthy, or :unknown.")
+
+(defvar *health-check-ran* nil
+  "Flag indicating if initial health check has completed.")
+#+end_src
+
+** Proactive Doctor
+#+begin_src lisp
+(defun run-startup-health-check ()
+  "Runs the doctor diagnostics on startup. Returns health status."
+  (format t "~%")
+  (format t "==================================================~%")
+  (format t " DOCTOR: Running Startup Health Check~%")
+  (format t "==================================================~%")
+  (handler-case
+      (progn
+        (when (fboundp 'doctor-run-all)
+          (let ((result (doctor-run-all :auto-install nil)))
+            (setf *health-check-ran* t)
+            (if result
+                (progn
+                  (setf *system-health* :healthy)
+                  (format t "DAEMON: Health check passed. Starting services.~%"))
+                (progn
+                  (setf *system-health* :degraded)
+                  (format t "DAEMON: Health check found issues.~%")
+                  (format t "         Run 'opencortex doctor --fix' to repair.~%")))))
+        (setf *health-check-ran* t))
+    (error (c)
+      (format t "DOCTOR ERROR: ~a~%" c)
+      (setf *system-health* :unhealthy)
+      (setf *health-check-ran* t)))
+  (format t "==================================================~%~%"))
+#+end_src
+
 ** Main Entry Point (main)
 #+begin_src lisp
 (defun main ()
@@ -108,16 +146,20 @@ The Metabolic Loop is the fundamental rhythm of OpenCortex: the continuous proce
   (load-memory-from-disk)
   (initialize-actuators)
   (initialize-all-skills)
+  
+  ;; Run proactive doctor before starting services
+  (run-startup-health-check)
+  
   (start-heartbeat)
   (start-daemon)
 
   #+sbcl
   (sb-sys:enable-interrupt sb-unix:sigint
-                           (lambda (sig code scp)
-                             (declare (ignore sig code scp))
-                             (harness-log "SHUTDOWN: SIGINT received. Saving memory...")
-                             (when *shutdown-save-enabled* (save-memory-to-disk))
-                             (uiop:quit 0)))
+                            (lambda (sig code scp)
+                              (declare (ignore sig code scp))
+                              (harness-log "SHUTDOWN: SIGINT received. Saving memory...")
+                              (when *shutdown-save-enabled* (save-memory-to-disk))
+                              (uiop:quit 0)))
 
   (let ((sleep-interval (or (ignore-errors (parse-integer (uiop:getenv "DAEMON_SLEEP_INTERVAL"))) 3600)))
     (loop

@@ -4,59 +4,244 @@
 #+PROPERTY: header-args:lisp :tangle org-skill-diagnostics.lisp
 
 * Overview
-The *Diagnostics Skill* (Doctor) provides system-wide health checks and dependency verification.
+The *Diagnostics Skill* (Doctor) provides system-wide health checks and dependency verification. It validates external dependencies, XDG environment, and LLM provider connectivity.
 
-* Implementation
+* Phase A: Demand (Thinking)
+** Why a Doctor?
+The Doctor transforms opaque startup failures into actionable engineering reports. It ensures the Brain never attempts to boot in a compromised state.
+
+** Detection Invariant
+Binary detection must use shell probing (`which`) to account for varying `$PATH` inheritance between interactive and headless sessions.
+
+* Phase B: Protocol (Success Criteria)
+- Dependency check passes when all required binaries are found
+- Environment check passes when XDG directories exist and are accessible
+- LLM check passes when at least one provider is configured or Ollama is running locally
+
+* Phase C: Implementation (Build)
 
 ** Package Context
 #+begin_src lisp
 (in-package :opencortex)
 #+end_src
 
-** Dependency Check (doctor-check-dependencies)
+** Global Configuration
+#+begin_src lisp
+(defvar *doctor-required-binaries* '("sbcl" "emacs" "git" "socat" "nc")
+  "List of external binaries required for full system operation.")
+
+(defvar *doctor-package-map*
+  '(("sbcl" . "sbcl")
+    ("emacs" . "emacs")
+    ("git" . "git")
+    ("socat" . "socat")
+    ("nc" . "netcat-openbsd")
+    ("curl" . "curl")
+    ("rlwrap" . "rlwrap"))
+  "Map binary names to apt package names.")
+
+(defvar *doctor-missing-deps* nil
+  "List of missing dependencies populated by doctor-check-dependencies.")
+
+(defvar *doctor-auto-install* t
+  "When T, doctor will attempt to install missing dependencies automatically.")
+#+end_src
+
+** Dependency Verification
 #+begin_src lisp
 (defun doctor-check-dependencies ()
-  "Verifies that all required external binaries are available."
-  (let ((deps '("sbcl" "emacs" "git" "curl" "nc"))
-        (all-ok t))
-    (format t "DOCTOR: Checking System Dependencies...~%")
-    (dolist (dep deps)
-      (if (uiop:run-program (list "which" dep) :ignore-error-status t)
-          (format t "  [OK] Found ~a~%" dep)
-          (progn
-            (format t "  [FAIL] Missing ~a~%" dep)
-            (setf all-ok nil))))
+  "Verifies that required external binaries are available in the PATH via shell probe."
+  (setf *doctor-missing-deps* nil)
+  (let ((all-ok t))
+    (format t "DOCTOR: Checking system dependencies...~%")
+    (dolist (dep *doctor-required-binaries*)
+      (let ((path (ignore-errors
+                    (uiop:run-program (list "which" dep)
+                                      :output :string :ignore-error-status t))))
+        (if (and path (> (length path) 0))
+            (format t "  [OK] Found ~a~%" dep)
+            (progn
+              (format t "  [FAIL] Missing binary: ~a~%" dep)
+              (push dep *doctor-missing-deps*)
+              (setf all-ok nil)))))
+    (when (and all-ok (null *doctor-missing-deps*))
+      (format t "DOCTOR: All dependencies satisfied.~%"))
     all-ok))
 #+end_src
 
-** XDG Check (doctor-check-xdg)
+** Auto-Install Dependencies
 #+begin_src lisp
-(defun doctor-check-xdg ()
-  "Verifies XDG environment variables and directory structure."
-  (format t "DOCTOR: Checking XDG environment...~%")
-  (let ((vars '("OC_CONFIG_DIR" "OC_DATA_DIR" "OC_STATE_DIR" "MEMEX_DIR")))
-    (dolist (var vars)
-      (let ((val (uiop:getenv var)))
-        (if val
-            (format t "  [OK] ~a: ~a~%" var val)
-            (format t "  [WARN] ~a is not set.~%" var)))))
-  t)
+(defun doctor-install-dependencies ()
+  "Attempts to install missing system dependencies via apt."
+  (when (null *doctor-missing-deps*)
+    (format t "DOCTOR: No missing dependencies to install.~%")
+    (return-from doctor-install-dependencies t))
+
+  (format t "DOCTOR: Attempting to install ~a missing dependencies...~%" (length *doctor-missing-deps*))
+
+  (let ((packages (remove-duplicates
+                   (mapcar (lambda (dep)
+                             (or (cdr (assoc dep *doctor-package-map* :test #'string=))
+                                 dep))
+                           *doctor-missing-deps*)
+                   :test #'string=)))
+    (format t "DOCTOR: Packages to install: ~a~%" packages)
+
+    (let ((cmd (format nil "apt-get install -y ~{~a~^ ~}" packages)))
+      (format t "DOCTOR: Running: ~a~%" cmd)
+      (handler-case
+          (let ((output (uiop:run-program cmd
+                                           :output :string
+                                           :error-output :string
+                                           :external-format :utf-8)))
+            (if (zerop (uiop:run-program (format nil "which ~a" (car *doctor-missing-deps*))
+                                          :ignore-error-status t))
+                (progn
+                  (format t "DOCTOR: Dependencies installed successfully.~%")
+                  (setf *doctor-missing-deps* nil)
+                  t)
+                (progn
+                  (format t "DOCTOR: Installation failed. Output: ~a~%" output)
+                  nil)))
+        (error (c)
+          (format t "DOCTOR: Installation error: ~a~%" c)
+          nil)))))
 #+end_src
 
-** Main Diagnostic (doctor-main)
+** XDG Environment Validation
+#+begin_src lisp
+(defun doctor-check-env ()
+  "Validates XDG directories and environment configuration."
+  (format t "DOCTOR: Checking XDG environment...~%")
+  (let ((all-ok t)
+        (config-dir (uiop:getenv "OC_CONFIG_DIR"))
+        (data-dir (uiop:getenv "OC_DATA_DIR"))
+        (state-dir (uiop:getenv "OC_STATE_DIR"))
+        (memex-dir (uiop:getenv "MEMEX_DIR")))
+
+    (flet ((check-dir (name path critical)
+             (if (and path (> (length path) 0))
+                 (if (uiop:directory-exists-p path)
+                     (format t "  [OK] ~a: ~a~%" name path)
+                     (progn
+                       (format t "  [FAIL] ~a directory missing: ~a~%" name path)
+                       (when critical (setf all-ok nil))))
+                 (progn
+                   (format t "  [FAIL] ~a variable not set.~%" name)
+                   (when critical (setf all-ok nil))))))
+
+      (check-dir "Config (OC_CONFIG_DIR)" config-dir t)
+      (check-dir "Data (OC_DATA_DIR)" data-dir t)
+      (check-dir "State (OC_STATE_DIR)" state-dir t)
+      (check-dir "Memex (MEMEX_DIR)" memex-dir t))
+    all-ok))
+#+end_src
+
+** LLM Connectivity
+The doctor checks all supported LLM providers and detects local Ollama instances.
+
+#+begin_src lisp
+(defun doctor-check-llm ()
+  "Tests connectivity to LLM providers. Returns T if at least one provider is configured."
+  (format t "DOCTOR: Checking LLM connectivity...~%")
+  (let ((providers '((:openrouter . "OPENROUTER_API_KEY")
+                    (:anthropic . "ANTHROPIC_API_KEY")
+                    (:openai . "OPENAI_API_KEY")
+                    (:groq . "GROQ_API_KEY")
+                    (:gemini . "GEMINI_API_KEY")
+                    (:ollama . "OLLAMA_URL")))
+        (configured nil))
+    (dolist (p providers)
+      (let ((env-val (uiop:getenv (cdr p))))
+        (cond
+          ((and env-val (> (length env-val) 0))
+           (format t "  [OK] ~a configured~%" (car p))
+           (setf configured t))
+          ((eq (car p) :ollama)
+           (let ((ollama-check (ignore-errors
+                                 (uiop:run-program '("curl" "-s" "http://localhost:11434/api/tags")
+                                                    :output :string :ignore-error-status t))))
+             (when (and ollama-check (search "\"models\"" ollama-check))
+               (format t "  [OK] Ollama local model server detected~%")
+               (setf configured t)))))))
+    (if configured
+        (progn
+          (format t "  [OK] LLM provider(s) available~%")
+          t)
+        (progn
+          (format t "  [WARN] No LLM provider configured.~%")
+          (format t "  Run 'opencortex setup' to configure a provider.~%")
+          t))))
+#+end_src
+
+** Orchestration
+#+begin_src lisp
+(defun doctor-run-all (&key (auto-install t))
+  "Executes the full diagnostic suite and returns T if system is healthy."
+  (format t "==================================================~%")
+  (format t " OPENCORTEX DOCTOR: Commencing Health Check~%")
+  (format t "==================================================~%")
+  (let ((dep-ok (doctor-check-dependencies)))
+    (when (and (not dep-ok) auto-install *doctor-auto-install*)
+      (format t "DOCTOR: Attempting automatic installation...~%")
+      (setf dep-ok (doctor-install-dependencies))
+      (when dep-ok
+        (setf dep-ok (doctor-check-dependencies))))
+    (let ((env-ok (doctor-check-env))
+          (llm-ok (doctor-check-llm)))
+      (format t "==================================================~%")
+      (if (and dep-ok env-ok)
+          (progn
+            (format t " ✓ SYSTEM HEALTHY: Ready for ignition.~%")
+            t)  ;; Explicitly return T
+          (progn
+            (format t "==================================================~%")
+            (format t " ISSUES FOUND:~%")
+            (when (not dep-ok)
+              (format t "  - Missing system dependencies~%"))
+            (when (not llm-ok)
+              (format t "  - No LLM provider configured~%"))
+            (format t "~%")
+            (format t " RECOMMENDED ACTIONS:~%")
+            (format t "  1. Run 'opencortex setup' to configure everything~%")
+            (format t "  2. Or run 'opencortex doctor --fix' for auto-repair~%")
+            (format t "==================================================~%")
+            nil)))))  ;; Return nil when issues found
+#+end_src
+
+** CLI Entry Point
 #+begin_src lisp
 (defun doctor-main ()
-  "Runs all diagnostic checks."
-  (format t "==================================================~%")
-  (format t " OpenCortex System Diagnostic~%")
-  (format t "==================================================~%")
-  (let ((d-ok (doctor-check-dependencies))
-        (x-ok (doctor-check-xdg)))
-    (format t "==================================================~%")
-    (if (and d-ok x-ok)
-        (format t " ✓ SYSTEM HEALTHY: Ready for ignition.~%")
-        (format t " ✗ SYSTEM UNHEALTHY: Issues detected.~%"))))
+  "Entry point for the 'doctor' CLI command."
+  (if (doctor-run-all)
+      (uiop:quit 0)
+      (uiop:quit 1)))
 #+end_src
+
+* Phase D: Verification (Testing)
+
+** Dependency Test
+#+begin_src lisp :tangle no
+(test test-doctor-dependency-check
+  "Verify that missing binaries are correctly identified as failures."
+  (let ((opencortex::*doctor-required-binaries* '("non-existent-binary-123")))
+    (is (null (opencortex:doctor-check-dependencies)))))
+#+end_src
+
+** Environment Test
+#+begin_src lisp :tangle no
+(test test-doctor-env-check
+  "Verify that an invalid MEMEX_DIR triggers a critical failure."
+  (let ((old-m (uiop:getenv "MEMEX_DIR")))
+    (unwind-protect
+         (progn
+           (setf (uiop:getenv "MEMEX_DIR") "/non/existent/path/999")
+           (is (null (opencortex:doctor-check-env))))
+      (setf (uiop:getenv "MEMEX_DIR") (or old-m "")))))
+#+end_src
+
+* Phase E: Lifecycle
+The doctor skill should be loaded early (priority 100) to validate system health before other skills initialize.
 
 ** Skill Registration
 #+begin_src lisp

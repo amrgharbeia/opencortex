@@ -16,8 +16,8 @@ The *Bouncer Skill* is the physical security layer of OpenCortex. It enforces op
 ** Security Configuration
 #+begin_src lisp
 (defvar *bouncer-network-whitelist*
-  '("api.telegram.org" "matrix.org" "googleapis.com" "openai.com" "anthropic.com
-  "Domains that the Bouncer considers safe for outbound connections.
+  '("api.telegram.org" "matrix.org" "googleapis.com" "openai.com" "anthropic.com")
+  "Domains that the Bouncer considers safe for outbound connections.")
 #+end_src
 
 ** Secret Scanning (bouncer-scan-secrets)
@@ -56,9 +56,9 @@ The *Bouncer Skill* is the physical security layer of OpenCortex. It enforces op
   (let* ((target (proto-get action :target))
          (payload (proto-get action :payload))
          (text (or (proto-get payload :text) (proto-get action :text)))
-         (cmd (or (proto-get payload :cmd)
-                 (when (and (eq target :tool) (equal (proto-get payload :tool) "shell)
-                   (proto-get (proto-get payload :args) :cmd))))
+(cmd (or (proto-get payload :cmd)
+                  (when (and (eq target :tool) (equal (proto-get payload :tool) "shell"))
+                    (proto-get (proto-get payload :args) :cmd)))))
          (approved (proto-get action :approved)))
 
     (cond
@@ -71,15 +71,15 @@ The *Bouncer Skill* is the physical security layer of OpenCortex. It enforces op
                :payload (list :level :error
                               :text (format nil "Action blocked: Potential exposure of '~a'" secret-name)))))
 
-      ((and (or (eq target :shell)
-               (and (eq target :tool) (equal (proto-get payload :tool) "shell))
-            (bouncer-check-network-exfil cmd))
-       (harness-log "SECURITY WARNING: External network call detected. Queuing for approval.
+((and (or (eq target :shell)
+                (and (eq target :tool) (equal (proto-get payload :tool) "shell")))
+             (bouncer-check-network-exfil cmd))
+        (harness-log "SECURITY WARNING: External network call detected. Queuing for approval."))
        (list :type :EVENT :payload (list :sensor :approval-required :action action)))
 
-      ((or (member target '(:shell))
-          (and (eq target :tool) (member (proto-get payload :tool) '("shell" "repair-file :test #'string=))
-          (and (eq target :emacs) (eq (proto-get payload :action) :eval)))
+((or (member target '(:shell))
+           (and (eq target :tool) (member (proto-get payload :tool) '("shell" "repair-file") :test #'string=))
+           (and (eq target :emacs) (eq (proto-get payload :action) :eval))))
        (harness-log "SECURITY: High-impact action requires approval: ~a" (or (proto-get payload :tool) target))
        (list :type :EVENT :payload (list :sensor :approval-required :action action)))
 
@@ -90,7 +90,7 @@ The *Bouncer Skill* is the physical security layer of OpenCortex. It enforces op
 #+begin_src lisp
 (defun bouncer-process-approvals ()
   "Scans for APPROVED flight plans and re-injects them."
-  (let ((approved-nodes (list-objects-with-attribute :TODO "APPROVED)
+  (let ((approved-nodes (list-objects-with-attribute :TODO "APPROVED"))
         (found-any nil))
     (dolist (node approved-nodes)
       (let* ((attrs (org-object-attributes node))
@@ -102,7 +102,7 @@ The *Bouncer Skill* is the physical security layer of OpenCortex. It enforces op
             (when action
               (setf (getf action :approved) t)
               (inject-stimulus action)
-              (setf (getf (org-object-attributes node) :TODO) "DONE
+              (setf (getf (org-object-attributes node) :TODO) "DONE")
               (setq found-any t))))))
     found-any))
 #+end_src
@@ -115,9 +115,9 @@ The *Bouncer Skill* is the physical security layer of OpenCortex. It enforces op
     (harness-log "BOUNCER: Creating flight plan node '~a'..." id)
     (list :type :REQUEST :target :emacs
           :payload (list :action :insert-node :id id
-                        :attributes (list :TITLE "Flight Plan: High-Risk Action"
-                                         :TODO "PLAN" :TAGS '("FLIGHT_PLAN
-                                         :ACTION (format nil "~s" blocked-action))))))
+:attributes (list :TITLE "Flight Plan: High-Risk Action"
+                                          :TODO "PLAN" :TAGS '("FLIGHT_PLAN")
+                                          :ACTION (format nil "~s" blocked-action))))))
 #+end_src
 
 ** Gate Logic (bouncer-deterministic-gate)
