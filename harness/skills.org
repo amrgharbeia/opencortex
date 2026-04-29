@@ -171,7 +171,11 @@ The ~opencortex~ Skill Engine enables **Late-Binding Intelligence**, allowing th
                 ((uiop:string-prefix-p "#+begin_src lisp" clean-line)
                  (setf in-lisp-block t)
                  (let ((target (extract-tangle-target clean-line)))
-                   (setf collect-this-block (and target (not (search "/tests" target))))))
+                   ;; Collect if there's no tangle target (inherits from file) 
+                   ;; or if it's a lisp file and NOT a test.
+                   (setf collect-this-block (or (null target)
+                                                (and (not (search "no" target))
+                                                     (not (search "/tests" target)))))))
                 ((uiop:string-prefix-p "#+end_src" clean-line)
                  (setf in-lisp-block nil) (setf collect-this-block nil))
                 ((and in-lisp-block collect-this-block)
