@@ -8,11 +8,6 @@ The *Config Manager* skill provides the OpenCortex Agent with the capability to 
 
 * Implementation
 
-** Package Context
-#+begin_src lisp
-(in-package :opencortex)
-#+end_src
-
 ** Configuration Paths
 #+begin_src lisp
 (defun get-oc-config-dir ()
@@ -74,8 +69,8 @@ The *Config Manager* skill provides the OpenCortex Agent with the capability to 
     (let ((existing (assoc key config :test #'string=)))
       (if existing
           (setf (cdr existing) value)
-          (push pair config)))
-      (write-config-file config))))
+          (push pair config))
+      (write-config-file config)))
 #+end_src
 
 ** Input Utilities
@@ -144,12 +139,12 @@ The *Config Manager* skill provides the OpenCortex Agent with the capability to 
                   (format t "Enter Ollama URL (e.g., http://localhost:11434): ")
                   (let ((url (read-line)))
                     (set-config-value env-key url)
-                    (format t "✓ Ollama configured at ~a~%" url))))
+                    (format t "✓ Ollama configured at ~a~%" url)))
                 (progn
                   (format t "Enter API key for ~a: " chosen)
                   (let ((key (read-line)))
                     (set-config-value env-key key)
-                    (format t "✓ ~a API key saved~%" chosen)))))))))))
+                    (format t "✓ ~a API key saved~%" chosen)))))))))
   
   (format t "~%"))
 

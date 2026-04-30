@@ -8,16 +8,11 @@ The *Homoiconic Memory* skill provides the capability to treat system memory as 
 
 * Implementation
 
-** Package Context
-#+begin_src lisp
-(in-package :opencortex)
-#+end_src
-
 ** Memory Logic
 #+begin_src lisp
 (defun memory-self-inspect ()
   "Allows the system to inspect its own memory state."
-  (harness-log "MEMORY: Self-inspection triggered.)
+  (harness-log "MEMORY: Self-inspection triggered."))
 #+end_src
 
 ** Skill Registration

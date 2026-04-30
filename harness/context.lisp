@@ -60,9 +60,6 @@
                          (cosine-similarity foveal-vector obj-vector)
                          0.0))
          (is-semantically-relevant (>= similarity threshold))
-         ;; We always render depth 1 and 2 (Projects and main tasks).
-         ;; We always render the foveal node and its immediate children.
-         ;; We render deeper nodes ONLY if they are semantically relevant.
          (should-render (or (<= depth 2) is-foveal is-semantically-relevant))
          (output ""))
     
@@ -72,15 +69,12 @@
         (setf output (concatenate 'string output (format nil ":SEMANTIC_SCORE: ~,2f~%" similarity))))
       (setf output (concatenate 'string output (format nil ":END:~%")))
       
-      ;; Only include full body content if this is the Foveal focus or highly relevant
       (when (and content (or is-foveal is-semantically-relevant))
         (setf output (concatenate 'string output content (string #\Newline))))
       
-      ;; Recursively render children
       (dolist (child-id children)
         (let ((child-obj (lookup-object child-id)))
           (when child-obj
-            ;; If the current node is Foveal, its children should be rendered (depth effectively resets)
             (let ((next-foveal (if is-foveal child-id foveal-id)))
               (setf output (concatenate 'string output 
                                         (context-render-to-org child-obj 
@@ -109,8 +103,7 @@
   (let* ((foveal-id (or (getf signal :foveal-focus) 
                         (ignore-errors (getf (getf signal :payload) :target-id))))
          (projects (context-get-active-projects))
-         (output "GLOBAL MEMEX AWARENESS (Peripheral Vision):
-"))
+         (output (format nil "GLOBAL MEMEX AWARENESS (Peripheral Vision):~%")))
     (if projects
         (dolist (project projects)
           (setf output (concatenate 'string output

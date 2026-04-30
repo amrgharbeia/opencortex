@@ -8,11 +8,6 @@ The *Gateway Manager* handles the registration and linking of external communica
 
 * Implementation
 
-** Package Context
-#+begin_src lisp
-(in-package :opencortex)
-#+end_src
-
 ** Gateway Logic
 #+begin_src lisp
 (defun skill-gateway-register (platform token)

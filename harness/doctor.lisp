@@ -64,6 +64,7 @@
   (let ((dep-ok (doctor-check-dependencies))
         (env-ok (doctor-check-env))
         (llm-ok (doctor-check-llm)))
+    (declare (ignore llm-ok))
     (harness-log "==================================================")
     (if (and dep-ok env-ok)
         (progn

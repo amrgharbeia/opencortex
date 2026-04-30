@@ -8,11 +8,6 @@ The *Protocol Validator* skill enforces strict schema compliance for all interna
 
 * Implementation
 
-** Package Context
-#+begin_src lisp
-(in-package :opencortex)
-#+end_src
-
 ** Validation Logic
 #+begin_src lisp
 (defun protocol-validate (msg)

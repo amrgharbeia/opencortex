@@ -8,11 +8,6 @@ The *Literate Programming* skill ensures the synchronization between `.org` sour
 
 * Implementation
 
-** Package Context
-#+begin_src lisp
-(in-package :opencortex)
-#+end_src
-
 ** Synchronization Logic
 #+begin_src lisp
 (defun literate-check-block-balance (org-file)

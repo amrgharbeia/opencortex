@@ -8,16 +8,11 @@ The *Llama Backend* skill provides the actual implementation for calling local m
 
 * Implementation
 
-** Package Context
-#+begin_src lisp
-(in-package :opencortex)
-#+end_src
-
 ** Ollama API Call (ollama-call)
 #+begin_src lisp
-(defun ollama-call (prompt system-prompt &key (model "llama3)
+(defun ollama-call (prompt system-prompt &key (model "llama3"))
   "Sends a request to the local Ollama API."
-  (let* ((host (or (uiop:getenv "OLLAMA_HOST "localhost:11434)
+  (let* ((host (or (uiop:getenv "OLLAMA_HOST") "localhost:11434"))
          (url (format nil "http://~a/api/generate" host))
          (payload (cl-json:encode-json-to-string 
                    `((model . ,model)
@@ -25,7 +20,7 @@ The *Llama Backend* skill provides the actual implementation for calling local m
                      (system . ,system-prompt)
                      (stream . nil)))))
     (handler-case
-        (let ((response (dex:post url :content payload :headers '(("Content-Type" . "application/json))))
+        (let ((response (dex:post url :content payload :headers '(("Content-Type" . "application/json")))))
           (let ((data (cl-json:decode-json-from-string response)))
             (list :status :success :content (getf data :response))))
       (error (c)

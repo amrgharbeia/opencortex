@@ -8,11 +8,6 @@ The *LLM Gateway* skill provides a unified interface for interacting with multip
 
 * Implementation
 
-** Package Context
-#+begin_src lisp
-(in-package :opencortex)
-#+end_src
-
 ** Request Execution (execute-llm-request)
 #+begin_src lisp
 (defun execute-llm-request (&key prompt system-prompt (provider :ollama) model)

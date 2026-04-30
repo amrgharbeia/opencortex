@@ -238,7 +238,7 @@ The ~opencortex~ Skill Engine enables **Late-Binding Intelligence**, allowing th
 #+end_src
 
 * Test Suite
-#+begin_src lisp :tangle tests/boot-sequence-tests.lisp
+#+begin_src lisp :tangle ../tests/boot-sequence-tests.lisp
 (eval-when (:compile-toplevel :load-toplevel :execute)
   (ql:quickload :fiveam :silent t))
 

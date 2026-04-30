@@ -46,6 +46,7 @@ The "Brain" meets the "Machine." Standardization and professionalization of the 
 | Onboarding Wizard    | ✅     | Modular Lisp setup for multiple LLM providers.          |
 | Linkage Command      | ✅     | Real-time verification of external gateways (Telegram). |
 | Self-Editing         | ✅     | Detects errors, applies fixes, learns from outcomes.    |
+| Enhanced Utilities   | ✅     | Structural Lisp/Org manipulation + REPL evaluation.     |
 | Memory Rollback      | ✅     | Snap back to known-good state on critical errors.       |
 
 *** v0.3.0: Event Orchestration + HITL

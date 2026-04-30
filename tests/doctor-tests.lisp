@@ -5,7 +5,6 @@
 (in-package :opencortex-doctor-tests)
 
 (def-suite doctor-suite :description "Verification of the System Doctor diagnostic logic")
-
 (in-suite doctor-suite)
 
 (test test-dependency-check-fail

@@ -1,17 +1,28 @@
+(eval-when (:compile-toplevel :load-toplevel :execute)
+  (ql:quickload :fiveam :silent t))
+
 (defpackage :opencortex-llm-gateway-tests
-  (:use :cl :fiveam :opencortex)
+  (:use :cl :opencortex)
   (:export #:llm-gateway-suite))
 
 (in-package :opencortex-llm-gateway-tests)
 
-(def-suite llm-gateway-suite :description "Tests for the LLM Gateway skill")
-(in-suite llm-gateway-suite)
+(fiveam:def-suite llm-gateway-suite :description "Tests for the LLM Gateway skill")
+(fiveam:in-suite llm-gateway-suite)
 
-(test test-llm-gateway-timeout
+(fiveam:test test-llm-gateway-timeout
   "Tier 2 Chaos: Verify that LLM Gateway handles connection failures gracefully."
-  ;; Point to a non-existent port to force a connection error
-  (let ((uiop:*environment* (copy-list uiop:*environment*)))
-    (setf (uiop:getenv "OLLAMA_HOST") "localhost:1")
-    (let ((result (opencortex::execute-llm-request :prompt "hello" :provider :ollama)))
-      (is (eq (getf result :status) :error))
-      (is (uiop:string-prefix-p "Ollama Failure" (getf result :message))))))
+  (let ((old-host (uiop:getenv "OLLAMA_HOST")))
+    (unwind-protect
+         (progn
+           (setf (uiop:getenv "OLLAMA_HOST") "localhost:1")
+           (let ((fn (or (find-symbol "EXECUTE-LLM-REQUEST" :opencortex.skills.org-skill-llm-gateway)
+                         (find-symbol "EXECUTE-LLM-REQUEST" :opencortex))))
+             (if fn
+                 (let ((result (funcall fn :prompt "hello" :provider :ollama)))
+                   (fiveam:is (eq (getf result :status) :error))
+                   (fiveam:is (uiop:string-prefix-p "Ollama Failure" (getf result :message))))
+                 (fiveam:fail "Could not find EXECUTE-LLM-REQUEST symbol"))))
+      (if old-host
+          (setf (uiop:getenv "OLLAMA_HOST") old-host)
+          (sb-posix:unsetenv "OLLAMA_HOST")))))

@@ -8,11 +8,6 @@ The *CLI Gateway* provides a command-line interface for interacting with the Ope
 
 * Implementation
 
-** Package Context
-#+begin_src lisp
-(in-package :opencortex)
-#+end_src
-
 ** CLI Command Handling
 #+begin_src lisp
 (defun cli-process-input (text)

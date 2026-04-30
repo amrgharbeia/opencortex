@@ -20,11 +20,6 @@ Binary detection must use shell probing (`which`) to account for varying `$PATH`
 
 * Phase C: Implementation (Build)
 
-** Package Context
-#+begin_src lisp
-(in-package :opencortex)
-#+end_src
-
 ** Global Configuration
 #+begin_src lisp
 (defvar *doctor-required-binaries* '("sbcl" "emacs" "git" "socat" "nc")

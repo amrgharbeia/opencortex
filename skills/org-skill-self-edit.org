@@ -8,11 +8,6 @@ The *Self Edit* skill allows the OpenCortex Agent to modify its own literate sou
 
 * Implementation
 
-** Package Context
-#+begin_src lisp
-(in-package :opencortex)
-#+end_src
-
 ** Self-Edit Logic
 #+begin_src lisp
 (defun self-edit-apply (filepath old-text new-text)

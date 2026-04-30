@@ -8,11 +8,6 @@ The *Tool Permissions* skill manages the authorization levels for different cogn
 
 * Implementation
 
-** Package Context
-#+begin_src lisp
-(in-package :opencortex)
-#+end_src
-
 ** Permission Registry
 #+begin_src lisp
 (defvar *tool-permissions* (make-hash-table :test 'equal))

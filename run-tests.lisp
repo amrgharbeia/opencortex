@@ -1,12 +1,12 @@
 (load (merge-pathnames "quicklisp/setup.lisp" (user-homedir-pathname)))
 
-(let ((oc-dir (or (uiop:getenv "OC_DATA_DIR") 
+(let ((oc-dir (or (uiop:getenv "OC_DATA_DIR")
                   (namestring (truename "./")))))
   (push (uiop:ensure-directory-pathname oc-dir) asdf:*central-registry*))
 
-(ql:quickload '(:opencortex :opencortex/tests) :silent t)
+(ql:quickload '(:fiveam :opencortex :opencortex/tui :opencortex/tests) :silent t)
 
-(format t "~%=== Initializing Skills BEFORE loading tests ===~%")
+(format t "~%=== Initializing Skills BEFORE running tests ===~%")
 (opencortex:initialize-all-skills)
 
 (format t "~%=== Running ALL Test Suites ===~%")
@@ -19,6 +19,8 @@
                       ("OPENCORTEX-DIAGNOSTICS-TESTS" "DIAGNOSTICS-SUITE")
                       ("OPENCORTEX-GATEWAY-MANAGER-TESTS" "GATEWAY-SUITE")
                       ("OPENCORTEX-TUI-TESTS" "TUI-SUITE")
+                      ("OPENCORTEX-UTILS-ORG-TESTS" "UTILS-ORG-SUITE")
+                      ("OPENCORTEX-UTILS-LISP-TESTS" "UTILS-LISP-SUITE")
                       ("OPENCORTEX-LLM-GATEWAY-TESTS" "LLM-GATEWAY-SUITE")))
   (let ((pkg (find-package (first suite-spec))))
     (when pkg

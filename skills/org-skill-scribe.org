@@ -8,11 +8,6 @@ The *Scribe Skill* manages the agent's internal documentation and logs.
 
 * Implementation
 
-** Package Context
-#+begin_src lisp
-(in-package :opencortex)
-#+end_src
-
 ** Documentation Logic
 #+begin_src lisp
 (defun scribe-log-event (signal)

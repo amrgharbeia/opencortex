@@ -8,11 +8,6 @@ The *Self Fix* skill enables the agent to automatically repair broken skills and
 
 * Implementation
 
-** Package Context
-#+begin_src lisp
-(in-package :opencortex)
-#+end_src
-
 ** Self-Fix Logic
 #+begin_src lisp
 (defun self-fix-broken-skill (skill-name error-log)

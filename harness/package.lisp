@@ -35,10 +35,6 @@
    #:skill-gateway-link
    #:gateway-manager-main
 
-   ;; --- Diagnostic Doctor ---
-   #:doctor-run-all
-   #:doctor-main
-
    ;; --- Memory (CLOSOS) ---
    #:ingest-ast
    #:lookup-object
@@ -109,44 +105,45 @@
 
    ;; --- Engineering Standards Skill ---
    #:verify-git-clean-p
+   #:engineering-standards-verify-lisp
+   #:engineering-standards-format-lisp
 
    ;; --- Literate Programming Skill ---
    #:literate-check-block-balance
    #:check-tangle-sync
    #:*tangle-targets*
 
-   ;; --- Emacs Edit Skill ---
-   #:emacs-edit-read-file
-   #:emacs-edit-write-file
-   #:emacs-edit-add-headline
-   #:emacs-edit-set-property
-   #:emacs-edit-set-todo
-   #:emacs-edit-find-headline-by-id
-   #:emacs-edit-find-headline-by-title
-   #:emacs-edit-generate-id
-   #:emacs-edit-id-format
-   #:emacs-edit-ast-to-org
-   #:emacs-edit-modify
+   ;; --- Utils Org Skill ---
+   #:utils-org-read-file
+   #:utils-org-write-file
+   #:utils-org-add-headline
+   #:utils-org-set-property
+   #:utils-org-set-todo
+   #:utils-org-find-headline-by-id
+   #:utils-org-find-headline-by-title
+   #:utils-org-generate-id
+   #:utils-org-id-format
+   #:utils-org-ast-to-org
+   #:utils-org-modify
 
-   ;; --- Lisp Utils Skill ---
-   #:lisp-utils-validate
-   #:lisp-utils-check-structural
-   #:lisp-utils-check-syntactic
-   #:lisp-utils-check-semantic
-   #:lisp-utils-register
+   ;; --- Utils Lisp Skill ---
+   #:utils-lisp-validate
+   #:utils-lisp-check-structural
+   #:utils-lisp-check-syntactic
+   #:utils-lisp-check-semantic
+   #:utils-lisp-eval
+   #:utils-lisp-format
+   #:utils-lisp-list-definitions
+   #:utils-lisp-structural-extract
+   #:utils-lisp-structural-wrap
+   #:utils-lisp-structural-inject
+   #:utils-lisp-structural-slurp
+   #:utils-lisp-register
 
    ;; --- Config Manager & Diagnostics Skill ---
-   #:register-provider
-   #:save-providers
-   #:configure-provider
-   #:run-setup-wizard
    #:get-oc-config-dir
    #:prompt-for
    #:save-secret
-   #:doctor-check-dependencies
-   #:doctor-check-xdg
-   #:doctor-check-llm
-   #:doctor-run-all
 
    ;; --- Tool Permissions Skill ---
    #:get-tool-permission
@@ -238,3 +235,18 @@
         (setq *system-logs* (subseq *system-logs* 0 *max-log-history*))))
     (format t "~a~%" formatted-msg)
     (finish-output)))
+
+;; --- Debugger Hook ---
+(setf *debugger-hook* (lambda (condition hook)
+  "Friendly error handler - shows diagnostic message instead of raw debugger."
+  (format t "~%")
+  (format t "┌─────────────────────────────────────────────┐~%")
+  (format t "│  ERROR: ~A~%" (type-of condition))
+  (format t "│~%")
+  (format t "│  Run: opencortex doctor~%")
+  (format t "│  For system diagnostics~%")
+  (format t "└─────────────────────────────────────────────┘~%")
+  (format t "~%")
+  (format t "Details: ~A~%" condition)
+  (finish-output)
+  (uiop:quit 1)))

@@ -8,11 +8,6 @@ The *Shell Actuator* provides the agent with the capability to execute bash comm
 
 * Implementation
 
-** Package Context
-#+begin_src lisp
-(in-package :opencortex)
-#+end_src
-
 ** Shell Execution (shell-execute)
 #+begin_src lisp
 (defun shell-execute (action context)

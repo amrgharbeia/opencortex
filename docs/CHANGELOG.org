@@ -1,6 +1,16 @@
 #+TITLE: Changelog
 #+STARTUP: content
 
+* v0.2.0 - Interactive Refinement (2026-04-29)
+This release focuses on professionalizing the environment and enhancing the agent's structural capabilities.
+
+** Features
+- **Enhanced Lisp/Org Utilities:** Structural editing, REPL evaluation, and automated formatting to ensure code integrity.
+- **Namespace Standardization:** Refactored utilities into =utils-org= and =utils-lisp= for predictable discovery.
+- **Autonomous Mandates:** Implemented =GEMINI.md= for local agentic enforcement of engineering standards.
+- **Onboarding Wizard:** Modular Lisp setup for multiple LLM providers.
+- **Professional TUI:** Styled, scrollable interface with improved diagnostics.
+
 * v0.1.0 - The Autonomous Foundation (2026-04-20)
 This is the initial MVP release of the ~opencortex~. It establishes a secure, auditable Lisp kernel for a personal operating system.
 
