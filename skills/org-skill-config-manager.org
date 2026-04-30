@@ -70,7 +70,7 @@ The *Config Manager* skill provides the OpenCortex Agent with the capability to 
       (if existing
           (setf (cdr existing) value)
           (push pair config))
-      (write-config-file config)))
+      (write-config-file config))))
 #+end_src
 
 ** Input Utilities
@@ -104,7 +104,7 @@ The *Config Manager* skill provides the OpenCortex Agent with the capability to 
 
 ** LLM Provider Setup
 #+begin_src lisp
-(defvar *available-providers*
+(defparameter *available-providers*
   '(("OpenAI" . "OPENAI_API_KEY")
     ("Anthropic" . "ANTHROPIC_API_KEY")
     ("OpenRouter" . "OPENROUTER_API_KEY")
@@ -133,7 +133,7 @@ The *Config Manager* skill provides the OpenCortex Agent with the capability to 
     (when (prompt-yes-no "Configure a new provider?")
       (let ((chosen (prompt-choice "Select provider:" (mapcar #'car *available-providers*))))
         (when chosen
-          (let ((env-key (cdr (assoc chosen *available-providers* :test #'string= :key #'car))))
+          (let ((env-key (cdr (assoc chosen *available-providers* :test #'string=))))
             (if (string= chosen "Ollama (local)")
                 (progn
                   (format t "Enter Ollama URL (e.g., http://localhost:11434): ")
@@ -174,7 +174,7 @@ The *Config Manager* skill provides the OpenCortex Agent with the capability to 
           (if (string= chosen "Slack")
               (set-config-value "SLACK_TOKEN" token)
               (set-config-value "DISCORD_TOKEN" token))
-          (format t "✓ ~a gateway configured~%" chosen))))))
+          (format t "✓ ~a gateway configured~%" chosen)))))
   
   (format t "~%"))
 #+end_src

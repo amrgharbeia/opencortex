@@ -224,7 +224,22 @@
                               :description ,description
                               :parameters ',parameters
                               :guard ,guard
-                              :body ,body)))
+                               :body ,body)))
+
+(defun generate-tool-belt-prompt ()
+  "Generates a prompt string describing all available cognitive tools."
+  (let ((descriptions nil))
+    (maphash (lambda (k tool)
+               (declare (ignore k))
+               (push (format nil "- ~a: ~a~%  Parameters: ~a~%"
+                             (cognitive-tool-name tool)
+                             (cognitive-tool-description tool)
+                             (cognitive-tool-parameters tool))
+                     descriptions))
+             *cognitive-tools*)
+    (if descriptions
+        (format nil "Available tools:~%~a" (apply #'concatenate 'string (sort descriptions #'string<)))
+        "No tools registered.")))
 
 (defun harness-log (msg &rest args)
   "Centralized logging for the harness."

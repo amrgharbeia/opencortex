@@ -74,7 +74,9 @@
 
 (defun topological-sort-skills (skills-dir)
   "Returns a list of skill filepaths sorted by dependency."
-  (let ((files (uiop:directory-files skills-dir "org-skill-*.org"))
+  (let* ((org-files (uiop:directory-files skills-dir "org-skill-*.org"))
+         (lisp-files (uiop:directory-files skills-dir "org-skill-*.lisp"))
+         (files (append org-files lisp-files))
         (adj (make-hash-table :test 'equal))
         (name-to-file (make-hash-table :test 'equal))
         (id-to-file (make-hash-table :test 'equal))
@@ -83,10 +85,14 @@
         (stack (make-hash-table :test 'equal)))
     (dolist (file files)
       (let ((filename (pathname-name file)))
-        (multiple-value-bind (id deps) (parse-skill-metadata file)
-          (setf (gethash (string-downcase filename) name-to-file) file)
-          (when id (setf (gethash (string-downcase id) id-to-file) file))
-          (setf (gethash (string-downcase filename) adj) deps))))
+        (if (uiop:string-suffix-p (namestring file) ".lisp")
+            (progn
+              (setf (gethash (string-downcase filename) name-to-file) file)
+              (setf (gethash (string-downcase filename) adj) nil))
+            (multiple-value-bind (id deps) (parse-skill-metadata file)
+              (setf (gethash (string-downcase filename) name-to-file) file)
+              (when id (setf (gethash (string-downcase id) id-to-file) file))
+              (setf (gethash (string-downcase filename) adj) deps)))))
     (labels ((visit (file)
                (let* ((filename (pathname-name file))
                       (node-key (string-downcase filename)))
@@ -122,6 +128,16 @@
         (values t nil))
     (error (c) (values nil (format nil "~a" c)))))
 
+(defun remove-in-package-forms (code-string)
+  "Removes in-package forms so symbols get defined in skill package."
+  (let ((lines (uiop:split-string code-string :separator '(#\Newline)))
+        (result ""))
+    (dolist (line lines)
+      (let ((trimmed (string-trim '(#\Space #\Tab) line)))
+        (unless (uiop:string-prefix-p "(in-package" trimmed)
+          (setf result (concatenate 'string result line (string #\Newline))))))
+    result))
+
 (defun extract-tangle-target (line)
   "Extracts the value of the :tangle header."
   (let ((pos (search ":tangle" line)))
@@ -133,7 +149,7 @@
 (defun load-skill-from-org (filepath)
   "Parses and evaluates Lisp blocks from an Org file."
   (let* ((skill-base-name (pathname-name filepath))
-         (entry (or (gethash skill-base-name *skill-catalog*) (make-skill-entry :filename skill-base-name))))
+         (entry (or (gethash skill-base-name *skill-catalog*) (setf (gethash skill-base-name *skill-catalog*) (make-skill-entry :filename skill-base-name)))))
     (setf (skill-entry-status entry) :loading)
     (handler-case
         (let* ((content (uiop:read-file-string filepath))
@@ -146,7 +162,7 @@
                 ((uiop:string-prefix-p "#+begin_src lisp" clean-line)
                  (setf in-lisp-block t)
                  (let ((target (extract-tangle-target clean-line)))
-                   ;; Collect if there's no tangle target (inherits from file) 
+                   ;; Collect if there's no tangle target (inherits from file)
                    ;; or if it's a lisp file and NOT a test.
                    (setf collect-this-block (or (null target)
                                                 (and (not (search "no" target))
@@ -168,7 +184,7 @@
                 (let ((*read-eval* nil) (*package* (find-package pkg-name)))
                   (harness-log "LOADER: Evaluating code for '~a' in package ~a" skill-base-name (package-name *package*))
                   (eval (read-from-string (format nil "(progn ~a)" lisp-code))))
-                
+
                 ;; Export symbols back to :OPENCORTEX for discoverability and testing
                 (let* ((target-pkg (find-package :opencortex))
                        (raw-name (string-upcase skill-base-name))
@@ -190,9 +206,53 @@
                               (unintern existing target-pkg)))
                           (import sym target-pkg)
                           (export sym target-pkg))))))
-                
+
                 (setf (skill-entry-status entry) :ready)))
           t)
+      (error (c)
+        (harness-log "LOADER ERROR in skill '~a': ~a" skill-base-name c)
+        (setf (skill-entry-status entry) :failed) nil))))
+
+(defun load-skill-from-lisp (filepath)
+  "Loads a .lisp skill file directly, filtering out in-package forms."
+  (let* ((skill-base-name (pathname-name filepath))
+         (entry (or (gethash skill-base-name *skill-catalog*) (setf (gethash skill-base-name *skill-catalog*) (make-skill-entry :filename skill-base-name)))))
+    (setf (skill-entry-status entry) :loading)
+    (handler-case
+        (let* ((content (remove-in-package-forms (uiop:read-file-string filepath)))
+               (pkg-name (intern (string-upcase (format nil "OPENCORTEX.SKILLS.~a" skill-base-name)) :keyword)))
+          (multiple-value-bind (valid-p err) (validate-lisp-syntax content)
+            (unless valid-p (error err)))
+          (unless (find-package pkg-name)
+            (let ((new-pkg (make-package pkg-name :use '(:cl)))) (use-package :opencortex new-pkg)))
+          (let ((*read-eval* nil) (*package* (find-package pkg-name)))
+            (harness-log "LOADER: Loading .lisp skill '~a' in package ~a" skill-base-name (package-name *package*))
+            ;; Evaluate forms individually so one bad form doesn't abort the entire skill
+            (with-input-from-string (s content)
+              (loop for form = (read s nil :eof) until (eq form :eof)
+                    do (handler-case (eval form)
+                         (error (c) (harness-log "LOADER WARNING in '~a': ~a" skill-base-name c))))))
+          ;; Export symbols
+          (let* ((target-pkg (find-package :opencortex))
+                 (raw-name (string-upcase skill-base-name))
+                 (short-name (if (uiop:string-prefix-p "ORG-SKILL-" raw-name)
+                                 (subseq raw-name 10)
+                                 raw-name)))
+            (harness-log "LOADER: Scanning package ~a for symbols to export..." (package-name (find-package pkg-name)))
+            (do-symbols (sym (find-package pkg-name))
+              (when (eq (symbol-package sym) (find-package pkg-name))
+                (let ((sn (symbol-name sym)))
+                  (when (or (uiop:string-prefix-p raw-name sn)
+                            (uiop:string-prefix-p short-name sn)
+                            (string-equal sn "DOCTOR-MAIN")
+                            (string-equal sn "RUN-SETUP-WIZARD"))
+                    (harness-log "LOADER: Exporting ~a to :OPENCORTEX" sn)
+                    (let ((existing (find-symbol sn target-pkg)))
+                      (when (and existing (not (eq existing sym)))
+                        (unintern existing target-pkg)))
+                    (import sym target-pkg)
+                    (export sym target-pkg))))))
+          (setf (skill-entry-status entry) :ready))
       (error (c)
         (harness-log "LOADER ERROR in skill '~a': ~a" skill-base-name c)
         (setf (skill-entry-status entry) :failed) nil))))
@@ -205,5 +265,7 @@
     (let ((sorted-files (topological-sort-skills skills-dir)))
       (harness-log "LOADER: Initializing ~a skills..." (length sorted-files))
       (dolist (file sorted-files)
-        (load-skill-from-org file))
+        (if (uiop:string-suffix-p (namestring file) ".lisp")
+            (load-skill-from-lisp file)
+            (load-skill-from-org file)))
       (harness-log "LOADER: Boot Complete."))))

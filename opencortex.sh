@@ -17,11 +17,11 @@ while [ -h "$SOURCE" ]; do
 done
 export SCRIPT_DIR="$( cd -P "$( dirname "$SOURCE" )" && pwd )"
 
-# XDG Defaults
-export OC_CONFIG_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/opencortex"
-export OC_DATA_DIR="${XDG_DATA_HOME:-$HOME/.local/share}/opencortex"
-export OC_STATE_DIR="${XDG_STATE_HOME:-$HOME/.local/state}/opencortex"
-export OC_BIN_DIR="${XDG_BIN_HOME:-$HOME/.local/bin}"
+# XDG Defaults (realpath ensures no unexpanded ~ in paths)
+export OC_CONFIG_DIR="$(realpath -m "${XDG_CONFIG_HOME:-$HOME/.config}/opencortex")"
+export OC_DATA_DIR="$(realpath -m "${XDG_DATA_HOME:-$HOME/.local/share}/opencortex")"
+export OC_STATE_DIR="$(realpath -m "${XDG_STATE_HOME:-$HOME/.local/state}/opencortex")"
+export OC_BIN_DIR="$(realpath -m "${XDG_BIN_HOME:-$HOME/.local/bin}")"
 
 # Dynamic defaults for Skill Engine and Project Root
 export SKILLS_DIR="${SKILLS_DIR:-$OC_DATA_DIR/skills}"
@@ -69,7 +69,7 @@ setup_system() {
     
     # Create standard directories
     mkdir -p "$OC_CONFIG_DIR" "$OC_DATA_DIR" "$OC_STATE_DIR" "$OC_BIN_DIR"
-    mkdir -p "$OC_DATA_DIR/harness" "$OC_DATA_DIR/tests" "$OC_DATA_DIR/skills" "$OC_DATA_DIR/library"
+    mkdir -p "$OC_DATA_DIR/harness" "$OC_DATA_DIR/tests" "$OC_DATA_DIR/skills"
 
     echo -e "${YELLOW}--- Installing System Dependencies ---${NC}"
     if command_exists apt-get; then
@@ -81,50 +81,63 @@ setup_system() {
         rm quicklisp.lisp
     fi
 
-    # Tangle the literate source from OC_DATA_DIR to OC_DATA_DIR (The Engine)
+    # Tangle the literate source from the repo into XDG directories
     echo -e "${YELLOW}--- Deploying Engine to $OC_DATA_DIR ---${NC}"
     cp "$SCRIPT_DIR/opencortex.asd" "$OC_DATA_DIR/"
-    cp "$SCRIPT_DIR/harness"/*.org "$OC_DATA_DIR/harness/"
-    cp "$SCRIPT_DIR/skills"/*.org "$OC_DATA_DIR/skills/"
-    
-    # Create tests directory before tangling (some org files write to tests/)
-    mkdir -p "$OC_DATA_DIR/tests"
+    mkdir -p "$OC_DATA_DIR/harness" "$OC_DATA_DIR/tests" "$OC_DATA_DIR/skills"
 
     export INSTALL_DIR="$OC_DATA_DIR"
 
-    # Critical: Tangle manifest first to establish system structure (into root)
+    # --- Harness files ---
+    # Copy org files to harness/ so :tangle relative paths resolve to XDG
+    cp "$SCRIPT_DIR/harness"/*.org "$OC_DATA_DIR/harness/"
+
+    # Critical: Tangle manifest first (into root)
     echo "Tangling harness/manifest.org..."
-    (cd "$OC_DATA_DIR" && emacs -Q --batch --eval "(require 'org)" --eval "(setq org-confirm-babel-evaluate nil)" --eval "(org-babel-tangle-file \"harness/manifest.org\")") >/dev/null 2>&1 || true
+    (cd "$OC_DATA_DIR/harness" && emacs -Q --batch \
+         --eval "(require 'org)" \
+         --eval "(setq org-confirm-babel-evaluate nil)" \
+         --eval "(org-babel-tangle-file \"manifest.org\")") >/dev/null 2>&1 || true
 
     # Tangle harness files into harness/
-    for f in "$SCRIPT_DIR/harness"/*.org; do
+    for f in "$OC_DATA_DIR/harness"/*.org; do
         fname=$(basename "$f" .org)
         if [ "$fname" != "manifest" ]; then
             echo "Tangling harness/$fname.org..."
-            (cd "$OC_DATA_DIR/harness" && emacs -Q --batch --eval "(require 'org)" --eval "(setq org-confirm-babel-evaluate nil)" --eval "(org-babel-tangle-file \"${fname}.org\")") >/dev/null 2>&1 || true
+            (cd "$OC_DATA_DIR/harness" && emacs -Q --batch \
+                 --eval "(require 'org)" \
+                 --eval "(setq org-confirm-babel-evaluate nil)" \
+                 --eval "(org-babel-tangle-file \"${fname}.org\")") >/dev/null 2>&1 || true
         fi
     done
 
-    # Tangle skill files into skills/
+    # Move test files that landed in harness/ to tests/
+    find "$OC_DATA_DIR/harness" -name "*-tests.lisp" -exec mv {} "$OC_DATA_DIR/tests/" \; 2>/dev/null || true
+
+    # Remove org files from harness/ (only .lisp should remain)
+    rm -f "$OC_DATA_DIR/harness"/*.org
+
+    # --- Skill files ---
     for f in "$SCRIPT_DIR/skills"/*.org; do
         fname=$(basename "$f" .org)
         echo "Tangling skills/$fname.org..."
-        # Replace %%SKILLS_DIR%% placeholder with actual XDG path
-        sed "s|%%SKILLS_DIR%%|$OC_DATA_DIR/skills|g" "$f" > "$OC_DATA_DIR/skills/$fname.org"
-        (cd "$OC_DATA_DIR/skills" && emacs -Q --batch --eval "(require 'org)" --eval "(setq org-confirm-babel-evaluate nil)" --eval "(org-babel-tangle-file \"${fname}.org\")") >/dev/null 2>&1 || true
+        sed "s|%%SKILLS_DIR%%|$OC_DATA_DIR/skills|g" "$f" > "/tmp/$fname.org"
+        (cd "$OC_DATA_DIR/skills" && emacs -Q --batch \
+             --eval "(require 'org)" \
+             --eval "(setq org-confirm-babel-evaluate nil)" \
+             --eval "(org-babel-tangle-file \"/tmp/$fname.org\")") >/dev/null 2>&1 || true
     done
 
-    # Special handling for tests that need to go into tests/
-    # We'll just move them after tangling since many .org files tangle to both code and tests
-    mkdir -p "$OC_DATA_DIR/tests"
-    find "$OC_DATA_DIR/harness" "$OC_DATA_DIR/skills" -name "*-tests.lisp" -exec mv {} "$OC_DATA_DIR/tests/" \; 2>/dev/null || true
+    # Move test files that landed in skills/ to tests/
+    find "$OC_DATA_DIR/skills" -name "*-tests.lisp" -exec mv {} "$OC_DATA_DIR/tests/" \; 2>/dev/null || true
+    rm -f /tmp/*.org
     
     # Also move run-all-tests.lisp if it landed in the wrong place
     [ -f "$OC_DATA_DIR/run-all-tests.lisp" ] && mv "$OC_DATA_DIR/run-all-tests.lisp" "$OC_DATA_DIR/harness/"
 
-    # Cleanup: Remove .org files from XDG harness only (skills need .org for loader)
-    echo "Cleaning up .org files from XDG harness..."
-    rm -f "$OC_DATA_DIR/harness"/*.org
+    # Cleanup: Remove .org files from XDG (we only want .lisp)
+    echo "Cleaning up .org files from XDG..."
+    rm -f "$OC_DATA_DIR/harness"/*.org "$OC_DATA_DIR/skills"/*.org /tmp/*.org
 
     cd "$SCRIPT_DIR"    # Create the bin shim
     echo -e "${YELLOW}--- Creating Bin Shim in $OC_BIN_DIR/opencortex ---${NC}"
@@ -140,7 +153,9 @@ setup_system() {
     exec sbcl --non-interactive \
          --eval '(load (merge-pathnames "quicklisp/setup.lisp" (user-homedir-pathname)))' \
          --eval "(push (truename \"$OC_DATA_DIR/\") asdf:*central-registry*)" \
+         --eval "(setf (uiop:getenv \"SKILLS_DIR\") \"$OC_DATA_DIR/skills\")" \
          --eval '(ql:quickload :opencortex)' \
+         --eval "(setf (uiop:getenv \"SKILLS_DIR\") \"$OC_DATA_DIR/skills\")" \
          --eval '(opencortex:initialize-all-skills)' \
          --eval '(funcall (find-symbol "RUN-SETUP-WIZARD" :opencortex))'
 }
@@ -156,7 +171,7 @@ doctor_repair() {
     # 2. Ensure XDG directories exist
     echo -e "${YELLOW}--- Fixing XDG Directories ---${NC}"
     mkdir -p "$OC_CONFIG_DIR" "$OC_DATA_DIR" "$OC_STATE_DIR" "$OC_BIN_DIR"
-    mkdir -p "$OC_DATA_DIR/harness" "$OC_DATA_DIR/tests" "$OC_DATA_DIR/skills" "$OC_DATA_DIR/library"
+    mkdir -p "$OC_DATA_DIR/harness" "$OC_DATA_DIR/tests" "$OC_DATA_DIR/skills"
     
     # 3. Re-tangle harness files that may be broken
     echo -e "${YELLOW}--- Re-tangling Harness Files ---${NC}"
@@ -183,8 +198,8 @@ doctor_repair() {
         if [ -f "$f" ]; then
             fname=$(basename "$f" .org)
             echo "  Checking skill/$fname..."
-            # Replace %%SKILLS_DIR%% placeholder and copy to XDG
-            sed "s|%%SKILLS_DIR%%|$OC_DATA_DIR/skills|g" "$f" > "$OC_DATA_DIR/skills/$fname.org"
+            # Replace %%SKILLS_DIR%% placeholder with temp file
+            sed "s|%%SKILLS_DIR%%|$OC_DATA_DIR/skills|g" "$f" > "/tmp/$fname.org"
             if ! sbcl --non-interactive \
                  --eval "(load \"$OC_DATA_DIR/skills/${fname}.lisp\")" \
                  --eval "(format t \"OK~%\")" 2>/dev/null | grep -q "OK"; then
@@ -192,9 +207,9 @@ doctor_repair() {
                 (cd "$OC_DATA_DIR/skills" && emacs -Q --batch \
                     --eval "(require 'org)" \
                     --eval "(setq org-confirm-babel-evaluate nil)" \
-                    --eval "(org-babel-tangle-file \"$OC_DATA_DIR/skills/${fname}.org\")" >/dev/null 2>&1) || true
+                    --eval "(org-babel-tangle-file \"/tmp/${fname}.org\")" >/dev/null 2>&1) || true
             fi
-            rm -f "$OC_DATA_DIR/skills/${fname}.org"
+            rm -f "/tmp/$fname.org"
         fi
     done
     
@@ -215,7 +230,7 @@ case "$COMMAND" in
         PLATFORM=$1
         TOKEN=$2
         check_dependencies
-        exec sbcl --non-interactive              --eval '(load (merge-pathnames "quicklisp/setup.lisp" (user-homedir-pathname)))'              --eval "(push (truename \"$OC_DATA_DIR/\") asdf:*central-registry*)"              --eval '(ql:quickload :opencortex)'              --eval '(opencortex:initialize-all-skills)'              --eval "(funcall (find-symbol \"GATEWAY-MANAGER-MAIN\" :opencortex) \"$PLATFORM\" \"$TOKEN\")"
+        exec sbcl --non-interactive              --eval '(load (merge-pathnames "quicklisp/setup.lisp" (user-homedir-pathname)))'              --eval "(push (truename \"$OC_DATA_DIR/\") asdf:*central-registry*)"              --eval "(setf (uiop:getenv \"SKILLS_DIR\") \"$OC_DATA_DIR/skills\")"              --eval '(ql:quickload :opencortex)'              --eval '(opencortex:initialize-all-skills)'              --eval "(funcall (find-symbol \"GATEWAY-MANAGER-MAIN\" :opencortex) \"$PLATFORM\" \"$TOKEN\")"
         ;;
 
     doctor)
@@ -282,6 +297,7 @@ case "$COMMAND" in
             sbcl --non-interactive \
                  --eval '(load (merge-pathnames "quicklisp/setup.lisp" (user-homedir-pathname)))' \
                  --eval "(push (truename \"$OC_DATA_DIR/\") asdf:*central-registry*)" \
+                 --eval "(setf (uiop:getenv \"SKILLS_DIR\") \"$OC_DATA_DIR/skills\")" \
                  --eval '(ql:quickload :opencortex)' \
                  --eval '(opencortex:initialize-all-skills)' \
                  --eval '(funcall (find-symbol "RUN-SETUP-WIZARD" :opencortex))'
