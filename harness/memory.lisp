@@ -10,7 +10,8 @@
 (defmethod make-load-form ((obj org-object) &optional env)
   (make-load-form-saving-slots obj :environment env))
 
-(defun copy-org-object (obj)
+(defun deep-copy-org-object (obj)
+  "Create a deep copy of an org-object with fresh lists for mutable fields."
   (make-org-object :id (org-object-id obj)
                   :type (org-object-type obj)
                   :attributes (copy-list (org-object-attributes obj))
@@ -71,7 +72,7 @@
 
 (defun snapshot-memory ()
   (let ((snapshot (make-hash-table :test 'equal :size (hash-table-size *memory*))))
-    (maphash (lambda (k v) (setf (gethash k snapshot) (copy-org-object v))) *memory*)
+    (maphash (lambda (k v) (setf (gethash k snapshot) (deep-copy-org-object v))) *memory*)
     (push (list :timestamp (get-universal-time) :data snapshot) *object-store-snapshots*)
     (when (> (length *object-store-snapshots*) 20) (setf *object-store-snapshots* (subseq *object-store-snapshots* 0 20)))
     (harness-log "MEMORY - CoW Memory snapshot created.")))

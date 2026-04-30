@@ -71,7 +71,7 @@
                                assistant-name reflection-feedback tool-belt global-context system-logs)))
     (let* ((thought (probabilistic-call raw-prompt :system-prompt system-prompt :context context))
            (cleaned (strip-markdown thought)))
-      (if (and cleaned (stringp cleaned) (> (length cleaned) 0) (char= (char cleaned 0) #\((char= (char cleaned 0) #\()))
+      (if (and cleaned (stringp cleaned) (> (length cleaned) 0) (or (char= (char cleaned 0) #\() (char= (char cleaned 0) #\[)))
           (handler-case
               (let ((parsed (read-from-string cleaned)))
                 (if (listp parsed)
