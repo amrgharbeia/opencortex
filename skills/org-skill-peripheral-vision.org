@@ -1,7 +1,7 @@
 #+TITLE: SKILL: Peripheral Vision (org-skill-peripheral-vision.org)
 #+AUTHOR: Agent
 #+FILETAGS: :harness:peripheral:context:
-#+PROPERTY: header-args:lisp :tangle $OC_DATA_DIR/skills/org-skill-peripheral-vision.lisp
+#+PROPERTY: header-args:lisp :tangle /home/user/.local/share/opencortex/skills/org-skill-peripheral-vision.lisp
 
 * Overview
 The *Peripheral Vision* skill enhances the context engine with high-level summaries of distant memory nodes.

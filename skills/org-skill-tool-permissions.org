@@ -1,7 +1,7 @@
 #+TITLE: SKILL: Tool Permissions (org-skill-tool-permissions.org)
 #+AUTHOR: Agent
 #+FILETAGS: :skill:security:permissions:
-#+PROPERTY: header-args:lisp :tangle $OC_DATA_DIR/skills/org-skill-tool-permissions.lisp
+#+PROPERTY: header-args:lisp :tangle /home/user/.local/share/opencortex/skills/org-skill-tool-permissions.lisp
 
 * Overview
 The *Tool Permissions* skill manages the authorization levels for different cognitive tools.

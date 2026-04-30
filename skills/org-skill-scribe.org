@@ -1,7 +1,7 @@
 #+TITLE: SKILL: Scribe (org-skill-scribe.org)
 #+AUTHOR: Agent
 #+FILETAGS: :skill:scribe:documentation:
-#+PROPERTY: header-args:lisp :tangle $OC_DATA_DIR/skills/org-skill-scribe.lisp
+#+PROPERTY: header-args:lisp :tangle /home/user/.local/share/opencortex/skills/org-skill-scribe.lisp
 
 * Overview
 The *Scribe Skill* manages the agent's internal documentation and logs.

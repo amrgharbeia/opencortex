@@ -1,7 +1,7 @@
 #+TITLE: SKILL: Self Fix (org-skill-self-fix.org)
 #+AUTHOR: Agent
 #+FILETAGS: :system:autonomy:self-fix:
-#+PROPERTY: header-args:lisp :tangle $OC_DATA_DIR/skills/org-skill-self-fix.lisp
+#+PROPERTY: header-args:lisp :tangle /home/user/.local/share/opencortex/skills/org-skill-self-fix.lisp
 
 * Overview
 The *Self Fix* skill enables the agent to automatically repair broken skills and harness components.

@@ -1,7 +1,7 @@
 #+TITLE: SKILL: Shell Actuator (org-skill-shell-actuator.org)
 #+AUTHOR: Agent
 #+FILETAGS: :skill:actuator:shell:
-#+PROPERTY: header-args:lisp :tangle $OC_DATA_DIR/skills/org-skill-shell-actuator.lisp
+#+PROPERTY: header-args:lisp :tangle /home/user/.local/share/opencortex/skills/org-skill-shell-actuator.lisp
 
 * Overview
 The *Shell Actuator* provides the agent with the capability to execute bash commands.

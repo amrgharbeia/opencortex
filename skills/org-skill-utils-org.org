@@ -1,7 +1,7 @@
 #+TITLE: SKILL: Utils Org (org-skill-utils-org.org)
 #+AUTHOR: Agent
 #+FILETAGS: :skill:utils:org:
-#+PROPERTY: header-args:lisp :tangle $OC_DATA_DIR/skills/org-skill-utils-org.lisp
+#+PROPERTY: header-args:lisp :tangle /home/user/.local/share/opencortex/skills/org-skill-utils-org.lisp
 
 * Overview
 The *Utils Org* skill provides advanced structural manipulation for Org-mode files and their AST representation.

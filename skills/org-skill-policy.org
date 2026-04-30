@@ -1,7 +1,7 @@
 #+TITLE: SKILL: Policy (org-skill-policy.org)
 #+AUTHOR: Agent
 #+FILETAGS: :system:policy:constitutional:
-#+PROPERTY: header-args:lisp :tangle $OC_DATA_DIR/skills/org-skill-policy.lisp
+#+PROPERTY: header-args:lisp :tangle /home/user/.local/share/opencortex/skills/org-skill-policy.lisp
 
 * Overview
 The *Policy Skill* is the constitutional layer of OpenCortex. It enforces foundational invariants like transparency and autonomy on all proposed actions.
