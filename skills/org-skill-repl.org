@@ -35,6 +35,8 @@ The REPL skill fills this gap by:
 
 ** Global State
 #+begin_src lisp
+(in-package :opencortex)
+
 (defvar *repl-package* :opencortex
   "Default package for REPL evaluations.")
 
