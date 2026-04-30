@@ -109,8 +109,8 @@ setup_system() {
     for f in "$SCRIPT_DIR/skills"/*.org; do
         fname=$(basename "$f" .org)
         echo "Tangling skills/$fname.org..."
-        # Copy org to XDG first (skills need to be loaded from XDG path)
-        cp "$f" "$OC_DATA_DIR/skills/"
+        # Replace %%SKILLS_DIR%% placeholder with actual XDG path
+        sed "s|%%SKILLS_DIR%%|$OC_DATA_DIR/skills|g" "$f" > "$OC_DATA_DIR/skills/$fname.org"
         (cd "$OC_DATA_DIR/skills" && emacs -Q --batch --eval "(require 'org)" --eval "(setq org-confirm-babel-evaluate nil)" --eval "(org-babel-tangle-file \"${fname}.org\")") >/dev/null 2>&1 || true
     done
 
@@ -183,8 +183,8 @@ doctor_repair() {
         if [ -f "$f" ]; then
             fname=$(basename "$f" .org)
             echo "  Checking skill/$fname..."
-            # Copy .org to XDG temporarily for tangle, then remove
-            cp "$f" "$OC_DATA_DIR/skills/"
+            # Replace %%SKILLS_DIR%% placeholder and copy to XDG
+            sed "s|%%SKILLS_DIR%%|$OC_DATA_DIR/skills|g" "$f" > "$OC_DATA_DIR/skills/$fname.org"
             if ! sbcl --non-interactive \
                  --eval "(load \"$OC_DATA_DIR/skills/${fname}.lisp\")" \
                  --eval "(format t \"OK~%\")" 2>/dev/null | grep -q "OK"; then

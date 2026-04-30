@@ -1,7 +1,7 @@
 #+TITLE: SKILL: CLI Gateway (org-skill-cli-gateway.org)
 #+AUTHOR: Agent
 #+FILETAGS: :skill:gateway:cli:
-#+PROPERTY: header-args:lisp :tangle /home/user/.local/share/opencortex/skills/org-skill-cli-gateway.lisp
+#+PROPERTY: header-args:lisp :tangle %%SKILLS_DIR%%/org-skill-cli-gateway.lisp
 
 * Overview
 The *CLI Gateway* provides a command-line interface for interacting with the OpenCortex daemon.

@@ -1,7 +1,7 @@
 #+TITLE: SKILL: Self Edit (org-skill-self-edit.org)
 #+AUTHOR: Agent
 #+FILETAGS: :system:autonomy:self-edit:
-#+PROPERTY: header-args:lisp :tangle /home/user/.local/share/opencortex/skills/org-skill-self-edit.lisp
+#+PROPERTY: header-args:lisp :tangle %%SKILLS_DIR%%/org-skill-self-edit.lisp
 
 * Overview
 The *Self Edit* skill allows the OpenCortex Agent to modify its own literate source code.

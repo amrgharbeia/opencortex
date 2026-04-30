@@ -1,7 +1,7 @@
 #+TITLE: SKILL: Utils Lisp (org-skill-utils-lisp.org)
 #+AUTHOR: Agent
 #+FILETAGS: :skill:utils:lisp:validation:evaluation:
-#+PROPERTY: header-args:lisp :tangle /home/user/.local/share/opencortex/skills/org-skill-utils-lisp.lisp
+#+PROPERTY: header-args:lisp :tangle %%SKILLS_DIR%%/org-skill-utils-lisp.lisp
 
 * Overview
 The *Utils Lisp* skill provides advanced structural validation, sandboxed evaluation, and formatting for Common Lisp code.

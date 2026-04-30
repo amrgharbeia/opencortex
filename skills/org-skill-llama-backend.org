@@ -1,7 +1,7 @@
 #+TITLE: SKILL: Llama Backend (org-skill-llama-backend.org)
 #+AUTHOR: Agent
 #+FILETAGS: :skill:llm:backend:ollama:
-#+PROPERTY: header-args:lisp :tangle /home/user/.local/share/opencortex/skills/org-skill-llama-backend.lisp
+#+PROPERTY: header-args:lisp :tangle %%SKILLS_DIR%%/org-skill-llama-backend.lisp
 
 * Overview
 The *Llama Backend* skill provides the actual implementation for calling local models via Ollama.
