@@ -105,7 +105,7 @@
 (defun main ()
   "Entry point for OpenCortex. Initializes the system and enters idle loop."
   (let* ((home (uiop:getenv "HOME"))
-         (env-file (uiop:merge-pathnames* ".local/share/opencortex/.env" (uiop:ensure-directory-pathname home))))
+         (env-file (uiop:merge-pathnames* ".config/opencortex/.env" (uiop:ensure-directory-pathname home))))
     (when (uiop:file-exists-p env-file)
       (cl-dotenv:load-env env-file)))
 

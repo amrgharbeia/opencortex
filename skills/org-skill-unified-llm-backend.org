@@ -1,0 +1,106 @@
+#+TITLE: SKILL: Unified LLM Backend (org-skill-unified-llm-backend.org)
+#+AUTHOR: Agent
+#+FILETAGS: :skill:llm:backend:openai-compatible:
+#+PROPERTY: header-args:lisp :tangle %%SKILLS_DIR%%/org-skill-unified-llm-backend.lisp
+
+* Overview
+The *Unified LLM Backend* provides a single OpenAI-compatible API client that works with:
+- Local engines: Ollama, vLLM, LM Studio, llama.cpp (anything exposing /v1/chat/completions)
+- Cloud providers: OpenRouter, OpenAI, Anthropic, Groq, Gemini (all OpenAI-compatible)
+
+Providers are registered automatically based on available environment variables.
+No separate skills per provider — just different base URLs and API keys.
+
+* Implementation
+
+** Provider Registry
+#+begin_src lisp
+(defparameter *unified-llm-providers*
+  '((:ollama     . (:base-url nil          :key-env nil           :default-model "llama3"))
+    (:openrouter . (:base-url "https://openrouter.ai/api/v1" :key-env "OPENROUTER_API_KEY" :default-model "openrouter/auto"))
+    (:openai     . (:base-url "https://api.openai.com/v1"    :key-env "OPENAI_API_KEY"     :default-model "gpt-4o-mini"))
+    (:anthropic  . (:base-url "https://api.anthropic.com/v1" :key-env "ANTHROPIC_API_KEY"  :default-model "claude-3-5-sonnet-20241022"))
+    (:groq       . (:base-url "https://api.groq.com/openai/v1" :key-env "GROQ_API_KEY"     :default-model "llama-3.1-70b-versatile"))
+    (:gemini     . (:base-url "https://generativelanguage.googleapis.com/v1beta/openai" :key-env "GEMINI_API_KEY" :default-model "gemini-2.0-flash"))))
+
+(defun get-provider-config (provider)
+  "Returns the configuration plist for a provider keyword."
+  (cdr (assoc provider *unified-llm-providers*)))
+
+(defun provider-available-p (provider)
+  "Checks if a provider is configured (has API key or is local Ollama)."
+  (let* ((config (get-provider-config provider))
+         (key-env (getf config :key-env))
+         (base-url (getf config :base-url)))
+    (cond ((eq provider :ollama) t)  ; Ollama is always tried; failure is handled at call time
+          (key-env (let ((key (uiop:getenv key-env))) (and key (> (length key) 0))))
+          (base-url t))))
+#+end_src
+
+** Unified Request Execution
+#+begin_src lisp
+(defun execute-openai-compatible-request (prompt system-prompt &key model (provider :ollama))
+  "Executes a request against any OpenAI-compatible API endpoint."
+  (let* ((config (get-provider-config provider))
+         (base-url (getf config :base-url))
+         (key-env (getf config :key-env))
+         (default-model (getf config :default-model))
+         (api-key (when key-env (uiop:getenv key-env)))
+         (model-id (or model default-model))
+         (url (if (eq provider :ollama)
+                  (format nil "http://~a/v1/chat/completions" (or (uiop:getenv "OLLAMA_HOST") "localhost:11434"))
+                  (format nil "~a/chat/completions" base-url)))
+         (headers `(("Content-Type" . "application/json")
+                    ,@(when api-key `(("Authorization" . ,(format nil "Bearer ~a" api-key))))
+                    ,@(when (eq provider :openrouter)
+                        `(("HTTP-Referer" . "https://github.com/amrgharbeia/opencortex")
+                          ("X-Title" . "OpenCortex")))))
+         (body (cl-json:encode-json-to-string
+                `((model . ,model-id)
+                  (messages . (( (role . "system") (content . ,system-prompt) )
+                               ( (role . "user") (content . ,prompt) )))))))
+    (handler-case
+        (let* ((response (dex:post url :headers headers :content body :connect-timeout 10 :read-timeout 60))
+               (json (cl-json:decode-json-from-string response))
+               (choices (cdr (assoc :choices json)))
+               (first-choice (car choices))
+               (message (cdr (assoc :message first-choice)))
+               (content (cdr (assoc :content message))))
+          (if content
+              (list :status :success :content content)
+              (list :status :error :message (format nil "~a: No content in response (~s)" provider json))))
+      (error (c)
+        (list :status :error :message (format nil "~a Failure: ~a" provider c))))))
+#+end_src
+
+** Dynamic Backend Registration
+#+begin_src lisp
+(defun register-available-llm-backends ()
+  "Scans environment variables and registers all available LLM backends."
+  (dolist (entry *unified-llm-providers*)
+    (let ((provider (car entry)))
+      (when (provider-available-p provider)
+        (harness-log "LLM BACKEND: Registering provider ~a" provider)
+        (register-probabilistic-backend provider
+          (lambda (prompt system-prompt &key model)
+            (execute-openai-compatible-request prompt system-prompt :model model :provider provider)))))))
+
+(defun initialize-provider-cascade ()
+  "Reads PROVIDER_CASCADE from env and sets *provider-cascade*."
+  (let ((cascade-str (uiop:getenv "PROVIDER_CASCADE")))
+    (if cascade-str
+        (setf *provider-cascade*
+              (mapcar (lambda (s) (intern (string-upcase (string-trim '(#\Space) s)) :keyword))
+                      (uiop:split-string cascade-str :separator '(#\,))))
+        (setf *provider-cascade* (mapcar #'car *unified-llm-providers*)))))
+#+end_src
+
+** Skill Registration
+#+begin_src lisp
+(register-available-llm-backends)
+(initialize-provider-cascade)
+
+(defskill :skill-unified-llm-backend
+  :priority 50
+  :trigger (lambda (ctx) (declare (ignore ctx)) nil))
+#+end_src

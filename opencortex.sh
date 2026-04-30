@@ -29,7 +29,9 @@ export MEMEX_DIR="${MEMEX_DIR:-$HOME/memex}"
 
 # Load environment variables from the standard config location
 if [ -f "$OC_CONFIG_DIR/.env" ]; then
+    set -a
     source "$OC_CONFIG_DIR/.env"
+    set +a
 fi
 
 # --- Dependency Checker ---
