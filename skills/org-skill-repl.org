@@ -1,0 +1,191 @@
+#+TITLE: SKILL: REPL (org-skill-repl.org)
+#+AUTHOR: Agent
+#+FILETAGS: :system:repl:interactive:debug:
+#+PROPERTY: header-args:lisp :tangle org-skill-repl.lisp
+
+* Overview
+The *REPL Skill* provides persistent Lisp evaluation, inspection, and debugging capabilities. This enables the agent to verify behavior at runtime rather than just at the text level.
+
+* Phase A: Demand (Thinking)
+** Why a REPL?
+The utils-lisp-eval function provides one-shot evaluation but:
+- No state persistence between calls
+- No variable inspection
+- No debugging capabilities
+
+The REPL skill fills this gap by:
+- Maintaining evaluation state across turns
+- Supporting variable inspection
+- Providing debugging commands
+- Optionally connecting to external Swank servers
+
+** Success Criteria
+- Code evaluation returns result + stdout/stderr separately
+- Variables can be inspected
+- Can load code into image
+- Optional: connect to external SLIME/Swank session
+
+* Phase B: Protocol (Spec)
+- `repl-eval` returns: (values result output error)
+- `repl-inspect` returns: structured description
+- `repl-list-vars` returns: list of bound symbols
+- `repl-load-file` returns: t on success, error on failure
+
+* Phase C: Implementation
+
+** Global State
+#+begin_src lisp
+(defvar *repl-package* :opencortex
+  "Default package for REPL evaluations.")
+
+(defvar *repl-history* nil
+  "History of evaluated forms for session continuity.")
+
+(defvar *repl-variables* (make-hash-table :test #'eq)
+  "Cache of bound variables for inspection.")
+#+end_src
+
+** Core Evaluation
+#+begin_src lisp
+(defun repl-eval (code-string &key (package *repl-package*))
+  "Evaluate Lisp code and return (values result output error).
+   - result: the return value as string
+   - output: captured stdout
+   - error: error message or nil on success"
+  (let ((out (make-string-output-stream))
+        (err (make-string-output-stream))
+        (pkg (or (find-package package) (find-package :opencortex))))
+    (handler-case
+        (let* ((*standard-output* out)
+               (*error-output* err)
+               (*package* pkg)
+               (*read-eval* nil)
+               (result nil))
+          (with-input-from-string (s code-string)
+            (loop for form = (read s nil :eof) until (eq form :eof)
+                  do (setf result (eval form))))
+          (push code-string *repl-history*)
+          (values
+           (format nil "~a" result)
+           (get-output-stream-string out)
+           nil))
+      (error (c)
+        (values
+         nil
+         (get-output-stream-string out)
+         (format nil "~a" c))))))
+#+end_src
+
+** Variable Inspection
+#+begin_src lisp
+(defun repl-inspect (symbol-name &key (package *repl-package*))
+  "Inspect a variable's value and structure."
+  (let* ((pkg (or (find-package package) (find-package :opencortex)))
+         (sym (find-symbol (string-upcase symbol-name) pkg)))
+    (cond
+      ((null sym)
+       (format nil "Symbol ~a not found in package ~a" symbol-name package))
+      ((boundp sym)
+       (let ((val (symbol-value sym)))
+         (format nil "~a = ~a~%Type: ~a~%~%"
+                 sym val (type-of val))))
+      ((fboundp sym)
+       (format nil "~a is a function~%Args: ~a~%"
+               sym (documentation sym 'function)))
+      (t
+       (format nil "~a is unbound" symbol-name)))))
+#+end_src
+
+** List Bound Variables
+#+begin_src lisp
+(defun repl-list-vars (&key (package *repl-package*))
+  "List all bound variables in the package."
+  (let* ((pkg (or (find-package package) (find-package :opencortex)))
+         (vars nil))
+    (do-symbols (sym pkg)
+      (when (boundp sym)
+        (push (format nil "~a" sym) vars)))
+    (sort vars #'string<)))
+#+end_src
+
+** Load File into Image
+#+begin_src lisp
+(defun repl-load-file (filepath)
+  "Load a Lisp file into the current image."
+  (handler-case
+      (progn
+        (load filepath)
+        (format nil "Loaded ~a" filepath))
+    (error (c)
+      (format nil "Error loading ~a: ~a" filepath c))))
+#+end_src
+
+** Package Switching
+#+begin_src lisp
+(defun repl-set-package (package-name)
+  "Set the default package for REPL evaluations."
+  (let ((pkg (find-package (string-upcase package-name))))
+    (if pkg
+        (setf *repl-package* pkg)
+        (format nil "Package ~a not found" package-name))))
+#+end_src
+
+** Help/Info
+#+begin_src lisp
+(defun repl-help ()
+  "Return available REPL commands."
+  (format nil "~%
+REPL Skill Commands:
+-------------------
+(repl-eval \"code\" :package :opencortex)
+  - Evaluate Lisp code, returns (values result output error)
+
+(repl-inspect \"symbol\" :package :opencortex)
+  - Inspect a variable or function
+
+(repl-list-vars :package :opencortex)
+  - List all bound variables
+
+(repl-load-file \"/path/to/file.lisp\")
+  - Load a file into the image
+
+(repl-set-package :package-name)
+  - Switch default package
+
+(repl-help)
+  - Show this message
+"))
+#+end_src
+
+* Phase D: Verification
+
+** Basic Evaluation Test
+#+begin_src lisp :tangle no
+(test test-repl-eval-simple
+  "Test basic arithmetic evaluation."
+  (multiple-value-bind (result output error)
+      (opencortex:repl-eval "(+ 1 2)")
+    (is (string= result "3"))
+    (is (null error))))
+#+end_src
+
+** Error Handling Test
+#+begin_src lisp :tangle no
+(test test-repl-eval-error
+  "Test that errors are caught and returned."
+  (multiple-value-bind (result output error)
+      (opencortex:repl-eval "(+ 1 \"string\")")
+    (is (null result))
+    (is (not (null error)))))
+#+end_src
+
+* Phase E: Lifecycle
+The REPL skill loads at priority 200 (after diagnostics at 100, before utils-lisp at 400).
+
+** Skill Registration
+#+begin_src lisp
+(defskill :skill-repl
+  :priority 200
+  :trigger (lambda (ctx) (declare (ignore ctx)) nil)
+  :deterministic (lambda (action ctx) (declare (ignore action ctx)) nil))
+#+end_src
