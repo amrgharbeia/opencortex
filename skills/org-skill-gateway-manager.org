@@ -1,7 +1,7 @@
 #+TITLE: SKILL: Gateway Manager (org-skill-gateway-manager.org)
 #+AUTHOR: Agent
 #+FILETAGS: :skill:gateway:manager:
-#+PROPERTY: header-args:lisp :tangle org-skill-gateway-manager.lisp
+#+PROPERTY: header-args:lisp :tangle $OC_DATA_DIR/skills/org-skill-gateway-manager.lisp
 
 * Overview
 The *Gateway Manager* handles the registration and linking of external communication platforms.

@@ -1,7 +1,7 @@
 #+TITLE: SKILL: Gardener (org-skill-gardener.org)
 #+AUTHOR: Agent
 #+FILETAGS: :skill:maintenance:gardener:
-#+PROPERTY: header-args:lisp :tangle org-skill-gardener.lisp
+#+PROPERTY: header-args:lisp :tangle $OC_DATA_DIR/skills/org-skill-gardener.lisp
 
 * Overview
 The *Gardener Skill* performs periodic maintenance on the Memex knowledge graph.

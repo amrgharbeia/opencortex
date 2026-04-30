@@ -1,7 +1,7 @@
 #+TITLE: SKILL: LLM Gateway (org-skill-llm-gateway.org)
 #+AUTHOR: Agent
 #+FILETAGS: :skill:llm:gateway:
-#+PROPERTY: header-args:lisp :tangle org-skill-llm-gateway.lisp
+#+PROPERTY: header-args:lisp :tangle $OC_DATA_DIR/skills/org-skill-llm-gateway.lisp
 
 * Overview
 The *LLM Gateway* skill provides a unified interface for interacting with multiple Large Language Model providers.

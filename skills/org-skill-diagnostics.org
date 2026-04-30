@@ -1,7 +1,7 @@
 #+TITLE: SKILL: Diagnostics (org-skill-diagnostics.org)
 #+AUTHOR: Agent
 #+FILETAGS: :system:diagnostics:doctor:
-#+PROPERTY: header-args:lisp :tangle org-skill-diagnostics.lisp
+#+PROPERTY: header-args:lisp :tangle $OC_DATA_DIR/skills/org-skill-diagnostics.lisp
 
 * Overview
 The *Diagnostics Skill* (Doctor) provides system-wide health checks and dependency verification. It validates external dependencies, XDG environment, and LLM provider connectivity.

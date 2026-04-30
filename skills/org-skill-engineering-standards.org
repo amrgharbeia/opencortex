@@ -1,7 +1,7 @@
 #+TITLE: SKILL: Engineering Standards (org-skill-engineering-standards.org)
 #+AUTHOR: Agent
 #+FILETAGS: :system:engineering:chaos:
-#+PROPERTY: header-args:lisp :tangle org-skill-engineering-standards.lisp
+#+PROPERTY: header-args:lisp :tangle $OC_DATA_DIR/skills/org-skill-engineering-standards.lisp
 
 * Overview
 The *Engineering Standards Skill* enforces technical invariants, including the **Commit-Before-Modify** rule and **Chaos-Driven Development**.

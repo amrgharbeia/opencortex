@@ -1,7 +1,7 @@
 #+TITLE: SKILL: Literate Programming (org-skill-literate-programming.org)
 #+AUTHOR: Agent
 #+FILETAGS: :system:literate:tangle:
-#+PROPERTY: header-args:lisp :tangle org-skill-literate-programming.lisp
+#+PROPERTY: header-args:lisp :tangle $OC_DATA_DIR/skills/org-skill-literate-programming.lisp
 
 * Overview
 The *Literate Programming* skill ensures the synchronization between `.org` sources and `.lisp` artifacts.

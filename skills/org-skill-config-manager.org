@@ -1,7 +1,7 @@
 #+TITLE: SKILL: Config Manager (org-skill-config-manager.org)
 #+AUTHOR: Agent
 #+FILETAGS: :skill:setup:config:
-#+PROPERTY: header-args:lisp :tangle org-skill-config-manager.lisp
+#+PROPERTY: header-args:lisp :tangle $OC_DATA_DIR/skills/org-skill-config-manager.lisp
 
 * Overview
 The *Config Manager* skill provides the OpenCortex Agent with the capability to manage its own environment variables and provider configurations. It includes an interactive setup wizard for LLM providers, gateways, and system settings.

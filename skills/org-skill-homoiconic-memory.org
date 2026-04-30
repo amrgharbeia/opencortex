@@ -1,7 +1,7 @@
 #+TITLE: SKILL: Homoiconic Memory (org-skill-homoiconic-memory.org)
 #+AUTHOR: Agent
 #+FILETAGS: :harness:memory:homoiconic:
-#+PROPERTY: header-args:lisp :tangle org-skill-homoiconic-memory.lisp
+#+PROPERTY: header-args:lisp :tangle $OC_DATA_DIR/skills/org-skill-homoiconic-memory.lisp
 
 * Overview
 The *Homoiconic Memory* skill provides the capability to treat system memory as executable code and vice-versa.
