@@ -27,25 +27,18 @@
       (setf *incoming-msgs* nil)
       msgs)))
 
-(defun get-line-style (text)
-  (cond
-    ((uiop:string-prefix-p "*" text) '(:bold :yellow))
-    ((uiop:string-prefix-p "⬆" text) '(:cyan))
-    ((uiop:string-prefix-p "🤔" text) '(:italic))
-    ((uiop:string-prefix-p "ERROR" text) '(:bold :red))
-    (t nil)))
-
-(defun render-chat (win)
-  (clear win)
-  (let* ((h (height win))
-         (view-height (max 0 (- h 2)))
-         (history-len (length *chat-history*))
-         (start-idx *scroll-index*)
-         (end-idx (min history-len (+ start-idx view-height)))
-         (slice (reverse (subseq *chat-history* start-idx end-idx))))
-    (loop for msg in slice
-          for i from 1
-          do (add-string win (format nil "│ ~a" msg) :y i :x 1 :attributes (get-line-style msg)))
+(defun render-chat (win h)
+  (when (and win (integerp h))
+    (clear win)
+    (box win 0 0)
+    (let* ((view-height (- h 2))
+           (history (reverse *chat-history*))
+           (len (length history))
+           (num-to-draw (min len view-height)))
+      (loop for i from 0 below num-to-draw
+            for msg in history
+            do (when (and msg (< (1+ i) (1- h)))
+                 (add-string win (format nil "~a" msg) :y (1+ i) :x 2))))
     (refresh win)))
 
 (defun handle-backspace ()
@@ -69,14 +62,12 @@
                 (finish-output stream)))
             (enqueue-msg "✓ Sent"))
         (error (c)
-          (format t "Send error: ~a~%" c)
-(enqueue-msg "ERROR: Connection to daemon lost.")
-           (setf *is-running* nil))))
-     (when (string= cmd "/exit") (setf *is-running* nil))
-     (when (string= cmd "/clear") (setf *chat-history* nil))))
+          (enqueue-msg (format nil "ERROR: Connection lost (~a)" c))
+          (setf *is-running* nil))))
+    (when (string= cmd "/exit") (setf *is-running* nil))
+    (when (string= cmd "/clear") (setf *chat-history* nil))))
 
 (defun start-background-reader (stream)
-  "Starts a thread that reads framed messages from the daemon stream."
   (bt:make-thread
    (lambda ()
      (loop while *is-running* do
@@ -92,10 +83,6 @@
                      (cond
                        ((eq (getf payload :action) :handshake)
                         (enqueue-msg "* Connected to daemon *"))
-                       ((and (eq (getf payload :sensor) :loop-error)
-                             (not (string= (or (getf payload :message) "") "Neural Cascade Failure: All providers exhausted.")))
-                        (enqueue-msg (format nil "ERROR: Daemon loop error (~a)"
-                                             (getf payload :message))))
                        (t
                         (let ((text (or (getf payload :text) (format nil "~a" payload))))
                           (enqueue-msg (format nil "⬇ ~a" text))))))))))
@@ -103,34 +90,36 @@
            (when *is-running*
              (enqueue-msg (format nil "ERROR: Connection lost (~a)" c))
              (setf *is-running* nil))))))
-   :name "opencortex-tui-reader")))
-)
+   :name "opencortex-tui-reader"))
 
 (defun main ()
+  (setf (uiop:getenv "PROVIDER_CASCADE") "openrouter,openai")
+  
   (handler-case
       (setf *socket* (usocket:socket-connect *daemon-host* *daemon-port*))
     (error (e) (format t "Offline: ~a~%" e) (return-from main)))
   (setf *stream* (usocket:socket-stream *socket*))
   
-  ;; Guard: Croatoan needs a real terminal (TERM env var, real TTY)
   (unless (uiop:getenv "TERM")
     (format t "TUI requires a terminal. Set TERM environment variable.~%")
-    (format t "Or use: echo 'your message' | nc localhost 9105~%")
     (return-from main))
   
   (unwind-protect
       (handler-case
           (with-screen (scr :input-echoing nil :input-blocking nil :enable-colors t)
-            (let* ((h (height scr)) (w (width scr)))
-              (let ((chat-win (make-instance 'window :height (- h 5) :width (- w 2) :position '(1 1) :border t))
-                    (input-win (make-instance 'window :height 1 :width (- w 2) :position (list (- h 2) 1) :border t)))
+            (let* ((h (or (height scr) 24))
+                   (w (or (width scr) 80))
+                   (chat-h (- h 4))
+                   (input-y (- h 2)))
+              (let ((chat-win (make-instance 'window :height chat-h :width (- w 2) :y 1 :x 1))
+                    (input-win (make-instance 'window :height 1 :width (- w 2) :y input-y :x 1)))
                 (setf (input-blocking input-win) nil)
                 (start-background-reader *stream*)
                 (loop :while *is-running* :do
                   (let ((msgs (dequeue-msgs)))
                     (when msgs 
                       (dolist (m msgs) (push m *chat-history*))
-                      (render-chat chat-win)))
+                      (render-chat chat-win chat-h)))
                   (let* ((ev (get-event input-win))
                          (ch (when (and ev (typep ev 'event)) (event-key ev))))
                     (when ch
@@ -141,8 +130,8 @@
                     (clear input-win)
                     (add-string input-win (format nil "▶ ~a" (coerce *input-buffer* 'string)) :y 0 :x 1)
                     (refresh input-win))
-                  (sleep 0.02)))))
+                  (sleep 0.01)))))
         (error (c)
           (format t "TUI Error: ~a~%" c)))
     (setf *is-running* nil)
-    (when *socket* (ignore-errors (usocket:socket-close *socket*))))
+    (when *socket* (ignore-errors (usocket:socket-close *socket*)))))

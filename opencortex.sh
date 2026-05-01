@@ -342,7 +342,7 @@ case "$COMMAND" in
             echo "Daemon not running. Starting daemon first..."
             $0 daemon
         fi
-        if sbcl --non-interactive \
+        if sbcl \
              --eval '(load (merge-pathnames "quicklisp/setup.lisp" (user-homedir-pathname)))' \
              --eval "(push (truename \"$OC_DATA_DIR/\") asdf:*central-registry*)" \
              --eval '(ql:quickload :opencortex/tui)' \
@@ -361,7 +361,7 @@ case "$COMMAND" in
 
     cli|boot)
         check_dependencies
-        if sbcl --non-interactive \
+        if sbcl \
              --eval '(load (merge-pathnames "quicklisp/setup.lisp" (user-homedir-pathname)))' \
              --eval "(push (truename \"$OC_DATA_DIR/\") asdf:*central-registry*)" \
              --eval "(ql:quickload '(:opencortex :croatoan))" \

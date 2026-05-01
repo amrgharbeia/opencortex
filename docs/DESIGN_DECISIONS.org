@@ -1,0 +1,255 @@
+# OpenCortex Design Decisions
+
+This document captures the rationale behind key architectural choices. It is not a specification - it is a thinking medium for future architects and contributors who need to understand why the system is built this way, not just how.
+
+* Multi-Agent by Default is a Smell
+:PROPERTIES:
+:ID:       design-multi-agent-default
+:END:
+
+The AI industry has developed an intuition toward multi-agent systems as the default solution to hard problems. Multiple agents spawn, delegate, coordinate, debate, and consensus their way toward solutions. This pattern is compelling in demos and genuinely useful in specific contexts - but it has become a default assumption that warrants scrutiny.
+
+When context windows grew expensive and task complexity increased, the response was natural: split the problem across agents, each handling a slice. But this architectural choice carries hidden costs that are rarely acknowledged in the enthusiasm of implementation.
+
+**The synchronization tax** is the most immediate burden. Each agent operates with partial information, and maintaining coherence requires continuous state reconciliation. Tokens and processing cycles are spent not on the task itself, but on protocol overhead - who holds what, who decided what, who is correct when they disagree.
+
+**Fragmented context** is the deeper problem. When Agent A writes a function and Agent B modifies a type it depends on, neither has the full picture. Integration failures emerge not from individual incompetence but from systemic communication gaps. Single-agent systems avoid this entirely: one brain holds the complete model, every decision is made with full visibility.
+
+**Audit trails become complex** in multi-agent systems. A decision traced through a single-agent system has a clean, linear history. A decision traced through a multi-agent system branches and forks, with each agent's reasoning partially overlapping and partially conflicting.
+
+None of this is to say multi-agent systems are never appropriate. Embarrassingly parallel workloads - scanning ten thousand files, processing batch jobs - benefit from parallelism regardless of context. When distinct expertises are required and cannot coexist in one model, delegation makes sense. In adversarial scenarios where conflicting goals are features, multi-agent architectures shine.
+
+But the default assumption that complex reasoning tasks are best solved by multiple agents is unproven and likely wrong for the engineering domain. Claude Code is a single-agent system. It handles 50-file refactors, debugs complex stack traces, writes tests, and navigates large codebases. The assumption that you need five agents to do what one well-designed agent can do is an industry habit, not a technical necessity.
+
+OpenCortex is single-agent by default not from limitation but from conviction: for reasoning-heavy work where coherence matters, a unified memory space and single decision-making locus are architectural assets, not constraints.
+
+* The Unified Memory Argument
+:PROPERTIES:
+:ID:       design-unified-memory
+:END:
+
+If single-agent architecture is the decision, unified memory becomes the mechanism that makes it viable. The critical question is not "how many agents" but "how does the agent manage context without saturating."
+
+Context window limits are largely a symptom of lazy architecture. The default approach - stuff everything in, hope the model figures it out - works poorly at scale. A more principled approach inverts the problem: the system should hold effectively infinite context, with the active window kept lean through intelligent management.
+
+**Lazy loading** is the core technique. When an agent needs information about a function, it does not load the entire codebase. It loads precisely what the function does. Context stays lean - 2,000 to 4,000 tokens - while the full context remains accessible through retrieval.
+
+**Compaction events** are scheduled during idle cycles. The system extracts new facts from active context and writes them to permanent storage. Active context is wiped clean, not because space ran out, but because the information has been preserved in a form that can be retrieved when relevant.
+
+**Org-mode as externalized memory** solves the persistence problem elegantly. Every decision, every note, every task lives in plain text files the user already owns. The agent does not maintain a separate database. It queries files it can already access, modifies files it already owns.
+
+**Retrieval is the key primitive.** Semantic search across Org files finds relevant nodes. The agent does not hold the full context - it holds pointers to context, loaded on demand. This is how a single agent handles tasks that would saturate a naive multi-megabyte context window.
+
+The unified memory argument is not that infinite context is free. It is that with proper architecture, effective infinite context is achievable without the synchronization and fragmentation costs of multi-agent systems.
+
+* The Probabilistic-Deterministic Split
+:PROPERTIES:
+:ID:       design-probabilistic-deterministic
+:END:
+
+The architecture divides cognition into two fundamentally different reasoning systems. This is not arbitrary engineering but a structural response to a fundamental truth: probabilistic systems will hallucinate, and you cannot build reliable autonomy on an unreliable foundation.
+
+An LLM is a statistical engine. It generates outputs based on patterns in training data. It is remarkable at translation, generation, pattern matching, and fuzzy reasoning. It can take messy human intent and produce structured queries. It can take structured results and produce natural language. It is, in the terminology of the system, the creative brain.
+
+But it cannot be trusted. Not because it is poorly designed or insufficiently trained, but because hallucination is a fundamental property of probabilistic inference. The model generates the most likely continuation, not the correct one. Given sufficient context, the most likely continuation is correct. Given novel context, it is often wrong in confident-sounding ways.
+
+The deterministic engine addresses this by being what the probabilistic engine is not: mathematically rigorous, formally verifiable, and incapable of hallucination by design. It operates on explicit symbolic representations - lists, property lists, knowledge graphs - not on floating-point activations. When it evaluates a path confinement check, it returns true or false, not a probability distribution.
+
+The division of labor is architectural. The LLM handles the fuzzy interface between human language and structured representation. It translates what the user wants into what the system can reason about. The deterministic engine receives those structured representations and evaluates them against formal invariants. It decides whether to execute, not whether the translation was semantically plausible.
+
+This separation is the source of OpenCortex's safety guarantee. Other agents add "guardrails" as an afterthought - a layer of filtering around a dangerous core. OpenCortex makes the division explicit: the LLM never touches the file system, never executes a command, never modifies memory. It generates proposals. The deterministic engine evaluates and executes. The dangerous operations are never in the probabilistic path.
+
+The split also explains why the system gets safer over time without the LLM improving. The deterministic engine accumulates rules. The LLM proposes actions, the engine evaluates them against a growing rule set. Early versions block obvious dangers. Later versions block sophisticated attacks that were previously unknown. The safety grows logarithmically with the number of interactions, not linearly with model capability.
+
+* Homoiconicity as Foundation
+:PROPERTIES:
+:ID:       design-homoiconicity
+:END:
+
+Common Lisp is homoiconic: code and data share the same representation. A Lisp program is a list, and a list is a Lisp program. This is usually presented as a curiosity, an interesting property that enables macros. In OpenCortex, it is the foundational enabling property of the entire self-modification architecture.
+
+When code is data, the agent can read its own source the same way it reads a text file or an Org buffer. There is no AST parser required, no external tool to extract the function object from the running image. The agent evaluates (read-from-string source) and the result is executable Lisp. The representation it manipulates is the same representation that the runtime executes.
+
+This is not true of most languages. In Python, the agent can inspect an AST through the ast module, but that AST is a foreign object - a data structure that represents code but is not code itself. The agent can see that a function takes certain arguments and returns a certain type, but it cannot treat the AST as a live object it can modify and re-evaluate. In C, the agent cannot inspect its own compiled machine code at all.
+
+In Lisp, the distinction between code and data is a convention, not a barrier. The agent's skills are lists. The agent can take a skill, extract a function definition, modify the body, wrap it in a new list, and evaluate it. The modification is surgical: it changes exactly what it intends to change, with no risk of corrupting adjacent state, because the representation is a tree that the runtime understands natively.
+
+Runtime introspection is therefore native. The agent does not need a debugger API or a reflection protocol. It operates on its own code as data because its own code is data. (describe 'function-name) returns the function's documentation. (function-lambda-list 'function-name) returns its parameters. (macroexpand-1 '(defskill ...)) shows what the macro produces. There is no impedance mismatch between the agent's reasoning and the system's representation.
+
+Self-modification is the practical consequence. The agent can detect an error, locate the erroneous function, generate a corrected version, and hot-reload it into the running image. The correction is not applied to a file that requires a restart - it is applied to the live object that the system is currently executing. This is what makes the self-editing skill viable: the agent can fix itself without stopping.
+
+In v3.0.0, when the symbolic engine takes over the reasoning core, homoiconicity becomes the bridge between the neural and symbolic layers. The neural engine generates proposals as s-expressions. The symbolic engine evaluates them against formal constraints. The result is a modification that is simultaneously a data structure the symbolic engine can analyze and code the runtime can execute. The two representations are identical by construction.
+
+This is the technical meaning of "Lisp as Governor": not just that Lisp orchestrates the other components, but that the representation of the system is uniform and inspectable at every level. There is no hidden state, no opaque machine code, no representation that the agent cannot reach into and modify. The system is legible to itself by design.
+
+* Org-Mode as Unified AST
+:PROPERTIES:
+:ID:       design-org-unified-ast
+:END:
+
+OpenCortex makes a bet that most systems consider too expensive to place: that humans and machines should share the same file format. That bet is Org-mode.
+
+Most systems separate human-readable notes from machine-readable data. The user writes Markdown. The system stores it, indexes it, searches it. But internally, the system maintains its own model - a database, an object store, a knowledge graph - that is disconnected from the Markdown. When the user dies or leaves, the Markdown survives but the model must be reconstructed.
+
+OpenCortex refuses this separation. The Org file is not a representation of the data. The Org file IS the data. The same text that the user reads and edits is what the system parses and operates on. org-element reads an Org buffer and returns a tree structure that is the direct Lisp representation of the file's content.
+
+This has several profound implications.
+
+First, there is no translation layer between human and machine. When the agent writes a skill, it writes Org text that is immediately readable by the human who owns the file. When the human writes a note, it is immediately accessible to the agent as a native data structure. The communication is not mediated by a schema or an import/export process.
+
+Second, the format is genuinely readable by both parties, not just technically accessible. Org-mode's syntax is human-friendly: headlines begin with asterisks, properties live in drawers, tags are labels after colons. The human does not have to understand the full Org specification to read what the agent wrote. The agent does not have to handle edge cases in human notation.
+
+Third, the format is stable across decades. Org-mode has been in active development since 2003. The files written today will be readable by Org-mode in 2040. There is no schema migration, no database upgrade, no vendor lock-in. The human's notes survive the system.
+
+Fourth, the format is universally available. Org-mode is free software. The files are plain text. There is no proprietary format to decode, no application to purchase, no cloud service to access.
+
+The unified format is what makes the memory architecture work. The agent's memory is not a database that the user cannot inspect. It is a folder of Org files that the user can read, edit, and understand. The agent manipulates these files directly, using the same tools the user would use. There is no hidden state, no shadow database, no model that differs from the source.
+
+This is what "sovereignty" means in technical terms: the user owns the data in a format they can access, and the agent operates on the data in the same format they own.
+
+* Literate Programming as Discipline
+:PROPERTIES:
+:ID:       design-literate-programming
+:END:
+
+The decision to use Org-mode as the source of truth for code, not just documentation, is not a ceremonial preference. It is a constraint mechanism that enforces better engineering habits at the cost of convenience.
+
+The traditional development workflow is: write code, write comments, commit. The literate programming workflow is: write prose, write code, commit the Org. The order matters. The prose must come first not because of style guidelines but because the act of explaining what a function does before writing it forces clarity of thought that editing code directly does not.
+
+When you must write a paragraph describing what a function does before you write the function, you discover the cases you have not considered. You find the edge conditions that are ambiguous. You realize that the function's name does not match its behavior, or that its behavior does not match your intent. The friction is not a bug - it is the mechanism by which thinking is enforced.
+
+The one-function-per-block rule enforces granularity. A function that cannot be explained in a paragraph is a function that is doing too much. The block boundary is not aesthetic - it is architectural. It prevents the drift toward monolithic functions that accumulate responsibilities over time and become untestable, unmaintainable, and incomprehensible.
+
+The tangle step enforces source-of-truth discipline. The .lisp file is generated from the Org file. This means the Org file cannot drift from the implementation. If the implementation changes, the Org must be updated to match. If the Org describes behavior that the implementation does not perform, the tangle produces code that does not match the Org description. Either way, inconsistency is visible and recoverable.
+
+The evaluation gate enforces correctness. Every block can be evaluated independently in a running Lisp image. This means syntax errors are caught at authorship time, not at integration time. The function that compiles in isolation but fails in context is the function whose context dependencies were never made explicit. The evaluation gate forces those dependencies to surface.
+
+Together, these constraints create a development experience that is slower in the small and faster in the large. Writing a new function takes longer because you must explain it. But debugging, maintaining, and extending the codebase is faster because every function has a human-readable explanation of its intent, every function is testable in isolation, and every function's source is always synchronized with its documentation.
+
+The literate programming discipline is not about producing documentation. It is about producing code whose correctness has been verified by the act of explaining it.
+
+* The Bouncer as Learning System
+:PROPERTIES:
+:ID:       design-bouncer-learning
+:END:
+
+The Bouncer begins as a static guard - a set of rules that block obviously dangerous actions. But defining "obviously" is the hard problem. The agent encounters situations the rules do not anticipate. The Bouncer must grow.
+
+The human-in-the-loop exception is the seed. When the LLM proposes an action the Bouncer does not recognize, the system does not default to blocking or allowing. It suspends. It writes the proposed action to an Org buffer in a format the human can read and understand. The human reviews and approves or denies. The Bouncer observes the decision.
+
+From this single observation, the Bouncer extracts a rule. Not merely "allow this specific action" but "allow this class of actions parameterized by these dimensions." The human approved a write to ~/projects/myapp/src/core.clj. The Bouncer generalizes: writes to ~/projects/*/src/*.lisp are approved for this session, or for this project, or indefinitely depending on the context and the user's pattern of decisions.
+
+Shadow mode is where rules are tested before deployment. When the Bouncer encounters a novel situation and is uncertain, it can run the proposed action in a simulated environment. It observes the side effects - what files would be modified, what processes would be spawned, what network calls would be made. If the simulation produces dangerous side effects, the rule is discarded. If it appears safe, the rule is added to the active set with a confidence rating.
+
+Formal verification is where the learned rules are checked against invariants. The Bouncer's rules are not merely patterns observed from human behavior. They are formulas in a logic that the system can reason about. A rule that would enable path traversal is not discarded because it was observed to be safe in prior instances - it is discarded because it violates the path-confinement invariant by construction.
+
+The Bouncer becomes, over time, not a guard that blocks bad actions but a reasoning system that understands why actions are good or bad. Early versions learn from human decisions. Later versions learn from their own logical analysis. The human's role transitions from approver to auditor to, eventually, unnecessary oversight.
+
+This is the bootstrap. The system begins dependent on human judgment because it has no basis for judgment of its own. Through accumulated decisions, it constructs a model of what is permitted and why. That model is the foundation for the deterministic symbolic engine that in v3.0.0 takes over the reasoning that the Bouncer learned to perform.
+
+* OpenCortex as a Function in Time
+:PROPERTIES:
+:ID:       design-trajectory
+:END:
+
+The system is not static. OpenCortex is defined not just by its current state but by its trajectory - how its cognitive architecture evolves over versions, with each phase reducing probabilistic surface area while increasing deterministic control.
+
+**v0.1.0: The Probabilistic Foundation**
+
+The agent begins by relying heavily on the neural engine. The LLM translates messy human intent into structured queries, generates code, proposes solutions. The Bouncer is present but thin - it blocks obviously dangerous actions, verifies path confinement, enforces basic invariants. Most reasoning is probabilistic because the symbolic infrastructure does not yet exist to do otherwise.
+
+At this stage, OpenCortex is similar to other LLM-based agents. The key difference is the gate is already there - the architecture assumes the LLM will hallucinate and structures safety accordingly.
+
+**v0.2.0 through v0.5.0: The Bouncer Learns**
+
+Each version expands the deterministic layer. The Bouncer writes rules from approved exceptions. Shadow mode runs trial executions. Tool permission tiers mature from simple allow/deny to nuanced context-aware policies. The agent becomes less likely to attempt dangerous actions not because it is smarter but because the guard has more complete information.
+
+This is the bootstrapping phase. The system learns by watching itself and its user. Every blocked action becomes a rule. Every approved exception becomes a pattern. The symbolic layer grows at the probabilistic layer's expense.
+
+**v0.6.0 through v0.7.0: The Architecture Crystallizes**
+
+Skills become more deterministic. The agent learns to write its own skills - first drafts generated by the LLM, but verified and refined by the symbolic engine. Self-editing improves. The REPL becomes a first-class cognitive substrate - code is not just written but verified, iterated, tested before committing.
+
+The balance shifts. The neural engine still translates and generates, but the symbolic engine checks, constrains, and corrects. The system is becoming what Gemini called "the strict guard" - a mathematically rigorous layer intercepting probabilistic output.
+
+**v1.0.0: SOTA Parity - The Probabilistic Ceiling**
+
+Achieving feature parity with commercial agents requires the full v0.x series complete. At this point, OpenCortex is a reliable autonomous agent - it can handle multi-step engineering tasks, maintain context across sessions, recover from errors, pass benchmarks. It is safer than alternatives because the Bouncer is mature and the memory architecture is sound.
+
+But it is still fundamentally probabilistic at its core. The symbolic engine verifies and constrains, but the generative engine is still the primary reasoning source.
+
+**v2.0.0: The Agent Becomes the Interface**
+
+This version is not about the symbolic engine - it is about tools. The agent stops running inside Emacs and starts replacing it. Lish (Lisp shell) emerges: a shell that speaks plists, not POSIX. Org-mode buffers become the file system. Org-babel becomes the REPL. The agent is no longer a passenger in Emacs - it is the operating system.
+
+The key insight is that the agent's interface and the agent's brain become the same thing. In earlier versions, there is a clear separation: the agent produces output, the TUI displays it. In v2.0.0, the distinction blurs. The agent's thoughts are displayed in Org buffers that are also the interface that the agent manipulates.
+
+This is the Emacs cannibalization phase. Not hostile replacement but evolution - Emacs was always a Lisp machine, and v2.0.0 completes the metamorphosis.
+
+**v3.0.0: The Symbolic Breakthrough**
+
+This is the architectural leap. The system transitions from "probabilistic engine with symbolic verification" to "symbolic engine with probabilistic input and output."
+
+The 10-80-10 architecture becomes fully realized: ten percent neural for input translation, eighty percent symbolic for reasoning against a knowledge graph, ten percent neural for output formatting. The symbolic engine maintains facts, relationships, rules, and formal proofs. When the neural engine generates something, the symbolic engine verifies it - not by checking against a blocklist, but by running the proposal through a Prolog/Datalog reasoner that understands the domain constraints.
+
+The deterministic planner takes the wheel. The LLM is no longer consulted for planning decisions - it translates human language to structured queries and structured results back to human language. The planning itself is pure Lisp: task graphs generated by a symbolic reasoner that has access to the full knowledge graph.
+
+Self-correcting gates replace the learned Bouncer rules. The system learns not just from approved exceptions but from the full history of outcomes - did the plan succeed? Where did it fail? The symbolic engine updates its own rules based on the results.
+
+The implications are significant. Hallucination becomes structurally impossible because the symbolic engine will not accept a fact that contradicts its knowledge graph. Safety becomes provable because the formal verification layer can prove properties about the system's behavior. Self-improvement becomes stable because the agent modifies skills that are then verified before execution.
+
+**v4.0.0 and Beyond: Hardware as the Final Constraint**
+
+The Lisp machine becomes physical. RISC-V with tagged architecture, hardware-enforced type checking, FPGA prototype for the symbolic core. The agent runs not in emulation but on silicon purpose-built for the architecture.
+
+This is the long horizon. The symbolic engine runs on logic ASICs optimized for symbolic computation. The neural engine runs on GPU or purpose-built matrix math hardware. Lisp orchestrates both, enforcing at the hardware level what it enforced at the software level in earlier versions.
+
+**The Trajectory as Design Principle**
+
+Understanding OpenCortex as a function in time is not nostalgia. It is architectural guidance. Every decision in v0.x should be made with awareness of where the system is going. Code written today becomes the substrate for v3.0. Skills designed today become the vocabulary the symbolic engine speaks tomorrow.
+
+The probabilistic beginning is not a weakness to overcome. It is the bootstrap. The system learns the domain through probabilistic inference, and that learned knowledge becomes the seed for the symbolic engine. By the time the symbolic engine takes over, it has a rich knowledge graph to reason about, grown from thousands of probabilistic interactions.
+
+This is how you build a reasoning machine: start with a learner, make it learn to verify, let verification become the core, remove the learner once it has learned enough.
+
+* The REPL as Cognitive Substrate
+:PROPERTIES:
+:ID:       design-repl-cognition
+:END:
+
+The REPL is not merely a development convenience. It is the mechanism by which the agent interacts with its own cognition - a loop that mirrors the perceive-reason-act metabolic cycle at the implementation level.
+
+In the agent's cognitive architecture, the REPL serves three functions that are difficult or impossible to achieve through batch processing or stateless API calls.
+
+First, the REPL enables verification before commitment. When the agent generates code, it does not write and forget - it evaluates in a running image, observes the result, iterates if incorrect. The feedback loop is tight: the time between writing and seeing the error is measured in milliseconds, not in the round-trip to a language server or a batch compiler. This is the "verification over hallucination" principle from the RLM paper made concrete: the agent tests what it writes before claiming it works.
+
+Second, the REPL enables stateful exploration. The agent can define a variable, inspect it, modify it, redefine it. The exploration accumulates state across interactions. This is not a debugging session - it is the agent thinking with its hands, working through a problem by trying variations and observing outcomes, keeping the successful ones and discarding the failures.
+
+Third, the REPL is a shared substrate. When the agent evaluates code, that code runs in the same image as the agent's own cognition. There is no process boundary between the agent and its tools. The REPL is not a subprocess the agent controls - it is a direct interface to the agent's own nervous system.
+
+This is why the REPL becomes more important as the system matures. In early versions, it is a development tool. In v0.6.0 and beyond, it becomes a cognitive tool: the agent explores hypotheses by evaluating them, verifies the output of sub-agents by inspecting live state, and tests modifications before committing them to the knowledge graph.
+
+* Placeholder: The Evaluation Harness
+:PROPERTIES:
+:ID:       design-evaluation-harness
+:END:
+
+* Placeholder: Observability and the Thought Trace
+:PROPERTIES:
+:ID:       design-observability
+:END:
+
+* Placeholder: The MCP Strategy
+:PROPERTIES:
+:ID:       design-mcp-strategy
+:END:
+
+* Placeholder: Local-First Architecture
+:PROPERTIES:
+:ID:       design-local-first
+:END:
+
+* Placeholder: Zero-Dependency Deployment
+:PROPERTIES:
+:ID:       design-zero-dependency
+:END:
