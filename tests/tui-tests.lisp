@@ -13,7 +13,7 @@
 (fiveam:test test-tui-connection-drop
   "Tier 2 Chaos: Verify that handle-return degrades gracefully when the daemon connection is lost."
   (let ((opencortex.tui::*incoming-msgs* nil)
-        (opencortex.tui::*input-buffer* (make-array 5 :element-type 'char :initial-contents "hello" :fill-pointer 5 :adjustable t))
+         (opencortex.tui::*input-buffer* (make-array 5 :element-type 'character :initial-contents "hello" :fill-pointer 5 :adjustable t))
         ;; Create a closed stream to simulate connection drop
         (mock-stream (make-string-output-stream)))
     (close mock-stream)

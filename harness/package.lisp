@@ -254,6 +254,7 @@
 ;; --- Debugger Hook ---
 (setf *debugger-hook* (lambda (condition hook)
   "Friendly error handler - shows diagnostic message instead of raw debugger."
+  (declare (ignore hook))
   (format t "~%")
   (format t "┌─────────────────────────────────────────────┐~%")
   (format t "│  ERROR: ~A~%" (type-of condition))

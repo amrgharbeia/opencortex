@@ -1,6 +1,6 @@
 (in-package :cl-user)
 (defpackage :opencortex.tui
-  (:use :cl :croatoan :usocket)
+  (:use :cl :croatoan :usocket :bordeaux-threads)
   (:export :main))
 (in-package :opencortex.tui)
 
@@ -10,7 +10,7 @@
 (defvar *stream* nil)
 (defvar *chat-history* nil)
 (defvar *scroll-index* 0)
-(defvar *input-buffer* (make-array 0 :element-type 'char :fill-pointer 0 :adjustable t))
+(defvar *input-buffer* (make-array 0 :element-type 'character :fill-pointer 0 :adjustable t))
 (defvar *is-running* t)
 (defvar *queue-lock* (bt:make-lock))
 (defvar *incoming-msgs* nil)
@@ -70,10 +70,10 @@
             (enqueue-msg "✓ Sent"))
         (error (c)
           (format t "Send error: ~a~%" c)
-          (enqueue-msg "ERROR: Connection to daemon lost.")
-          (setf *is-running* nil))))
-    (when (string= cmd "/exit") (setf *is-running* nil))
-    (when (string= cmd "/clear") (setf *chat-history* nil))))
+(enqueue-msg "ERROR: Connection to daemon lost.")
+           (setf *is-running* nil))))
+     (when (string= cmd "/exit") (setf *is-running* nil))
+     (when (string= cmd "/clear") (setf *chat-history* nil))))
 
 (defun start-background-reader (stream)
   "Starts a thread that reads framed messages from the daemon stream."
@@ -98,12 +98,13 @@
                                              (getf payload :message))))
                        (t
                         (let ((text (or (getf payload :text) (format nil "~a" payload))))
-                          (enqueue-msg (format nil "⬇ ~a" text)))))))))
+                          (enqueue-msg (format nil "⬇ ~a" text))))))))))
          (error (c)
            (when *is-running*
              (enqueue-msg (format nil "ERROR: Connection lost (~a)" c))
              (setf *is-running* nil))))))
-   :name "opencortex-tui-reader"))
+   :name "opencortex-tui-reader")))
+)
 
 (defun main ()
   (handler-case
@@ -144,4 +145,4 @@
         (error (c)
           (format t "TUI Error: ~a~%" c)))
     (setf *is-running* nil)
-    (when *socket* (ignore-errors (usocket:socket-close *socket*)))))
+    (when *socket* (ignore-errors (usocket:socket-close *socket*))))

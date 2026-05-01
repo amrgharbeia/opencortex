@@ -1,5 +1,6 @@
 (in-package :opencortex)
 
+(defvar *interrupt-flag* nil)
 (defvar *async-sensors* '(:chat-message :delegation :user-command)
   "Sensors that are processed in dedicated threads.")
 

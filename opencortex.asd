@@ -15,6 +15,7 @@
                (:file "harness/perceive")
                (:file "harness/reason")
                (:file "harness/act")
+               (:file "harness/doctor")
                (:file "harness/loop")))
 
 (defsystem :opencortex/tests

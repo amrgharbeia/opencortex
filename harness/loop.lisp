@@ -84,8 +84,8 @@
   (format t "==================================================~%")
   (handler-case
       (progn
-        (when (fboundp 'doctor-run-all)
-          (let ((result (doctor-run-all :auto-install nil)))
+         (when (fboundp 'doctor-run-all)
+           (let ((result (doctor-run-all)))
             (setf *health-check-ran* t)
             (if result
                 (progn

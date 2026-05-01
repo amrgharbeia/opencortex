@@ -14,6 +14,11 @@ The Perceive stage is the "sensory cortex" of OpenCortex. Its job is to take raw
 (in-package :opencortex)
 #+end_src
 
+** Interrupt Handling
+#+begin_src lisp
+(defvar *interrupt-flag* nil)
+#+end_src
+
 ** Sensor Configuration
 #+begin_src lisp
 (defvar *async-sensors* '(:chat-message :delegation :user-command)

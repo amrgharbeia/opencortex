@@ -21,6 +21,12 @@ The Memory module is the cognitive bedrock of the opencortex. It is not a databa
   "Immutable Merkle-Tree versioning store mapping hashes to objects.")
 #+end_src
 
+** Object Lookup
+#+begin_src lisp
+(defun lookup-object (id)
+  (gethash id *memory*))
+#+end_src
+
 ** The Data Structure (org-object)
 #+begin_src lisp
 (defstruct org-object
@@ -29,7 +35,7 @@ The Memory module is the cognitive bedrock of the opencortex. It is not a databa
 (defmethod make-load-form ((obj org-object) &optional env)
   (make-load-form-saving-slots obj :environment env))
 
-(defun copy-org-object (obj)
+(defun deep-copy-org-object (obj)
   (make-org-object :id (org-object-id obj)
                   :type (org-object-type obj)
                   :attributes (copy-list (org-object-attributes obj))
@@ -99,7 +105,7 @@ The Memory module is the cognitive bedrock of the opencortex. It is not a databa
 
 (defun snapshot-memory ()
   (let ((snapshot (make-hash-table :test 'equal :size (hash-table-size *memory*))))
-    (maphash (lambda (k v) (setf (gethash k snapshot) (copy-org-object v))) *memory*)
+    (maphash (lambda (k v) (setf (gethash k snapshot) (deep-copy-org-object v))) *memory*)
     (push (list :timestamp (get-universal-time) :data snapshot) *object-store-snapshots*)
     (when (> (length *object-store-snapshots*) 20) (setf *object-store-snapshots* (subseq *object-store-snapshots* 0 20)))
     (harness-log "MEMORY - CoW Memory snapshot created.")))

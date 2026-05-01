@@ -4,13 +4,16 @@
 (defvar *history-store* (make-hash-table :test 'equal)
   "Immutable Merkle-Tree versioning store mapping hashes to objects.")
 
+(defun lookup-object (id)
+  (gethash id *memory*))
+
 (defstruct org-object
   id type attributes content vector parent-id children version last-sync hash)
 
 (defmethod make-load-form ((obj org-object) &optional env)
   (make-load-form-saving-slots obj :environment env))
 
-(defun copy-org-object (obj)
+(defun deep-copy-org-object (obj)
   (make-org-object :id (org-object-id obj)
                   :type (org-object-type obj)
                   :attributes (copy-list (org-object-attributes obj))
@@ -71,7 +74,7 @@
 
 (defun snapshot-memory ()
   (let ((snapshot (make-hash-table :test 'equal :size (hash-table-size *memory*))))
-    (maphash (lambda (k v) (setf (gethash k snapshot) (copy-org-object v))) *memory*)
+    (maphash (lambda (k v) (setf (gethash k snapshot) (deep-copy-org-object v))) *memory*)
     (push (list :timestamp (get-universal-time) :data snapshot) *object-store-snapshots*)
     (when (> (length *object-store-snapshots*) 20) (setf *object-store-snapshots* (subseq *object-store-snapshots* 0 20)))
     (harness-log "MEMORY - CoW Memory snapshot created.")))
