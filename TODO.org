@@ -1,0 +1,793 @@
+# OpenCortex Project Tasks
+# All OpenCortex-related TODOs live here. gtd.org links to this file.
+
+* PHASE: AUTONOMOUS MVP (v0.1.0 Released)
+:PROPERTIES:
+:ID:       proj-mvp-v0-1-0
+:END:
+The "Zero-to-One" release. The agent must be mathematically secure, CLI-first, and capable of autonomous Memex maintenance.
+
+** DONE 1. Harness Hardening (The Final Audit)
+*** DONE Audit remaining core skills (`org-skill-policy.org`, `org-skill-bouncer.org`) to the new Literate Granularity standard.
+*** DONE Implement Verification Lock: Ensure `MANDATORY_SKILLS` pass `validate-lisp-syntax` before boot proceeds.
+*** DONE Logging & Transparency: Ensure `context-get-system-logs` is utilized by the Reason engine to explain blocked actions.
+
+** DONE 2. The Autonomous Scribe & Gardener (The Primary Value Prop)
+*** DONE Implement `org-skill-scribe.org`: Background worker that distills daily chronological logs into structured Zettelkasten notes.
+*** DONE Implement `org-skill-gardener.org`: Heartbeat-driven skill that autonomously flags orphaned nodes and repairs broken links.
+
+** DONE 3. The Zero-to-One Experience (setup.org)
+*** DONE Consolidate installation instructions, `onboard.sh`, and `Dockerfile` into a single, literate `setup.org` file.
+*** DONE Ensure the setup process interactively builds the `.env` and verifies SBCL/Quicklisp dependencies.
+
+** DONE 4. CLI-First Actuation
+    CLOSED: [2026-04-14 Tue 09:40]
+*** DONE Verified the `cli` actuator and inbound gateway handle standard I/O interaction gracefully via a stateful `socat` connection.
+
+* PHASE: PUBLICATION & VERIFICATION (v0.1.0 Post-Release)
+:PROPERTIES:
+:ID:       proj-pub-v0-1-0
+:END:
+Ensuring the system is ready for the world through collaborative testing, documentation, and licensing.
+
+** DONE 1. Collaborative End-to-End Testing [2026-04-21 Tue]
+    CLOSED: [2026-04-21 Tue 17:30]
+*** DONE Verified stable foundation at commit `cab0e5a`.
+*** DONE Verified boot sequence and bidirectional connectivity.
+
+** DONE 2. Semantic Reorganization & System Stabilization [2026-04-21 Tue]
+    CLOSED: [2026-04-21 Tue 18:30]
+*** DONE Rename directories: harness/, library/, environment/, infrastructure/.
+*** DONE Consolidate Probabilistic engine into reason.lisp.
+*** DONE Embed bidirectional CLI logic into opencortex.sh.
+*** DONE Stabilize skill engine: 12/12 skills loaded with package jailing.
+*** DONE Cleanup legacy documentation and deployment artifacts.
+
+** DONE 2. Comprehensive Documentation <2026-04-14 Tue>
+    CLOSED: [2026-04-20 Mon 18:00]
+*** DONE Draft `USER_MANUAL.org`: Focus on CLI interaction, installation, and Memex structure.
+*** DONE Draft `CONTRIBUTING.org`: Explain Literate Granularity and Skill creation standards.
+
+** DONE 3. License & Legal Finalization <2026-04-14 Tue>
+    CLOSED: [2026-04-17 Fri 11:25]
+*** DONE Assign the AGPLv3 open-source license.
+*** DONE Implement a broad Contributor License Agreement (CLA) process.
+*** DONE Update `LICENSE` and `CHANGELOG` accordingly.
+
+** TODO 4. GitHub Migration & Repository Setup <2026-04-14 Tue>
+*** TODO Migrate primary remote to GitHub and configure canonical repository.
+*** TODO Set repository topics, badges, issue templates, and CI/CD foundations.
+
+** TODO 5. Marketing & Social Media Launch <2026-04-14 Tue>
+*** TODO Execute PR plan (Reddit, Hacker News, X/Twitter).
+*** TODO Create a short, high-quality terminal demo GIF/video of the TUI interaction.
+
+* PHASE: INTERACTIVE REFINEMENT (v0.2.0 Target)
+:PROPERTIES:
+:ID:       proj-refinement-v0-2-0
+:END:
+Elevating the user interface from raw shell piping to a high-fidelity, native Lisp experience. Priority: Self-editing is the foundation of all future growth. Full org-mode manipulation makes the agent a true Emacs citizen.
+
+Roadmap basis: Evolutionary roadmap from README.org. Working backwards from SOTA parity.
+
+** DONE 0. Autonomous Self-Editing Foundation
+*** DONE org-skill-lisp-repair (Lisp syntax repair)
+    - Deterministic: auto-balance parens via paren-counting
+    - Probabilistic: LLM generates surgical fix on =:syntax-error= events
+    - Memory rollback on failure
+    DONE: Now in org-skill-lisp-utils (merged from contrib)
+*** DONE org-skill-emacs-edit (full org-mode manipulation)
+    - Read org buffers, parse AST via org-element
+    - Create/update/delete headlines, set properties, manage TODO states
+    - Handle =id:= links and internal links
+    - Pure Lisp implementation (no Emacs subprocess)
+*** DONE Expose Structural AST Editing Tools
+    - Wrap org-skill-emacs-edit into def-cognitive-tool definitions
+    - Force LLM to use semantic node updates instead of regex file I/O
+*** DONE Implement Reflection Loops
+    - Feed rejection traces (syntax errors, policy blocks) back to LLM to trigger self-correction
+*** DONE Harden Actuators
+    - Fix path-traversal vulnerabilities in file I/O tools (e.g. :write-file)
+    - Enforce Merkle-snapshots on all state-modifying actions
+*** DONE Implement tool permission tiers (ask/allow/deny)
+    - Per-tool permission plist stored in org-object
+    - =generate-tool-belt-prompt= filters denied tools before LLM sees them
+    - Ask-tier prompts user before execution
+*** DONE Implement skill hot-reload (=:reload-skill= tool)
+    - Swap compiled skill files without breaking active sockets
+    - Reload skill into jailed package namespace
+    - DONE: Added :reload-skill, :read-file, :write-file, :replace-string tools
+    - DONE: Fixed ASDF compilation bug (position tracking issue with :serial t)
+    - DONE: Added explicit :depends-on declarations to opencortex.asd
+
+** DONE Engineering Process Improvements [2026-04-23 Wed]
+*** DONE Fix ASDF compilation bug (position tracking at byte 16834)
+    - Root cause: Duplicate proto-get, bt: prefix issues, :serial t position cache
+    - Fix: Removed duplicate, fixed bt:->bordeaux-threads, explicit dependencies
+    - Added eval-when wrapper for new tools (good Lisp practice)
+*** DONE Add test-first methodology to engineering standards
+    - Rule 10: Test-first - design tests before coding, run chaos testing
+    - Rule 11: Org as thinking medium - document investigations in prose
+    - Rule 12: Engineering decision audit trail - document root cause, tradeoffs
+    - Added to opencortex-contrib/skills/org-skill-engineering-standards.org
+*** DONE Perform comprehensive architectural review and evolution strategy [2026-04-27 Mon]
+    - Identified hidden gaps: Org-mode round-trip, sandboxing vulnerabilities, and GC scaling.
+    - Defined "Structural AST Editing" and "Reflection Loops" as core strategic requirements.
+    - Captured findings in [[file:notes/opencortex-architectural-evolution.org][opencortex-architectural-evolution.org]].
+*** DONE Fix API drift in opencortex-contrib [2026-04-27 Mon]
+    - Standardized legacy keywords (:neuro/:symbolic) to new harness standard (:probabilistic/:deterministic).
+    - Updated 16 skills in opencortex-contrib for kernel compatibility.
+
+** DONE 4. Core Skills Consolidation [2026-04-23 Thu]
+    - Merged lisp-validator + lisp-repair → org-skill-lisp-utils.org
+    - Added lisp utilities: count-char, deterministic-repair, neural-repair
+    - Added validation: structural, syntactic, semantic checks
+    - Moved org-skill-self-fix from contrib → core
+    - Moved org-skill-engineering-standards from contrib → core
+    - Deleted old org-skill-lisp-validator.org
+
+** DONE 5. Advanced CLI Onboarding Experience
+*** DONE Implement interactive Lisp CLI wizard (=opencortex setup=)
+*** TODO Implement =opencortex link <gateway>= for Telegram/Signal bot connection
+*** DONE Implement =opencortex doctor= for environment health and API key validation [2026-04-28 Tue]
+    - Verified 22/22 skills loading with clean boot.
+    - Fixed macro conflicts and package jailing bugs.
+*** TODO Implement =opencortex install <skill>= for dynamic skill downloading
+
+** DONE Chaos-Driven Bug Fixes (v0.2.0 Pre-Release) [2026-04-28 Tue]
+   - Fixed major conflict between Type A and Type B def-cognitive-tool macros.
+   - Enforced dynamic-only loading by removing skills from opencortex.asd.
+   - Fixed let/let* sequential binding bugs in emacs-edit and self-edit.
+   - Standardized *cognitive-tools* as a centralized hash table.
+   - Resolved missing in-package declarations in core skills.
+
+** DONE 1. Common Lisp TUI Implementation [2026-04-28 Tue]
+*** DONE Integrate =croatoan= for native terminal rendering
+*** DONE Implement scrollable history viewport for chat and thought streams
+*** DONE Implement fixed bottom input box with multi-line support and command history
+*** DONE Implement persistent status bar for background workers (Scribe/Gardener)
+*** DONE Support syntax highlighting for Lisp code blocks and Org-mode syntax
+
+** DONE 2. Slash Commands & Interactive Control [2026-04-28 Tue]
+*** DONE Implement =/help= command for system overview
+*** DONE Implement =/exit= and =/clear= commands
+*** DONE Implement =/skill-load <name>= for dynamic hot-reloading
+*** DONE Implement =/status=, =/config=, =/search=, =/commit= slash commands
+
+** DONE 3. Direct Lisp-to-Terminal Actuation [2026-04-28 Tue]
+*** DONE Refactor the =:cli= actuator to use native TUI rendering
+
+** DONE 4. Persistent REPL for Interactive Development [2026-04-30 Thu]
+*** DONE Implement org-skill-repl for persistent Lisp evaluation
+    - repl-eval: evaluate code with result+output+error separation
+    - repl-inspect: inspect variables and functions
+    - repl-list-vars: list bound symbols in package
+    - repl-load-file: load files into image
+    - Supports REPL-first workflow with literate reflection in org
+
+* PHASE: EVENT ORCHESTRATION + HITL (v0.3.0)
+:PROPERTIES:
+:ID:       proj-orchestration-v0-3-0
+:END:
+Unified control plane: hooks + cron + routing in one skill. Deep project understanding.
+
+** TODO 0. Project Renaming (Bouncer → Dispatcher)
+*** TODO Audit all files for component names to rename
+*** TODO Rename org-skill-bouncer.org → org-skill-dispatcher.org
+*** TODO Rename skill-bouncer package → skill-dispatcher
+*** TODO Rename cognitive tool =:bouncer= → =:dispatcher=
+*** TODO Update all references in harness, skills, documentation
+*** TODO Update gtd.org and ROADMAP.org terminology
+*** TODO Update DESIGN_DECISIONS.org section if applicable
+*** TODO Verify all tests pass after rename
+:LOGBOOK:
+- State "TODO"       from "" [2026-05-01 Fri 15:40]
+:END:
+
+The Dispatcher's role has evolved beyond security guard. It is the seed of the deterministic engine - it learns to execute procedures without invoking the neural net.
+
+** TODO 1. Event Orchestrator (unified hooks+cron+routing)
+*** TODO Integrate contrib org-skill-event-orchestrator
+    - Merge *hook-registry* + *cron-registry* + complexity classifier
+    - Hooks via =#+HOOK:= Org-mode properties
+    - Three complexity tiers: =:REFLEX= (no LLM), =:COGNITION= (light LLM), =:REASONING= (full LLM)
+    - Hook into heartbeat for cron processing
+
+** TODO 2. Context Manager (project scoping)
+*** TODO Integrate contrib org-skill-context-manager
+    - Stack-based context with =push-context= / =pop-context=
+    - Path resolution relative to current context
+    - Memory scope: =:scope= property on org-objects (memex/session/project)
+    - Implement lazy-loading proxies for large-scale memory traversal (offload cold nodes to disk)
+
+** TODO 3. Model-Tier Routing (cost optimization)
+*** TODO Extend =*model-selector-fn= for complexity-based routing
+    - Heartbeats → smallest model
+    - User input → medium model
+    - Complex reasoning → large model
+    - Source: GBrain sub-agent model routing
+
+** TODO 4. Memory Scope Segmentation
+*** TODO Extend org-object with =:scope= property
+    - =:memex= (permanent knowledge)
+    - =:session= (ephemeral context)
+    - =:project= (scoped to current work)
+    - Scope-aware retrieval in memory.lisp
+
+** TODO 5. Asynchronous Embedding Gateway
+*** TODO Implement provider-agnostic org-skill-embedding-gateway
+    - Support Ollama, llama.cpp, and OpenAI based on .env config
+    - Implement lazy-loading: edits mark nodes as =:vector :pending=
+    - Background worker thread batches pending nodes and updates Merkle tree silently
+
+** TODO 6. Slash Commands (TUI ergonomics)
+*** TODO M-x style command palette
+*** TODO /- prefix for command mode
+*** TODO Commands defined in Org-mode
+
+* PHASE: LONG-HORIZON PLANNING + GIT WORKFLOWS (v0.4.0)
+:PROPERTIES:
+:ID:       proj-planning-v0-4-0
+:END:
+Multi-step task mastery, structured tracking with failure handling and course correction.
+
+** TODO 0. Long-Horizon Planning (task tree DAG)
+*** TODO Implement org-skill-long-horizon
+    - Decompose complex tasks into Org-mode headline trees
+    - Terminal states: =:todo= → =:next-action= → =:in-progress= → =:done= / =:blocked= / =:stuck=
+    - Parent summarises child results
+    - Branch pruning when paths fail
+    - Source: Claude Code ULTRAPLAN (reimplemented in Lisp)
+
+** TODO 1. Git Steward (version control integration)
+*** TODO Integrate contrib org-skill-git-steward
+    - Status, diff, commit, push, branch operations
+    - Policy: commit-before-modify gate (from contrib engineering-standards)
+    - Log commits to memory
+
+** TODO 2. TDD Runner Integration
+*** TODO Integrate contrib org-skill-tdd-runner
+    - Run FiveAM tests on file save
+    - Inject =:test-failure= event on red
+    - Hook into self-fix for auto-repair proposals
+
+** TODO 3. Deep Emacs Integration
+*** TODO Full org-agenda awareness
+    - Navigate, clock time, refile, archive
+    - Uses org-element + org-id
+
+* PHASE: INTERACTIVE ACTUATION & ENVIRONMENT STEWARDSHIP (v0.5.0)
+:PROPERTIES:
+:ID:       proj-actuation-v0-5-0
+:END:
+Interactive terminal sessions and autonomous dependency management.
+
+** TODO 0. Interactive PTY Actuator
+*** TODO Stream long-running process output to the context window (e.g., `npm run dev`, REPLs)
+*** TODO Implement async interrupt control (Ctrl+C emulation)
+
+** TODO 1. The Environment Steward
+*** TODO Autonomously detect missing dependencies (e.g., "Command not found")
+*** TODO Propose an installation command and retry the failed action
+
+* PHASE: CREATOR + ARCHITECT + GTD (v0.6.0)
+:PROPERTIES:
+:ID:       proj-creator-v0-5-0
+:END:
+Agent bootstraps itself: creates skills autonomously, designs projects from PRDs, tracks work.
+
+** TODO 0. Skill Creator (autonomous skill generation)
+*** TODO Integrate contrib org-skill-creator
+    - LLM drafts complete skill org-file from natural language
+    - Mandatory: syntax validation → jail-load → test → register
+
+** TODO 1. Architect Agent (PRD → PROTOCOL)
+*** TODO Integrate contrib org-skill-architect
+    - Scan =:STATUS: FROZEN= PRDs
+    - Generate Phase B PROTOCOL from Phase A
+    - Write to same file
+
+** TODO 2. GTD Integration (project tracking)
+*** TODO Integrate contrib org-skill-gtd
+    - Full GTD cycle: capture, clarify, organize, reflect, engage
+    - org-gtd v4.0 DAG (=:TRIGGER:=, =:BLOCKER:=)
+
+** TODO 3. Consensus Loop (multi-model agreement)
+*** TODO Integrate contrib org-skill-consensus
+    - Run multiple providers for critical decisions
+    - Compare results, detect disagreements
+    - Confidence scoring
+
+** TODO 4. Web Research (Playwright browsing)
+*** TODO Integrate contrib org-skill-playwright + org-skill-web-research
+    - Headless Chromium via Python bridge
+    - Text extraction and screenshots
+    - Gemini Web UI automation
+
+** TODO 5. Memex Management (PARA lifecycle)
+*** TODO Integrate contrib org-skill-memex + org-skill-workspace-manager
+    - Archive DONE tasks, suggest refiling
+    - Detect orphaned nodes
+    - PARA/Zettelkasten maintenance
+
+* PHASE: VISUAL GROUNDING & MCP BRIDGE (v0.7.0)
+:PROPERTIES:
+:ID:       proj-vision-v0-7-0
+:END:
+Multimodal visual interaction and ecosystem-wide tool compatibility.
+
+** TODO 0. Computer Use / Vision
+*** TODO Allow the agent to request host OS or browser screenshots
+*** TODO Analyze UI and issue precise X/Y coordinate click/type commands via an X11/Wayland bridge
+
+** TODO 1. MCP Gateway Bridge
+*** TODO Build a Lisp-native client for the Model Context Protocol
+*** TODO Connect OpenCortex to external tools and data sources
+
+* PHASE: THE EVALUATION HARNESS (v0.8.0)
+:PROPERTIES:
+:ID:       proj-eval-v0-8-0
+:END:
+Automated benchmarking to mathematically prove the agent's reasoning capabilities.
+
+** TODO 0. SWE-Bench Harness
+*** TODO Automated pipeline that clones repositories and feeds GitHub issues
+*** TODO Track multi-step resolution trajectory, run tests, and score success
+
+* PHASE: SOTA PARITY (v1.0.0)
+:PROPERTIES:
+:ID:       proj-sota-v1-0-0
+:END:
+Feature-complete agent competitive with commercial agents. All borrowed concepts reimplemented in pure Lisp.
+
+All features from v0.2.0 through v0.8.0 combined, verified, and tested end-to-end.
+
+| Area | Parity Target |
+|------|--------------|
+| Self-improvement | Claude Code self-debug |
+| Planning | ULTRAPLAN equivalent |
+| Tool ecosystem | 10+ cognitive tools |
+| Context window | Semantic search + scope segmentation |
+| Safety | 6 Policy invariants + formal verification |
+| Multi-step tasks | Task trees with terminal states |
+| Code editing | Full file read/write via org manipulation |
+| Memory | Vector recall in org-object |
+| Emacs integration | Full org-mode control (exceeds Claude Code) |
+| Autonomy | 100% local capable (exceeds Claude Code) |
+
+* PHASE: LISP MACHINE EMERGENCE (v2.0.0)
+:PROPERTIES:
+:ID:       proj-lisp-v2-0-0
+:END:
+From Lisp-using agent to true Lisp machine. Agent IS the Emacs process.
+
+** TODO Lish: Lisp editor as Org-mode IDE
+    - Org-babel for interactive Lisp evaluation
+    - Full REPL in TUI
+    - No bridge needed — direct memory access
+** TODO Lish: Shell replacement
+    - Lisp-based shell that speaks plists
+    - Org-mode buffers as file system
+    - No bash dependency
+
+* PHASE: NEUROSYMBOLIC MATURITY (v3.0.0)
+:PROPERTIES:
+:ID:       proj-neuro-v3-0-0
+:END:
+Deterministic planner takes the wheel. LLM relegated to semantic translation.
+
+** TODO Deterministic planner
+    - Planner as pure Lisp function
+    - No LLM needed for scheduling
+    - Generates task graphs without probabilistic inference
+** TODO Self-correcting gates
+    - Gates learn from false positives (user override patterns)
+    - Adaptive threshold adjustment
+
+* PHASE: AI STACK INTERNALIZED (v4.0.0)
+:PROPERTIES:
+:ID:       proj-ai-v4-0-0
+:END:
+The agent understands its own weights. No external inference.
+
+** TODO Llama.cpp in Lisp
+    - FFI binding to llama.cpp
+    - No Python subprocess
+    - Pure Common Lisp inference
+** TODO Weights as sexps
+    - Neural weights represented as Lisp data structures
+    - Homoiconic model introspection
+
+* PHASE: TRUE AGENCY (v5.0.0)
+:PROPERTIES:
+:ID:       proj-agency-v5-0-0
+:END:
+World models, temporal reasoning, goal persistence across restarts.
+
+** TODO World models
+    - Agent builds predictive models of user behavior
+    - Project dynamics awareness
+    - System state forecasting
+** TODO Temporal reasoning
+    - Scheduling and deadline awareness
+    - Elapsed duration tracking
+    - Calendar integration
+** TODO Goal persistence
+    - Goals survive restarts
+    - Long-term projects tracked in org-objects
+    - Cross-session continuity
+
+* PHASE: EVOLUTIONARY ROADMAP (Previous — Superseded by Critical Analysis)
+:PROPERTIES:
+:ID:       proj-old-roadmap
+:END:
+Superseded by the critical analysis-informed roadmap above (v0.2.0 through v5.0.0). This section kept for historical reference.
+
+** TODO v0.1.0: The Autonomous Foundation (Current Release) — Now COMPLETE
+** TODO v1.0.0 (Phase 2.5): The Verified Wrapper (SOTA Parity) — Now v1.0.0
+** TODO v2.0.0 (Phase 3): Cannibalizing the Toolchain — Now v2.0.0
+** TODO v3.0.0 (Phase 4): True Symbolic Determinism — Now v3.0.0
+
+* PHASE: FOUNDATION (Complete)
+** DONE Draft Swank/Socket communication protocol between CL and Emacs
+:PROPERTIES:
+:CREATED: [2026-03-22 Sun 14:00]
+:ASSIGNED: Agent
+:END:
+** DONE Implement core Perceive-Think-Act loop in Common Lisp
+:PROPERTIES:
+:CREATED: [2026-03-22 Sun 14:00]
+:ASSIGNED: Agent
+:END:
+** DONE Implement Persistent Object-Store for Org entities in CL
+:PROPERTIES:
+:CREATED: [2026-03-22 Sun 16:30]
+:ASSIGNED: Agent
+:END:
+** DONE Implement LLM Connector (Probabilistic Engine) in CL Daemon
+:PROPERTIES:
+:CREATED: [2026-03-22 Sun 17:30]
+:ASSIGNED: Agent
+:END:
+** DONE Design Deterministic Engine Heuristics (Lisp logic over Memory)
+:PROPERTIES:
+:CREATED: [2026-03-22 Sun 17:30]
+:END:
+** DONE Achieve Phase 3: The Self-Editing Kernel
+:PROPERTIES:
+:CREATED: [2026-03-23 Mon 16:30]
+:END:
+- Jailing & Sandboxing implemented
+- Org-Native Skill Standard established
+- Telemetry & Introspection API active
+
+* PHASE: THE SOVEREIGN BOUNDARY (Core vs Skills Refactor)
+:PROPERTIES:
+:ID:       proj-autonomous-boundary
+:END:
+Slim down the opencortex microharness by moving non-essential cognitive functions to hot-reloadable user-space skills.
+
+** DONE Extract LLM Provider Routing to a Skill (neuro.lisp)
+** DONE Extract Vector Embedding Algorithms to a Skill (embedding.lisp)
+   CLOSED: [2026-04-12 Sun 14:10]
+   :PROPERTIES:
+   :ID: extract-embedding-skill
+   :END:
+   - Created `org-skill-embedding.org`.
+   - Moved logic to `src/embedding-logic.lisp` via tangling.
+   - Updated `system-definition.org`.
+** DONE Extract Sparse Tree Context Pruning Strategies to a Skill (context.lisp)
+   CLOSED: [2026-04-12 Sun 14:25]
+   :PROPERTIES:
+   :ID: extract-context-skill
+   :END:
+   - Created `org-skill-peripheral-vision.org`.
+   - Moved logic to `src/context-logic.lisp` via tangling.
+   - Updated `system-definition.org`.
+** DONE Implement `org-skill-peripheral-vision` (Moving embedding logic out of core)
+   CLOSED: [2026-04-12 Sun 14:25]
+   :PROPERTIES:
+   :ID: impl-peripheral-vision
+   :END:
+** DONE Implement communication protocol Schema Validation (Prevent reader macro injection in communication.lisp)
+   CLOSED: [2026-04-12 Sun 14:45]
+   :PROPERTIES:
+   :ID: communication-protocol-schema-validation
+   :END:
+   - Created `org-skill-protocol-validator.org`.
+   - Integrated `validate-communication-protocol-schema` into `communication.org`.
+   - Added `protocol-validator.lisp` to system definition.
+** DONE Implement Pluggable communication protocol Integrity Hashing (Core interface, Skill-based algorithms)
+   CLOSED: [2026-04-12 Sun 15:15]
+   :PROPERTIES:
+   :ID: communication-protocol-integrity-hashing
+   :END:
+   - Integrated HMAC-SHA256 (`ironclad:make-mac`) in `literate/communication.org`.
+** DONE Implement Native Lisp Merkle-Tree Versioning (Short-term undo buffer in memory.lisp)
+   CLOSED: [2026-04-12 Sun 19:15]
+** DONE Performance: Implement Copy-on-Write (CoW) or Persistent Data Structures for Memory
+   CLOSED: [2026-04-12 Sun 19:15]
+** DONE Feature: Implement Latent Reflection (Proactive Gardening) using heartbeat idle cycles
+   CLOSED: [2026-04-12 Sun 19:15]
+** DONE Simplification: Refactor Cognitive Cycle into a Unified Reactive Signal Pipeline
+   CLOSED: [2026-04-12 Sun 19:15]
+** DONE Resilience: Implement Micro-Rollbacks for the Immune System
+   CLOSED: [2026-04-12 Sun 19:15]
+** DONE Implement `org-skill-memory-archivist` (Long-term IPFS checkpointing and P2P sync)
+   CLOSED: [2026-04-12 Sun 19:15]
+** DONE Implement True Lisp Sandboxing (eval-safe mechanism in core and policy in skills)
+   CLOSED: [2026-04-12 Sun 19:15]
+** DONE Decouple Vendor Logic from Probabilistic Engine (Move Google/Anthropic/OpenAI to Skills)
+   CLOSED: [2026-04-12 Sun 19:15]
+** DONE Component IV: Comprehensive Core Skill Audit (Review all 39 skills)
+   CLOSED: [2026-04-12 Sun 19:45]
+   :PROPERTIES:
+   :ID: core-skill-audit-task
+   :END:
+
+** DONE Consolidation I: Unified LLM Gateway (Anthropic, Gemini, Groq, OpenAI, etc.)
+** DONE Consolidation II: Credentials Vault (Secure Enclave & Masked Logging)
+** DONE Consolidation III: Homoiconic Memory (Unified Grammar, Bridge, & ID Generation)
+** DONE Consolidation IV: State Persistence Layer (Unified Local & IPFS Checkpointing)
+** DONE Consolidation V: Event Orchestrator (Unified Cron, Hooks, & Cognitive Routing)
+** DONE Consolidation VI: Task Orchestrator (Task Integrity, Delegation, & Consensus)
+   CLOSED: [2026-04-11 Sat 13:45]
+   :PROPERTIES:
+   :ID: task-orchestrator-consolidation
+   :END:
+   - Implemented Parallel Multi-Backend Consensus in neuro.lisp.
+   - Implemented Task Integrity (GTD semantics) in symbolic.lisp.
+   - Integrated Consensus Gate and Delegation hooks in core.lisp.
+   - Verified with new task-orchestrator-tests.lisp.
+** DONE Implement Unified Envelope Architecture & Channel-Awareness
+   CLOSED: [2026-04-20 Mon 13:20]
+   - Removed specialized :CHAT type; reverted to semantic :REQUEST/:EVENT protocol.
+   - Decoupled routing metadata into a :META envelope (SOURCE, SESSION-ID).
+   - Updated TUI, Emacs, and CLI gateways to use the unified protocol.
+   - Verified end-to-end loop with TUI; kernel correctly routes responses back to origin interface.
+   - Achieved "Equality of Clients" mandate.
+** DONE Full review of opencortex's harness
+   CLOSED: [2026-05-01 Fri 12:46]
+   :PROPERTIES:
+   :CREATED: [2026-04-13 Mon 13:30]
+   :ASSIGNED: Agent
+   :END:
+   - [X] Audit terminology: Replaced OACP with "communication protocol" workspace-wide.
+   - [X] Audit boot sequence: Synchronized loader with `org-skill-policy.org`.
+   - [X] Implement Unified Envelope (Channel-Aware Routing).
+   - [X] Audit core Perceive-Think-Act loop.
+     - [X] Verified protocol framing and reader jailing (`*read-eval* nil`).
+     - [X] Refactored `loop.org` for literate granularity and configuration externalization.
+     - [X] Improved error handling (restricted rollback) and added graceful shutdown.
+     - [X] **FIXED:** Implemented symbolic guard check in `act-gate` via Dispatcher skill refactoring.
+     - [X] **FIXED:** Harness `deterministic-verify` now correctly respects skill triggers.
+     - [X] **FIXED:** Resolved TUI crash by removing `--non-interactive` from `opencortex.sh` and adding defensive coordinate handling.
+     - [X] **VERIFIED:** Confirmed bidirectional TUI communication and signed off v0.2.0.
+   - [X] Ensure alignment with System Policy and Engineering Standards.
+   - [X] Restored structural integrity by fixing `manifest.org` loading sequence.
+
+** TODO Wake up the Scribe (Implement autonomous weekly Journal-to-Ledger distillation in org-skill-scribe.org)
+** TODO Implement `org-skill-lisp-repair` (Self-correcting syntax gate for Deterministic Engine)
+   CLOSED: [2026-04-11 Sat 15:10]
+   :PROPERTIES:
+   :ID: lisp-repair-gate
+   :END:
+   - Implemented asynchronous, event-driven repair logic.
+   - Decoupled core from repair logic (emits `:syntax-error` event).
+   - Proven via lisp-repair-tests.lisp (Asynchronous flow verified).
+** DONE Implement `org-skill-formal-verification` (Prove safety of high-impact actions)
+   CLOSED: [2026-04-11 Sat 18:15]
+   :PROPERTIES:
+   :ID: formal-verification-task
+   :END:
+   - Implemented `org-skill-formal-verification.org`.
+   - Created Lisp-Native Symbolic Prover for security invariants.
+   - Implemented `path-confinement` invariant (restricted to memex root).
+   - Implemented `no-network-exfil` invariant (blocking nc, ssh, etc).
+   - Verified with `formal-verification-tests.lisp`.
+
+* PHASE: DETERMINISTIC ENGINE REFINEMENT
+** DONE Verify Autonomous Self-Fix Loop
+   CLOSED: [2026-04-11 Sat 14:20]
+   :PROPERTIES:
+   :CREATED: [2026-03-23 Mon 16:30]
+   :END:
+   - Proven repair capability via self-fix-tests.lisp.
+   - Verified surgical code patching and hot-reloading.
+   - Documentation and RCA complete.
+** DONE Implement "Planning Mode" (Deterministic Engine Dispatcher) for Complex Actions
+   CLOSED: [2026-04-11 Sat 15:30]
+   :PROPERTIES:
+   :CREATED: [2026-04-01 Wed 17:00]
+   :END:
+   - Implemented `dispatcher-check` interceptor in `symbolic.lisp`.
+   - Created `org-skill-dispatcher.org` for flight plan serialization.
+   - Verified asynchronous Org-native approval loop via `dispatcher-tests.lisp`.
+** DONE Implement Authorization Gate (communication protocol) for "Planning Mode"
+   CLOSED: [2026-04-11 Sat 15:30]
+   :PROPERTIES:
+   :CREATED: [2026-04-01 Wed 17:00]
+   :END:
+   - Integrated with Org-mode state transitions (`PLAN` -> `APPROVED`).
+   - Leveraged Memory event bus for asynchronous re-injection.
+
+** DONE Refactor Architecture Terminology (Associative -> Probabilistic, Deliberate -> Deterministic)
+    CLOSED: [2026-04-12 Sun 21:00]
+    :PROPERTIES:
+    :ID: terminology-refactor-task
+    :END:
+    - Updated codebase-wide terminology to use Probabilistic/Deterministic Engines.
+    - Replaced System 1/2 with Probabilistic/Deterministic Engines respectively.
+
+** DONE Refactor org-skill-policy.org: Concrete Invariants, Conflict Hierarchy, and Auditable Gate
+    CLOSED: [2026-04-22 Wed 11:50]
+    :PROPERTIES:
+    :ID: policy-refactor-concrete-invariants
+    :END:
+    - Added explicit Override Hierarchy (Transparency > Autonomy > Bloat > Mentorship > Sustainability).
+    - Implemented `policy-check-transparency`: blocks user-facing actions without :explanation.
+    - Implemented `policy-check-autonomy`: flags proprietary domain references as autonomy debt.
+    - Implemented `policy-check-bloat`: warns on :create-skill actions exceeding size threshold.
+    - Implemented `policy-check-mentorship`: blocks high-impact actions missing :mentorship-note.
+    - Implemented `policy-check-sustainability`: logs cloud-provider usage as sustainability debt.
+    - Implemented `policy-explain`: formats auditable rationale for every policy decision.
+    - Implemented `policy-find-engineering-standards-gate`: robust cross-package search for standards skill.
+    - Hardened `policy-deterministic-gate`: never returns NIL silently; always returns action or auditable log.
+    - Raised skill priority from 100 to 500 to ensure it runs before other deterministic gates.
+
+** DONE Add Invariant 6 (Modularity) and Harness Boundary Contract to Policy/Manifest
+    CLOSED: [2026-04-22 Wed 12:10]
+    :PROPERTIES:
+    :ID: policy-modularity-invariant
+    :END:
+    - Added Modularity as Invariant 6 in `org-skill-policy.org`: general life principle that complexity must live at the edges.
+    - Implemented `policy-check-modularity`: blocks modifications to protected core paths unless `:modularity-justification` is provided.
+    - Defined `*modularity-protected-paths*` as project-configurable variable (defaults: harness/, opencortex.asd).
+    - Updated Override Hierarchy to include Modularity between Bloat and Mentorship.
+    - Added Harness Boundary Contract section to `harness/manifest.org` documenting primary boundary files and generated artifacts.
+    - Converted checkbox sub-tasks to hierarchical TODO headlines per GTD standard.
+
+** DONE Implement `org-skill-lisp-validator` (3-phase deterministic validation gate)
+    CLOSED: [2026-04-22 Wed 12:30]
+    :PROPERTIES:
+    :ID: lisp-validator-implementation
+    :END:
+    - Created 3-phase validation pipeline: Structural (O(n) paren scanner), Syntactic (reader with *read-eval* nil), Semantic (whitelist AST walk).
+    - Implemented `lisp-validator-validate` returning structured plists for machine parsing.
+    - Exposed `:validate-lisp` cognitive tool for Probabilistic Engine self-correction.
+    - Replaced `validate-lisp-syntax` in `harness/skills.org` with delegation to the validator.
+    - Added mandatory validation rule to Probabilistic Engine system prompt in `harness/reason.org`.
+    - Fixed paren balance and `return-from` compilation errors in org source; tangled and validated in SBCL.
+
+** DONE Fix Skill Loader to Respect `:tangle` Blocks and Eliminate Circular Dependency
+    CLOSED: [2026-04-22 Wed 12:45]
+    :PROPERTIES:
+    :ID: skill-loader-tangle-fix
+    :END:
+    - Updated `load-skill-from-org` in `harness/skills.org` to only collect blocks with `:tangle` directives pointing to runtime `.lisp` files, excluding `tests/` and `test/` paths.
+    - Added fallback to `validate-lisp-syntax` so it uses a basic reader check when `lisp-validator-validate` is not yet loaded (breaks circular harness->skill dependency).
+    - Verified full boot: 13/13 skills loaded successfully into SBCL, including `skill-lisp-validator` at priority 900 and `skill-policy` at priority 500.
+
+* TRACK: SECURITY & CONTAINMENT (The 5-Vector Dispatcher Matrix)
+** DONE Implement Path-Based Scoping for File Writes (DNA/State vs Work)
+   CLOSED: [2026-04-12 Sun 15:15]
+   :PROPERTIES:
+   :ID: path-based-scoping
+   :END:
+   - Implemented as `path-confinement` invariant in `org-skill-formal-verification.org`.
+** DONE Implement Network Exfiltration Gate (Intercept generic HTTP requests)
+   CLOSED: [2026-04-12 Sun 15:15]
+   :PROPERTIES:
+   :ID: network-exfiltration-gate
+   :END:
+   - Implemented as `no-network-exfil` invariant in `org-skill-formal-verification.org`.
+** TODO Implement Secret Exposure Gate (Intercept reads to .env, keys)
+
+* TRACK: INTELLIGENCE & ACTUATION (The Engines)
+** DONE Verify individual provider track (Anthropic, Gemini, Groq, OpenAI, OpenRouter, Ollama)
+   CLOSED: [2026-04-11 Sat 15:45]
+   :PROPERTIES:
+   :ID: provider-verification-track
+   :END:
+   - Added unit tests for each provider in `llm-gateway-tests.lisp`.
+   - Mocked `dex:post` to verify JSON payload formatting and response parsing.
+   - Implemented robust `get-nested` helper to handle various provider structures.
+   - Integrated `llm-gateway` and `credentials-vault` into `opencortex.asd`.
+** TODO Verify org-skill-shell-actuator formal safety harnesses
+** DONE Build Playwright-Python Bridge for high-fidelity browsing
+   CLOSED: [2026-04-11 Sat 18:30]
+   :PROPERTIES:
+   :ID: playwright-bridge-task
+   :END:
+   - Created `scripts/browser-bridge.py` (Playwright wrapper).
+   - Implemented `org-skill-playwright.org`.
+   - Registered `:browser` cognitive tool (JS-rendering, text extraction, screenshots).
+   - Updated `Dockerfile` with Python/Playwright dependencies.
+   - Verified with `playwright-tests.lisp`.
+
+
+* TRACK: COMMUNICATION & INTERFACES
+** DONE Implement org-skill-gateway-telegram
+   CLOSED: [2026-04-11 Sat 16:15]
+   :PROPERTIES:
+   :ID: gateway-telegram-task
+   :END:
+   - Implemented `org-skill-gateway-telegram.org`.
+   - Added automated background polling for Telegram GetUpdates.
+   - Implemented `:telegram` actuator for outbound responses.
+   - Refactored `org-skill-chat` to be channel-aware.
+   - Verified with `gateway-telegram-tests.lisp`.
+** DONE Implement org-skill-gateway-signal
+   CLOSED: [2026-04-11 Sat 16:50]
+   :PROPERTIES:
+   :ID: gateway-signal-task
+   :END:
+   - Implemented `org-skill-gateway-signal.org` (signal-cli wrapper).
+   - Added background polling for `signal-cli receive --json`.
+   - Implemented `:signal` actuator for outbound responses.
+   - Updated `org-skill-chat` to support Signal channel.
+   - Verified with `gateway-signal-tests.lisp`.
+** DONE Implement org-skill-gateway-matrix
+   CLOSED: [2026-04-11 Sat 17:15]
+   :PROPERTIES:
+   :ID: gateway-matrix-task
+   :END:
+   - Implemented `org-skill-gateway-matrix.org` (Client-Server API).
+   - Added background polling for `/sync` with token persistence.
+   - Implemented `:matrix` actuator for `m.room.message` delivery.
+   - Updated `org-skill-chat` to support Matrix channel and room IDs.
+   - Verified with `gateway-matrix-tests.lisp`.
+
+* TRACK: DEPLOYMENT & INFRASTRUCTURE
+** DONE Create Dockerfile and docker-compose.yml for containerized setup
+   CLOSED: [2026-04-11 Sat 17:30]
+   :PROPERTIES:
+   :ID: docker-infra-task
+   :END:
+   - Created `Dockerfile` (Debian-based, SBCL + Quicklisp + signal-cli).
+   - Created `docker-compose.yml` with host-volume mapping for memex.
+   - Created `docs/deployment.org` guide.
+** TODO Create Bare Metal installation scripts/playbooks
+** TODO Create LXC (Linux Containers) template/guide
+** TODO Create VM Vagrantfiles/Cloud-init configs
+
+* TRACK: MAINTENANCE & HYGIENE
+** TODO [RECURRING: Monthly] Review and test Infrastructure Dependency Upgrades
+   :PROPERTIES:
+   :ID: monthly-infra-audit
+   :REPEAT_TO_STATE: TODO
+   :END:
+*** TODO Check for new Debian security patches (`apt-get update` check)
+*** TODO Check for new `signal-cli` releases (compare vs v0.14.0)
+*** TODO Check for new Quicklisp distribution (monthly snapshot)
+*** TODO Verification: Update `Dockerfile`, run `docker-compose build --no-cache`, and execute full test suite
+*** TODO If all tests pass, commit updated `Dockerfile` and `.asd` dependencies
+
+* TRACK: COMMUNITY & DOCS
+** TODO Write Quickstart Guide
+** TODO Write Skill Creation Guide
+** TODO Write Architecture Deep-Dive
+** TODO Clean up GitHub repository structure and add CI/CD
+** TODO Create Marketing Material (Landing page copy, diagrams)
+** TODO Draft Release Plan checklist
+
+* SUB-PROJECT: THE BOOT SEQUENCE (skills.lisp)
+:PROPERTIES:
+:ID:       proj-skill-boot-sequence
+:END:
+** DONE Refactor `skills.lisp` into a Micro-Loader (Harness)
+   CLOSED: [2026-04-12 Sun 19:10]
+** DONE Implement Topological Sort based on `#+DEPENDS_ON:` tags
+   CLOSED: [2026-04-12 Sun 15:15]
+   :PROPERTIES:
+   :ID: topological-sort-skills
+   :END:
+   - Implemented in `literate/skills.org`.
+** DONE Enforce `org-skill-system-invariants` as the mandatory Gateway Skill (Loaded first)
+   CLOSED: [2026-04-12 Sun 15:15>
+   :PROPERTIES:
+   :ID: enforce-mandatory-skill
+   :END:
+   - Enforced in `initialize-all-skills` in `literate/skills.org`.
+** DONE Formalize the "Minimal Boot Set" (Router, Vision, Steward, Actuator)
+   CLOSED: [2026-04-12 Sun 19:10>

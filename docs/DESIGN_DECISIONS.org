@@ -82,6 +82,28 @@ In v3.0.0, when the symbolic engine takes over the reasoning core, homoiconicity
 
 This is the technical meaning of "Lisp as Governor": not just that Lisp orchestrates the other components, but that the representation of the system is uniform and inspectable at every level. There is no hidden state, no opaque machine code, no representation that the agent cannot reach into and modify. The system is legible to itself by design.
 
+**Self-Modification Without Boundaries**
+
+Other systems that support self-editing draw a line between the core and the skills. Hermes can modify its skills at runtime, but the core harness is protected - editing it requires a restart because the core is treated as privileged code that cannot be safely modified while running.
+
+OpenCortex has no such boundary. The "thin harness, fat skills" distinction describes where complexity lives, not where authority flows. The harness is small by design, but it is not privileged. The agent can read and write any part of the system - including the very code that is currently executing - without restarting.
+
+This is only possible because Lisp code is mutable data at runtime. In a compiled language, the machine code for a running function is locked in memory, protected by the call stack, impossible to modify safely. In Lisp, the function object is a list you can modify with =setf=. When the agent changes a harness function, the running image immediately reflects the change. The next invocation uses the new code. There is no restart, no special boot mode, no distinction between development and production.
+
+The implications extend beyond convenience. A system that cannot modify its own core is a system that has limits on its own adaptability. It can learn skills but not improve its own structure. It can grow but not evolve. OpenCortex's lack of a core boundary means the system can improve its own reasoning engine, fix bugs in its own cognition, and evolve its own architecture - all while continuing to operate.
+
+This is the final expression of homoiconicity: not just that code is readable as data, or that skills are modifiable, but that the entire system - including the parts that other systems protect - is open to modification. There is no ceiling on self-improvement. The agent can rewrite the very code that rewrites itself.
+
+**Lisp and the AI Dream**
+
+Lisp was invented in 1958 by John McCarthy with artificial intelligence explicitly in mind. Its design - code as data, runtime mutation, symbols and lists as first-class constructs - was shaped by the belief that a truly intelligent machine would need to reason about and modify its own reasoning. For decades, Lisp machines were the closest thing to thinking machines that existed.
+
+Then the AI winter came. Symbolic AI fell out of favor. Statistical learning and neural networks dominated. Lisp was relegated to niche applications and academic curiosity. The machine that was designed for AI was never used for the task it was designed for.
+
+Six decades later, neural networks have arrived at the problem from a different direction. They can learn and generalize, but they hallucinate, cannot explain their reasoning, and cannot safely modify themselves. The neuro-symbolic synthesis - combining neural pattern recognition with symbolic reasoning - is recognized as the path toward AI that is both powerful and trustworthy.
+
+Lisp's time may finally have come. Not as a replacement for neural networks, but as the governor that makes them safe - the symbolic engine that verifies what the neural engine proposes, the homoiconic substrate that allows the system to inspect, modify, and improve its own reasoning. The machine that was designed for AI in 1958 may be the exact machine needed for AI in 2026 and beyond.
+
 * Org-Mode as Unified AST
 :PROPERTIES:
 :ID:       design-org-unified-ast
@@ -102,6 +124,14 @@ Second, the format is genuinely readable by both parties, not just technically a
 Third, the format is stable across decades. Org-mode has been in active development since 2003. The files written today will be readable by Org-mode in 2040. There is no schema migration, no database upgrade, no vendor lock-in. The human's notes survive the system.
 
 Fourth, the format is universally available. Org-mode is free software. The files are plain text. There is no proprietary format to decode, no application to purchase, no cloud service to access.
+
+Fifth, the format is header-aware and sparse-tree capable. Org-mode's headline hierarchy is not just formatting - it is a semantic structure the system can query. The agent can retrieve only the relevant subtree under a heading, ignoring the rest of the file. This is fundamentally different from Markdown, where the entire file must be loaded or the retrieval logic must parse and filter at the string level.
+
+Sparse tree retrieval is the key to efficient context management. When the agent needs information about the =openctl-db= function, it queries for the =openctl-db= subtree specifically. It receives exactly the code, documentation, and metadata under that heading - nothing more. The context stays lean not because the file was pre-split but because the retrieval is structural. In a Markdown system, the agent either loads the entire file (expensive, noisy) or relies on imprecise grep-like search (fragile, loses hierarchy). In Org-mode, retrieval is precise, hierarchical, and cheap. The heading boundary is the access boundary.
+
+Sixth, Org-mode unifies what every other format fragments. A single Org file contains the headline hierarchy, prose documentation, source code blocks with live evaluation, tags for categorization, metadata in property drawers, TODO state for task management, timestamps and deadlines, and links to other nodes. Markdown cannot express TODO state without external tools. JSON cannot contain prose. YAML cannot embed runnable code. Each format serves one purpose; Org-mode serves all of them. When the agent reads a skill file, it reads documentation, code, dependencies, metadata, and task state in one parseable structure. When the human reads the same file, they see the same information rendered in a human-friendly form. No other format achieves this unification without maintaining parallel files or external databases.
+
+Seventh, a skill lives in one Org file, not a directory. The standard pattern for a software project is a directory containing =README.md=, =package.json=, =src/main.py=, =src/utils.py=, =tests/test_main.py=, =scripts/deploy.sh=, and =config.yaml=. Each file type is isolated by convention: prose lives in README, code lives in src, tests in tests, configuration in config. This fragmentation means the skill is not a single object the system can reason about - it is a collection of files the system must assemble. OpenCortex's skills violate this convention deliberately. Each skill is one Org file. The file contains the skill's documentation, the skill's code, the skill's metadata, the skill's TODO state, and the skill's dependencies on other skills. There is no directory to navigate, no external files to locate, no risk that the README describes behavior that the code does not implement. The skill is a single atomic unit: readable by human and machine, editable by both, versionable as one entity.
 
 The unified format is what makes the memory architecture work. The agent's memory is not a database that the user cannot inspect. It is a folder of Org files that the user can read, edit, and understand. The agent manipulates these files directly, using the same tools the user would use. There is no hidden state, no shadow database, no model that differs from the source.
 
@@ -217,7 +247,11 @@ This is how you build a reasoning machine: start with a learner, make it learn t
 :ID:       design-repl-cognition
 :END:
 
-The REPL is not merely a development convenience. It is the mechanism by which the agent interacts with its own cognition - a loop that mirrors the perceive-reason-act metabolic cycle at the implementation level.
+A REPL - Read, Eval, Print, Loop - is an interactive programming environment that reads an expression, evaluates it, prints the result, and loops back to read the next expression. It is the opposite of batch processing: where batch compiles and runs a program in one shot, a REPL works one expression at a time, with each evaluation building on all previous ones. The programmer defines a function, calls it, inspects the result, modifies it, and calls it again. The state accumulates. The session is the program.
+
+In Lisp, the REPL is not a debugging tool bolted onto the language - it is the natural mode of interaction. The running image is the environment. When you evaluate =(+ 2 2)=, the result =4= is printed, and you remain in the same image where =+= is defined, where previous definitions persist, where the next expression can reference anything that came before. There is no separation between development and execution. The REPL is not a simulation of the program - it is the program running.
+
+OpenCortex uses the REPL in this spirit, but elevated: it is not merely a tool for writing code, it is the mechanism by which the agent interacts with its own cognition - a loop that mirrors the perceive-reason-act metabolic cycle at the implementation level.
 
 In the agent's cognitive architecture, the REPL serves three functions that are difficult or impossible to achieve through batch processing or stateless API calls.
 
@@ -229,27 +263,77 @@ Third, the REPL is a shared substrate. When the agent evaluates code, that code 
 
 This is why the REPL becomes more important as the system matures. In early versions, it is a development tool. In v0.6.0 and beyond, it becomes a cognitive tool: the agent explores hypotheses by evaluating them, verifies the output of sub-agents by inspecting live state, and tests modifications before committing them to the knowledge graph.
 
-* Placeholder: The Evaluation Harness
+* The Evaluation Harness
 :PROPERTIES:
 :ID:       design-evaluation-harness
 :END:
 
-* Placeholder: Observability and the Thought Trace
+SOTA parity is meaningless without measurement. A system that claims to match commercial agents must demonstrate it through reproducible benchmarks, not through feature checklists. The evaluation harness is the apparatus by which OpenCortex proves its capabilities.
+
+The industry standard for coding agents is SWE-bench: a corpus of GitHub issues paired with pull requests. The agent is given an issue, must understand the codebase, write a fix, and submit. Success is measured by whether the submitted PR passes the existing test suite. This tests the full chain: understanding, planning, code generation, verification, and multi-step reasoning.
+
+OpenCortex implements a native Lisp harness for this. A background thread clones repositories, feeds issues into the cognitive loop, tracks the resolution trajectory as an Org-mode headline tree, and scores success by test outcomes. The trajectory is persisted: when a resolution fails, the system can inspect where in the chain the reasoning broke down. The headline tree records the agent's thoughts at each step, making the failure auditable and the debugging human-assisted.
+
+Beyond SWE-bench, the harness includes chaos testing. The system is subjected to resource starvation, concurrent load, and adversarial input. The deterministic engine must maintain safety invariants under pressure. The symbolic verifier must not deadlock or livelock. The probabilistic engine must degrade gracefully - if tokens are limited, it must still produce valid proposals that the deterministic engine can evaluate. Failure under chaos is a design flaw, not a benchmark anomaly.
+
+The harness also supports regression testing on the skill set. Every skill is tested against a suite of known inputs and expected outputs. When a modification is proposed to any skill - whether through manual editing or the agent's own self-modification - the test suite runs first. A skill that fails its tests is rejected before it can propagate to the running image. This is not a convenience - it is the mechanism by which self-modification remains safe. The agent can propose changes, but the harness verifies them before the changes take effect.
+
+* Observability and the Thought Trace
 :PROPERTIES:
 :ID:       design-observability
 :END:
 
-* Placeholder: The MCP Strategy
+When a human asks why the system made a decision, the answer must be findable. In most AI systems, the reasoning is ephemeral - it exists in the model's activations and disappears when the session ends. In OpenCortex, every significant cognitive event is written to an Org buffer as it happens.
+
+The thought trace is the agent's journal, written in parallel with its reasoning. When the probabilistic engine generates a proposal, the trace records the input, the prompt, and the raw output. When the deterministic engine evaluates it, the trace records which rules were checked, which passed, which failed, and why. When an action is executed, the trace records the timestamp, the user who approved it (if human-in-the-loop), and the outcome.
+
+This is not logging in the traditional sense. Logs are forensically useful but are written in a machine format optimized for storage, not for human reading. The thought trace is written in Org-mode: headlines for major events, property drawers for structured data, tags for categorization. The human can open the trace in Emacs and navigate it like any other Org file. They can search for a specific decision, filter by time range, find all actions blocked by a specific rule, or see the complete trajectory of a multi-step task.
+
+The trace becomes the foundation for the Bouncer's learning. Every blocked action is in the trace. Every approved exception is in the trace. The human-in-the-loop decisions are in the trace. The system does not need to reconstruct what happened - it reads what happened from the trace it wrote.
+
+Without observability, the system is a black box that happens to produce correct outputs sometimes. With observability, the system is auditable. The human can see why a decision was made, identify where the reasoning failed, and course-correct the system or its own behavior accordingly.
+
+* The MCP Strategy
 :PROPERTIES:
 :ID:       design-mcp-strategy
 :END:
 
-* Placeholder: Local-First Architecture
+The Model Context Protocol (MCP) is a standard for connecting AI systems to external tools and data sources. It defines how a client requests tools from a server, how the server exposes its capabilities, and how the client invokes them. The ecosystem is growing: MCP servers exist for GitHub, Slack, Postgres, filesystem access, and much more.
+
+OpenCortex connects to this ecosystem, but not by becoming a Node.js runtime. The architecture is: external MCP servers communicate via stdio or SSE to a Lisp-native MCP client that runs in the same image as the agent. The client is pure Common Lisp - it parses the JSON-RPC messages, invokes the tools, and presents results to the agent as Lisp data structures. There is no serialization overhead between the agent and the MCP layer, no process boundary, no impedance mismatch.
+
+When the agent calls a tool via MCP, it receives a plist with the tool name, arguments, and result. The result is immediately usable by the agent's symbolic engine. When the agent generates a file, it can be written to the filesystem through an MCP filesystem server. When the agent needs to send a message, it can use an MCP Slack server. The agent does not need to know that these are MCP interactions - it sees only the plists that flow through its cognitive architecture.
+
+The alternative is to build MCP wrappers in Python or TypeScript and bridge to Lisp via subprocess. This is what OpenClaw does: a Node.js runtime that manages MCP servers, with a bridge to the Lisp process. The bridge introduces latency, serialization costs, and a maintenance burden. The Node.js process must be kept running. The bridge must be maintained across Lisp and JavaScript runtimes. The cognitive architecture must handle errors that cross the process boundary.
+
+OpenCortex's native client is smaller, faster, and more maintainable. The MCP client is a skill, not a core component. It can be reloaded, replaced, or removed without restarting the agent. The agent can add new MCP tool integrations by loading new skills, not by deploying new infrastructure.
+
+* Local-First Architecture
 :PROPERTIES:
 :ID:       design-local-first
 :END:
 
-* Placeholder: Zero-Dependency Deployment
+OpenCortex is designed to run on the user's machine, on their hardware, with their data, without requiring an internet connection. This is not a deployment option - it is an architectural commitment. The system must be able to reason, plan, and act using only the resources available locally.
+
+The motivation is not merely philosophical. Cloud-based AI agents are economically incentivized to collect data, to train on user interactions, and to build lock-in through proprietary formats and network effects. When the agent runs locally, the user owns the hardware, owns the data, and can terminate the process without asking permission. There is no vendor that can change terms, no service that can go offline, no model that can be updated without consent.
+
+Technically, local-first means several things. The LLM must be able to run on local hardware. OpenCortex supports Ollama as a provider, which runs quantized models on CPU and GPU without requiring an external API. The vector database must be local. OpenCortex uses its own org-object store, which is a folder of Org files that the agent already owns. There is no ChromaDB or Qdrant to install, no cloud vector service to authenticate with.
+
+The symbolic engine does not require a network connection. The Prolog/Datalog reasoner that in v3.0.0 verifies neural proposals runs entirely in the Lisp image. The Bouncer's rule synthesis does not call an external service. The agent can operate in a disconnected environment indefinitely, resuming full capability when connectivity is restored.
+
+This does not mean OpenCortex refuses to use cloud services when available and appropriate. It means cloud services are optional enhancements, not architectural requirements. The core is local. The user can choose to add cloud LLM providers for more capable inference, but the system functions without them.
+
+* Zero-Dependency Deployment
 :PROPERTIES:
 :ID:       design-zero-dependency
 :END:
+
+The simplest deployment is one that requires no installation steps. The user downloads one file, runs it, and the system works. OpenCortex approximates this through SBCL's ability to produce standalone executables via save-lisp-and-die. The executable contains the Lisp runtime, the compiled system, and Quicklisp libraries - everything bundled into one binary.
+
+The practical reality is more nuanced. Building a truly standalone executable requires resolving all library dependencies at build time and embedding them in the binary. SBCL supports this, but the resulting binary is large (tens of megabytes), and updating any component requires a full rebuild. The current deployment model uses a Docker container that maps the user's memex directory as a volume. The container starts, loads the system, and is ready. No compilation on the user's machine, no dependency installation, no platform-specific quirks.
+
+The long-term goal is a single =opencortex= binary that the user runs. It starts a local web server on a Unix domain socket. The TUI connects through the socket. The user's Org files are in =~/memex/=. The binary is the only thing that needs to be installed.
+
+This stands in stark contrast to most AI agent systems, which require managing Python environments, npm packages, API keys, environment variables, and configuration files. OpenAI's agents SDK requires pip install, a Python environment, and external API access. OpenClaw requires Node.js, npm, and a plugin ecosystem that must be individually installed. LangChain requires a Python environment with dozens of dependencies that must be kept compatible.
+
+OpenCortex's dependency model is SBCL plus Quicklisp. Quicklisp loads libraries on demand from the internet, but caches them locally. A system with internet access can fetch any library it needs. A system without internet access uses only the libraries it has already loaded - and those are preserved in the cache. The agent does not require internet access to function after initial setup.

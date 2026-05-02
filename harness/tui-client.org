@@ -24,8 +24,7 @@ The OpenCortex TUI Client is a standalone Common Lisp application built on **Cro
 (defvar *socket* nil)
 (defvar *stream* nil)
 (defvar *chat-history* nil)
-(defvar *scroll-index* 0)
-(defvar *input-buffer* (make-array 0 :element-type 'character :fill-pointer 0 :adjustable t))
+(defvar *input-list* nil) ; List of characters (stored in reverse)
 (defvar *is-running* t)
 (defvar *queue-lock* (bt:make-lock))
 (defvar *incoming-msgs* nil)
@@ -33,13 +32,19 @@ The OpenCortex TUI Client is a standalone Common Lisp application built on **Cro
 
 ** Utilities
 #+begin_src lisp
+(defun log-debug (msg &rest args)
+  (ignore-errors
+    (with-open-file (s "/tmp/opencortex-tui-debug.log" :direction :output :if-exists :append :if-does-not-exist :create)
+      (format s "[~a] " (get-universal-time))
+      (apply #'format s msg args)
+      (terpri s)
+      (finish-output s))))
+
 (defun enqueue-msg (msg)
-  "Thread-safe addition to incoming message queue."
   (bt:with-lock-held (*queue-lock*)
     (setf *incoming-msgs* (append *incoming-msgs* (list msg)))))
 
 (defun dequeue-msgs ()
-  "Thread-safe retrieval of incoming messages."
   (bt:with-lock-held (*queue-lock*)
     (let ((msgs *incoming-msgs*))
       (setf *incoming-msgs* nil)
@@ -53,40 +58,43 @@ The OpenCortex TUI Client is a standalone Common Lisp application built on **Cro
     (clear win)
     (box win 0 0)
     (let* ((view-height (- h 2))
-           (history (reverse *chat-history*))
+           (history (copy-list *chat-history*))
            (len (length history))
-           (num-to-draw (min len view-height)))
+           (num-to-draw (min len view-height))
+           (slice (subseq history 0 num-to-draw)))
       (loop for i from 0 below num-to-draw
-            for msg in history
-            do (when (and msg (< (1+ i) (1- h)))
-                 (add-string win (format nil "~a" msg) :y (1+ i) :x 2))))
+            for msg in (reverse slice)
+            do (when msg
+                 (add-string win (format nil "│ ~a" msg) :y (1+ i) :x 2))))
     (refresh win)))
 #+end_src
 
 ** Input Handling
 #+begin_src lisp
 (defun handle-backspace ()
-  (when (> (fill-pointer *input-buffer*) 0)
-    (decf (fill-pointer *input-buffer*))))
+  (pop *input-list*))
 
 (defun handle-return (stream)
-  (let ((cmd (coerce *input-buffer* 'string)))
-    (setf (fill-pointer *input-buffer*) 0)
+  (let ((cmd (coerce (reverse *input-list*) 'string)))
+    (setf *input-list* nil)
+    (log-debug "SUBMITTING: '~a'" cmd)
     (when (> (length cmd) 0)
-      (enqueue-msg (format nil "⬆ ~a" cmd))
+      (push (format nil "⬆ ~a" cmd) *chat-history*)
       (handler-case
           (progn
-            (when (and stream (open-stream-p stream))
-              (let* ((msg (list :TYPE :EVENT 
-                               :META (list :SOURCE :tui)
-                               :PAYLOAD (list :SENSOR :user-input :TEXT cmd)))
-                     (payload (format nil "~s" msg))
-                     (len (length payload)))
-                (format stream "~6,'0x~a" len payload)
-                (finish-output stream)))
-            (enqueue-msg "✓ Sent"))
+            (if (and stream (open-stream-p stream))
+                (let* ((msg (list :TYPE :EVENT 
+                                 :META (list :SOURCE :tui)
+                                 :PAYLOAD (list :SENSOR :user-input :TEXT cmd)))
+                       (payload (format nil "~s" msg))
+                       (len (length payload)))
+                  (format stream "~6,'0x~a" len payload)
+                  (finish-output stream)
+                  (log-debug "SENT WIRE: ~a" payload))
+                (push "ERROR: Not connected." *chat-history*)))
         (error (c)
-          (enqueue-msg (format nil "ERROR: Connection lost (~a)" c))
+          (log-debug "SEND ERROR: ~a" c)
+          (push (format nil "ERROR: ~a" c) *chat-history*)
           (setf *is-running* nil))))
     (when (string= cmd "/exit") (setf *is-running* nil))
     (when (string= cmd "/clear") (setf *chat-history* nil))))
@@ -101,21 +109,24 @@ The OpenCortex TUI Client is a standalone Common Lisp application built on **Cro
        (handler-case
            (let* ((len-buf (make-string 6))
                   (count (read-sequence len-buf stream)))
-             (when (= count 6)
-               (let* ((msg-len (parse-integer len-buf :radix 16))
-                      (msg-buf (make-string msg-len)))
-                 (read-sequence msg-buf stream)
-                 (let ((msg (read-from-string msg-buf)))
-                   (let ((payload (getf msg :payload)))
-                     (cond
-                       ((eq (getf payload :action) :handshake)
-                        (enqueue-msg "* Connected to daemon *"))
-                       (t
-                        (let ((text (or (getf payload :text) (format nil "~a" payload))))
-                          (enqueue-msg (format nil "⬇ ~a" text))))))))))
+             (if (= count 6)
+                 (let* ((msg-len (parse-integer len-buf :radix 16))
+                        (msg-buf (make-string msg-len)))
+                   (read-sequence msg-buf stream)
+                   (log-debug "DAEMON MSG: ~a" msg-buf)
+                   (let ((msg (read-from-string msg-buf)))
+                     (let ((payload (getf msg :payload)))
+                       (cond
+                         ((eq (getf payload :action) :handshake)
+                          (enqueue-msg "* Connected *"))
+                         (t
+                          (let ((text (or (getf payload :text) (format nil "~a" payload))))
+                            (enqueue-msg (format nil "⬇ ~a" text))))))))
+                 (sleep 0.05)))
          (error (c)
            (when *is-running*
-             (enqueue-msg (format nil "ERROR: Connection lost (~a)" c))
+             (log-debug "READER ERROR: ~a" c)
+             (enqueue-msg "ERROR: Connection lost.")
              (setf *is-running* nil))))))
    :name "opencortex-tui-reader"))
 #+end_src
@@ -123,46 +134,45 @@ The OpenCortex TUI Client is a standalone Common Lisp application built on **Cro
 ** Main Entry Point
 #+begin_src lisp
 (defun main ()
-  (setf (uiop:getenv "PROVIDER_CASCADE") "openrouter,openai")
-  
+  (log-debug "=== START ===")
   (handler-case
       (setf *socket* (usocket:socket-connect *daemon-host* *daemon-port*))
     (error (e) (format t "Offline: ~a~%" e) (return-from main)))
   (setf *stream* (usocket:socket-stream *socket*))
   
-  (unless (uiop:getenv "TERM")
-    (format t "TUI requires a terminal. Set TERM environment variable.~%")
-    (return-from main))
-  
   (unwind-protect
-      (handler-case
-          (with-screen (scr :input-echoing nil :input-blocking nil :enable-colors t)
-            (let* ((h (or (height scr) 24))
-                   (w (or (width scr) 80))
-                   (chat-h (- h 4))
-                   (input-y (- h 2)))
-              (let ((chat-win (make-instance 'window :height chat-h :width (- w 2) :y 1 :x 1))
-                    (input-win (make-instance 'window :height 1 :width (- w 2) :y input-y :x 1)))
-                (setf (input-blocking input-win) nil)
-                (start-background-reader *stream*)
-                (loop :while *is-running* :do
-                  (let ((msgs (dequeue-msgs)))
-                    (when msgs 
-                      (dolist (m msgs) (push m *chat-history*))
-                      (render-chat chat-win chat-h)))
-                  (let* ((ev (get-event input-win))
-                         (ch (when (and ev (typep ev 'event)) (event-key ev))))
-                    (when ch
-                      (cond
-                        ((or (eq ch #\Newline) (eq ch #\Return)) (handle-return *stream*))
-                        ((or (eq ch :backspace) (eq ch (code-char 127))) (handle-backspace))
-                        ((characterp ch) (vector-push-extend ch *input-buffer*))))
-                    (clear input-win)
-                    (add-string input-win (format nil "▶ ~a" (coerce *input-buffer* 'string)) :y 0 :x 1)
-                    (refresh input-win))
-                  (sleep 0.01)))))
-        (error (c)
-          (format t "TUI Error: ~a~%" c)))
+      (with-screen (scr :input-echoing nil :input-blocking nil :enable-colors t)
+        (let* ((h (or (height scr) 24))
+               (w (or (width scr) 80))
+               (chat-h (- h 4))
+               (chat-win (make-instance 'window :height chat-h :width (- w 2) :y 1 :x 1))
+               (input-win (make-instance 'window :height 1 :width (- w 2) :y (- h 2) :x 1)))
+          (setf (input-blocking input-win) nil)
+          (start-background-reader *stream*)
+          (loop :while *is-running* :do
+            (let ((msgs (dequeue-msgs)))
+              (when msgs 
+                (dolist (m msgs) (push m *chat-history*))
+                (render-chat chat-win chat-h)))
+            (let ((ch (get-char input-win)))
+              (when (and ch (not (equal ch -1)))
+                (log-debug "KEY: ~s" ch)
+                (cond
+                  ((or (eql ch 10) (eql ch 13) (eq ch :enter) (eql ch #\Newline) (eql ch #\Return))
+                   (handle-return *stream*)
+                   (render-chat chat-win chat-h))
+                  ((or (eql ch 127) (eql ch 8) (eq ch :backspace) (eql ch #\Backspace))
+                   (handle-backspace))
+                  ((characterp ch)
+                   (push ch *input-list*))
+                  ((integerp ch)
+                   (let ((converted (code-char ch)))
+                     (when (graphic-char-p converted)
+                       (push converted *input-list*))))))
+              (clear input-win)
+              (add-string input-win (format nil "▶ ~a" (coerce (reverse *input-list*) 'string)) :y 0 :x 1)
+              (refresh input-win))
+            (sleep 0.01))))
     (setf *is-running* nil)
     (when *socket* (ignore-errors (usocket:socket-close *socket*)))))
 #+end_src
