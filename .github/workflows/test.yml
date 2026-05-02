@@ -22,11 +22,18 @@ jobs:
 
       - name: Install Quicklisp
         run: |
-          curl -L https://beta.quicklisp.org/quicklisp.lisp -o /tmp/quicklisp.lisp
-          sbcl --non-interactive \
+          cd /tmp && curl -fsSLO https://beta.quicklisp.org/quicklisp.lisp
+          sbcl --noinform --non-interactive \
             --load /tmp/quicklisp.lisp \
-            --eval '(quicklisp-quickstart:install :path "~/quicklisp/")' \
-            --eval '(ql:add-to-init-file)'
+            --eval '(quicklisp-quickstart:install)' \
+            --eval '(ql:add-to-init-file)' 2>&1 || {
+              echo "=== Quicklisp install failed, trying alternative ==="
+              sbcl --noinform --non-interactive \
+                --load /tmp/quicklisp.lisp \
+                --eval "(quicklisp-quickstart:install :path \"$HOME/quicklisp/\")" \
+                --eval '(ql:add-to-init-file)' 2>&1
+            }
+          rm -f /tmp/quicklisp.lisp
 
       - name: Load and verify harness
         run: |
