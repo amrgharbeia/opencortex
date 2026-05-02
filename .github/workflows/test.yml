@@ -68,8 +68,6 @@ jobs:
             --eval "(setf (uiop:getenv \"OC_DATA_DIR\") \"$OC_DATA_DIR\")" \
             --eval '(opencortex:initialize-all-skills)' \
             --eval "(let ((n (hash-table-count opencortex:*skills-registry*))) (format t \"~%Skills loaded: ~a~%\" n) (unless (>= n 20) (sb-ext:exit :code 1)))"
-        env:
-          HOME: /root
 
       - name: Daemon smoke test
         run: |
