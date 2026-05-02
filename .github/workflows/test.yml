@@ -16,7 +16,7 @@ jobs:
       - name: Install system dependencies
         run: |
           sudo apt-get update && sudo apt-get install -y --no-install-recommends \
-            sbcl git curl socat
+            sbcl emacs-nox git curl socat rlwrap
 
       - name: Install Quicklisp
         run: |
@@ -74,7 +74,6 @@ jobs:
       - name: Daemon smoke test
         run: |
           export OC_DATA_DIR="$PWD/.github-test"
-          # Start daemon in background
           sbcl --non-interactive \
             --eval '(load (merge-pathnames "quicklisp/setup.lisp" (user-homedir-pathname)))' \
             --eval "(push (truename \"$PWD/\") asdf:*central-registry*)" \
@@ -85,21 +84,17 @@ jobs:
             > /tmp/oc-daemon.log 2>&1 &
           DAEMON_PID=$!
 
-          # Wait for port
-          for i in $(seq 1 15); do
-            if ss -tln | grep -q 9105; then
+          for i in $(seq 1 20); do
+            if ss -tln 2>/dev/null | grep -q 9105; then
               echo "✓ Daemon ready on port 9105"
+              # Read the initial handshake via a short TCP connection
+              timeout 3 bash -c 'exec 3<>/dev/tcp/localhost/9105; head -c 200 <&3' 2>/dev/null | grep -q "handshake" && \
+                echo "✓ Protocol handshake received"
               break
             fi
             sleep 1
           done
 
-          # Test handshake
-          if echo '' | socat - TCP:localhost:9105 2>/dev/null | grep -q "HANDSHAKE\|VERSION"; then
-            echo "✓ Protocol handshake received"
-          else
-            echo "⚠ No handshake (may not be critical)"
-          fi
-
           kill $DAEMON_PID 2>/dev/null || true
+          wait $DAEMON_PID 2>/dev/null || true
           echo "✓ Daemon smoke test passed"
