@@ -5,16 +5,26 @@
 #+PROPERTY: header-args:lisp :tangle package.lisp
 
 * Overview
-The ~package.lisp~ file defines the public API of the ~opencortex~ harness.
+~package.lisp~ defines two things: the public API of the ~opencortex~ package (the export list, above), and the implementation of low-level utility functions and global state that don't belong in a specific pipeline stage or skill.
+
+The export list is the contract between the harness and all skills. Every function exported here is accessible to every skill via ~use-package~. Adding a symbol here is an API commitment; removing one is a breaking change.
+
+The implementation section includes:
+- ~proto-get~ — robust plist accessor used everywhere
+- Logging state (~*system-logs*~, ~*logs-lock*~)
+- Skill registry (~*skills-registry*~, ~defskill~)
+- Cognitive tool registry (~*cognitive-tools*~, ~def-cognitive-tool~)
+- Configuration variables (~*privacy-filter-tags*~, ~*secret-protected-paths*~, ~*secret-exposure-patterns*~)
+- Debugger hook
 
 * Implementation
 
-** Public API Export
+** Package Definition and Export List
+The package definition. All public symbols are exported here.
 #+begin_src lisp :tangle package.lisp
 (defpackage :opencortex
   (:use :cl)
   (:export
-   ;; --- communication protocol ---
    #:frame-message
    #:read-framed-message
    #:PROTO-GET
@@ -25,30 +35,20 @@ The ~package.lisp~ file defines the public API of the ~opencortex~ harness.
    #:parse-message
    #:make-hello-message
    #:validate-communication-protocol-schema
-
-   ;; --- Daemon Lifecycle ---
    #:start-daemon
    #:stop-daemon
    #:harness-log
    #:main
-
-   ;; --- Diagnostic Doctor ---
    #:doctor-run-all
    #:doctor-main
    #:doctor-check-dependencies
    #:doctor-check-env
-
-   ;; --- Setup Wizard ---
    #:register-provider
    #:system-ready-p
    #:run-setup-wizard
-
-   ;; --- Gateway Manager Skill ---
    #:skill-gateway-register
    #:skill-gateway-link
    #:gateway-manager-main
-
-   ;; --- Memory (CLOSOS) ---
    #:ingest-ast
    #:lookup-object
    #:list-objects-by-type
@@ -69,8 +69,6 @@ The ~package.lisp~ file defines the public API of the ~opencortex~ harness.
    #:org-object-hash
    #:snapshot-memory
    #:rollback-memory
-
-   ;; --- Context API (Peripheral Vision) ---
    #:context-query-store
    #:context-get-active-projects
    #:context-get-recent-completed-tasks
@@ -81,22 +79,17 @@ The ~package.lisp~ file defines the public API of the ~opencortex~ harness.
    #:context-get-skill-telemetry
    #:harness-track-telemetry
    #:context-assemble-global-awareness
-
-   ;; --- Reactive Signal Pipeline ---
    #:process-signal
    #:perceive-gate
    #:probabilistic-gate
    #:consensus-gate
    #:act-gate
    #:reason-gate
-   #:perceive-gate
    #:dispatch-gate
    #:inject-stimulus
    #:initialize-actuators
    #:dispatch-action
    #:register-actuator
-
-   ;; --- Skill Engine ---
    #:load-skill-from-org
    #:initialize-all-skills
    #:load-skill-with-timeout
@@ -111,22 +104,14 @@ The ~package.lisp~ file defines the public API of the ~opencortex~ harness.
    #:skill-trigger-fn
    #:skill-probabilistic-prompt
    #:skill-deterministic-fn
-
-   ;; --- Tool Registry ---
    #:def-cognitive-tool
    #:*cognitive-tools*
-
-   ;; --- Engineering Standards Skill ---
    #:verify-git-clean-p
    #:engineering-standards-verify-lisp
    #:engineering-standards-format-lisp
-
-   ;; --- Literate Programming Skill ---
    #:literate-check-block-balance
    #:check-tangle-sync
    #:*tangle-targets*
-
-   ;; --- Utils Org Skill ---
    #:utils-org-read-file
    #:utils-org-write-file
    #:utils-org-add-headline
@@ -138,8 +123,6 @@ The ~package.lisp~ file defines the public API of the ~opencortex~ harness.
    #:utils-org-id-format
    #:utils-org-ast-to-org
    #:utils-org-modify
-
-   ;; --- Utils Lisp Skill ---
    #:utils-lisp-validate
    #:utils-lisp-check-structural
    #:utils-lisp-check-syntactic
@@ -152,13 +135,9 @@ The ~package.lisp~ file defines the public API of the ~opencortex~ harness.
    #:utils-lisp-structural-inject
    #:utils-lisp-structural-slurp
    #:utils-lisp-register
-
-   ;; --- Config Manager & Diagnostics Skill ---
    #:get-oc-config-dir
    #:prompt-for
    #:save-secret
-
-   ;; --- Tool Permissions Skill ---
    #:get-tool-permission
    #:set-tool-permission
    #:check-tool-permission-gate
@@ -168,54 +147,61 @@ The ~package.lisp~ file defines the public API of the ~opencortex~ harness.
    #:cognitive-tool-parameters
    #:cognitive-tool-guard
    #:cognitive-tool-body
-
-   ;; --- Emacs Client Registry ---
    #:*emacs-clients*
    #:*clients-lock*
    #:register-emacs-client
    #:unregister-emacs-client
-
-   ;; --- Probabilistic Engine ---
    #:ask-probabilistic
    #:register-probabilistic-backend
    #:distill-prompt
+   #:*probabilistic-backends*
    #:*provider-cascade*
-
-   ;; --- Security Vault ---
    #:vault-get-secret
    #:vault-set-secret
-
-   ;; --- Deterministic Logic ---
    #:list-objects-with-attribute
    #:deterministic-verify
-
-   ;; --- AST Helpers ---
    #:find-headline-missing-id))
 #+end_src
 
 ** Package Implementation
+The package implementation section defines the low-level utilities and global state that are shared across all harness components and skills.
+
+*** Robust plist access (proto-get)
+Retrieves a value from a plist, checking both upper and lowercase keyword variants. This is needed because different components use different keyword conventions.
 #+begin_src lisp :tangle package.lisp
 (in-package :opencortex)
 
 (defun proto-get (plist key)
-  "Robustly retrieves a value from a plist, checking both uppercase and lowercase keyword versions."
+  "Robust plist accessor — checks both :KEY and :key variants."
   (let* ((s (string key))
          (up (intern (string-upcase s) :keyword))
          (dn (intern (string-downcase s) :keyword)))
     (or (getf plist up) (getf plist dn))))
+#+end_src
 
+*** Logging state
+The harness maintains a bounded ring buffer of log messages for inclusion in LLM context. Access is thread-safe via a lock.
+#+begin_src lisp :tangle package.lisp
 (defvar *system-logs* nil)
 (defvar *logs-lock* (bordeaux-threads:make-lock "harness-logs-lock"))
 (defvar *max-log-history* 100)
+#+end_src
 
+*** Skill registry
+The global registry of all loaded skills. This is the authoritative list that the deterministic engine iterates.
+#+begin_src lisp :tangle package.lisp
 (defvar *skills-registry* (make-hash-table :test 'equal)
   "Global registry of all loaded skills.")
+#+end_src
 
+*** Skill telemetry
+Tracks execution metrics per skill (count, duration, failures) for diagnostics and performance analysis.
+#+begin_src lisp :tangle package.lisp
 (defvar *skill-telemetry* (make-hash-table :test 'equal))
 (defvar *telemetry-lock* (bordeaux-threads:make-lock "harness-telemetry-lock"))
 
 (defun harness-track-telemetry (skill-name duration status)
-  "Updates performance metrics for a specific skill. Status should be :success or :rejected."
+  "Updates performance metrics for a skill. STATUS is :success or :rejected."
   (when skill-name
     (bordeaux-threads:with-lock-held (*telemetry-lock*)
       (let ((entry (or (gethash skill-name *skill-telemetry*) (list :executions 0 :total-time 0 :failures 0))))
@@ -223,27 +209,37 @@ The ~package.lisp~ file defines the public API of the ~opencortex~ harness.
         (incf (getf entry :total-time) duration)
         (when (eq status :rejected) (incf (getf entry :failures)))
         (setf (gethash skill-name *skill-telemetry*) entry)))))
+#+end_src
 
+*** Cognitive tool registry
+Tools that the LLM can invoke are registered here. Each tool has a name, description, parameters, optional guard, and implementation body. The ~def-cognitive-tool~ macro handles registration. ~generate-tool-belt-prompt~ serialises the registry into the LLM's system prompt.
+#+begin_src lisp :tangle package.lisp
 (defvar *cognitive-tools* (make-hash-table :test 'equal))
+#+end_src
 
+#+begin_src lisp :tangle package.lisp
 (defstruct cognitive-tool
   name
   description
   parameters
   guard
   body)
+#+end_src
 
+#+begin_src lisp :tangle package.lisp
 (defmacro def-cognitive-tool (name description parameters &key guard body)
-  "Registers a new cognitive tool into the global registry. Parameters must be a list of property lists."
+  "Registers a cognitive tool. PARAMETERS is a list of plists, one per parameter."
   `(setf (gethash (string-downcase (string ',name)) *cognitive-tools*)
          (make-cognitive-tool :name (string-downcase (string ',name))
                               :description ,description
                               :parameters ',parameters
                               :guard ,guard
-                               :body ,body)))
+                              :body ,body)))
+#+end_src
 
+#+begin_src lisp :tangle package.lisp
 (defun generate-tool-belt-prompt ()
-  "Generates a prompt string describing all available cognitive tools."
+  "Serialises all registered tools into a prompt string for the LLM."
   (let ((descriptions nil))
     (maphash (lambda (k tool)
                (declare (ignore k))
@@ -252,13 +248,17 @@ The ~package.lisp~ file defines the public API of the ~opencortex~ harness.
                              (cognitive-tool-description tool)
                              (cognitive-tool-parameters tool))
                      descriptions))
-             *cognitive-tools*)
+              *cognitive-tools*)
     (if descriptions
         (format nil "Available tools:~%~a" (apply #'concatenate 'string (sort descriptions #'string<)))
         "No tools registered.")))
+#+end_src
 
+*** Centralized logging (harness-log)
+Thread-safe logging function that writes to both the ring buffer (for LLM context) and stdout (for the user). Bounded by ~*max-log-history*~.
+#+begin_src lisp :tangle package.lisp
 (defun harness-log (msg &rest args)
-  "Centralized logging for the harness."
+  "Centralized, thread-safe logging for the harness."
   (let ((formatted-msg (apply #'format nil msg args)))
     (bordeaux-threads:with-lock-held (*logs-lock*)
       (push formatted-msg *system-logs*)
@@ -266,8 +266,10 @@ The ~package.lisp~ file defines the public API of the ~opencortex~ harness.
         (setq *system-logs* (subseq *system-logs* 0 *max-log-history*))))
     (format t "~a~%" formatted-msg)
     (finish-output)))
+#+end_src
 
-;; --- Debugger Hook ---
+*** Debugger hook
+Friendly error handler that replaces the raw SBCL debugger with a diagnostic message. This prevents the agent from entering the debugger on unhandled conditions.
 #+begin_src lisp :tangle package.lisp
 (setf *debugger-hook* (lambda (condition hook)
   "Friendly error handler - shows diagnostic message instead of raw debugger."

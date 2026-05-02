@@ -6,3 +6,7 @@ opencortex-server
 \#*#
 opencortex-tui
 test_input.txt
+
+# Generated artifacts (source of truth is .org)
+/skills/*.lisp
+/tests/*.lisp

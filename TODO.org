@@ -1,5 +1,6 @@
 # OpenCortex Project Tasks
 # All OpenCortex-related TODOs live here. gtd.org links to this file.
+# Evolutionary context: see docs/ROADMAP.org
 
 * PHASE: AUTONOMOUS MVP (v0.1.0 Released)
 :PROPERTIES:
@@ -128,11 +129,13 @@ Roadmap basis: Evolutionary roadmap from README.org. Working backwards from SOTA
 
 ** DONE 5. Advanced CLI Onboarding Experience
 *** DONE Implement interactive Lisp CLI wizard (=opencortex setup=)
-*** TODO Implement =opencortex link <gateway>= for Telegram/Signal bot connection
+*** DONE Implement =opencortex gateway link= for Telegram/Signal bot connection [2026-05-02 Sat]
+*** DONE Implement =opencortex gateway unlink= to disable a gateway [2026-05-02 Sat]
+*** DONE Implement =opencortex gateway list= to show gateway status [2026-05-02 Sat]
+*** DONE Implement =opencortex install <skill>= for dynamic skill downloading [2026-05-02 Sat]
 *** DONE Implement =opencortex doctor= for environment health and API key validation [2026-04-28 Tue]
     - Verified 22/22 skills loading with clean boot.
     - Fixed macro conflicts and package jailing bugs.
-*** TODO Implement =opencortex install <skill>= for dynamic skill downloading
 
 ** DONE Chaos-Driven Bug Fixes (v0.2.0 Pre-Release) [2026-04-28 Tue]
    - Fixed major conflict between Type A and Type B def-cognitive-tool macros.

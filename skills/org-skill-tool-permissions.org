@@ -1,23 +1,32 @@
 #+TITLE: SKILL: Tool Permissions (org-skill-tool-permissions.org)
 #+AUTHOR: Agent
 #+FILETAGS: :skill:security:permissions:
-#+PROPERTY: header-args:lisp :tangle %%SKILLS_DIR%%/org-skill-tool-permissions.lisp
+#+PROPERTY: header-args:lisp :tangle org-skill-tool-permissions.lisp
 
 * Overview
 The *Tool Permissions* skill manages the authorization levels for different cognitive tools.
 
 * Implementation
 
-** Permission Registry
+** Permission store (tool level)
+Hash table mapping tool names to their permission level.
 #+begin_src lisp
 (defvar *tool-permissions* (make-hash-table :test 'equal))
+#+end_src
 
+** Set permission
+Sets the permission level for a specific cognitive tool.
+#+begin_src lisp
 (defun set-tool-permission (tool-name level)
   "Sets the permission level for a tool."
   (setf (gethash (string-downcase (string tool-name)) *tool-permissions*) level))
+#+end_src
 
+** Get permission
+Retrieves the current permission level for a tool. Defaults to ~:ask~ if unset.
+#+begin_src lisp
 (defun get-tool-permission (tool-name)
-  "Retrieves the permission level for a tool."
+  "Retrieves the permission level for a tool. Defaults to :ask."
   (gethash (string-downcase (string tool-name)) *tool-permissions* :ask))
 #+end_src
 

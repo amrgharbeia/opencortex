@@ -1,7 +1,7 @@
 #+TITLE: SKILL: Unified LLM Backend (org-skill-unified-llm-backend.org)
 #+AUTHOR: Agent
 #+FILETAGS: :skill:llm:backend:openai-compatible:
-#+PROPERTY: header-args:lisp :tangle %%SKILLS_DIR%%/org-skill-unified-llm-backend.lisp
+#+PROPERTY: header-args:lisp :tangle org-skill-unified-llm-backend.lisp
 
 * Overview
 The *Unified LLM Backend* provides a single OpenAI-compatible API client that works with:
@@ -13,7 +13,8 @@ No separate skills per provider — just different base URLs and API keys.
 
 * Implementation
 
-** Provider Registry
+** Provider registry (~*unified-llm-providers*~)
+The authoritative list of supported LLM providers and their configuration: base URL, env var for API key, and default model name.
 #+begin_src lisp
 (defparameter *unified-llm-providers*
   '((:ollama     . (:base-url nil          :key-env nil           :default-model "llama3"))
@@ -22,17 +23,25 @@ No separate skills per provider — just different base URLs and API keys.
     (:anthropic  . (:base-url "https://api.anthropic.com/v1" :key-env "ANTHROPIC_API_KEY"  :default-model "claude-3-5-sonnet-20241022"))
     (:groq       . (:base-url "https://api.groq.com/openai/v1" :key-env "GROQ_API_KEY"     :default-model "llama-3.1-70b-versatile"))
     (:gemini     . (:base-url "https://generativelanguage.googleapis.com/v1beta/openai" :key-env "GEMINI_API_KEY" :default-model "gemini-2.0-flash"))))
+#+end_src
 
+** Provider config lookup (get-provider-config)
+Returns the config plist for a given provider keyword.
+#+begin_src lisp
 (defun get-provider-config (provider)
   "Returns the configuration plist for a provider keyword."
   (cdr (assoc provider *unified-llm-providers*)))
+#+end_src
 
+** Availability check (provider-available-p)
+Returns T if a provider is configured — meaning it either has an API key set, or it is Ollama (always available locally).
+#+begin_src lisp
 (defun provider-available-p (provider)
-  "Checks if a provider is configured (has API key or is local Ollama)."
+  "Checks if a provider is configured. Ollama is always considered available."
   (let* ((config (get-provider-config provider))
          (key-env (getf config :key-env))
          (base-url (getf config :base-url)))
-    (cond ((eq provider :ollama) t)  ; Ollama is always tried; failure is handled at call time
+    (cond ((eq provider :ollama) t)
           (key-env (let ((key (uiop:getenv key-env))) (and key (> (length key) 0))))
           (base-url t))))
 #+end_src

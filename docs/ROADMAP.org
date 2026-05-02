@@ -5,6 +5,8 @@
 
 The roadmap is designed working backwards from SOTA parity (V 1.0.0), guiding each version toward a fully autonomous, self-editing agent. Each version builds on the previous, with features designed to be implemented in pure Common Lisp + Org-mode.
 
+Per-version task tracking: [[file:../TODO.org][TODO.org]]
+
 ** Non-Negotiable Identity
 - Pure Common Lisp + Org-mode. No JSON. No YAML. No external databases.
 - Single-address-space memory (Lisp hash tables in RAM — the agent IS the memory).

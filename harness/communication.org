@@ -135,6 +135,37 @@ The ~communication.lisp~ module defines the low-level transport and framing logi
     t))
 #+end_src
 
+** Protocol Smoke Test (manual for REPL evaluation)
+The following script connects to a running daemon, sends "hi", and reads the response. Useful for verifying the daemon is alive and the framing protocol works end-to-end.
+
+#+begin_src lisp :tangle no
+(defun test-daemon-protocol ()
+  (handler-case
+      (let* ((socket (usocket:socket-connect "127.0.0.1" 9105))
+             (stream (usocket:socket-stream socket)))
+        (format t "Connected.~%")
+        (let* ((len-buf (make-string 6))
+               (count (read-sequence len-buf stream)))
+          (when (= count 6)
+            (let* ((len (parse-integer len-buf :radix 16))
+                   (msg-buf (make-string len)))
+              (read-sequence msg-buf stream)
+              (format t "HELLO: ~a~%" msg-buf))))
+        (let* ((msg '(:TYPE :EVENT :META (:SOURCE :tui) :PAYLOAD (:SENSOR :user-input :TEXT "hi")))
+               (framed (frame-message msg)))
+          (format stream "~a" framed)
+          (finish-output stream)
+          (let* ((len-buf (make-string 6))
+                 (count (read-sequence len-buf stream)))
+            (when (= count 6)
+              (let* ((len (parse-integer len-buf :radix 16))
+                     (msg-buf (make-string len)))
+                (read-sequence msg-buf stream)
+                (format t "Response: ~a~%" msg-buf)))))
+        (usocket:socket-close socket))
+    (error (c) (format t "Error: ~a~%" c))))
+#+end_src
+
 * Test Suite
 #+begin_src lisp :tangle ../tests/communication-tests.lisp
 (eval-when (:compile-toplevel :load-toplevel :execute)

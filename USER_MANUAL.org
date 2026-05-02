@@ -27,10 +27,11 @@ The interactive configuration wizard. Use this to:
 - Register LLM providers (Ollama, Groq, Anthropic, etc.).
 - The wizard automatically splits sensitive tokens into `~/.config/opencortex/.env`.
 
-** `opencortex link <platform> <token>`
+** `opencortex gateway link <platform> <token>`
 Connects OpenCortex to external communication gateways.
-- **Example:** `opencortex link telegram <my_bot_token>`
-- Performs real-time API verification before saving.
+- **Example:** `opencortex gateway link telegram <my_bot_token>`
+- **Example:** `opencortex gateway unlink telegram` to disable
+- **Example:** `opencortex gateway list` to see status
 
 ** `opencortex doctor`
 Your primary diagnostic tool. Run this if the system feels sluggish or fails to boot. It verifies:

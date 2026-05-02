@@ -14,10 +14,12 @@
 (defun VAULT-MASK-STRING (s) (declare (ignore s)) "[MASKED]")
 (defvar *VAULT-MEMORY* (make-hash-table :test 'equal))
 
-(defstruct skill name priority dependencies trigger-fn probabilistic-prompt deterministic-fn)
+(defstruct skill name priority dependencies trigger-fn probabilistic-prompt deterministic-fn system-prompt-augment)
+
 (defvar *skills-registry* (make-hash-table :test 'equal))
+
 (defvar *skill-catalog* (make-hash-table :test 'equal)
-  "A stateful tracking table for all skill files discovered in the environment.")
+  "Tracks all discovered skill files and their loading state.")
 
 (defstruct skill-entry filename (status :discovered) error-log (load-time 0))
 
@@ -29,21 +31,22 @@
                (when (and (skill-probabilistic-prompt skill)
                           (ignore-errors (funcall (skill-trigger-fn skill) context)))
                  (push skill triggered))) 
-             *skills-registry*)
+              *skills-registry*)
     (first (sort triggered #'> :key #'skill-priority))))
 
-(defmacro defskill (name &key priority dependencies trigger probabilistic deterministic)
-  "Registers a new skill into the global registry."
+(defmacro defskill (name &key priority dependencies trigger probabilistic deterministic system-prompt-augment)
+  "Registers a new skill. NAME is a keyword. TRIGGER is a function (context) → bool."
   `(setf (gethash (string-downcase (string ,name)) *skills-registry*)
          (make-skill :name (string-downcase (string ,name)) 
                     :priority (or ,priority 10) 
                     :dependencies ',dependencies
                     :trigger-fn ,trigger 
                     :probabilistic-prompt ,probabilistic 
-                    :deterministic-fn ,deterministic)))
+                    :deterministic-fn ,deterministic
+                    :system-prompt-augment ,system-prompt-augment)))
 
 (defun resolve-skill-dependencies (skill-name)
-  "Recursively resolves dependencies for a given skill name."
+  "Resolves transitive dependencies. Returns list of skill names in dependency order."
   (let ((resolved nil) (seen nil))
     (labels ((visit (name) 
                (unless (member name seen :test #'equal) 
@@ -88,7 +91,9 @@
         (if (uiop:string-suffix-p (namestring file) ".lisp")
             (progn
               (setf (gethash (string-downcase filename) name-to-file) file)
-              (setf (gethash (string-downcase filename) adj) nil))
+              ;; Don't overwrite dependency info from .org files
+              (unless (gethash (string-downcase filename) adj)
+                (setf (gethash (string-downcase filename) adj) nil)))
             (multiple-value-bind (id deps) (parse-skill-metadata file)
               (setf (gethash (string-downcase filename) name-to-file) file)
               (when id (setf (gethash (string-downcase id) id-to-file) file))
@@ -258,9 +263,9 @@
         (setf (skill-entry-status entry) :failed) nil))))
 
 (defun initialize-all-skills ()
-  "Initializes all skills from SKILLS_DIR."
-  (let* ((env-path (uiop:getenv "SKILLS_DIR"))
-         (skills-dir (uiop:ensure-directory-pathname (or env-path (namestring (merge-pathnames "notes/" (user-homedir-pathname)))))))
+  "Initializes all skills from the XDG skills directory."
+  (let* ((data-dir (uiop:ensure-directory-pathname (or (uiop:getenv "OC_DATA_DIR") (namestring (merge-pathnames ".local/share/opencortex/" (user-homedir-pathname))))))
+         (skills-dir (merge-pathnames "skills/" data-dir)))
     (unless (uiop:directory-exists-p skills-dir) (return-from initialize-all-skills nil))
     (let ((sorted-files (topological-sort-skills skills-dir)))
       (harness-log "LOADER: Initializing ~a skills..." (length sorted-files))

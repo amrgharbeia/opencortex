@@ -1,32 +1,36 @@
 #+TITLE: SKILL: Config Manager (org-skill-config-manager.org)
 #+AUTHOR: Agent
 #+FILETAGS: :skill:setup:config:
-#+PROPERTY: header-args:lisp :tangle %%SKILLS_DIR%%/org-skill-config-manager.lisp
+#+PROPERTY: header-args:lisp :tangle org-skill-config-manager.lisp
 
 * Overview
 The *Config Manager* skill provides the OpenCortex Agent with the capability to manage its own environment variables and provider configurations. It includes an interactive setup wizard for LLM providers, gateways, and system settings.
 
 * Implementation
 
-** Configuration Paths
+** Configuration directory (get-oc-config-dir)
+Resolves the XDG config directory for OpenCortex.
 #+begin_src lisp
 (defun get-oc-config-dir ()
   "Returns the absolute path to the opencortex config directory."
   (let ((xdg (uiop:getenv "OC_CONFIG_DIR")))
-    (if (and xdg (string/= xdg ""))
-        (uiop:ensure-directory-pathname xdg)
-        (uiop:ensure-directory-pathname (merge-pathnames ".config/opencortex/" (user-homedir-pathname))))))
+    (if xdg xdg (namestring (merge-pathnames ".config/opencortex/" (user-homedir-pathname))))))
+#+end_src
 
+** Config file path (get-config-file)
+Returns the path to the ~.env~ file within the config directory.
+#+begin_src lisp
 (defun get-config-file ()
-  "Returns the path to the .env config file."
+  "Returns the path to the .env configuration file."
   (merge-pathnames ".env" (get-oc-config-dir)))
+#+end_src
 
+** Ensure config directory (ensure-config-dir)
+Creates the config directory tree if it does not exist.
+#+begin_src lisp
 (defun ensure-config-dir ()
-  "Ensures the config directory exists."
-  (let ((dir (get-oc-config-dir)))
-    (unless (uiop:directory-exists-p dir)
-      (uiop:ensure-directory-pathname dir))
-    dir))
+  "Creates the configuration directory if it does not exist."
+  (ensure-directories-exist (get-oc-config-dir)))
 #+end_src
 
 ** Config File Operations
@@ -189,7 +193,7 @@ The *Config Manager* skill provides the OpenCortex Agent with the capability to 
   (format t "==================================================~%~%")
   
   (format t "Note: Skill management is not yet implemented.~%")
-  (format t "Skills are automatically loaded from ~a~%" (or (uiop:getenv "SKILLS_DIR") "default location"))
+  (format t "Skills are automatically loaded from ~a~%" (or (uiop:getenv "OC_DATA_DIR") "~/.local/share/opencortex"))
   (format t "~%"))
 #+end_src
 

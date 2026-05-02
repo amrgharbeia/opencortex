@@ -1,0 +1,15 @@
+[Unit]
+Description=OpenCortex Daemon
+Documentation=https://github.com/amrgharbeia/opencortex
+After=network.target
+
+[Service]
+Type=simple
+User=%u
+ExecStart=%h/projects/opencortex/opencortex.sh daemon
+Restart=on-failure
+RestartSec=10
+WorkingDirectory=%h/projects/opencortex
+
+[Install]
+WantedBy=default.target

@@ -7,8 +7,7 @@ RED='\033[0;31m'; GREEN='\033[0;32m'; BLUE='\033[0;34m'; YELLOW='\033[0;33m'; NC
 
 command_exists() { command -v "$1" >/dev/null 2>&1; }
 
-# 1. XDG PATH RESOLUTION
-# SCRIPT_DIR is the immutable source (where the git repo lives)
+# --- XDG PATH RESOLUTION ---
 SOURCE="${BASH_SOURCE[0]}"
 while [ -h "$SOURCE" ]; do
     DIR="$( cd -P "$( dirname "$SOURCE" )" && pwd )"
@@ -17,369 +16,454 @@ while [ -h "$SOURCE" ]; do
 done
 export SCRIPT_DIR="$( cd -P "$( dirname "$SOURCE" )" && pwd )"
 
-# XDG Defaults (realpath ensures no unexpanded ~ in paths)
 export OC_CONFIG_DIR="$(realpath -m "${XDG_CONFIG_HOME:-$HOME/.config}/opencortex")"
 export OC_DATA_DIR="$(realpath -m "${XDG_DATA_HOME:-$HOME/.local/share}/opencortex")"
 export OC_STATE_DIR="$(realpath -m "${XDG_STATE_HOME:-$HOME/.local/state}/opencortex")"
 export OC_BIN_DIR="$(realpath -m "${XDG_BIN_HOME:-$HOME/.local/bin}")"
-
-# Dynamic defaults for Skill Engine and Project Root
-export SKILLS_DIR="${SKILLS_DIR:-$OC_DATA_DIR/skills}"
 export MEMEX_DIR="${MEMEX_DIR:-$HOME/memex}"
 
-# Load environment variables from the standard config location
 if [ -f "$OC_CONFIG_DIR/.env" ]; then
-    set -a
-    source "$OC_CONFIG_DIR/.env"
-    set +a
+    set -a; source "$OC_CONFIG_DIR/.env"; set +a
 fi
 
-# --- Dependency Checker ---
+# --- DISTRO DETECTION ---
+detect_distro() {
+    if [ -f /etc/os-release ]; then
+        . /etc/os-release
+        case "$ID" in
+            debian|ubuntu|linuxmint|pop|elementary|zorin) echo "debian" ;;
+            fedora|rhel|centos|rocky|almalinux) echo "fedora" ;;
+            *) echo "unknown" ;;
+        esac
+    elif command_exists apt-get; then echo "debian"
+    elif command_exists dnf; then echo "fedora"
+    else echo "unknown"; fi
+}
+
+distro_install() {
+    local distro=$(detect_distro); shift
+    case "$distro" in
+        debian) sudo apt-get update && sudo apt-get install -y "$@" ;;
+        fedora) sudo dnf install -y "$@" ;;
+        *) echo "Unsupported distro. Install manually: sbcl emacs git curl socat"; return 1 ;;
+    esac
+}
+
+# --- DEPENDENCY CHECK ---
 check_dependencies() {
     local missing=()
-    for dep in sbcl emacs git curl socat nc; do
-        if ! command_exists "$dep"; then
-            missing+=("$dep")
-        fi
+    for dep in sbcl git curl socat nc; do
+        if ! command_exists "$dep"; then missing+=("$dep"); fi
     done
-    
+    if ! command_exists emacs; then missing+=("emacs-nox"); fi
     if [ ${#missing[@]} -gt 0 ]; then
-        echo -e "${YELLOW}--- Missing dependencies: ${missing[*]} ---${NC}"
-        if command_exists apt-get; then
-            echo "Attempting to install missing dependencies..."
-            if sudo apt-get update && sudo apt-get install -y sbcl emacs-nox rlwrap netcat-openbsd curl git socat libssl-dev libncurses-dev libffi-dev zlib1g-dev libsqlite3-dev 2>/dev/null; then
-                echo -e "${GREEN}✓ Dependencies installed successfully${NC}"
-            else
-                echo -e "${RED}✗ Could not install dependencies. Please run with sudo or install manually:${NC}"
-                echo "  sudo apt-get install sbcl emacs-nox rlwrap netcat-openbsd curl git socat"
-            fi
-        else
-            echo -e "${RED}✗ Cannot auto-install: apt-get not available${NC}"
-            echo "Please install manually: sbcl emacs git curl socat netcat-openbsd"
-        fi
+        echo -e "${YELLOW}--- Installing missing dependencies: ${missing[*]} ---${NC}"
+        local distro=$(detect_distro)
+        case "$distro" in
+            debian)
+                distro_install "${missing[@]}" libssl-dev libncurses-dev libffi-dev zlib1g-dev libsqlite3-dev 2>/dev/null || true
+                if ! command_exists rlwrap; then distro_install rlwrap 2>/dev/null || true; fi
+                if ! command_exists nc; then distro_install netcat-openbsd 2>/dev/null || true; fi
+                ;;
+            fedora)
+                distro_install "${missing[@]}" openssl-devel ncurses-devel libffi-devel zlib-devel sqlite-devel 2>/dev/null || true
+                if ! command_exists rlwrap; then distro_install rlwrap 2>/dev/null || true; fi
+                if ! command_exists nc; then distro_install nmap-ncat 2>/dev/null || true; fi
+                ;;
+        esac
     fi
 }
 
-# --- 2. SETUP ---
+# --- SETUP ---
 setup_system() {
-    NON_INTERACTIVE=false
+    NON_INTERACTIVE=false; WITH_FIREWALL=false
     for arg in "$@"; do
-        if [ "$arg" == "--non-interactive" ]; then NON_INTERACTIVE=true; fi
+        case "$arg" in
+            --non-interactive) NON_INTERACTIVE=true ;;
+            --with-firewall) WITH_FIREWALL=true ;;
+        esac
     done
 
-    echo -e "${BLUE}=== OpenCortex: Initializing XDG-Compliant System ===${NC}"
-    
-    # Create standard directories
+    echo -e "${BLUE}=== OpenCortex: Configure ===${NC}"
     mkdir -p "$OC_CONFIG_DIR" "$OC_DATA_DIR" "$OC_STATE_DIR" "$OC_BIN_DIR"
     mkdir -p "$OC_DATA_DIR/harness" "$OC_DATA_DIR/tests" "$OC_DATA_DIR/skills"
 
-    echo -e "${YELLOW}--- Installing System Dependencies ---${NC}"
-    if command_exists apt-get; then
-        sudo apt-get update && sudo apt-get install -y sbcl emacs-nox rlwrap netcat-openbsd curl git socat libssl-dev libncurses-dev libffi-dev zlib1g-dev libsqlite3-dev
-    fi
+    check_dependencies
+
     if [ ! -d "$HOME/quicklisp" ]; then
+        echo -e "${YELLOW}--- Installing Quicklisp ---${NC}"
         curl -O https://beta.quicklisp.org/quicklisp.lisp
-        sbcl --non-interactive --load quicklisp.lisp --eval "(quicklisp-quickstart:install)" --eval "(ql-util:without-prompting (ql:add-to-init-file))"
+        sbcl --non-interactive --load quicklisp.lisp \
+             --eval "(quicklisp-quickstart:install)" \
+             --eval "(ql-util:without-prompting (ql:add-to-init-file))"
         rm quicklisp.lisp
     fi
 
-    # Tangle the literate source from the repo into XDG directories
     echo -e "${YELLOW}--- Deploying Engine to $OC_DATA_DIR ---${NC}"
     cp "$SCRIPT_DIR/opencortex.asd" "$OC_DATA_DIR/"
     mkdir -p "$OC_DATA_DIR/harness" "$OC_DATA_DIR/tests" "$OC_DATA_DIR/skills"
-
     export INSTALL_DIR="$OC_DATA_DIR"
 
-    # --- Harness files ---
-    # Copy org files to harness/ so :tangle relative paths resolve to XDG
     cp "$SCRIPT_DIR/harness"/*.org "$OC_DATA_DIR/harness/"
-
-    # Critical: Tangle manifest first (into root)
-    echo "Tangling harness/manifest.org..."
     (cd "$OC_DATA_DIR/harness" && emacs -Q --batch \
-         --eval "(require 'org)" \
-         --eval "(setq org-confirm-babel-evaluate nil)" \
-         --eval "(org-babel-tangle-file \"manifest.org\")") >/dev/null 2>&1 || true
-
-    # Tangle harness files into harness/
+        --eval "(require 'org)" \
+        --eval "(setq org-confirm-babel-evaluate nil)" \
+        --eval "(org-babel-tangle-file \"manifest.org\")") >/dev/null 2>&1 || true
     for f in "$OC_DATA_DIR/harness"/*.org; do
         fname=$(basename "$f" .org)
-        if [ "$fname" != "manifest" ]; then
-            echo "Tangling harness/$fname.org..."
-            (cd "$OC_DATA_DIR/harness" && emacs -Q --batch \
-                 --eval "(require 'org)" \
-                 --eval "(setq org-confirm-babel-evaluate nil)" \
-                 --eval "(org-babel-tangle-file \"${fname}.org\")") >/dev/null 2>&1 || true
-        fi
+        [ "$fname" = "manifest" ] && continue
+        echo "Tangling harness/$fname.org..."
+        (cd "$OC_DATA_DIR/harness" && emacs -Q --batch \
+            --eval "(require 'org)" \
+            --eval "(setq org-confirm-babel-evaluate nil)" \
+            --eval "(org-babel-tangle-file \"${fname}.org\")") >/dev/null 2>&1 || true
     done
-
-    # Move test files that landed in harness/ to tests/
     find "$OC_DATA_DIR/harness" -name "*-tests.lisp" -exec mv {} "$OC_DATA_DIR/tests/" \; 2>/dev/null || true
-
-    # Remove org files from harness/ (only .lisp should remain)
     rm -f "$OC_DATA_DIR/harness"/*.org
 
-    # --- Skill files ---
     for f in "$SCRIPT_DIR/skills"/*.org; do
         fname=$(basename "$f" .org)
         echo "Tangling skills/$fname.org..."
-        sed "s|%%SKILLS_DIR%%|$OC_DATA_DIR/skills|g" "$f" > "/tmp/$fname.org"
+        cp "$f" "$OC_DATA_DIR/skills/"
         (cd "$OC_DATA_DIR/skills" && emacs -Q --batch \
-             --eval "(require 'org)" \
-             --eval "(setq org-confirm-babel-evaluate nil)" \
-             --eval "(org-babel-tangle-file \"/tmp/$fname.org\")") >/dev/null 2>&1 || true
+            --eval "(require 'org)" \
+            --eval "(setq org-confirm-babel-evaluate nil)" \
+            --eval "(org-babel-tangle-file \"${fname}.org\")") >/dev/null 2>&1 || true
+        rm -f "$OC_DATA_DIR/skills/$fname.org"
     done
-
-    # Move test files that landed in skills/ to tests/
     find "$OC_DATA_DIR/skills" -name "*-tests.lisp" -exec mv {} "$OC_DATA_DIR/tests/" \; 2>/dev/null || true
-    rm -f /tmp/*.org
-    
-    # Also move run-all-tests.lisp if it landed in the wrong place
     [ -f "$OC_DATA_DIR/run-all-tests.lisp" ] && mv "$OC_DATA_DIR/run-all-tests.lisp" "$OC_DATA_DIR/harness/"
+    rm -f "$OC_DATA_DIR/harness"/*.org "$OC_DATA_DIR/skills"/*.org
 
-    # Cleanup: Remove .org files from XDG (we only want .lisp)
-    echo "Cleaning up .org files from XDG..."
-    rm -f "$OC_DATA_DIR/harness"/*.org "$OC_DATA_DIR/skills"/*.org /tmp/*.org
-
-    cd "$SCRIPT_DIR"    # Create the bin shim
-    echo -e "${YELLOW}--- Creating Bin Shim in $OC_BIN_DIR/opencortex ---${NC}"
     ln -sf "$SCRIPT_DIR/opencortex.sh" "$OC_BIN_DIR/opencortex"
 
+    if [ "$WITH_FIREWALL" = true ]; then
+        case $(detect_distro) in
+            debian) sudo ufw allow 9105/tcp 2>/dev/null && echo "✓ UFW: port 9105 opened" || true ;;
+            fedora) sudo firewall-cmd --add-port=9105/tcp --permanent 2>/dev/null && sudo firewall-cmd --reload 2>/dev/null && echo "✓ firewalld: port 9105 opened" || true ;;
+        esac
+    fi
+
     if [ "$NON_INTERACTIVE" = true ]; then
-        echo "Setup complete (Non-interactive)."
+        echo "Configure complete."
         exit 0
     fi
 
-    echo -e "${YELLOW}--- Launching Lisp Setup Wizard ---${NC}"
-    # Use OC_DATA_DIR for the Lisp registry
+    echo -e "${YELLOW}--- Launching Setup Wizard ---${NC}"
     exec sbcl --non-interactive \
-         --eval '(load (merge-pathnames "quicklisp/setup.lisp" (user-homedir-pathname)))' \
-         --eval "(push (truename \"$OC_DATA_DIR/\") asdf:*central-registry*)" \
-         --eval "(setf (uiop:getenv \"SKILLS_DIR\") \"$OC_DATA_DIR/skills\")" \
-         --eval '(ql:quickload :opencortex)' \
-         --eval "(setf (uiop:getenv \"SKILLS_DIR\") \"$OC_DATA_DIR/skills\")" \
-         --eval '(opencortex:initialize-all-skills)' \
-         --eval '(funcall (find-symbol "RUN-SETUP-WIZARD" :opencortex))'
+        --eval '(load (merge-pathnames "quicklisp/setup.lisp" (user-homedir-pathname)))' \
+        --eval "(push (truename \"$OC_DATA_DIR/\") asdf:*central-registry*)" \
+        --eval '(ql:quickload :opencortex)' \
+        --eval '(opencortex:initialize-all-skills)' \
+        --eval '(funcall (find-symbol "RUN-SETUP-WIZARD" :opencortex))'
 }
 
-# --- Doctor Repair (Lightweight Fix) ---
+# --- DOCTOR REPAIR ---
 doctor_repair() {
     echo -e "${BLUE}=== OpenCortex: Repair Mode ===${NC}"
-    
-    # 1. Fix system dependencies
-    echo -e "${YELLOW}--- Fixing System Dependencies ---${NC}"
     check_dependencies
-    
-    # 2. Ensure XDG directories exist
-    echo -e "${YELLOW}--- Fixing XDG Directories ---${NC}"
     mkdir -p "$OC_CONFIG_DIR" "$OC_DATA_DIR" "$OC_STATE_DIR" "$OC_BIN_DIR"
     mkdir -p "$OC_DATA_DIR/harness" "$OC_DATA_DIR/tests" "$OC_DATA_DIR/skills"
-    
-    # 3. Re-tangle harness files that may be broken
-    echo -e "${YELLOW}--- Re-tangling Harness Files ---${NC}"
     for f in "$SCRIPT_DIR/harness"/*.org; do
-        if [ -f "$f" ]; then
-            fname=$(basename "$f" .org)
-            echo "  Checking harness/$fname..."
-            # Try to load each harness file - if it fails, re-tangle
-            if ! sbcl --non-interactive \
-                 --eval "(load \"$OC_DATA_DIR/harness/${fname}.lisp\")" \
-                 --eval "(format t \"OK~%\")" 2>/dev/null | grep -q "OK"; then
-                echo "    Re-tangling $fname.org..."
-                (cd "$OC_DATA_DIR/harness" && emacs -Q --batch \
-                    --eval "(require 'org)" \
-                    --eval "(setq org-confirm-babel-evaluate nil)" \
-                    --eval "(org-babel-tangle-file \"$f\")" >/dev/null 2>&1) || true
-            fi
+        [ -f "$f" ] || continue
+        fname=$(basename "$f" .org)
+        echo "  Checking harness/$fname..."
+        if ! sbcl --non-interactive \
+            --eval "(load \"$OC_DATA_DIR/harness/${fname}.lisp\")" \
+            --eval "(format t \"OK~%\")" 2>/dev/null | grep -q "OK"; then
+            echo "    Re-tangling $fname.org..."
+            (cd "$OC_DATA_DIR/harness" && emacs -Q --batch \
+                --eval "(require 'org)" \
+                --eval "(setq org-confirm-babel-evaluate nil)" \
+                --eval "(org-babel-tangle-file \"$f\")") >/dev/null 2>&1 || true
         fi
     done
-    
-    # 4. Re-tangle skill files that may be broken
-    echo -e "${YELLOW}--- Re-tangling Skill Files ---${NC}"
     for f in "$SCRIPT_DIR/skills"/*.org; do
-        if [ -f "$f" ]; then
-            fname=$(basename "$f" .org)
-            echo "  Checking skill/$fname..."
-            # Replace %%SKILLS_DIR%% placeholder with temp file
-            sed "s|%%SKILLS_DIR%%|$OC_DATA_DIR/skills|g" "$f" > "/tmp/$fname.org"
-            if ! sbcl --non-interactive \
-                 --eval "(load \"$OC_DATA_DIR/skills/${fname}.lisp\")" \
-                 --eval "(format t \"OK~%\")" 2>/dev/null | grep -q "OK"; then
-                echo "    Re-tangling $fname.org..."
-                (cd "$OC_DATA_DIR/skills" && emacs -Q --batch \
-                    --eval "(require 'org)" \
-                    --eval "(setq org-confirm-babel-evaluate nil)" \
-                    --eval "(org-babel-tangle-file \"/tmp/${fname}.org\")" >/dev/null 2>&1) || true
-            fi
-            rm -f "/tmp/$fname.org"
+        [ -f "$f" ] || continue
+        fname=$(basename "$f" .org)
+        echo "  Checking skill/$fname..."
+        if ! sbcl --non-interactive \
+            --eval "(load \"$OC_DATA_DIR/skills/${fname}.lisp\")" \
+            --eval "(format t \"OK~%\")" 2>/dev/null | grep -q "OK"; then
+            echo "    Re-tangling $fname.org..."
+            cp "$f" "$OC_DATA_DIR/skills/"
+            (cd "$OC_DATA_DIR/skills" && emacs -Q --batch \
+                --eval "(require 'org)" \
+                --eval "(setq org-confirm-babel-evaluate nil)" \
+                --eval "(org-babel-tangle-file \"${fname}.org\")") >/dev/null 2>&1 || true
+            rm -f "$OC_DATA_DIR/skills/$fname.org"
         fi
     done
-    
-    # 5. Cleanup .org files
     rm -f "$OC_DATA_DIR/harness"/*.org "$OC_DATA_DIR/skills"/*.org 2>/dev/null || true
-    
     echo -e "${GREEN}--- Repair Complete ---${NC}"
-    echo "Run 'opencortex doctor' to verify the system."
 }
 
-# --- 3. COMMAND ROUTER ---
-COMMAND=$1
-[ -z "$COMMAND" ] && COMMAND="cli"
+# --- INSTALL SKILL ---
+install_skill() {
+    local SKILL_NAME=$1
+    if [ -z "$SKILL_NAME" ]; then
+        echo "Usage: opencortex install skill <skill-name>"
+        echo "  Installs a skill from opencortex-contrib"
+        echo ""
+        echo "Available skills:"
+        if [ -d "$MEMEX_DIR/projects/opencortex-contrib/skills" ]; then
+            ls "$MEMEX_DIR/projects/opencortex-contrib/skills"/*.org 2>/dev/null | xargs -I{} basename {} .org | sed 's/org-skill-//' | sort | uniq
+        else
+            echo "  (clone opencortex-contrib to ~/memex/projects/ first)"
+        fi
+        exit 1
+    fi
+    local SKILL_FILE="org-skill-${SKILL_NAME}.org"
+    local SOURCE_DIR="$MEMEX_DIR/projects/opencortex-contrib/skills"
+    local TARGET_DIR="$OC_DATA_DIR/skills"
+    if [ ! -d "$SOURCE_DIR" ]; then
+        echo "Error: Contrib skills not found at $SOURCE_DIR"
+        echo "Run: git clone https://github.com/amrgharbeia/opencortex-contrib.git \$MEMEX_DIR/projects/opencortex-contrib"
+        exit 1
+    fi
+    if [ ! -f "$SOURCE_DIR/$SKILL_FILE" ]; then
+        echo "Error: Skill '$SKILL_NAME' not found"
+        exit 1
+    fi
+    mkdir -p "$TARGET_DIR"
+    cp "$SOURCE_DIR/$SKILL_FILE" "$TARGET_DIR/"
+    (cd "$TARGET_DIR" && emacs -Q --batch \
+        --eval "(require 'org)" \
+        --eval "(setq org-confirm-babel-evaluate nil)" \
+        --eval "(org-babel-tangle-file \"$SKILL_FILE\")") >/dev/null 2>&1 || true
+    rm -f "$TARGET_DIR/$SKILL_FILE"
+    if [ -f "$TARGET_DIR/${SKILL_NAME}-tests.lisp" ]; then
+        mv "$TARGET_DIR/${SKILL_NAME}-tests.lisp" "$OC_DATA_DIR/tests/" 2>/dev/null || true
+    fi
+    echo "Skill '$SKILL_NAME' installed. Restart to activate."
+}
+
+# --- INSTALL SERVICE ---
+install_service() {
+    mkdir -p "$HOME/.config/systemd/user"
+    cat > "$HOME/.config/systemd/user/opencortex.service" << 'SERVICEEOF'
+[Unit]
+Description=OpenCortex Daemon
+After=network.target
+
+[Service]
+Type=simple
+ExecStart=%h/projects/opencortex/opencortex.sh daemon
+Restart=on-failure
+RestartSec=10
+WorkingDirectory=%h/projects/opencortex
+
+[Install]
+WantedBy=default.target
+SERVICEEOF
+    systemctl --user daemon-reload
+    systemctl --user enable opencortex.service
+    systemctl --user start opencortex.service
+    echo -e "${GREEN}✓ opencortex.service installed and started${NC}"
+    echo "  Status: systemctl --user status opencortex.service"
+    echo "  Logs:   journalctl --user -u opencortex.service -f"
+}
+
+uninstall_service() {
+    systemctl --user stop opencortex.service 2>/dev/null || true
+    systemctl --user disable opencortex.service 2>/dev/null || true
+    rm -f "$HOME/.config/systemd/user/opencortex.service"
+    systemctl --user daemon-reload
+    echo -e "${GREEN}✓ opencortex.service removed${NC}"
+}
+
+# --- BACKUP ---
+backup() {
+    local dest="${1:-$HOME/opencortex-backup-$(date +%Y%m%d-%H%M%S).tar.gz}"
+    if [ -f "$dest" ]; then echo "Error: $dest exists"; exit 1; fi
+    echo "Backing up to $dest..."
+    tar -czf "$dest" \
+        "$OC_CONFIG_DIR" "$OC_DATA_DIR" \
+        "$MEMEX_DIR/gtd.org" "$MEMEX_DIR/projects/opencortex" \
+        2>/dev/null || true
+    echo -e "${GREEN}✓ Backed up to $dest${NC}"
+}
+
+restore() {
+    local src="$1"
+    if [ -z "$src" ] || [ ! -f "$src" ]; then
+        echo "Usage: opencortex restore <backup-file>"
+        exit 1
+    fi
+    echo "Restoring from $src..."
+    tar -xzf "$src" -C /
+    echo -e "${GREEN}✓ Restored. Run 'opencortex doctor' to verify.${NC}"
+}
+
+# --- HELP ---
+help() {
+    echo ""
+    echo "OpenCortex — Your Autonomous, Plain-Text Life Assistant"
+    echo ""
+    echo "Usage: opencortex.sh <command> [options]"
+    echo ""
+    echo "System:"
+    echo "  configure [--non-interactive] [--with-firewall]    Install or reconfigure the system"
+    echo "  setup                                               Alias for configure"
+    echo "  doctor [--fix] [--watch]                            System health check"
+    echo ""
+    echo "Running:"
+    echo "  daemon                                              Start background daemon"
+    echo "  tui                                                 Launch terminal UI"
+    echo "  gateway {link|unlink|list} <platform> <token>       Manage chat gateways"
+    echo ""
+    echo "Skills:"
+    echo "  install skill <name>                                Install a skill from contrib"
+    echo "  install service                                     Install systemd service (auto-start)"
+    echo "  uninstall service                                   Remove systemd service"
+    echo ""
+    echo "Data:"
+    echo "  backup [path]                                       Backup config, data, memex"
+    echo "  restore <path>                                      Restore from a backup"
+    echo ""
+    echo "Quick start:"
+    echo "  curl -fsSL https://raw.githubusercontent.com/amrgharbeia/opencortex/main/opencortex.sh | bash -s configure"
+    echo ""
+}
+
+# --- COMMAND ROUTER ---
+COMMAND=$1; [ -z "$COMMAND" ] && COMMAND="help"
 shift || true
 
 case "$COMMAND" in
-    link)
-        PLATFORM=$1
-        TOKEN=$2
+    configure|setup)
         check_dependencies
-        exec sbcl --non-interactive              --eval '(load (merge-pathnames "quicklisp/setup.lisp" (user-homedir-pathname)))'              --eval "(push (truename \"$OC_DATA_DIR/\") asdf:*central-registry*)"              --eval "(setf (uiop:getenv \"SKILLS_DIR\") \"$OC_DATA_DIR/skills\")"              --eval '(ql:quickload :opencortex)'              --eval '(opencortex:initialize-all-skills)'              --eval "(funcall (find-symbol \"GATEWAY-MANAGER-MAIN\" :opencortex) \"$PLATFORM\" \"$TOKEN\")"
+        if [ "$1" = "--add-provider" ]; then
+            sbcl --non-interactive \
+                --eval '(load (merge-pathnames "quicklisp/setup.lisp" (user-homedir-pathname)))' \
+                --eval "(push (truename \"$OC_DATA_DIR/\") asdf:*central-registry*)" \
+                --eval '(ql:quickload :opencortex)' \
+                --eval '(opencortex:initialize-all-skills)' \
+                --eval '(funcall (find-symbol "SETUP-ADD-PROVIDER" :opencortex))'
+        elif [ "$1" = "--link" ]; then
+            exec "$0" gateway link "$2" "$3"
+        else
+            setup_system "$@"
+        fi
         ;;
-
     doctor)
         check_dependencies
         if [ "$1" = "--watch" ]; then
-            echo "Starting background health monitor (60s interval)..."
-            echo "Press Ctrl+C to stop."
-            echo ""
             while true; do
                 echo "--- $(date '+%Y-%m-%d %H:%M:%S') ---"
                 sbcl --non-interactive \
-                     --eval '(load (merge-pathnames "quicklisp/setup.lisp" (user-homedir-pathname)))' \
-                     --eval "(push (truename \"$OC_DATA_DIR/\") asdf:*central-registry*)" \
-                     --eval '(ql:quickload :opencortex)' \
-                     --eval '(opencortex:initialize-all-skills)' \
-                     --eval '(funcall (find-symbol "DOCTOR-RUN-ALL" :opencortex))' \
-                     --eval '(uiop:quit 0)' 2>&1 | grep -E "(HEALTH|OK|FAIL|WARN|SYSTEM|===)" || true
+                    --eval '(load (merge-pathnames "quicklisp/setup.lisp" (user-homedir-pathname)))' \
+                    --eval "(push (truename \"$OC_DATA_DIR/\") asdf:*central-registry*)" \
+                    --eval '(ql:quickload :opencortex)' \
+                    --eval '(opencortex:initialize-all-skills)' \
+                    --eval '(funcall (find-symbol "DOCTOR-RUN-ALL" :opencortex))' 2>&1 | grep -E "(HEALTH|OK|FAIL|WARN|SYSTEM|===)" || true
                 sleep 60
             done
         elif [ "$1" = "--fix" ]; then
-            # Check if major harness files exist - if not, run full setup
             if [ ! -f "$OC_DATA_DIR/harness/package.lisp" ] || [ ! -f "$OC_DATA_DIR/harness/skills.lisp" ]; then
-                echo "Core files missing. Running full setup..."
                 setup_system "$@"
             else
-                echo "Repairing system..."
                 doctor_repair
             fi
         else
             exec sbcl --non-interactive \
-                 --eval '(load (merge-pathnames "quicklisp/setup.lisp" (user-homedir-pathname)))' \
-                 --eval "(push (truename \"$OC_DATA_DIR/\") asdf:*central-registry*)" \
-                 --eval '(ql:quickload :opencortex)' \
-                 --eval '(opencortex:initialize-all-skills)' \
-                 --eval '(funcall (find-symbol "DOCTOR-MAIN" :opencortex))'
+                --eval '(load (merge-pathnames "quicklisp/setup.lisp" (user-homedir-pathname)))' \
+                --eval "(push (truename \"$OC_DATA_DIR/\") asdf:*central-registry*)" \
+                --eval '(ql:quickload :opencortex)' \
+                --eval '(opencortex:initialize-all-skills)' \
+                --eval '(funcall (find-symbol "DOCTOR-MAIN" :opencortex))'
         fi
         ;;
-
-    setup)
-        check_dependencies
-        if [ "$1" = "--add-provider" ]; then
-            echo "Adding LLM provider..."
-            sbcl --non-interactive \
-                 --eval '(load (merge-pathnames "quicklisp/setup.lisp" (user-homedir-pathname)))' \
-                 --eval "(push (truename \"$OC_DATA_DIR/\") asdf:*central-registry*)" \
-                 --eval '(ql:quickload :opencortex)' \
-                 --eval '(opencortex:initialize-all-skills)' \
-                 --eval '(funcall (find-symbol "SETUP-ADD-PROVIDER" :opencortex))'
-        elif [ "$1" = "--link" ]; then
-            PLATFORM=$2
-            TOKEN=$3
-            if [ -z "$PLATFORM" ] || [ -z "$TOKEN" ]; then
-                echo "Usage: opencortex setup --link <platform> <token>"
-                echo "  platforms: slack, discord"
-                exit 1
-            fi
-            echo "Linking $PLATFORM gateway..."
-            $0 link "$PLATFORM" "$TOKEN"
-        elif [ "$1" = "--non-interactive" ]; then
-            setup_system "$@"
-        else
-            # Run interactive setup wizard
-            echo "Starting interactive setup wizard..."
-            sbcl --non-interactive \
-                 --eval '(load (merge-pathnames "quicklisp/setup.lisp" (user-homedir-pathname)))' \
-                 --eval "(push (truename \"$OC_DATA_DIR/\") asdf:*central-registry*)" \
-                 --eval "(setf (uiop:getenv \"SKILLS_DIR\") \"$OC_DATA_DIR/skills\")" \
-                 --eval '(ql:quickload :opencortex)' \
-                 --eval '(opencortex:initialize-all-skills)' \
-                 --eval '(funcall (find-symbol "RUN-SETUP-WIZARD" :opencortex))'
-        fi
-        ;;
-
-    boot|--boot)
-        check_dependencies
-        exec sbcl --non-interactive \
-             --eval '(load (merge-pathnames "quicklisp/setup.lisp" (user-homedir-pathname)))' \
-             --eval "(push (truename \"$OC_DATA_DIR/\") asdf:*central-registry*)" \
-             --eval "(ql:quickload '(:opencortex :croatoan))" \
-             --eval '(opencortex:main)'
-        ;;
-
     daemon)
         check_dependencies
-        echo "Starting OpenCortex daemon in background..."
+        echo "Starting daemon in background..."
         nohup sbcl --non-interactive \
-             --eval '(load (merge-pathnames "quicklisp/setup.lisp" (user-homedir-pathname)))' \
-             --eval "(push (truename \"$OC_DATA_DIR/\") asdf:*central-registry*)" \
-             --eval "(ql:quickload '(:opencortex :croatoan))" \
-             --eval '(opencortex:main)' \
-             > "$OC_STATE_DIR/daemon.log" 2>&1 &
-        echo "Daemon started. Waiting for port 9105..."
-        for i in {1..20}; do
-            if ss -tln | grep -q 9105; then
-                echo "✓ Daemon ready on port 9105"
-                exit 0
+            --eval '(load (merge-pathnames "quicklisp/setup.lisp" (user-homedir-pathname)))' \
+            --eval "(push (truename \"$OC_DATA_DIR/\") asdf:*central-registry*)" \
+            --eval "(ql:quickload '(:opencortex :croatoan))" \
+            --eval '(opencortex:main)' \
+            > "$OC_STATE_DIR/daemon.log" 2>&1 &
+        echo "Waiting for port 9105..."
+        for i in $(seq 1 20); do
+            if ss -tln 2>/dev/null | grep -q 9105 || netstat -tln 2>/dev/null | grep -q 9105; then
+                echo "✓ Daemon ready on port 9105"; exit 0
             fi
             sleep 1
         done
-        echo "✗ Daemon failed to start. Check $OC_STATE_DIR/daemon.log"
-        exit 1
+        echo "✗ Daemon failed to start. Check $OC_STATE_DIR/daemon.log"; exit 1
         ;;
-
     tui)
         check_dependencies
-        if ! ss -tln | grep -q 9105; then
-            echo "Daemon not running. Starting daemon first..."
+        if ! ss -tln 2>/dev/null | grep -q 9105 && ! netstat -tln 2>/dev/null | grep -q 9105; then
+            echo "Starting daemon first..."
             $0 daemon
         fi
-        if sbcl \
-             --eval '(load (merge-pathnames "quicklisp/setup.lisp" (user-homedir-pathname)))' \
-             --eval "(push (truename \"$OC_DATA_DIR/\") asdf:*central-registry*)" \
-             --eval '(ql:quickload :opencortex/tui)' \
-             --eval '(opencortex.tui:main)'; then
-            true
-        else
-            EXIT_CODE=$?
-            echo ""
-            echo "TUI exited with error. Running diagnostics..."
-            $0 doctor
-            echo ""
-            echo "Run 'opencortex doctor --fix' to repair, or 'opencortex setup' to reconfigure."
-            exit $EXIT_CODE
-        fi
+        sbcl \
+            --eval '(load (merge-pathnames "quicklisp/setup.lisp" (user-homedir-pathname)))' \
+            --eval "(push (truename \"$OC_DATA_DIR/\") asdf:*central-registry*)" \
+            --eval '(ql:quickload :opencortex/tui)' \
+            --eval '(opencortex.tui:main)' || {
+            echo "TUI error. Run 'opencortex doctor --fix'"; exit 1
+        }
         ;;
-
-    cli|boot)
+    gateway)
+        SUBCMD=$1; PLATFORM=$2; TOKEN=$3
         check_dependencies
-        if sbcl \
-             --eval '(load (merge-pathnames "quicklisp/setup.lisp" (user-homedir-pathname)))' \
-             --eval "(push (truename \"$OC_DATA_DIR/\") asdf:*central-registry*)" \
-             --eval "(ql:quickload '(:opencortex :croatoan))" \
-             --eval '(opencortex:main)'; then
-            true
-        else
-            EXIT_CODE=$?
-            echo ""
-            echo "CLI exited with error. Running diagnostics..."
-            $0 doctor
-            echo ""
-            echo "Run 'opencortex doctor --fix' to repair, or 'opencortex setup' to reconfigure."
-            exit $EXIT_CODE
-        fi
+        case "$SUBCMD" in
+            list)
+                exec sbcl --non-interactive \
+                    --eval '(load (merge-pathnames "quicklisp/setup.lisp" (user-homedir-pathname)))' \
+                    --eval "(push (truename \"$OC_DATA_DIR/\") asdf:*central-registry*)" \
+                    --eval '(ql:quickload :opencortex)' \
+                    --eval '(opencortex:initialize-all-skills)' \
+                    --eval '(funcall (find-symbol "GATEWAY-LIST-PRINT" (find-package "OPENCORTEX.SKILLS.ORG-SKILL-GATEWAY-MANAGER")))'
+                ;;
+            link)
+                [ -z "$PLATFORM" ] || [ -z "$TOKEN" ] && echo "Usage: opencortex gateway link <platform> <token>" && exit 1
+                exec sbcl --non-interactive \
+                    --eval '(load (merge-pathnames "quicklisp/setup.lisp" (user-homedir-pathname)))' \
+                    --eval "(push (truename \"$OC_DATA_DIR/\") asdf:*central-registry*)" \
+                    --eval '(ql:quickload :opencortex)' \
+                    --eval '(opencortex:initialize-all-skills)' \
+                    --eval "(funcall (find-symbol \"GATEWAY-LINK\" (find-package \"OPENCORTEX.SKILLS.ORG-SKILL-GATEWAY-MANAGER\")) \"$PLATFORM\" \"$TOKEN\")"
+                ;;
+            unlink)
+                [ -z "$PLATFORM" ] && echo "Usage: opencortex gateway unlink <platform>" && exit 1
+                exec sbcl --non-interactive \
+                    --eval '(load (merge-pathnames "quicklisp/setup.lisp" (user-homedir-pathname)))' \
+                    --eval "(push (truename \"$OC_DATA_DIR/\") asdf:*central-registry*)" \
+                    --eval '(ql:quickload :opencortex)' \
+                    --eval '(opencortex:initialize-all-skills)' \
+                    --eval "(funcall (find-symbol \"GATEWAY-UNLINK\" (find-package \"OPENCORTEX.SKILLS.ORG-SKILL-GATEWAY-MANAGER\")) \"$PLATFORM\")"
+                ;;
+            *) echo "Usage: opencortex gateway {list|link|unlink}"; exit 1 ;;
+        esac
         ;;
-
+    install)
+        case "$1" in
+            skill) shift; install_skill "$@" ;;
+            service) install_service ;;
+            *) echo "Usage: opencortex install {skill|service}" >&2; exit 1 ;;
+        esac
+        ;;
+    uninstall)
+        case "$1" in
+            service) uninstall_service ;;
+            *) echo "Usage: opencortex uninstall {service}" >&2; exit 1 ;;
+        esac
+        ;;
+    backup)
+        backup "$1"
+        ;;
+    restore)
+        restore "$1"
+        ;;
+    help|--help|-h)
+        help
+        ;;
     *)
-        echo "Available commands: setup, link, doctor, boot, tui, cli, daemon"
+        echo "Unknown command: $COMMAND"
+        help
         exit 1
         ;;
 esac

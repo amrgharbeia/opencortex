@@ -1,7 +1,7 @@
 #+TITLE: SKILL: REPL (org-skill-repl.org)
 #+AUTHOR: Agent
 #+FILETAGS: :system:repl:interactive:debug:
-#+PROPERTY: header-args:lisp :tangle %%SKILLS_DIR%%/org-skill-repl.lisp
+#+PROPERTY: header-args:lisp :tangle org-skill-repl.lisp
 
 * Overview
 The *REPL Skill* provides persistent Lisp evaluation, inspection, and debugging capabilities. This enables the agent to verify behavior at runtime rather than just at the text level.
@@ -184,10 +184,28 @@ REPL Skill Commands:
 * Phase E: Lifecycle
 The REPL skill loads at priority 200 (after diagnostics at 100, before utils-lisp at 400).
 
+** System Prompt Augment (repl-mandate)
+#+begin_src lisp
+(defun repl-mandate (context)
+  "Returns REPL-first engineering mandate when context involves code editing."
+  (let ((raw (or (proto-get (proto-get context :payload) :text) "")))
+    (when (or (search "org-skill-" raw :test #'char-equal)
+              (and (search ".org" raw :test #'char-equal)
+                   (or (search "defun" raw :test #'char-equal)
+                       (search "tangle" raw :test #'char-equal)
+                       (search "write-file" raw :test #'char-equal)
+                       (search "lisp" raw :test #'char-equal)))
+              (search "defun " raw :test #'char-equal)
+              (search "repl-eval" raw :test #'char-equal)
+              (search "validate" raw :test #'char-equal))
+      (format nil "~%REPL-FIRST MANDATE:~%Before writing any defun to an Org file, prototype it in the REPL first. Set :repl-verified t on the write action. On rejection, fix the error and retry.~%"))))
+#+end_src
+
 ** Skill Registration
 #+begin_src lisp
 (defskill :skill-repl
   :priority 200
   :trigger (lambda (ctx) (declare (ignore ctx)) nil)
-  :deterministic (lambda (action ctx) (declare (ignore action ctx)) nil))
+  :deterministic (lambda (action ctx) (declare (ignore action ctx)) nil)
+  :system-prompt-augment #'repl-mandate)
 #+end_src

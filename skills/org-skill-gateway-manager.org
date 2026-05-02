@@ -1,32 +1,290 @@
 #+TITLE: SKILL: Gateway Manager (org-skill-gateway-manager.org)
 #+AUTHOR: Agent
 #+FILETAGS: :skill:gateway:manager:
-#+PROPERTY: header-args:lisp :tangle %%SKILLS_DIR%%/org-skill-gateway-manager.lisp
+#+PROPERTY: header-args:lisp :tangle org-skill-gateway-manager.lisp
 
 * Overview
-The *Gateway Manager* handles the registration and linking of external communication platforms.
+The *Gateway Manager* is a unified skill that handles all external communication platforms (Telegram, Signal, etc.). It provides a single consolidated handler for polling, injection, and actuation across any number of gateways.
 
 * Implementation
 
-** Gateway Logic
+** Platform state — configs
+Storage for active gateway connections: tokens, polling threads, and intervals.
 #+begin_src lisp
-(defun skill-gateway-register (platform token)
-  "Registers a new external gateway."
-  (harness-log "GATEWAY: Registered ~a with token ~a" platform (VAULT-MASK-STRING token)))
+(defvar *gateway-configs* (make-hash-table :test 'equal)
+  "Maps platform name → plist (:token :thread :interval :enabled)")
+#+end_src
 
-(defun skill-gateway-link (platform)
-  "Establishes a link with an external platform."
-  (harness-log "GATEWAY: Linking to ~a..." platform))
+** Platform state — registry
+Registration of available gateway implementations: each platform registers its poll and send functions here.
+#+begin_src lisp
+(defvar *gateway-registry* (make-hash-table :test 'equal)
+  "Maps platform name → plist (:poll-fn :send-fn :default-interval)")
+#+end_src
 
-(defun gateway-manager-main (platform token)
-  "Main entry point for gateway configuration."
-  (skill-gateway-register platform token)
-  (skill-gateway-link platform))
+** Telegram Implementation
+#+begin_src lisp
+(defun telegram-get-token ()
+  (vault-get-secret :telegram))
+
+(defun telegram-poll ()
+  "Polls Telegram for new messages and injects them into the harness."
+  (let* ((token (telegram-get-token)))
+    (when token
+      (let* ((last-id (getf (gethash "telegram" *gateway-configs*) :last-update-id 0))
+             (url (format nil "https://api.telegram.org/bot~a/getUpdates?offset=~a"
+                          token (1+ last-id))))
+        (handler-case
+            (let* ((response (dex:get url))
+                   (json (cl-json:decode-json-from-string response))
+                   (updates (cdr (assoc :result json))))
+              (dolist (update updates)
+                (let* ((update-id (cdr (assoc :update--id update)))
+                       (message (cdr (assoc :message update)))
+                       (chat (cdr (assoc :chat message)))
+                       (chat-id (cdr (assoc :id chat)))
+                       (text (cdr (assoc :text message))))
+                  (setf (getf (gethash "telegram" *gateway-configs*) :last-update-id) update-id)
+                  (when (and text chat-id)
+                    (harness-log "TELEGRAM: Received message from ~a" chat-id)
+                    (inject-stimulus
+                     (list :type :EVENT
+                           :meta (list :source :telegram :chat-id (format nil "~a" chat-id))
+                           :payload (list :sensor :user-input :text text)))))))
+          (error (c) (harness-log "TELEGRAM POLL ERROR: ~a" c))))))
+
+(defun telegram-send (action context)
+  "Sends a message via Telegram."
+  (declare (ignore context))
+  (let* ((payload (getf action :payload))
+         (meta (getf action :meta))
+         (chat-id (or (getf meta :chat-id) (getf payload :chat-id) (getf action :chat-id)))
+         (text (or (getf payload :text) (getf action :text)))
+         (token (telegram-get-token)))
+    (when (and token chat-id text)
+      (harness-log "TELEGRAM: Sending message to ~a..." chat-id)
+      (handler-case
+          (let ((url (format nil "https://api.telegram.org/bot~a/sendMessage" token)))
+            (dex:post url
+                      :headers '(("Content-Type" . "application/json"))
+                      :content (cl-json:encode-json-to-string
+                                `((chat_id . ,chat-id) (text . ,text)))))
+        (error (c) (harness-log "TELEGRAM ERROR: ~a" c))))))
+#+end_src
+
+** Signal Implementation
+#+begin_src lisp
+(defun signal-get-account ()
+  (vault-get-secret :signal))
+
+(defun signal-poll ()
+  "Polls Signal for new messages and injects them into the harness."
+  (let ((account (signal-get-account)))
+    (when account
+      (handler-case
+          (let* ((output (uiop:run-program (list "signal-cli" "-u" account "receive" "--json")
+                                            :output :string :error-output :string :ignore-error-status t))
+                 (lines (cl-ppcre:split "\\n" output)))
+            (dolist (line lines)
+              (when (and line (> (length line) 0))
+                (let* ((json (ignore-errors (cl-json:decode-json-from-string line)))
+                       (envelope (cdr (assoc :envelope json)))
+                       (source (cdr (assoc :source envelope)))
+                       (data-message (cdr (assoc :data-message envelope)))
+                       (text (cdr (assoc :message data-message))))
+                  (when (and source text)
+                    (harness-log "SIGNAL: Received message from ~a" source)
+                    (inject-stimulus
+                     (list :type :EVENT
+                           :meta (list :source :signal :chat-id source)
+                           :payload (list :sensor :user-input :text text))))))))
+        (error (c) (harness-log "SIGNAL POLL ERROR: ~a" c))))))
+
+(defun signal-send (action context)
+  "Sends a message via Signal."
+  (declare (ignore context))
+  (let* ((payload (getf action :payload))
+         (meta (getf action :meta))
+         (chat-id (or (getf meta :chat-id) (getf payload :chat-id) (getf action :chat-id)))
+         (text (or (getf payload :text) (getf action :text)))
+         (account (signal-get-account)))
+    (when (and account chat-id text)
+      (harness-log "SIGNAL: Sending message to ~a..." chat-id)
+      (handler-case
+          (uiop:run-program (list "signal-cli" "-u" account "send" "-m" text chat-id)
+                            :output :string :error-output :string)
+        (error (c) (harness-log "SIGNAL ERROR: ~a" c))))))
+#+end_src
+
+** Gateway Registry Initialization
+#+begin_src lisp
+(defun initialize-gateway-registry ()
+  "Registers all built-in gateway handlers."
+  (setf (gethash "telegram" *gateway-registry*)
+        (list :poll-fn #'telegram-poll
+              :send-fn #'telegram-send
+              :default-interval 3))
+  (setf (gethash "signal" *gateway-registry*)
+        (list :poll-fn #'signal-poll
+              :send-fn #'signal-send
+              :default-interval 5)))
+#+end_src
+
+** Core gateway functions
+
+*** Configuration check (gateway-configured-p)
+Returns T if a platform has a stored token in ~*gateway-configs*~.
+#+begin_src lisp
+(defun gateway-configured-p (platform)
+  "Returns T if a platform has a stored token."
+  (let ((config (gethash platform *gateway-configs*)))
+    (and config (getf config :token))))
+#+end_src
+
+*** Active check (gateway-active-p)
+Returns T if a platform's polling thread is alive.
+#+begin_src lisp
+(defun gateway-active-p (platform)
+  "Returns T if a platform's polling thread is alive."
+  (let ((config (gethash platform *gateway-configs*)))
+    (and config
+         (getf config :thread)
+         (bt:thread-alive-p (getf config :thread)))))
+#+end_src
+
+*** Link a gateway (gateway-link)
+The main entry point for linking. Validates the registry entry, stores the token in the vault, starts the polling thread, and updates the config.
+#+begin_src lisp
+(defun gateway-link (platform token)
+  "Links a platform with a token and starts polling."
+  (let ((platform-lc (string-downcase platform)))
+    (unless (gethash platform-lc *gateway-registry*)
+      (error "Unknown platform: ~a. Available: ~{~a~^, ~}"
+             platform (loop for k being the hash-keys of *gateway-registry* collect k)))
+    (when (or (null token) (zerop (length token)))
+      (error "Token cannot be empty"))
+    (harness-log "GATEWAY: Linking to ~a..." platform-lc)
+    (gateway-unlink platform-lc)
+    (let* ((registry-entry (gethash platform-lc *gateway-registry*))
+           (interval (or (getf registry-entry :default-interval) 5)))
+      (setf (gethash platform-lc *gateway-configs*)
+            (list :token token :interval interval :enabled t))
+      (vault-set-secret (intern (string-upcase platform-lc) :keyword) token)
+      (gateway-start platform-lc)
+      (harness-log "GATEWAY: Successfully linked ~a" platform-lc)
+      (format t "Successfully linked ~a gateway. Token stored securely.~%" platform-lc)
+      t)))
+#+end_src
+
+*** Unlink a gateway (gateway-unlink)
+Stops the polling thread and removes the config entry.
+#+begin_src lisp
+(defun gateway-unlink (platform)
+  "Unlinks a platform and stops its polling thread."
+  (let ((platform-lc (string-downcase platform)))
+    (gateway-stop platform-lc)
+    (remhash platform-lc *gateway-configs*)
+    (harness-log "GATEWAY: Unlinked ~a" platform-lc)
+    (format t "Successfully unlinked ~a gateway.~%" platform-lc)
+    t))
+#+end_src
+
+*** Start polling (gateway-start)
+Creates a background thread that calls the platform's poll function on an interval. The thread checks the ~:enabled~ flag on each cycle so it can be stopped cleanly via ~gateway-stop~.
+#+begin_src lisp
+(defun gateway-start (platform)
+  "Starts the polling thread for a linked gateway."
+  (let ((platform-lc (string-downcase platform)))
+    (let ((config (gethash platform-lc *gateway-configs*)))
+      (when (and config (getf config :enabled) (not (gateway-active-p platform-lc)))
+        (let ((poll-fn (getf (gethash platform-lc *gateway-registry*) :poll-fn)))
+          (when poll-fn
+            (let ((interval (getf config :interval)))
+              (setf (getf config :thread)
+                    (bt:make-thread
+                     (lambda ()
+                       (loop
+                         (when (getf (gethash platform-lc *gateway-configs*) :enabled)
+                           (funcall poll-fn))
+                         (sleep interval)))
+                     :name (format nil "opencortex-~a-gateway" platform-lc)))
+              (harness-log "GATEWAY: Started ~a polling (interval: ~as)" platform-lc interval)))))))))
+#+end_src
+
+*** Stop polling (gateway-stop)
+Destroys the polling thread and nulls the thread reference.
+#+begin_src lisp
+(defun gateway-stop (platform)
+  "Stops the polling thread for a gateway."
+  (let ((platform-lc (string-downcase platform)))
+    (let ((config (gethash platform-lc *gateway-configs*)))
+      (when (and config (getf config :thread))
+        (when (bt:thread-alive-p (getf config :thread))
+          (harness-log "GATEWAY: Stopping ~a polling thread" platform-lc)
+          (bt:destroy-thread (getf config :thread))))
+      (setf (getf config :thread) nil))))
+#+end_src
+
+*** List gateways (gateway-list)
+Returns a list of plists, one per registered platform, with :platform, :configured, and :active keys.
+#+begin_src lisp
+(defun gateway-list ()
+  "Returns a list of all gateways with their status."
+  (loop for platform being the hash-keys of *gateway-registry*
+        collect (let ((configured (gateway-configured-p platform))
+                      (active (gateway-active-p platform)))
+                  (list :platform platform
+                        :configured configured
+                        :active active))))
+#+end_src
+
+*** Print gateways (gateway-list-print)
+Formats ~gateway-list~ for display in the CLI.
+#+begin_src lisp
+(defun gateway-list-print ()
+  "Prints a formatted table of gateways."
+  (format t "~%")
+  (format t "  ~20@A ~12@A ~10@A~%" "PLATFORM" "CONFIGURED" "STATUS")
+  (dolist (gw (gateway-list))
+    (format t "  ~20@A ~12@A ~10@A~%"
+            (getf gw :platform)
+            (if (getf gw :configured) "yes" "no")
+            (cond
+              ((getf gw :active) "ACTIVE")
+              ((getf gw :configured) "stopped")
+              (t "not linked"))))
+  (format t "~%"))
+#+end_src
+
+*** Start all configured gateways (start-all-gateways)
+Called during boot to start all gateways that have tokens stored in their configs.
+#+begin_src lisp
+(defun start-all-gateways ()
+  "Called at boot to start all configured gateways."
+  (dolist (config (loop for platform being the hash-keys of *gateway-configs*
+                       collect (list platform (gethash platform *gateway-configs*))))
+    (destructuring-bind (platform config) config
+      (when (and (getf config :enabled) (not (gateway-active-p platform)))
+        (gateway-start platform)))))
+#+end_src
+
+** Actuator Registration
+Register :telegram and :signal as actuators for outbound messages.
+#+begin_src lisp
+(register-actuator :telegram #'telegram-send)
+(register-actuator :signal #'signal-send)
 #+end_src
 
 ** Skill Registration
 #+begin_src lisp
 (defskill :skill-gateway-manager
-  :priority 100
+  :priority 150
   :trigger (lambda (ctx) (declare (ignore ctx)) nil))
+#+end_src
+
+** Initialization
+Initialize registry and start configured gateways on skill load.
+#+begin_src lisp
+(initialize-gateway-registry)
+(start-all-gateways)
 #+end_src

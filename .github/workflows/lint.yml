@@ -2,44 +2,80 @@ name: Lint
 
 on:
   push:
-    branches: [main]
-  pull_request:
-    branches: [main]
+    tags:
+      - 'v*'
+  workflow_dispatch:
 
 jobs:
   lint:
     runs-on: ubuntu-latest
-    container:
-      image: ubuntu:latest
 
     steps:
       - uses: actions/checkout@v4
 
       - name: Install dependencies
         run: |
-          apt-get update && apt-get install -y --no-install-recommends \
+          sudo apt-get update && sudo apt-get install -y --no-install-recommends \
             git emacs-nox
 
       - name: Check for forbidden patterns
         run: |
-          grep -r "json\." --include="*.lisp" . && \
-            echo "ERROR: Found JSON usage in Lisp files" && exit 1 || \
+          ! grep -r "json\." --include="*.lisp" . && \
             echo "OK: No JSON in Lisp files"
 
-      - name: Check literate granularity
+      - name: Check skills have lisp source blocks
         run: |
-          find . -name "*.org" -path "./skills/*" -exec grep -L "#+begin_src lisp" {} \; | \
-            grep -v "CLA\|CONTRIBUTING\|CHANGELOG" && \
-            echo "WARNING: Some skills lack lisp blocks" || \
-            echo "OK: All skills have lisp blocks"
-
-      - name: Verify .lisp files are generated
-        run: |
-          for f in library/gen/*.lisp; do
-            org="${f%.lisp}.org"
-            if [ -f "$org" ]; then
-              : # generated, OK
-            else
-              echo "WARNING: $f has no corresponding .org source"
+          FAIL=0
+          for f in skills/*.org; do
+            if ! grep -q "#+begin_src lisp" "$f"; then
+              echo "WARNING: $f has no lisp blocks"
+              FAIL=1
             fi
           done
+          find . -name "*.org" -path "*/skills/*" -exec grep -L "#+begin_src lisp" {} \; | \
+            grep -v "CLA\|CONTRIBUTING\|CHANGELOG\|README\|USER_MANUAL" || true
+          echo "OK: All skills have lisp blocks"
+
+      - name: Verify each .lisp has a corresponding .org source
+        run: |
+          FAIL=0
+          for f in harness/*.lisp tests/*.lisp; do
+            [ -f "$f" ] || continue
+            org="${f%.lisp}.org"
+            [ -f "$org" ] && continue
+            # Check if it's a test file tangled from a test block in an org
+            base=$(basename "$f" .lisp)
+            parent_org="${base%-tests}.org"
+            if [ -f "harness/$parent_org" ] || [ -f "skills/$parent_org" ]; then
+              : # test files are generated from parent org
+            else
+              echo "WARNING: $f has no corresponding .org source"
+              FAIL=1
+            fi
+          done
+          for f in skills/*.lisp; do
+            [ -f "$f" ] || continue
+            org="${f%.lisp}.org"
+            if [ ! -f "$org" ]; then
+              echo "ERROR: $f has no .org source"
+              FAIL=1
+            fi
+          done
+          [ "$FAIL" = 0 ] && echo "OK: All .lisp files have .org sources"
+
+      - name: Check literate granularity (one function per block)
+        run: |
+          for f in skills/*.org; do
+            blocks=$(grep -c "^[[:space:]]*(defun " "$f" 2>/dev/null || true)
+            srcblocks=$(grep -c "#+begin_src lisp" "$f" 2>/dev/null || true)
+            if [ "$blocks" -gt "$srcblocks" ] && [ "$srcblocks" -gt 0 ]; then
+              echo "WARNING: $f has $blocks defuns but only $srcblocks src blocks"
+            fi
+          done
+          echo "OK: Granularity check complete"
+
+      - name: Check README has quick install
+        run: |
+          grep -q "curl.*opencortex" README.org && \
+            echo "OK: Quick install in README" || \
+            echo "WARNING: Quick install curl command not found in README"

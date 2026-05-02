@@ -1,10 +1,36 @@
 #+TITLE: SKILL: Literate Programming (org-skill-literate-programming.org)
 #+AUTHOR: Agent
 #+FILETAGS: :system:literate:tangle:
-#+PROPERTY: header-args:lisp :tangle %%SKILLS_DIR%%/org-skill-literate-programming.lisp
+#+PROPERTY: header-args:lisp :tangle org-skill-literate-programming.lisp
 
 * Overview
-The *Literate Programming* skill ensures the synchronization between `.org` sources and `.lisp` artifacts.
+This skill enforces the literal programming discipline for all OpenCortex source code. It defines the rules for one-function-per-block, prose-before-code, reflecting working code back from the REPL to Org, and the tangle mandate (never edit .lisp directly). Every Org file that contains Lisp code should follow the rules defined here.
+
+** Discipline Rules
+
+*** One Function, One Block
+Every ~#+begin_src lisp~ block contains exactly one function definition. Never bundle multiple definitions in a single block. This keeps the Org file granular, reviewable, and tanglable without side effects.
+
+*** Prose Before Code
+Every block must be preceded by an Org headline and explanatory prose that covers:
+- What the function does
+- Its arguments (including any &key, &optional)
+- Its return value
+- The rationale for its existence
+
+The prose is not a comment — it is the authoritative specification. The code implements what the prose describes.
+
+*** Reflect Back, Don't Write Directly
+Code is explored and verified in the REPL first (per Engineering Standards lifecycle). Once working, it is *reflected back* into the Org file. This means:
+- The REPL is the proving ground — iterate there
+- The Org file is the record — copy working code there
+- Never write code directly into an Org block without first evaluating it in the REPL
+
+*** Code and Prose Together
+Every ~#+begin_src lisp~ block flows from the prose above it. The reader (human or agent) should understand the function's contract from the prose before reading the code. If the code and prose disagree, the prose is wrong — update both.
+
+*** Tangle Mandate
+The `.lisp` file is derived, not authored. Never edit `.lisp` directly. All changes flow through Org: edit Org → tangle → `.lisp` updates. Violating this corrupts the skill loader and causes boot failure.
 
 * Implementation
 

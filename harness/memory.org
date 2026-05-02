@@ -5,7 +5,13 @@
 #+PROPERTY: header-args:lisp :tangle memory.lisp
 
 * Overview
-The Memory module is the cognitive bedrock of the opencortex. It is not a database; it is the agent's live, active "brain" state.
+The Memory module is the agent's live cognitive state — a set of Merkle-tree-versioned ~org-object~ instances stored in hash tables. Every perception, action, and decision is recorded here.
+
+Key structures:
+- ~*memory*~ — the primary object store, keyed by ID
+- ~*history-store*~ — immutable archive of all past object versions, keyed by SHA-256 hash
+- ~org-object~ — the universal data unit (id, type, attributes, content, vector embedding, parent, children, merkle hash)
+- ~ingest-ast~ — converts an Org-mode AST into ~org-object~ instances, computing Merkle hashes for integrity
 
 * Implementation
 
@@ -21,21 +27,55 @@ The Memory module is the cognitive bedrock of the opencortex. It is not a databa
   "Immutable Merkle-Tree versioning store mapping hashes to objects.")
 #+end_src
 
-** Object Lookup
+** Object Lookup (lookup-object)
+Retrieve a single object by its ID from the active memory store.
 #+begin_src lisp
 (defun lookup-object (id)
+  "Retrieves an org-object by ID from *memory*."
   (gethash id *memory*))
 #+end_src
 
+** Object search (list-objects-with-attribute)
+Scan the entire memory store for objects whose attributes match a given key-value pair.
+#+begin_src lisp
+(defun list-objects-with-attribute (attr value)
+  "Returns all org-objects whose :ATTRIBUTES plist has ATTR = VALUE."
+  (let ((results nil))
+    (maphash (lambda (id obj)
+               (declare (ignore id))
+               (when (equal (getf (org-object-attributes obj) attr) value)
+                 (push obj results)))
+             *memory*)
+    (nreverse results)))
+#+end_src
+
+** ID generation (org-id-new)
+Generate a unique identifier string for a new Org node. Uses the universal time encoded in base-36 for compactness.
+#+begin_src lisp
+(defun org-id-new ()
+  "Generates a timestamp-based unique ID."
+  (format nil "id-~36r" (get-universal-time)))
+#+end_src
+
 ** The Data Structure (org-object)
+The universal data unit. Every stored entity is an ~org-object~ with an ID, type, attribute plist, content string, optional vector embedding, parent/child pointers, version timestamp, and Merkle hash.
 #+begin_src lisp
 (defstruct org-object
   id type attributes content vector parent-id children version last-sync hash)
+#+end_src
 
+** Serialization support
+Required by the Lisp runtime for saving/loading objects across image restarts.
+#+begin_src lisp
 (defmethod make-load-form ((obj org-object) &optional env)
   (make-load-form-saving-slots obj :environment env))
+#+end_src
 
+** Deep copy
+Creates an independent copy of an ~org-object~. Used by the snapshot system to capture consistent memory state.
+#+begin_src lisp
 (defun deep-copy-org-object (obj)
+  "Creates a full copy of an org-object, including a fresh list copy of attributes and children."
   (make-org-object :id (org-object-id obj)
                   :type (org-object-type obj)
                   :attributes (copy-list (org-object-attributes obj))
@@ -93,24 +133,41 @@ The Memory module is the cognitive bedrock of the opencortex. It is not a databa
       id)))
 #+end_src
 
-** Snapshots (snapshot-memory)
+** Snapshot history (~*object-store-snapshots*~)
+A stack of CoW (copy-on-write) memory snapshots for rollback. Up to 20 snapshots are retained.
 #+begin_src lisp
 (defvar *object-store-snapshots* nil)
+#+end_src
 
+** Hash table copy utility
+Used by the rollback system to restore saved memory state.
+#+begin_src lisp
 (defun copy-hash-table (hash-table)
+  "Creates an independent copy of a hash table."
   (let ((new-table (make-hash-table :test (hash-table-test hash-table) 
-                                    :size (hash-table-size hash-table))))
+                                     :size (hash-table-size hash-table))))
     (maphash (lambda (k v) (setf (gethash k new-table) v)) hash-table)
     new-table))
+#+end_src
 
+** Memory snapshot (snapshot-memory)
+Captures a point-in-time copy of ~*memory*~. Each object is deep-copied so the snapshot is independent of ongoing mutations.
+#+begin_src lisp
 (defun snapshot-memory ()
+  "Creates a CoW snapshot of *memory* for rollback recovery."
   (let ((snapshot (make-hash-table :test 'equal :size (hash-table-size *memory*))))
     (maphash (lambda (k v) (setf (gethash k snapshot) (deep-copy-org-object v))) *memory*)
     (push (list :timestamp (get-universal-time) :data snapshot) *object-store-snapshots*)
-    (when (> (length *object-store-snapshots*) 20) (setf *object-store-snapshots* (subseq *object-store-snapshots* 0 20)))
+    (when (> (length *object-store-snapshots*) 20)
+      (setf *object-store-snapshots* (subseq *object-store-snapshots* 0 20)))
     (harness-log "MEMORY - CoW Memory snapshot created.")))
+#+end_src
 
+** Memory rollback (rollback-memory)
+Restores ~*memory*~ to a previous snapshot. By default restores the most recent snapshot (index 0).
+#+begin_src lisp
 (defun rollback-memory (&optional (index 0))
+  "Restores *memory* from a snapshot. INDEX 0 = most recent."
   (let ((snapshot (nth index *object-store-snapshots*)))
     (if snapshot
         (progn (setf *memory* (copy-hash-table (getf snapshot :data)))
@@ -118,17 +175,24 @@ The Memory module is the cognitive bedrock of the opencortex. It is not a databa
         (harness-log "MEMORY ERROR - Snapshot ~a not found." index))))
 #+end_src
 
-** Persistence (save-memory / load-memory)
+** Persistence — snapshot path (~*memory-snapshot-path*~)
+Configurable path for serialized memory state. Falls back to ~memory.snap~ in the home directory.
 #+begin_src lisp
 (defvar *memory-snapshot-path* nil)
 
 (defun ensure-memory-snapshot-path ()
+  "Returns the path to the memory snapshot file, resolving env or default."
   (or *memory-snapshot-path*
       (let ((env-path (uiop:getenv "MEMORY_SNAPSHOT_PATH")))
         (setf *memory-snapshot-path*
               (or env-path (namestring (uiop:merge-pathnames* "memory.snap" (user-homedir-pathname))))))))
+#+end_src
 
+** Save to disk (save-memory-to-disk)
+Serialises ~*memory*~ and ~*history-store*~ to a Lisp-readable file.
+#+begin_src lisp
 (defun save-memory-to-disk ()
+  "Writes the entire memory and history store to disk as a plist."
   (let ((path (ensure-memory-snapshot-path)))
     (with-open-file (stream path :direction :output :if-exists :supersede :if-does-not-exist :create)
       (let ((memory-alist nil) (history-alist nil))
@@ -136,8 +200,13 @@ The Memory module is the cognitive bedrock of the opencortex. It is not a databa
         (maphash (lambda (k v) (push (cons k v) history-alist)) *history-store*)
         (prin1 (list :memory memory-alist :history-store history-alist) stream)))
     (harness-log "MEMORY - Saved to ~a" path)))
+#+end_src
 
+** Load from disk (load-memory-from-disk)
+Restores memory state from a previously saved snapshot file.
+#+begin_src lisp
 (defun load-memory-from-disk ()
+  "Reads memory state from disk and restores *memory* and *history-store*."
   (let ((path (ensure-memory-snapshot-path)))
     (when (uiop:file-exists-p path)
       (handler-case

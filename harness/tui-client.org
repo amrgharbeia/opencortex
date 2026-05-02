@@ -4,7 +4,7 @@
 #+PROPERTY: header-args:lisp :tangle tui-client.lisp
 
 * Overview
-The OpenCortex TUI Client is a standalone Common Lisp application built on **Croatoan**.
+The TUI Client is a standalone ncurses application (built on Croatoan) that connects to the daemon via TCP. It provides a split-pane interface: a scrollable chat history window and a fixed input line at the bottom. Connected to the daemon at ~localhost:9105~, it sends user input as framed protocol messages and displays responses as they arrive from the daemon's background reader thread.
 
 * Implementation
 
@@ -17,16 +17,42 @@ The OpenCortex TUI Client is a standalone Common Lisp application built on **Cro
 (in-package :opencortex.tui)
 #+end_src
 
-** Global State
+** Connection state
 #+begin_src lisp
-(defvar *daemon-host* "127.0.0.1")
+(defvar *daemon-host* "localhost")
+#+end_src
+
+#+begin_src lisp
 (defvar *daemon-port* 9105)
+#+end_src
+
+#+begin_src lisp
 (defvar *socket* nil)
+#+end_src
+
+#+begin_src lisp
 (defvar *stream* nil)
+#+end_src
+
+** UI state
+#+begin_src lisp
 (defvar *chat-history* nil)
-(defvar *input-list* nil) ; List of characters (stored in reverse)
+#+end_src
+
+#+begin_src lisp
+(defvar *input-list* nil)
+#+end_src
+
+#+begin_src lisp
 (defvar *is-running* t)
-(defvar *queue-lock* (bt:make-lock))
+#+end_src
+
+** Thread-safe message queue
+#+begin_src lisp
+(defvar *queue-lock* (bt:make-lock "incoming-queue-lock"))
+#+end_src
+
+#+begin_src lisp
 (defvar *incoming-msgs* nil)
 #+end_src
 
@@ -175,4 +201,29 @@ The OpenCortex TUI Client is a standalone Common Lisp application built on **Cro
             (sleep 0.01))))
     (setf *is-running* nil)
     (when *socket* (ignore-errors (usocket:socket-close *socket*)))))
+#+end_src
+
+** REPL test script (tmux)
+Use this script to test the TUI non-interactively in a tmux session. It launches the TUI in a headless tmux window, sends text, and captures the output.
+
+#+begin_src bash :tangle no
+#!/bin/bash
+SESSION="oct-tui-test"
+tmux new-session -d -s "$SESSION" \
+    -e OC_CONFIG_DIR="$HOME/.config/opencortex" \
+    -e OC_DATA_DIR="$HOME/.local/share/opencortex" \
+    -e TERM="screen-256color" \
+    "sbcl --non-interactive \
+        --eval '(load (merge-pathnames \"quicklisp/setup.lisp\" (user-homedir-pathname)))' \
+        --eval '(push (truename \"$HOME/.local/share/opencortex/\") asdf:*central-registry*)' \
+        --eval '(ql:quickload :opencortex/tui)' \
+        --eval '(opencortex.tui:main)'"
+sleep 5
+tmux capture-pane -t "$SESSION" -p -S -20
+tmux send-keys -t "$SESSION" 'hello' Enter
+sleep 8
+tmux capture-pane -t "$SESSION" -p -S -20
+tmux send-keys -t "$SESSION" '/exit' Enter
+sleep 1
+tmux kill-session -t "$SESSION" 2>/dev/null || true
 #+end_src

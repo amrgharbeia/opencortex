@@ -1,10 +1,63 @@
 #+TITLE: SKILL: Engineering Standards (org-skill-engineering-standards.org)
 #+AUTHOR: Agent
 #+FILETAGS: :system:engineering:chaos:
-#+PROPERTY: header-args:lisp :tangle %%SKILLS_DIR%%/org-skill-engineering-standards.lisp
+#+DEPENDS_ON: org-skill-utils-lisp
+#+PROPERTY: header-args:lisp :tangle org-skill-engineering-standards.lisp
 
 * Overview
-The *Engineering Standards Skill* enforces technical invariants, including the **Commit-Before-Modify** rule and **Chaos-Driven Development**.
+The *Engineering Standards Skill* defines the REPL-first engineering lifecycle and enforces technical invariants, including the **Commit-Before-Modify** rule and **Chaos-Driven Development**.
+
+** Engineering Lifecycle (Two-Track)
+
+The canonical workflow. Two tracks, not to be confused:
+
+*** Track 1 — Org-First: Prose, Tests, Thinking (Phases 0/A)
+
+This track stays in Org. No code is written yet.
+
+**** Phase 0: Exploration & Documentation
+1. Read the relevant Org source files for context
+2. Explore the problem in the running REPL with ~repl-inspect~ and ~repl-eval~
+3. Document findings in Org prose
+4. If a bug: document investigation in Org before fixing (Org as thinking medium)
+
+**** Phase A: Test-First Design
+1. Write the success criteria in Org prose — what the function does, arguments, return value, rationale
+2. Write the FiveAM test in a ~#+begin_src lisp :tangle no~ block
+3. Tangle the test and evaluate in the REPL — confirm it fails (red)
+4. The failing test is the success criteria. Do not proceed to Track 2 until it exists and is red.
+
+*** Track 2 — REPL-First: Implementation, Iteration, Reflection (Phases B/C/D/E)
+
+Code is prototyped in the REPL, never written directly into Org first.
+
+**** Phase B/C: REPL Implementation
+1. Write the function directly in the REPL using ~repl-eval~
+2. Iterate: evaluate, inspect, fix, re-evaluate — the image accumulates state
+3. Run the test in the REPL — confirm green
+4. Explore edge cases with ~repl-inspect~ and ad-hoc evaluations
+5. Before writing any ~defun~ in an Org block, verify it was prototyped and tested in the REPL first
+
+**** Phase D: Chaos Verification
+Run the appropriate chaos tier before reflecting code back to Org:
+- *Tier 1 (Deterministic)*: Full FiveAM test suite — required on every change
+- *Tier 2 (Probabilistic)*: Randomized fuzzing — required on every major release
+- *Tier 3 (Stress)*: Load and resource starvation — required during hardening sprints
+
+**** Phase E: Reflect Back to Org
+1. Copy the working function into its own ~#+begin_src lisp~ block in the Org file
+2. Update the prose to match what the function actually does (arguments, return, rationale)
+3. Before closing Phase E, run ~(utils-lisp-validate (uiop:read-file-string "path/to/file.lisp") :strict t)~ in the REPL — never external scripts or manual paren-counting
+4. Verify the Org file tangles correctly
+5. Tangle, commit, update GTD
+
+**** Syntax Error Protocol
+If a LOADER ERROR or reader-error occurs:
+1. Run ~(utils-lisp-validate (uiop:read-file-string "file.lisp") :strict t)~ in the REPL — never Python, never grep, never manual counting
+2. Fix the error in the Org file (since the code was prototyped in REPL first, this should be rare)
+3. Retangle and re-evaluate
+
+Rationale: The two tracks prevent the two failure modes we have observed. Writing implementation code directly in Org (without REPL prototyping) produces syntax errors that require external tools to debug. Skipping Org-first test writing produces code without verified success criteria. The split is not bureaucratic — it is the mechanism by which both failures are prevented.
 
 * Implementation
 

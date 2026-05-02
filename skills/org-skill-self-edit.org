@@ -1,7 +1,7 @@
 #+TITLE: SKILL: Self Edit (org-skill-self-edit.org)
 #+AUTHOR: Agent
 #+FILETAGS: :system:autonomy:self-edit:
-#+PROPERTY: header-args:lisp :tangle %%SKILLS_DIR%%/org-skill-self-edit.lisp
+#+PROPERTY: header-args:lisp :tangle org-skill-self-edit.lisp
 
 * Overview
 The *Self Edit* skill allows the OpenCortex Agent to modify its own literate source code.
@@ -12,6 +12,7 @@ The *Self Edit* skill allows the OpenCortex Agent to modify its own literate sou
 #+begin_src lisp
 (defun self-edit-apply (filepath old-text new-text)
   "Applies a transformation to a source file."
+  (declare (ignore old-text new-text))
   (harness-log "SELF-EDIT: Applying changes to ~a" filepath))
 #+end_src
 

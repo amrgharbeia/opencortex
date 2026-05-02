@@ -9,13 +9,26 @@ Welcome to OpenCortex v0.1.0 (The Autonomous Foundation). OpenCortex is a neuros
 * Installation
 OpenCortex is bootstrapped via a single shell script.
 
+** Quick start (curl)
+
 #+begin_src bash
-git clone ssh://git@10.10.10.201:2222/amr/opencortex.git
-cd opencortex
-./opencortex.sh setup
+curl -fsSL https://raw.githubusercontent.com/amrgharbeia/opencortex/main/opencortex.sh | bash -s configure
 #+end_src
 
-This process will install SBCL, Quicklisp, and prompt you to create a `.env` file for your API keys.
+** From a clone
+
+#+begin_src bash
+git clone https://github.com/amrgharbeia/opencortex.git ~/projects/opencortex
+~/projects/opencortex/opencortex.sh configure
+#+end_src
+
+Both methods will:
+1. Install system dependencies (SBCL, Emacs, git, curl, socat — detected for Debian or Fedora)
+2. Install Quicklisp (Common Lisp package manager)
+3. Tangle literate Org sources into runnable Lisp
+4. Launch the interactive setup wizard (LLM providers, gateways)
+
+If you already have Emacs installed, the installer skips it and uses your existing installation.
 
 * Configuration
 The system is configured via a `.env` file in the project root. Essential variables include:
@@ -54,3 +67,58 @@ OpenCortex assumes a local folder structure representing your "Memex".
 - Core memories and identities are mapped to Org-mode files.
 - The `Scribe` background worker distills chronological logs into structured Zettelkasten notes.
 - The `Gardener` continuously repairs broken links and flags orphaned nodes.
+
+* Deployment
+
+** Bare metal (Debian / Fedora)
+
+The ~configure~ command supports both Debian-based (Ubuntu, Pop, Mint) and Fedora-based (RHEL, Rocky) distributions. It detects your distro automatically and installs the correct packages.
+
+#+begin_src bash
+./opencortex.sh configure              # interactive
+./opencortex.sh configure --non-interactive  # headless
+./opencortex.sh configure --with-firewall    # also open port 9105
+#+end_src
+
+After configuration, you can re-run ~configure~ any time to add providers or link gateways.
+
+** systemd service (auto-start on boot)
+
+#+begin_src bash
+./opencortex.sh install service
+#+end_src
+
+Installs a user-level systemd unit that starts the daemon on login. Logs are available via ~journalctl --user -u opencortex.service -f~.
+
+To remove:
+
+#+begin_src bash
+./opencortex.sh uninstall service
+#+end_src
+
+** Docker
+
+A Debian-based Docker image is provided for containerized deployment.
+
+#+begin_src bash
+cd infrastructure/docker
+docker-compose up -d
+#+end_src
+
+This builds an image from ~debian:trixie-slim~ with all dependencies pre-installed. The memex directory is mounted from the host.
+
+** Backup
+
+#+begin_src bash
+./opencortex.sh backup ~/my-backup.tar.gz
+#+end_src
+
+Backs up the config, data, and memex directories.
+
+** Restore
+
+#+begin_src bash
+./opencortex.sh restore ~/my-backup.tar.gz
+#+end_src
+
+Restores from a backup file. Run ~opencortex doctor~ afterward to verify integrity.

@@ -14,14 +14,21 @@ The Reason stage implements the core Innovation of OpenCortex: the separation of
 (in-package :opencortex)
 #+end_src
 
-** Probabilistic Engine Configuration
+** Probabilistic Engine state
+~*probabilistic-backends*~ is the hash table mapping provider keywords to backend functions. ~*provider-cascade*~ is the ordered list of providers to try. ~*model-selector-fn*~ is an optional function that selects a model per request. ~*consensus-enabled-p*~ enables multi-provider agreement.
 #+begin_src lisp
 (defvar *probabilistic-backends* (make-hash-table :test 'equal))
+#+end_src
 
+#+begin_src lisp
 (defvar *provider-cascade* nil)
+#+end_src
 
+#+begin_src lisp
 (defvar *model-selector-fn* nil)
+#+end_src
 
+#+begin_src lisp
 (defvar *consensus-enabled-p* nil)
 #+end_src
 
@@ -92,8 +99,19 @@ The Reason stage implements the core Innovation of OpenCortex: the separation of
          (reflection-feedback (if rejection-trace
                                   (format nil "~%~%PREVIOUS PROPOSAL REJECTED: ~a" rejection-trace)
                                   ""))
-         (system-prompt (format nil "IDENTITY: ~a~a~%~%TOOLS:~%~a~%~%CONTEXT:~%~a~%~%LOGS:~%~a" 
-                               assistant-name reflection-feedback tool-belt global-context system-logs)))
+         (skill-augments (let ((augments ""))
+                           (maphash (lambda (name skill)
+                                      (declare (ignore name))
+                                      (let ((aug-fn (skill-system-prompt-augment skill)))
+                                        (when aug-fn
+                                          (let ((aug-text (ignore-errors (funcall aug-fn context))))
+                                            (when (and aug-text (stringp aug-text) (> (length aug-text) 0))
+                                              (setf augments (concatenate 'string augments aug-text (string #\Newline))))))))
+                                    *skills-registry*)
+                           (when (> (length augments) 0) augments)))
+         (system-prompt (format nil "IDENTITY: ~a~a~%~%TOOLS:~%~a~%~%CONTEXT:~%~a~%~%LOGS:~%~a~%~a" 
+                                assistant-name reflection-feedback tool-belt global-context system-logs
+                                (or skill-augments ""))))
     (let* ((thought (probabilistic-call raw-prompt :system-prompt system-prompt :context context))
            (cleaned (strip-markdown thought)))
        (if (and cleaned (stringp cleaned) (> (length cleaned) 0) (or (char= (char cleaned 0) #\() (char= (char cleaned 0) #\[)))

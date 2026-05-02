@@ -1,18 +1,84 @@
 #+TITLE: SKILL: Utils Org (org-skill-utils-org.org)
 #+AUTHOR: Agent
 #+FILETAGS: :skill:utils:org:
-#+PROPERTY: header-args:lisp :tangle %%SKILLS_DIR%%/org-skill-utils-org.lisp
+#+PROPERTY: header-args:lisp :tangle org-skill-utils-org.lisp
 
 * Overview
-The *Utils Org* skill provides advanced structural manipulation for Org-mode files and their AST representation.
+Structural manipulation tools for Org-mode files. This skill handles reading, writing, and modifying Org files at the AST level: finding headlines by ID or title, setting properties and TODO states, adding new headlines, generating UUIDs, and converting ASTs back to Org text. It also implements the privacy filter — when reading an Org file, it strips headlines tagged with ~@personal~ (or any tag in ~bouncer-privacy-tags~) and rejects files with matching ~#+FILETAGS:~.
 
 * Implementation
 
-** Reading Files
+** Reading Files (with Privacy Filter)
 #+begin_src lisp
+(defun utils-org-extract-filetags (content)
+  "Extracts the list of tags from a #+FILETAGS: line."
+  (let ((lines (uiop:split-string content :separator '(#\Newline))))
+    (dolist (line lines)
+      (when (uiop:string-prefix-p "#+FILETAGS:" (string-trim '(#\Space) line))
+        (let ((tag-str (string-trim " :" (subseq (string-trim '(#\Space) line) 10))))
+          (return-from utils-org-extract-filetags
+            (mapcar (lambda (tag) (format nil ":~a" (string-trim '(#\Space) tag)))
+                    (uiop:split-string tag-str :separator '(#\space #\tab))))))))
+  nil)
+
+(defun utils-org-tag-matches-privacy-p (tags-list)
+  "Returns T if any tag in TAGS-LIST matches bouncer-privacy-tags."
+  (let ((privacy-tags (symbol-value (find-symbol "BOUNCER-PRIVACY-TAGS" :opencortex))))
+    (when (and tags-list privacy-tags)
+      (some (lambda (tag)
+              (some (lambda (private-tag)
+                      (string-equal (string-trim '(#\: #\space) tag)
+                                    (string-trim '(#\: #\space) private-tag))
+                    privacy-tags))
+            tags-list)))))
+
+(defun utils-org-strip-tagged-subtrees (content)
+  "Removes Org headlines whose :TAGS: property contains a privacy-filtered tag.
+Returns the filtered content as a string."
+  (let* ((lines (uiop:split-string content :separator '(#\Newline)))
+         (result-lines nil)
+         (skip-depth nil)
+         (current-tags nil)
+         (in-properties nil))
+    (dolist (line lines)
+      (cond
+        (skip-depth
+         ;; We're inside a skipped subtree
+         (when (and (uiop:string-prefix-p "*" (string-trim '(#\Space) line))
+                    (<= (length (string-trim '(#\Space) line)) skip-depth))
+           (setf skip-depth nil)))
+        ((uiop:string-prefix-p ":PROPERTIES:" (string-trim '(#\Space) line))
+         (setf in-properties t)
+         (push line result-lines))
+        ((uiop:string-prefix-p ":END:" (string-trim '(#\Space) line))
+         (setf in-properties nil)
+         (when current-tags
+           (when (utils-org-tag-matches-privacy-p (reverse current-tags))
+             (setf skip-depth
+                   (length (car (last result-lines
+                                      (1+ (position-if
+                                           (lambda (l)
+                                             (uiop:string-prefix-p "*" (string-trim '(#\Space) l)))
+                                           (reverse result-lines))))))))
+           (setf current-tags nil))
+         (push line result-lines))
+        ((and in-properties (uiop:string-prefix-p ":TAGS:" (string-trim '(#\Space) line)))
+         (let ((tag-val (string-trim '(#\Space) (subseq (string-trim '(#\Space) line) 6))))
+           (setf current-tags (uiop:split-string tag-val :separator '(#\space #\tab))))
+         (push line result-lines))
+        (t
+         (push line result-lines))))
+    (format nil "~{~a~%~}" (nreverse result-lines))))
+
 (defun utils-org-read-file (filepath)
-  "Reads an Org file into a string."
-  (uiop:read-file-string filepath))
+  "Reads an Org file into a string, applying privacy filtering."
+  (let* ((raw (uiop:read-file-string filepath))
+         (filetags (utils-org-extract-filetags raw)))
+    (if (utils-org-tag-matches-privacy-p filetags)
+        (progn
+          (harness-log "UTILS-ORG: Blocked read of ~a — file-level privacy tag(s) ~a" filepath filetags)
+          nil)
+        (utils-org-strip-tagged-subtrees raw))))
 #+end_src
 
 ** Writing Files
@@ -135,4 +201,43 @@ The *Utils Org* skill provides advanced structural manipulation for Org-mode fil
 (defskill :skill-utils-org
   :priority 100
   :trigger (lambda (ctx) (declare (ignore ctx)) nil))
+#+end_src
+
+* Test Suite
+Verification of the structural manipulation for Org-mode files and their AST representation.
+#+begin_src lisp :tangle ../tests/utils-org-tests.lisp
+(defpackage :opencortex-utils-org-tests
+  (:use :cl :fiveam :opencortex)
+  (:export #:utils-org-suite))
+
+(in-package :opencortex-utils-org-tests)
+
+(def-suite utils-org-suite
+  :description "Tests for Utils Org skill.")
+
+(in-suite utils-org-suite)
+
+(test id-generation
+  (let ((id1 (utils-org-generate-id))
+        (id2 (utils-org-generate-id)))
+    (is (plusp (length id1)))
+    (is (not (string= id1 id2)))))
+
+(test id-format
+  (let ((formatted (utils-org-id-format "abc12345")))
+    (is (search "id:" formatted))))
+
+(test property-setter
+  (let ((ast (list :type :HEADLINE
+                  :properties (list :ID "id:test123" :TITLE "Test")
+                  :contents nil)))
+    (utils-org-set-property ast "id:test123" :STATUS "ACTIVE")
+    (is (string= (getf (getf ast :properties) :STATUS) "ACTIVE"))))
+
+(test todo-setter
+  (let ((ast (list :type :HEADLINE
+                  :properties (list :ID "id:todo001" :TITLE "Task")
+                  :contents nil)))
+    (utils-org-set-todo ast "id:todo001" "DONE")
+    (is (string= (getf (getf ast :properties) :TODO) "DONE"))))
 #+end_src

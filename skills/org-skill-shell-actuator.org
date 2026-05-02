@@ -1,7 +1,7 @@
 #+TITLE: SKILL: Shell Actuator (org-skill-shell-actuator.org)
 #+AUTHOR: Agent
 #+FILETAGS: :skill:actuator:shell:
-#+PROPERTY: header-args:lisp :tangle %%SKILLS_DIR%%/org-skill-shell-actuator.lisp
+#+PROPERTY: header-args:lisp :tangle org-skill-shell-actuator.lisp
 
 * Overview
 The *Shell Actuator* provides the agent with the capability to execute bash commands.
@@ -11,16 +11,26 @@ The *Shell Actuator* provides the agent with the capability to execute bash comm
 ** Shell Execution (shell-execute)
 #+begin_src lisp
 (defun shell-execute (action context)
-  "Executes a bash command and returns the output."
+  "Executes a bash command with timeout (via timeout(1)) and output limit."
   (declare (ignore context))
   (let* ((payload (getf action :payload))
-         (cmd (getf payload :cmd)))
-    (harness-log "ACT [Shell]: ~a" cmd)
+         (cmd (getf payload :cmd))
+         (timeout-sym (find-symbol "*BOUNCER-SHELL-TIMEOUT*" :opencortex))
+         (timeout (or (getf payload :timeout) (if timeout-sym (symbol-value timeout-sym) 30)))
+         (max-sym (find-symbol "*BOUNCER-SHELL-MAX-OUTPUT*" :opencortex))
+         (max-output (or (getf payload :max-output) (if max-sym (symbol-value max-sym) 100000)))
+         (wrapped-cmd (format nil "timeout ~a bash -c ~s" timeout cmd)))
+    (harness-log "ACT [Shell]: ~a (timeout: ~as)" cmd timeout)
     (multiple-value-bind (out err code)
-        (uiop:run-program (list "bash" "-c" cmd) :output :string :error-output :string :ignore-error-status t)
-      (if (= code 0)
-          out
-          (format nil "ERROR [~a]: ~a" code err)))))
+        (uiop:run-program (list "bash" "-c" wrapped-cmd)
+                          :output :string :error-output :string
+                          :ignore-error-status t)
+      (cond
+        ((= code 124) (format nil "ERROR: Command timed out after ~a seconds" timeout))
+        ((> (length out) max-output)
+         (format nil "~a~%... (output truncated to ~a chars)" (subseq out 0 max-output) max-output))
+        ((= code 0) out)
+        (t (format nil "ERROR [~a]: ~a" code err))))))
 #+end_src
 
 ** Skill Registration

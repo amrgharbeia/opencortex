@@ -5,7 +5,7 @@
 #+PROPERTY: header-args:lisp :tangle act.lisp
 
 * Overview
-The Act stage is where cognition meets reality. After the Probabilistic engine proposes and the Deterministic engine verifies, Act executes the approved action.
+The Act stage dispatches approved actions to registered actuators. After the Probabilistic engine proposes and the Deterministic engine verifies, Act executes the approved action via the appropriate actuator (:cli, :tool, :system, :telegram, :signal, etc.). The actuator registry is extensible — skills can register new actuators at runtime.
 
 * Implementation
 

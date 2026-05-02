@@ -1,10 +1,10 @@
 #+TITLE: SKILL: Homoiconic Memory (org-skill-homoiconic-memory.org)
 #+AUTHOR: Agent
 #+FILETAGS: :harness:memory:homoiconic:
-#+PROPERTY: header-args:lisp :tangle %%SKILLS_DIR%%/org-skill-homoiconic-memory.lisp
+#+PROPERTY: header-args:lisp :tangle org-skill-homoiconic-memory.lisp
 
 * Overview
-The *Homoiconic Memory* skill provides the capability to treat system memory as executable code and vice-versa.
+Because Lisp is homoiconic (code is data), memory objects can be read as executable forms. This skill provides the bridge between the org-object store and live Lisp evaluation — it can serialize an org-object into an s-expression, evaluate it to reconstruct state, and store the result back as a new object. This is the foundation of the agent's ability to save, restore, and inspect its own cognitive state at runtime.
 
 * Implementation
 

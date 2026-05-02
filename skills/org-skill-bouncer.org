@@ -1,21 +1,128 @@
 #+TITLE: SKILL: Bouncer (org-skill-bouncer.org)
 #+AUTHOR: Agent
 #+FILETAGS: :system:bouncer:authorization:autonomy:
-#+PROPERTY: header-args:lisp :tangle %%SKILLS_DIR%%/org-skill-bouncer.lisp
+#+PROPERTY: header-args:lisp :tangle org-skill-bouncer.lisp
 
 * Overview
 The *Bouncer Skill* is the physical security layer of OpenCortex. It enforces operational security checks on all proposed actions.
 
 * Implementation
 
-** Security Configuration
+** Security Configuration — network whitelist
+Domains that the Bouncer considers safe for outbound connections. Network calls to unlisted domains are blocked or queued for approval.
 #+begin_src lisp
 (defvar *bouncer-network-whitelist*
   '("api.telegram.org" "matrix.org" "googleapis.com" "openai.com" "anthropic.com")
-  "Domains that the Bouncer considers safe for outbound connections.")
+  "Domains the Bouncer considers safe for outbound connections.")
 #+end_src
 
-** Secret Scanning (bouncer-scan-secrets)
+** Privacy filter tags (bouncer-privacy-tags)
+List of tag strings that mark content as private. Content with these tags is filtered from the LLM context window. Configurable via ~PRIVACY_FILTER_TAGS~ env var.
+#+begin_src lisp
+(defvar bouncer-privacy-tags
+  (let ((env (uiop:getenv "PRIVACY_FILTER_TAGS")))
+    (if env
+        (uiop:split-string env :separator '(#\,))
+        '("@personal")))
+  "Tags marking content as private. Set via PRIVACY_FILTER_TAGS.")
+#+end_src
+
+** Protected file paths (bouncer-protected-paths)
+Path patterns (with * wildcards) that are blocked from file reads. Covers SSH keys, PEM/PGP files, credentials, tokens, env files, and cloud configs.
+#+begin_src lisp
+(defvar bouncer-protected-paths
+  '(".env" ".env.example" ".env.local" ".env.production"
+    "*credentials*" "*cred*"
+    "*id_rsa*" "*id_dsa*" "*id_ecdsa*" "*id_ed25519*"
+    "*.pem" "*.key" "*.p12" "*.pfx" "*.asc" "*.gpg" "*.pgp"
+    "secring.*" "pubring.*" "private-keys-v1.d/*"
+    "token*" "*secret*" "*token*"
+    ".netrc" ".git-credentials" "auth.json"
+    ".aws/credentials" ".aws/config"
+    ".kube/config" "kubeconfig"
+    "*.cert" "*.crt" "*.csr"
+    "*password*" "*passwd*")
+  "Path patterns blocked from file reads.")
+#+end_src
+
+** Content exposure patterns (bouncer-exposure-patterns)
+Named regex patterns for scanning content for secret exposure. Each entry is a (name regex) pair. Matches are reported by name so downstream code can act on specific categories.
+#+begin_src lisp
+(defvar bouncer-exposure-patterns
+  '((:pem-key "-----BEGIN +(RSA|DSA|EC|OPENSSH|PGP) +PRIVATE +KEY *-----")
+    (:pgp-key "-----BEGIN +PGP +PRIVATE +KEY +BLOCK-----")
+    (:pgp-public "-----BEGIN +PGP +PUBLIC +KEY +BLOCK-----")
+    (:openai-key "sk-[A-Za-z0-9-]{20,}")
+    (:google-key "AIza[0-9A-Za-z_-]{35}")
+    (:github-token "gh[pousr]_[A-Za-z0-9]{36,}")
+    (:slack-token "xox[baprs]-[A-Za-z0-9-]{24,}")
+    (:env-assignment "[A-Z_]+=[A-Za-z0-9+/=_\\-]{20,}")
+    (:generic-secret "(api|secret|password|token)[ ]*[:=][ ]*[\"']?[A-Za-z0-9_\\-]{16,}"))
+  "Named regex patterns for secret exposure detection.")
+#+end_src
+
+** Shell safety — timeout
+Maximum seconds a shell command is allowed to run before being killed.
+#+begin_src lisp
+(defvar *bouncer-shell-timeout* 30
+  "Maximum seconds for a shell command before timeout.")
+#+end_src
+
+** Shell safety — output limit
+Maximum characters of shell command output to capture. Prevents memory exhaustion from infinite output.
+#+begin_src lisp
+(defvar *bouncer-shell-max-output* 100000
+  "Maximum characters of shell output to capture.")
+#+end_src
+
+** Shell safety — blocked patterns
+Destructive and injection patterns that are blocked in shell commands. Covers ~rm -rf /~, ~dd~, ~mkfs~, ~shred~, backtick injection, and ~$()~ subshell injection.
+#+begin_src lisp
+(defvar *bouncer-shell-blocked-patterns*
+  '((:destructive-rm    "\\brm\\s+-rf\\s+/")
+    (:destructive-dd    "\\bdd\\s+if=")
+    (:destructive-mkfs  "\\bmkfs\\.")
+    (:destructive-format "\\bmformat\\b")
+    (:disk-wipe         "\\bshred\\s+/dev/")
+    (:disk-wipe-b       "\\bwipefs\\s+/dev/")
+    (:injection-backtick "`[^`]+`")
+    (:injection-subshell "\\$\\([^)]+\\)"))
+  "Destructive and injection patterns blocked in shell commands.")
+#+end_src
+
+** Secret Path Check (bouncer-check-secret-path)
+#+begin_src lisp
+(defun bouncer-wildcard-match (pattern path)
+  "Matches PATH against PATTERN where * matches any characters."
+  (let ((regex (cl-ppcre:regex-replace-all
+                "\\*" (cl-ppcre:quote-meta-chars pattern) ".*")))
+    (cl-ppcre:scan regex path)))
+
+(defun bouncer-check-secret-path (filepath)
+  "Returns the matching pattern if FILEPATH matches a protected path, nil otherwise."
+  (when (and filepath (stringp filepath))
+    (some (lambda (pattern)
+            (when (bouncer-wildcard-match pattern filepath)
+              pattern))
+          bouncer-protected-paths)))
+#+end_src
+
+** Content Exposure Scanner (bouncer-scan-exposure)
+#+begin_src lisp
+(defun bouncer-scan-exposure (text)
+  "Scans TEXT for patterns matching known secret formats.
+Returns a list of matched category keywords."
+  (when (and text (stringp text) (> (length text) 0))
+    (let ((matches nil))
+      (dolist (entry bouncer-exposure-patterns)
+        (let ((name (first entry))
+              (regex (second entry)))
+          (when (cl-ppcre:scan regex text)
+            (push name matches))))
+      matches)))
+#+end_src
+
+** Vault Secret Scanning (bouncer-scan-secrets)
 #+begin_src lisp
 (defun bouncer-scan-secrets (text)
   "Scans TEXT for known secrets from the vault."
@@ -27,6 +134,99 @@ The *Bouncer Skill* is the physical security layer of OpenCortex. It enforces op
                      (setf found-secret key))))
                *vault-memory*)
       found-secret)))
+#+end_src
+
+** Privacy Tag Check (bouncer-check-privacy-tags)
+#+begin_src lisp
+(defun bouncer-check-privacy-tags (tags-list)
+  "Returns T if any tag in TAGS-LIST matches a privacy filter tag."
+  (when (and tags-list (listp tags-list))
+    (some (lambda (tag)
+            (some (lambda (private)
+                    (or (string-equal tag private)
+                        (search private tag :test #'string-equal)))
+                  bouncer-privacy-tags))
+          tags-list)))
+
+(defun bouncer-check-text-for-privacy (text)
+  "Scans TEXT for leaked privacy-tagged content."
+  (when (and text (stringp text))
+    (let ((lower (string-downcase text)))
+      (some (lambda (tag)
+              (search (string-downcase tag) lower))
+            bouncer-privacy-tags))))
+#+end_src
+
+** Lisp Validation Gate (bouncer-check-lisp-valid)
+#+begin_src lisp
+(defun bouncer-extract-org-lisp-blocks (content)
+  "Extracts concatenated Lisp code from #+begin_src lisp blocks in an Org string."
+  (when (and content (stringp content))
+    (let ((lines (uiop:split-string content :separator '(#\Newline)))
+          (in-block nil)
+          (code ""))
+      (dolist (line lines)
+        (let ((clean (string-trim '(#\Space #\Tab) line)))
+          (cond
+            ((search "#+begin_src lisp" clean)
+             (setf in-block t))
+            ((search "#+end_src" clean)
+             (setf in-block nil))
+            (in-block
+             (setf code (concatenate 'string code line (string #\Newline)))))))
+      (when (> (length code) 0) code))))
+
+(defun bouncer-check-lisp-valid (filepath content)
+  "Validates Lisp syntax when writing .lisp files or Org files with lisp blocks.
+Returns the validation result plist or nil if not applicable."
+  (when (and content (stringp content) (> (length content) 0))
+    (let ((to-validate
+           (cond
+             ((uiop:string-suffix-p filepath ".lisp") content)
+             ((uiop:string-suffix-p filepath ".org") (bouncer-extract-org-lisp-blocks content))
+             (t nil))))
+      (when to-validate
+        (multiple-value-bind (valid-p err) (ignore-errors
+                                            (let ((*read-eval* nil))
+                                              (with-input-from-string (s (format nil "(progn ~a)" to-validate))
+                                                (loop for form = (read s nil :eof) until (eq form :eof)))
+                                              (values t nil)))
+          (unless valid-p
+            (list :status :error :reason err)))))))
+#+end_src
+
+** REPL Verification Gate (bouncer-check-repl-verified)
+#+begin_src lisp
+(defun bouncer-org-contains-defuns-p (content)
+  "Returns T if the Org content contains any #+begin_src lisp blocks with defuns."
+  (when (and content (stringp content))
+    (search "defun " content :test #'char-equal)))
+
+(defun bouncer-check-repl-verified (action filepath content)
+  "Warns if writing a defun to an Org file without :repl-verified metadata."
+  (let ((repl-verified (getf action :repl-verified)))
+    (when (and filepath
+               (uiop:string-suffix-p filepath ".org")
+               (bouncer-org-contains-defuns-p content)
+               (not repl-verified))
+      (list :type :LOG
+            :payload (list :level :warn
+                           :text (format nil "Lint: Writing defun to ~a without :repl-verified flag. Did you prototype this in the REPL first?" filepath))))))
+#+end_src
+
+** Shell Safety Check (bouncer-check-shell-safety)
+#+begin_src lisp
+(defun bouncer-check-shell-safety (cmd)
+  "Checks a shell command for destructive patterns and injection vectors.
+Returns a list of matched pattern names or nil if safe."
+  (when (and cmd (stringp cmd) (> (length cmd) 0))
+    (let ((matches nil))
+      (dolist (entry *bouncer-shell-blocked-patterns*)
+        (let ((name (first entry))
+              (regex (second entry)))
+          (when (cl-ppcre:scan regex cmd)
+            (push name matches))))
+      matches)))
 #+end_src
 
 ** Network Check (bouncer-check-network-exfil)
@@ -46,28 +246,97 @@ The *Bouncer Skill* is the physical security layer of OpenCortex. It enforces op
 ** Main Security Gate (bouncer-check)
 #+begin_src lisp
 (defun bouncer-check (action context)
-  "The 5-Vector security gate for high-risk actions."
+  "Security gate for high-risk actions.
+Vectors: lisp validation, secret path, secret content, vault secrets,
+privacy tags, privacy text, shell safety, network exfil, high-impact approval."
   (declare (ignore context))
   (let* ((target (proto-get action :target))
          (payload (proto-get action :payload))
          (text (or (proto-get payload :text) (proto-get action :text)))
+         (filepath (or (proto-get payload :filepath)
+                       (when (equal (proto-get payload :tool) "read-file")
+                         (proto-get (proto-get payload :args) :filepath))
+                       (when (equal (proto-get payload :tool) "write-file")
+                         (proto-get (proto-get payload :args) :filepath))))
+         (content (when filepath (proto-get (proto-get payload :args) :content)))
          (cmd (or (proto-get payload :cmd)
                   (when (and (eq target :tool) (equal (proto-get payload :tool) "shell"))
                     (proto-get (proto-get payload :args) :cmd))))
-         (approved (proto-get action :approved)))
+         (approved (proto-get action :approved))
+         (tags (proto-get payload :tags))
+         (lisp-valid (when (and filepath content (not approved))
+                       (bouncer-check-lisp-valid filepath content)))
+         (repl-lint (when (and filepath content (not approved))
+                     (bouncer-check-repl-verified action filepath content))))
     (cond
       (approved action)
+
+       ;; Vector 0: REPL verification lint (warn, don't block)
+      (repl-lint
+       (harness-log "BOUNCER: ~a" (proto-get repl-lint :text))
+       action)
+
+       ;; Vector 1: Lisp syntax validation (block bad lisp writes)
+      ((and lisp-valid (eq (getf lisp-valid :status) :error))
+       (harness-log "LINT VIOLATION: Blocked write — lisp syntax error in ~a: ~a" filepath (getf lisp-valid :reason))
+       (list :type :LOG
+             :payload (list :level :error
+                            :text (format nil "Lisp syntax error in ~a: ~a. The write was blocked. Fix the parenthesis balance and retry." filepath (getf lisp-valid :reason)))))
+
+      ;; Vector 2: File read to a protected secret path
+      ((and filepath (bouncer-check-secret-path filepath))
+       (let ((matched (bouncer-check-secret-path filepath)))
+         (harness-log "SECURITY VIOLATION: Blocked read of protected path '~a' (matched: ~a)" filepath matched)
+         (list :type :LOG
+               :payload (list :level :error
+                              :text (format nil "Action blocked: Attempted read of protected path '~a'" filepath)))))
+
+      ;; Vector 3: Content contains secret patterns
+      ((and text (bouncer-scan-exposure text))
+       (let ((matched (bouncer-scan-exposure text)))
+         (harness-log "SECURITY VIOLATION: Content contains secret patterns: ~a" matched)
+         (list :type :LOG
+               :payload (list :level :error
+                              :text "Action blocked: Content contains potential secret exposure."))))
+
+      ;; Vector 4: Content contains vault secrets
       ((and text (bouncer-scan-secrets text))
        (let ((secret-name (bouncer-scan-secrets text)))
          (harness-log "SECURITY VIOLATION: Blocked potential leak of secret '~a'" secret-name)
          (list :type :LOG
                :payload (list :level :error
                               :text (format nil "Action blocked: Potential exposure of '~a'" secret-name)))))
+
+      ;; Vector 5: Privacy-tagged content in action
+      ((and tags (bouncer-check-privacy-tags tags))
+       (harness-log "PRIVACY VIOLATION: Action contains privacy-tagged content")
+       (list :type :LOG
+             :payload (list :level :warn
+                            :text "Action blocked: Content tagged with privacy filter.")))
+
+      ;; Vector 6: Text leaks privacy tag names
+      ((and text (bouncer-check-text-for-privacy text))
+       (harness-log "PRIVACY WARNING: Text may contain leaked private content")
+       (list :type :LOG
+             :payload (list :level :warn
+                            :text "Action blocked: Text may reference private content.")))
+
+       ;; Vector 7: Shell destructive/injection patterns
+      ((and cmd (bouncer-check-shell-safety cmd))
+       (let ((matched (bouncer-check-shell-safety cmd)))
+         (harness-log "SHELL VIOLATION: Destructive or injection pattern in command: ~a" matched)
+         (list :type :LOG
+               :payload (list :level :error
+                              :text (format nil "Shell command blocked: contains unsafe pattern ~a" matched)))))
+
+      ;; Vector 8: Network exfiltration
       ((and (or (eq target :shell)
                 (and (eq target :tool) (equal (proto-get payload :tool) "shell")))
-             (bouncer-check-network-exfil cmd))
+            (bouncer-check-network-exfil cmd))
         (harness-log "SECURITY WARNING: External network call detected. Queuing for approval.")
         (list :type :EVENT :payload (list :sensor :approval-required :action action)))
+
+      ;; Vector 8: High-impact action approval
       ((or (member target '(:shell))
            (and (eq target :tool) (member (proto-get payload :tool) '("shell" "repair-file") :test #'string=))
            (and (eq target :emacs) (eq (proto-get payload :action) :eval)))

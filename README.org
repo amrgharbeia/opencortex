@@ -2,6 +2,21 @@
 #+AUTHOR: Amr
 #+FILETAGS: :opencortex:ai:assistant:
 
+#+HTML: <div style="display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 1em;">
+#+HTML: <img src="https://img.shields.io/github/v/tag/amrgharbeia/opencortex?label=version&style=flat-square">
+#+HTML: <img src="https://img.shields.io/github/license/amrgharbeia/opencortex?style=flat-square">
+#+HTML: <img src="https://img.shields.io/badge/Lisp-Common%20Lisp-blue?style=flat-square">
+#+HTML: <img src="https://img.shields.io/badge/docs-Org--mode-green?style=flat-square">
+#+HTML: </div>
+
+* Quick Install
+
+#+begin_src bash
+curl -fsSL https://raw.githubusercontent.com/amrgharbeia/opencortex/main/opencortex.sh | bash -s configure
+#+end_src
+
+Then run ~opencortex tui~ to start chatting.
+
 * Meet OpenCortex
 
 Most AI assistants are just chatbots. You ask a question, they answer, they forget you exist. They trap your conversations in proprietary web apps and silo your data.
@@ -71,7 +86,7 @@ opencortex tui
 
 `opencortex setup` guides you through configuring LLM providers. Tell it how to talk to Ollama, Groq, OpenRouter, or your own endpoint.
 
-`opencortex link <platform> <token>` connects external chat gateways. Talk to your agent from Telegram while it works on your files.
+`opencortex gateway link <platform> <token>` connects external chat gateways. Talk to your agent from Telegram while it works on your files.
 
 `opencortex doctor` shows you what's working, what's broken, and what needs attention.
 

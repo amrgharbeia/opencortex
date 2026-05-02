@@ -1,10 +1,10 @@
 #+TITLE: SKILL: LLM Gateway (org-skill-llm-gateway.org)
 #+AUTHOR: Agent
 #+FILETAGS: :skill:llm:gateway:
-#+PROPERTY: header-args:lisp :tangle %%SKILLS_DIR%%/org-skill-llm-gateway.lisp
+#+PROPERTY: header-args:lisp :tangle org-skill-llm-gateway.lisp
 
 * Overview
-The *LLM Gateway* skill provides a unified interface for interacting with multiple Large Language Model providers.
+The LLM Gateway dispatches inference requests to the registered probabilistic backends. It receives a prompt and system prompt, looks up the provider's registered function from ~*probabilistic-backends*~, calls it with the given model, and returns the result. This is the thin routing layer that sits between the reason pipeline and the provider-specific implementations in the unified-llm-backend skill.
 
 * Implementation
 

@@ -62,8 +62,8 @@ The *Context API* (Peripheral Vision) provides the opencortex with the ability t
 (defun context-get-skill-source (skill-name)
   "Reads the raw literate source of a specific skill for inspection."
   (let* ((filename (format nil "~a.org" skill-name))
-         (skills-dir-str (or (uiop:getenv "SKILLS_DIR") (namestring (merge-pathnames "notes/" (user-homedir-pathname)))))
-         (skills-dir (uiop:ensure-directory-pathname (context-resolve-path skills-dir-str)))
+         (data-dir (uiop:ensure-directory-pathname (or (uiop:getenv "OC_DATA_DIR") (namestring (merge-pathnames ".local/share/opencortex/" (user-homedir-pathname))))))
+         (skills-dir (merge-pathnames "skills/" data-dir))
          (full-path (merge-pathnames filename skills-dir)))
     (if (uiop:file-exists-p full-path) (uiop:read-file-string full-path) nil)))
 #+end_src
@@ -136,13 +136,53 @@ The *Context API* (Peripheral Vision) provides the opencortex with the ability t
         path)))
 #+end_src
 
+** Privacy filter for context assembly
+Checks if an org-object has tags matching ~*privacy-filter-tags*~. Objects with matching tags are excluded from the LLM context window.
+#+begin_src lisp
+(defun context-object-privacy-filtered-p (obj)
+  "Returns T if an org-object's :TAGS attribute matches bouncer-privacy-tags."
+  (let* ((attrs (org-object-attributes obj))
+         (tags (getf attrs :TAGS))
+         (privacy-tags (and (find-package :opencortex.skills.org-skill-bouncer)
+                            (symbol-value
+                             (find-symbol "BOUNCER-PRIVACY-TAGS"
+                                          :opencortex.skills.org-skill-bouncer)))))
+    (when (and tags privacy-tags)
+      (let ((tag-list (if (listp tags) tags (list tags))))
+        (some (lambda (tag)
+                (some (lambda (private)
+                        (string-equal (string-trim '(#\:) tag)
+                                      (string-trim '(#\:) private)))
+                      privacy-tags))
+              tag-list)))))
+#+end_src
+
 ** Global Awareness (context-assemble-global-awareness)
 #+begin_src lisp
+(defun context-object-privacy-filtered-p (obj)
+  "Returns T if an org-object's :TAGS attribute matches bouncer-privacy-tags."
+  (let* ((attrs (org-object-attributes obj))
+         (tags (getf attrs :TAGS))
+         (privacy-tags (and (find-package :opencortex.skills.org-skill-bouncer)
+                            (symbol-value
+                             (find-symbol "BOUNCER-PRIVACY-TAGS"
+                                          :opencortex.skills.org-skill-bouncer)))))
+    (when (and tags privacy-tags)
+      (let ((tag-list (if (listp tags) tags (list tags))))
+        (some (lambda (tag)
+                (some (lambda (private)
+                        (string-equal (string-trim '(#\:) tag)
+                                      (string-trim '(#\:) private)))
+                      privacy-tags))
+              tag-list)))))
+
 (defun context-assemble-global-awareness (&optional signal)
-  "Produces a high-level skeletal outline of the current Memory for the LLM."
+  "Produces a high-level skeletal outline of the current Memory for the LLM.
+Privacy-filtered objects (matching *privacy-filter-tags*) are excluded."
   (let* ((foveal-id (or (getf signal :foveal-focus) 
                         (ignore-errors (getf (getf signal :payload) :target-id))))
-         (projects (context-get-active-projects))
+         (all-projects (context-get-active-projects))
+         (projects (remove-if #'context-object-privacy-filtered-p all-projects))
          (output (format nil "GLOBAL MEMEX AWARENESS (Peripheral Vision):~%")))
     (if projects
         (dolist (project projects)

@@ -1,10 +1,10 @@
 #+TITLE: SKILL: Self Fix (org-skill-self-fix.org)
 #+AUTHOR: Agent
 #+FILETAGS: :system:autonomy:self-fix:
-#+PROPERTY: header-args:lisp :tangle %%SKILLS_DIR%%/org-skill-self-fix.lisp
+#+PROPERTY: header-args:lisp :tangle org-skill-self-fix.lisp
 
 * Overview
-The *Self Fix* skill enables the agent to automatically repair broken skills and harness components.
+When a skill file fails to compile or a runtime error occurs, Self Fix attempts to diagnose and repair the issue. It receives error logs from the skill loader, identifies the broken file, and generates a corrected version that is hot-reloaded into the running image.
 
 * Implementation
 
@@ -12,6 +12,7 @@ The *Self Fix* skill enables the agent to automatically repair broken skills and
 #+begin_src lisp
 (defun self-fix-broken-skill (skill-name error-log)
   "Attempts to diagnose and repair a broken skill."
+  (declare (ignore error-log))
   (harness-log "SELF-FIX: Attempting repair of ~a..." skill-name))
 #+end_src
 

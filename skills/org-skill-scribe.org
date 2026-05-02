@@ -1,7 +1,7 @@
 #+TITLE: SKILL: Scribe (org-skill-scribe.org)
 #+AUTHOR: Agent
 #+FILETAGS: :skill:scribe:documentation:
-#+PROPERTY: header-args:lisp :tangle %%SKILLS_DIR%%/org-skill-scribe.lisp
+#+PROPERTY: header-args:lisp :tangle org-skill-scribe.lisp
 
 * Overview
 The *Scribe Skill* manages the agent's internal documentation and logs.

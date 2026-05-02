@@ -48,13 +48,13 @@ Common Lisp's `getenv` is strictly typed in SBCL. The Doctor must ensure that mi
 (test test-env-validation-fail
   "Verify that an invalid MEMEX_DIR triggers a critical failure."
   (let ((old-m (uiop:getenv "MEMEX_DIR"))
-        (old-s (uiop:getenv "SKILLS_DIR")))
+        (old-d (uiop:getenv "OC_DATA_DIR")))
     (unwind-protect
          (progn
            (setf (uiop:getenv "MEMEX_DIR") "/non/existent/path/999")
            (is (null (opencortex:doctor-check-env))))
       (setf (uiop:getenv "MEMEX_DIR") (or old-m ""))
-      (setf (uiop:getenv "SKILLS_DIR") (or old-s "")))))
+      (setf (uiop:getenv "OC_DATA_DIR") (or old-d "")))))
 #+end_src
 
 * Phase C: Implementation (Build)

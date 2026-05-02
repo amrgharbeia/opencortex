@@ -1,18 +1,15 @@
 services:
   opencortex:
     build:
-      context: .
-      dockerfile: Dockerfile
+      context: ../../
+      dockerfile: infrastructure/docker/Dockerfile
     container_name: opencortex
-    env_file: .env
+    env_file: ../../.env
     volumes:
-      # Mount the entire memex directory (2 levels up from projects/opencortex)
-      - ../..:/memex
-      # Ensure signal-cli state is preserved
+      - ../../../..:/memex
       - signal-state:/root/.local/share/signal-cli
     ports:
       - "${ORG_AGENT_DAEMON_PORT:-9105}:9105"
-      - "${ORG_AGENT_WEB_PORT:-8080}:8080"
     restart: unless-stopped
 
 volumes:
