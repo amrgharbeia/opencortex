@@ -43,11 +43,15 @@ jobs:
             [ -f "$f" ] || continue
             org="${f%.lisp}.org"
             [ -f "$org" ] && continue
-            # Check if it's a test file tangled from a test block in an org
             base=$(basename "$f" .lisp)
-            parent_org="${base%-tests}.org"
-            if [ -f "harness/$parent_org" ] || [ -f "skills/$parent_org" ]; then
-              : # test files are generated from parent org
+            # Check if generated from a parent org via :tangle
+            parent="${base%-tests}.org"
+            parent="${parent%-validator}.org"
+            parent="${parent%-client}.org"
+            if [ -f "harness/$parent" ] || [ -f "skills/$parent" ]; then
+              : # generated from parent org via :tangle
+            elif grep -q ":tangle.*$(basename "$f")" harness/*.org skills/*.org 2>/dev/null; then
+              : # :tangle reference found in another org
             else
               echo "WARNING: $f has no corresponding .org source"
               FAIL=1
